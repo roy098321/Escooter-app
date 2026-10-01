@@ -1,7 +1,10 @@
 name: Build unsigned IPA
 
-# Manual trigger only, to save the private repo's macOS minutes (P2 D01 S1).
+# Builds take ~30 s, so every push to main builds (~400 builds fit the free
+# macOS minutes); the manual trigger stays for re-runs.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
