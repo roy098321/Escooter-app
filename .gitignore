@@ -1,0 +1,15 @@
+# App code only. Personal data, docs and reports never go to GitHub (P2 D01 S2).
+data/
+docs/
+reports/
+*.csv
+*.jsonl
+*.gpx
+
+# Build output and generated project
+build/
+*.ipa
+Payload/
+*.xcodeproj/
+DerivedData/
+.DS_Store
