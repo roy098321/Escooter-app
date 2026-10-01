@@ -21,7 +21,7 @@ targets:
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Records where you ride.
         INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: Keeps recording when the phone is locked in your pocket.
         INFOPLIST_KEY_NSMotionUsageDescription: Measures climbs with the barometer.
-        MARKETING_VERSION: "0.2"
-        CURRENT_PROJECT_VERSION: "4"
+        MARKETING_VERSION: "0.3"
+        CURRENT_PROJECT_VERSION: "5"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"

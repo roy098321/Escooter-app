@@ -12,7 +12,15 @@ struct ReplayTestView: View {
     var body: some View {
         Group {
             if let fileURL {
-                WebView(url: fileURL).ignoresSafeArea(edges: .bottom)
+                WebView(url: fileURL)
+                    .safeAreaInset(edge: .bottom) {
+                        VStack(spacing: 4) {
+                            Text("D10 Plays smoothly at 50×?").font(.footnote)
+                            ManualResult(id: "d10")
+                        }
+                        .padding()
+                        .background(.regularMaterial)
+                    }
             } else {
                 ContentUnavailableView {
                     Label("Open a Ride Replay file", systemImage: "play.rectangle")

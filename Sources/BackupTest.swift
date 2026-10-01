@@ -14,6 +14,10 @@ struct BackupTestView: View {
                     .font(.footnote)
             }
             Section {
+                HStack { Text(ResultStore.shared.status("d08").icon); Text("D08 Write") }
+                HStack { Text(ResultStore.shared.status("d08r").icon); Text("D08 Write after a restart") }
+            }
+            Section {
                 Button("Pick folder") { picking = true }
                 Button("Write test file") { write() }
                     .disabled(bookmark.isEmpty)
@@ -52,11 +56,24 @@ struct BackupTestView: View {
             let text = "P2 Lab backup test · \(Date.now.formatted())\n"
             try text.write(to: file, atomically: true, encoding: .utf8)
             let back = try String(contentsOf: file, encoding: .utf8)
-            add(back == text
-                ? "✅ Wrote and read back \(file.lastPathComponent)\(stale ? " (folder link was refreshed)" : "")"
-                : "⚠️ The file read back differently")
+            guard back == text else {
+                add("❌ The file read back differently")
+                ResultStore.shared.set("d08", .fail, "The file read back differently")
+                return
+            }
+            add("✅ Wrote and read back \(file.lastPathComponent)\(stale ? " (folder link was refreshed)" : "")")
+            ResultStore.shared.set("d08", .pass, "Wrote and read back a file")
+            // If the phone restarted since the last good write, this proves the folder survives a restart.
+            let defaults = UserDefaults.standard
+            if let last = defaults.object(forKey: "lastBackupWrite") as? Date,
+               Date.now.timeIntervalSince(last) > ProcessInfo.processInfo.systemUptime {
+                ResultStore.shared.set("d08r", .pass, "Wrote again after a phone restart")
+                add("✅ The phone restarted since the last write: still works")
+            }
+            defaults.set(Date.now, forKey: "lastBackupWrite")
         } catch {
             add("❌ \(error.localizedDescription)")
+            ResultStore.shared.set("d08", .fail, error.localizedDescription)
         }
     }
 

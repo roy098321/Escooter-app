@@ -12,6 +12,9 @@ final class CrashLab: NSObject, ObservableObject, MXMetricManagerSubscriber {
     func start() {
         let defaults = UserDefaults.standard
         lastRunCrashed = defaults.bool(forKey: "wasInForeground")
+        if lastRunCrashed {
+            ResultStore.shared.set("d09own", .pass, "Noticed that the last session ended unexpectedly")
+        }
         defaults.set(true, forKey: "wasInForeground")
         NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
             defaults.set(false, forKey: "wasInForeground")
@@ -31,6 +34,9 @@ final class CrashLab: NSObject, ObservableObject, MXMetricManagerSubscriber {
         let crashes = payload.crashDiagnostics?.count ?? 0
         let line = "\(payload.timeStampEnd.formatted()) · \(crashes) crash report(s)"
         DispatchQueue.main.async {
+            if crashes > 0 {
+                ResultStore.shared.set("d09mk", .pass, "iOS delivered a crash report")
+            }
             guard !self.reports.contains(line) else { return }
             self.reports.append(line)
             UserDefaults.standard.set(self.reports, forKey: "mxReports")
@@ -45,6 +51,8 @@ struct CrashTestView: View {
         List {
             Section("Our own catcher") {
                 Text(lab.lastRunCrashed ? "⚠️ The last session ended unexpectedly" : "The last session ended normally")
+                HStack { Text(ResultStore.shared.status("d09own").icon); Text("D09 Our crash catcher") }
+                HStack { Text(ResultStore.shared.status("d09mk").icon); Text("D09 iOS crash report arrives") }
             }
             Section("iOS crash reports (MetricKit)") {
                 if lab.reports.isEmpty {

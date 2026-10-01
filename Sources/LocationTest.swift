@@ -1,16 +1,20 @@
 import SwiftUI
 import CoreLocation
 
-// D05 (phone part): does location keep recording with the phone locked in a pocket?
+// D05: does location keep recording with the phone locked in a pocket,
+// and can it start after iOS wakes the app for the scooter?
 final class LocationModel: NSObject, ObservableObject, CLLocationManagerDelegate {
+    static let shared = LocationModel()
+
     private let manager = CLLocationManager()
+    private var startedInBackground = false
     @Published var points = 0
     @Published var backgroundPoints = 0
     @Published var lastFix = "—"
     @Published var permission = "Not asked yet"
     @Published var running = false
 
-    override init() {
+    private override init() {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
@@ -18,8 +22,11 @@ final class LocationModel: NSObject, ObservableObject, CLLocationManagerDelegate
         updatePermission()
     }
 
-    func start() {
-        manager.requestAlwaysAuthorization()
+    func start(fromBackground: Bool = false) {
+        startedInBackground = fromBackground
+        if manager.authorizationStatus == .notDetermined || manager.authorizationStatus == .authorizedWhenInUse {
+            manager.requestAlwaysAuthorization()
+        }
         manager.allowsBackgroundLocationUpdates = true
         manager.pausesLocationUpdatesAutomatically = false
         manager.showsBackgroundLocationIndicator = true
@@ -36,6 +43,13 @@ final class LocationModel: NSObject, ObservableObject, CLLocationManagerDelegate
         points += locations.count
         if UIApplication.shared.applicationState == .background {
             backgroundPoints += locations.count
+            let store = ResultStore.shared
+            if store.status("d05loc") != .pass {
+                store.set("d05loc", .pass, "Points recorded while locked")
+            }
+            if startedInBackground, store.status("d05locwake") != .pass {
+                store.set("d05locwake", .pass, "Location started after the scooter woke the app")
+            }
         }
         if let last = locations.last {
             lastFix = last.timestamp.formatted(date: .omitted, time: .standard)
@@ -58,13 +72,18 @@ final class LocationModel: NSObject, ObservableObject, CLLocationManagerDelegate
 }
 
 struct LocationTestView: View {
-    @StateObject private var model = LocationModel()
+    @ObservedObject private var model = LocationModel.shared
+    @ObservedObject private var store = ResultStore.shared
 
     var body: some View {
         List {
             Section {
                 Text("Start, lock the phone, put it in your pocket and walk for 5 minutes. Then unlock: \"Recorded while locked\" should keep growing.")
                     .font(.footnote)
+                HStack {
+                    Text(store.status("d05loc").icon)
+                    Text("D05 Location while locked")
+                }
             }
             Section {
                 LabeledContent("Permission", value: model.permission)

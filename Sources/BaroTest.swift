@@ -47,6 +47,8 @@ struct BaroTestView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .padding(.top)
+            ManualResult(id: "d07baro")
+                .padding(.top)
         }
         .padding()
         .navigationTitle("Barometer")
