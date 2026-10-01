@@ -1,4 +1,5 @@
 # XcodeGen spec: the Xcode project is generated on the cloud Mac, so no Mac is needed here.
+# One bundle ID for every build (P2 D02 rule: updates never use up app IDs).
 name: Hello
 options:
   bundleIdPrefix: com.example.escooter
@@ -13,9 +14,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.escooter.hello
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/Info.plist
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Scooter Hello
-        MARKETING_VERSION: "0.1"
-        CURRENT_PROJECT_VERSION: "3"
+        INFOPLIST_KEY_CFBundleDisplayName: P2 Lab
+        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: Reads live data from your scooter.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Records where you ride.
+        INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: Keeps recording when the phone is locked in your pocket.
+        INFOPLIST_KEY_NSMotionUsageDescription: Measures climbs with the barometer.
+        MARKETING_VERSION: "0.2"
+        CURRENT_PROJECT_VERSION: "4"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
