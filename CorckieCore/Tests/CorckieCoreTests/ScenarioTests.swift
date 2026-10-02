@@ -53,7 +53,7 @@ final class ScenarioTests: XCTestCase {
     func test_SC15_spikesDropped() throws {
         let p = try ride2([.speedSpike(at: 200, kmh: 80), .batterySpike(at: 400, points: 20)])
         XCTAssertGreaterThan(p.plausibility.ignoredReadings, 0)
-        XCTAssertLessThanOrEqual(p.totals.topSpeedKmh, T.t02MaxSpeedKmh)
+        XCTAssertLessThan(p.totals.topSpeedKmh, 60, "the 80 km/h spike is dropped by the step check")
         XCTAssertFalse(p.plausibility.formatChanged)
     }
 
@@ -72,8 +72,8 @@ final class ScenarioTests: XCTestCase {
             return f
         }
         var g = Plausibility()
-        XCTAssertTrue(g.check(frame(0, kmh: T.t02MaxSpeedKmh), isPacketA: true).dropped.isEmpty)
-        XCTAssertEqual(g.check(frame(0.3, kmh: T.t02MaxSpeedKmh + 1), isPacketA: true).dropped, [.speed])
+        XCTAssertTrue(g.check(frame(0, kmh: 45), isPacketA: true).dropped.isEmpty)
+        XCTAssertTrue(g.check(frame(0.3, kmh: 50.7), isPacketA: true).dropped.isEmpty, "no fixed maximum (P4 D1 A2)")
         XCTAssertEqual(g.check(frame(0.6, kmh: 20), isPacketA: true).dropped, [.speed], "step > 15 km/h in 1 s")
         XCTAssertEqual(g.check(frame(5, kmh: 20, volts: 38.9), isPacketA: true).dropped, [.voltage])
         XCTAssertTrue(g.check(frame(6, kmh: 20, volts: 39.0), isPacketA: true).dropped.isEmpty)
@@ -83,6 +83,25 @@ final class ScenarioTests: XCTestCase {
         var hot = ScooterFrame(t: 10)
         hot.temperatureC = 131
         XCTAssertEqual(g.check(hot, isPacketA: false).dropped, [.temperature])
+    }
+
+    /// P4 D1 A2: a steady 50.7 km/h (ride 1's real top speed) is kept for minutes.
+    func test_G1b_steadyHighSpeedIsKept() {
+        var g = Plausibility()
+        g.connected(at: 0)
+        var odo = 600.0
+        for i in 0..<600 {
+            let t = Double(i) * 0.3
+            var f = ScooterFrame(t: t)
+            f.speedKmh = 50.7
+            f.voltage = 50
+            f.batteryPct = 70
+            odo += 50.7 * 0.3 / 3600
+            f.odometerKm = (odo * 10).rounded() / 10
+            XCTAssertTrue(g.check(f, isPacketA: true).dropped.isEmpty, "dropped at \(t) s")
+        }
+        XCTAssertFalse(g.formatChanged)
+        XCTAssertEqual(g.ignoredReadings, 0)
     }
 
     func test_formatWatch_noPacketAFor10s() {

@@ -6,6 +6,11 @@ struct RootView: View {
     private let model = AppModel.shared
 
     var body: some View {
+        // v1 on every tab and pushed screen (owner, P4 D3); sheets add their own `.v1Label()`.
+        content.v1Label()
+    }
+
+    @ViewBuilder private var content: some View {
         if let error = model.databaseError {
             DataUpdateFailedView(message: error)
         } else if let shot = UIShot.requested {

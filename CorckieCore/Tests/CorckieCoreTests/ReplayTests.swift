@@ -24,7 +24,8 @@ final class ReplayTests: XCTestCase {
         XCTAssertEqual(p.totals.temperaturePeakC, 92)
         XCTAssertEqual(p.totals.gearCaps, [25])
         XCTAssertGreaterThan(p.totals.topSpeedKmh, 40)
-        XCTAssertLessThanOrEqual(p.totals.topSpeedKmh, T.t02MaxSpeedKmh)
+        XCTAssertEqual(p.totals.topSpeedKmh, 50.7, accuracy: 1.0, "real top speed kept (no fixed maximum, P4 D1 A2)")
+        XCTAssertEqual(p.plausibility.ignoredReadings, 0)
         XCTAssertFalse(p.plausibility.formatChanged, p.plausibility.formatChangeReason ?? "")
         XCTAssertEqual(p.assembler.unknownCount, 2)       // the 128-byte FF lines
     }

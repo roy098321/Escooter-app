@@ -27,7 +27,7 @@ final class ThresholdsTests: XCTestCase {
     /// The typed constants must say the same as the doc's words for the values the code uses today.
     func test_thresholds_typedValuesMatchDocWords() {
         let checks: [(String, Double)] = [
-            ("T01", T.t01WheelKmhPerUnit), ("T02", T.t02MaxSpeedKmh), ("T03", T.t03MaxSpeedStepKmhPerS),
+            ("T01", T.t01WheelKmhPerUnit), ("T03", T.t03MaxSpeedStepKmhPerS),
             ("T04", T.t04MaxBatteryStepPct), ("T05", T.t05MinVoltage), ("T05", T.t05MaxVoltage),
             ("T06", T.t06MaxTempC), ("T07", T.t07FailedFrameShare * 100), ("T07", T.t07NoPacketAS),
             ("T10", T.t10AutostartKmh), ("T17", T.t17EndDisconnectedS), ("T20", T.t20EndStandstillS / 60),

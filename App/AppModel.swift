@@ -88,7 +88,7 @@ final class AppModel {
             let voltsOK = v >= T.t05MinVoltage && v <= T.t05MaxVoltage
             let pctOK = pct >= 0 && pct <= 100
             let ignored = live.plausibility.ignoredReadings
-            let ok = voltsOK && pctOK && speed < T.t02MaxSpeedKmh && ignored == 0
+            let ok = voltsOK && pctOK && speed >= 0 && ignored == 0
             let temp: String = f.temperatureC.map { String(format: "%.0f °C", $0) } ?? "— °C (no reading yet)"
             let values: String = String(format: "%.1f km/h · %ld%% · %.2f V", speed, pct, v)
             let gear = "gear \(f.gear ?? 0) (cap \(f.capKmh ?? 0))"

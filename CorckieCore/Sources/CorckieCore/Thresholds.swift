@@ -8,8 +8,8 @@ public enum T {
     // MARK: Decode and G1b
     /// T01 Wheel speed scale (Fact)
     public static let t01WheelKmhPerUnit = 0.0476
-    /// T02 Max plausible speed (50.7 seen in ride 1; raised from 45 in P4, P4_DILEMMAS D1 ⚠ pending owner)
-    public static let t02MaxSpeedKmh = 55.0
+    // T02 (max plausible speed) is retired: no fixed maximum, only the step check T03
+    // (owner, P4_DILEMMAS D1 A2 — real speeds reach 50.7 km/h). The ID stays so IDs never move.
     /// T03 Max speed step within 1 s
     public static let t03MaxSpeedStepKmhPerS = 15.0
     /// T04 Max battery % change while moving, per 60 s
@@ -171,7 +171,7 @@ public enum T {
     /// CALC_SPEC §10 Value column, word for word (checked against the doc copy by a test).
     public static let catalog: [String: String] = [
         "T01": "0.0476 km/h per unit",
-        "T02": "55 km/h (50.7 seen, ride 1)",
+        "T02": "none · only the step check T03 (owner, P4 D1 A2)",
         "T03": "15 km/h within 1 s",
         "T04": "5% per 60 s",
         "T05": "39.0–55.5 V",

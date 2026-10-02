@@ -28,4 +28,7 @@ enum AppInfo {
     static let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
     static let displayName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "?"
     static var versionLine: String { "\(version) (\(build))" }
+    /// Owner, P4 D3: "v1" is shown inside the app on every screen (the Home Screen name is just "CorckieApp").
+    static let productVersion = "v1"
+    static var v1Line: String { "\(productVersion) · \(versionLine)" }
 }

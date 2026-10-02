@@ -1,6 +1,6 @@
 import Foundation
 
-/// G1b plausibility filter + format-change watch · CALC_SPEC §2, thresholds T02–T07.
+/// G1b plausibility filter + format-change watch · CALC_SPEC §2, thresholds T03–T07 (no fixed speed maximum: T02 retired, P4 D1 A2).
 /// Runs on every frame before anything else. A dropped value becomes "missing" for that
 /// frame; the rest of the frame is kept.
 public struct Plausibility {
@@ -33,6 +33,10 @@ public struct Plausibility {
 
     /// Call when the scooter connects; the watch re-arms on the next packet.
     public mutating func connected(at t: Double) {
+        // A new connection starts fresh: distance ridden without the phone is not a bad reading
+        lastSpeed = nil
+        lastBattery = nil
+        lastOdometer = nil
         armedAt = nil
         lastValidA = nil
         window.removeAll()
@@ -46,9 +50,9 @@ public struct Plausibility {
         if armedAt == nil { armedAt = t }
 
         if isPacketA {
-            // Speed: above T02, or a step larger than T03 per second
+            // Speed: only a step larger than T03 per second (no fixed maximum, P4 D1 A2)
             if let v = f.speedKmh {
-                var bad = v > T.t02MaxSpeedKmh || v < 0
+                var bad = v < 0
                 if !bad, let last = lastSpeed {
                     let dt = max(t - last.t, 0.001)
                     bad = abs(v - last.kmh) > T.t03MaxSpeedStepKmhPerS * max(dt, 1)
@@ -73,7 +77,7 @@ public struct Plausibility {
             if let km = f.odometerKm {
                 var bad = false
                 if let last = lastOdometer {
-                    let maxKmh = max(f.speedKmh ?? 0, lastSpeed?.kmh ?? 0, T.t02MaxSpeedKmh)
+                    let maxKmh = max(f.speedKmh ?? 0, lastSpeed?.kmh ?? 0)
                     let allowed = maxKmh * max(t - last.t, 0) / 3600 + 0.2
                     bad = km < last.km || km - last.km > allowed
                 }
