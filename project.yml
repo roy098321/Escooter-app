@@ -13,6 +13,9 @@ settings:
     CURRENT_PROJECT_VERSION: "1"      # CI passes the run number (ARCHITECTURE §1.3)
     SWIFT_VERSION: "5.0"              # Swift 6 toolchain, Swift 5 language mode (§1.1)
     TARGETED_DEVICE_FAMILY: "1"
+packages:
+  CorckieCore:
+    path: CorckieCore
 targets:
   CorckieApp:
     type: application
@@ -21,6 +24,11 @@ targets:
       - path: App
         excludes:
           - "Config/Info.plist"
+    dependencies:
+      - package: CorckieCore
+        product: CorckieCore
+      - package: CorckieCore
+        product: CorckieSim
     settings:
       base:
         PRODUCT_NAME: CorckieApp
