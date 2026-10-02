@@ -1,10 +1,27 @@
 name: CI
 
-# F01: build-ipa only. F03 adds core-tests (Linux) in front of it, app-tests and ui-shots.
+# TESTING §7 / ARCHITECTURE §6.3:
+#   core-tests (Linux, every push) ─gates→ build-ipa (macOS) ─on a tag→ GitHub Release
+#   app-tests  (macOS, only when Store/ or AppTests/ change, or by hand)
+#   ui-shots   (macOS, by hand only)
+# Minutes budget: 2,000 free a month, macOS counts 10×, so macOS jobs run only when needed.
 on:
   push:
     branches: [main]
+    tags: ["m*", "v*", "p4-*"]
   workflow_dispatch:
+    inputs:
+      app_tests:
+        description: Run the migration tests (app-tests)
+        type: boolean
+        default: false
+      ui_shots:
+        description: Take iOS Simulator screenshots (ui-shots)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # only used by the release step on milestone tags
 
 jobs:
   core-tests:
@@ -15,9 +32,29 @@ jobs:
       - uses: actions/checkout@v4
       - name: swift test (CorckieCore, Linux)
         working-directory: CorckieCore
-        run: swift test --parallel
+        run: swift test
+
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      store: ${{ steps.diff.outputs.store }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then BEFORE=HEAD~1; fi
+          if git diff --name-only "$BEFORE" HEAD | grep -qE '^(App/Store/|AppTests/|project.yml)'; then
+            echo "store=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "store=false" >> "$GITHUB_OUTPUT"
+          fi
 
   build-ipa:
+    needs: core-tests          # a failing core test blocks the IPA
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -37,11 +74,13 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
+            -clonedSourcePackagesDirPath SourcePackages \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            build
+            build 2>&1 | grep -E "error:|warning: .*/App/|\*\* BUILD"
+          exit ${PIPESTATUS[0]}
 
       - name: Package IPA
         id: ipa
@@ -49,10 +88,9 @@ jobs:
           APP=build/Build/Products/Release-iphoneos/CorckieApp.app
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Info.plist")
           NAME="CorckieApp-$VERSION-${{ github.run_number }}"
-          /usr/libexec/PlistBuddy -c 'Print CFBundleDisplayName' "$APP/Info.plist"
-          /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist"
-          /usr/libexec/PlistBuddy -c 'Print CFBundleIcons' "$APP/Info.plist"
-          ls "$APP" | grep -i icon
+          echo "Display name: $(/usr/libexec/PlistBuddy -c 'Print CFBundleDisplayName' "$APP/Info.plist")"
+          echo "Bundle ID:    $(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")"
+          /usr/libexec/PlistBuddy -c 'Print CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$APP/Info.plist"
           mkdir -p Payload
           cp -R "$APP" Payload/
           zip -qr "$NAME.ipa" Payload
@@ -62,4 +100,70 @@ jobs:
         with:
           name: ${{ steps.ipa.outputs.name }}
           path: ${{ steps.ipa.outputs.name }}.ipa
+          retention-days: 14
+
+      - name: Release (milestone tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" "${{ steps.ipa.outputs.name }}.ipa" \
+            --repo "${{ github.repository }}" \
+            --title "${{ steps.ipa.outputs.name }}" \
+            --notes "Install with SideStore: open this page on the iPhone, download the .ipa, share it to SideStore." \
+            || gh release upload "${{ github.ref_name }}" "${{ steps.ipa.outputs.name }}.ipa" --clobber --repo "${{ github.repository }}"
+
+  app-tests:
+    needs: [core-tests, changes]
+    if: needs.changes.outputs.store == 'true' || inputs.app_tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Migration tests on the iOS Simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 Tools/pick_simulator.py)
+          echo "Simulator: $UDID"
+          xcodebuild test             -project CorckieApp.xcodeproj             -scheme AppTests             -destination "platform=iOS Simulator,id=$UDID"             -derivedDataPath build             CODE_SIGNING_ALLOWED=NO 2>&1             | grep -E "error:|Test Case|Executed|TEST (SUCCEEDED|FAILED)|\*\* "
+          exit ${PIPESTATUS[0]}
+
+  ui-shots:
+    if: inputs.ui_shots
+    needs: core-tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build for the Simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 Tools/pick_simulator.py)
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcodebuild -project CorckieApp.xcodeproj -scheme CorckieApp -configuration Debug \
+            -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build -quiet
+      - name: Screenshots
+        run: |
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          APP=$(find build/Build/Products -name CorckieApp.app -path '*iphonesimulator*' | head -1)
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p shots
+          for screen in home settings checks results simulator; do
+            xcrun simctl terminate "$UDID" com.corckieapp.app || true
+            xcrun simctl launch "$UDID" com.corckieapp.app -uiShot "$screen"
+            sleep 6
+            xcrun simctl io "$UDID" screenshot "shots/$screen.png"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-shots-${{ github.run_number }}
+          path: shots/
           retention-days: 14
