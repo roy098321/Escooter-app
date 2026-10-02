@@ -13,3 +13,9 @@ Payload/
 *.xcodeproj/
 DerivedData/
 .DS_Store
+
+# Anonymised fixtures (made only by Tools/anonymise.py, P3 D1 S123) are the one CSV exception
+!CorckieCore/Tests/Fixtures/*.csv
+.build/
+.swiftpm/
+__pycache__/
