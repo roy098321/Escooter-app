@@ -10,12 +10,27 @@ final class AppModel {
     static let shared = AppModel()
 
     let scooter = ScooterLink()
+    /// The one database (DATA_MODEL); nil only when opening failed
+    private(set) var database: AppDatabase?
+    /// V4: "Data update failed · Send report" instead of running on half-migrated data
+    private(set) var databaseError: String?
 
     private init() {}
+
+    /// Opens (and if needed migrates) the database before anything else (DATA_MODEL V1).
+    func openDatabase() {
+        guard database == nil, databaseError == nil else { return }
+        do {
+            database = try AppDatabase.openShared(build: AppInfo.build)
+        } catch {
+            databaseError = error.localizedDescription
+        }
+    }
 
     /// Called at every launch, also when iOS relaunches the app in the background for the
     /// scooter: the Bluetooth central must exist with the same restore ID straight away.
     func launch(options: [UIApplication.LaunchOptionsKey: Any]?) {
+        openDatabase()
         let relaunchedForBluetooth = options?[.bluetoothCentrals] != nil
         if scooter.hasKnownScooter || relaunchedForBluetooth {
             scooter.start()

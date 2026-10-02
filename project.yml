@@ -16,6 +16,9 @@ settings:
 packages:
   CorckieCore:
     path: CorckieCore
+  GRDB:                               # the only outside library (ARCHITECTURE §6.2); pinned
+    url: https://github.com/groue/GRDB.swift
+    exactVersion: 7.11.1
 targets:
   CorckieApp:
     type: application
@@ -29,6 +32,7 @@ targets:
         product: CorckieCore
       - package: CorckieCore
         product: CorckieSim
+      - package: GRDB
     settings:
       base:
         PRODUCT_NAME: CorckieApp
@@ -44,3 +48,34 @@ targets:
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: CorckieApp records where you ride, for maps and routes.
         INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: CorckieApp keeps recording your ride when the phone is locked in your pocket.
         INFOPLIST_KEY_NSMotionUsageDescription: CorckieApp measures climbs with the phone's barometer.
+  AppTests:
+    # Migration tests (TESTING §1 layer 4). Store/ is compiled straight in: no app host,
+    # so no Bluetooth / location side effects on the Simulator.
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AppTests
+      - path: App/Store
+    dependencies:
+      - package: GRDB
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.corckieapp.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  CorckieApp:
+    build:
+      targets:
+        CorckieApp: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  AppTests:
+    build:
+      targets:
+        AppTests: [test]
+    test:
+      config: Debug
+      targets:
+        - AppTests
