@@ -13,7 +13,7 @@ struct RootView: View {
     @ViewBuilder private var content: some View {
         if let error = model.databaseError {
             DataUpdateFailedView(message: error)
-        } else if let shot = UIShot.requested {
+        } else if let shot = UIShot.requested, shot != "home" {   // "home" = the real tab bar
             UIShot.screen(shot)
         } else {
             tabs
