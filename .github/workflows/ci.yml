@@ -47,7 +47,7 @@ jobs:
         run: |
           BEFORE="${{ github.event.before }}"
           if [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then BEFORE=HEAD~1; fi
-          if git diff --name-only "$BEFORE" HEAD | grep -qE '^(App/Store/|AppTests/|project.yml)'; then
+          if ls AppTests/*.swift >/dev/null 2>&1 && git diff --name-only "$BEFORE" HEAD | grep -qE '^(App/Store/|AppTests/|project.yml)'; then
             echo "store=true" >> "$GITHUB_OUTPUT"
           else
             echo "store=false" >> "$GITHUB_OUTPUT"
