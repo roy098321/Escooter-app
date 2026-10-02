@@ -8,11 +8,18 @@ struct RootView: View {
     var body: some View {
         if let error = model.databaseError {
             DataUpdateFailedView(message: error)
+        } else if let shot = UIShot.requested {
+            UIShot.screen(shot)
         } else {
             tabs
                 .safeAreaInset(edge: .top) {
-                    if model.database?.isReadOnly == true {
-                        Banner(text: "Install the newest build · your data is from a newer version (read-only)")
+                    VStack(spacing: 0) {
+                        if model.simulator.running {
+                            Banner(text: "SIMULATED · fake scooter replay", tint: .purple)
+                        }
+                        if model.database?.isReadOnly == true {
+                            Banner(text: "Install the newest build · your data is from a newer version (read-only)")
+                        }
                     }
                 }
         }
@@ -89,5 +96,29 @@ struct Banner: View {
             .padding(.horizontal)
             .background(tint.opacity(0.9))
             .foregroundStyle(.white)
+    }
+}
+
+/// CI ui-shots: `-uiShot <screen>` opens one screen straight away (TESTING §7).
+enum UIShot {
+    static var requested: String? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-uiShot"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }
+
+    @ViewBuilder static func screen(_ name: String) -> some View {
+        NavigationStack {
+            switch name {
+            case "settings": SettingsView()
+            case "developer": DeveloperView()
+            case "checks": ChecksView()
+            case "results": ResultsView()
+            case "simulator": SimulatorView()
+            case "outside": OutsideDataView()
+            case "scooter": ScooterCheckView()
+            default: HomeView()
+            }
+        }
     }
 }

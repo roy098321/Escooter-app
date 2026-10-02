@@ -8,6 +8,15 @@ struct SettingsView: View {
                 LabeledContent("Version", value: AppInfo.versionLine)
                 LabeledContent("App ID", value: AppInfo.bundleID)
             }
+            Section {
+                NavigationLink {
+                    DeveloperView()
+                } label: {
+                    Label("Developer", systemImage: "hammer")
+                }
+            } footer: {
+                Text("Checks, results and the test tools of this build.")
+            }
         }
         .navigationTitle("Settings")
     }

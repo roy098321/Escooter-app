@@ -27,6 +27,9 @@ targets:
       - path: App
         excludes:
           - "Config/Info.plist"
+      - path: CorckieCore/Tests/Fixtures   # anonymised rides for the in-app simulator (TESTING §5)
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: CorckieCore
         product: CorckieCore
