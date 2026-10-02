@@ -27,11 +27,15 @@ struct VersionLabel: View {
 extension View {
     /// Puts the v1 label in the bottom-right corner of this screen (see `VersionLabel`).
     func v1Label() -> some View {
-        overlay(alignment: .bottomTrailing) {
+        overlay {
+            // A flexible frame that reaches the screen edge, so the label lands in the
+            // home-indicator strip (right of the indicator), below the tab bar and all content.
             VersionLabel()
-                .padding(.trailing, 16)
-                .padding(.bottom, 4)
+                .padding(.trailing, 18)
+                .padding(.bottom, 6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .ignoresSafeArea(.container, edges: .bottom)
+                .allowsHitTesting(false)
         }
     }
 }
