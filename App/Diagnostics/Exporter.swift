@@ -21,6 +21,7 @@ enum Exporter {
             .write(to: folder.appendingPathComponent("bluetooth-events.txt"), atomically: true, encoding: .utf8)
         try PacketLog.shared.csv().write(to: folder.appendingPathComponent("scooter-packets.csv"), atomically: true, encoding: .utf8)
         try deviceText().write(to: folder.appendingPathComponent("device.txt"), atomically: true, encoding: .utf8)
+        try OutsideProbes.shared.report().write(to: folder.appendingPathComponent("outside-data.txt"), atomically: true, encoding: .utf8)
         try PhoneSensors.shared.report().write(to: folder.appendingPathComponent("sensors.txt"), atomically: true, encoding: .utf8)
 
         let zip = try zipFolder(folder)
