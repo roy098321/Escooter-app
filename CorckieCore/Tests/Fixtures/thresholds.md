@@ -1,7 +1,7 @@
 | ID | Threshold | Value | Used in | Kind |
 |---|---|---|---|---|
 | T01 | Wheel speed scale | 0.0476 km/h per unit | Decode | Fact |
-| T02 | Max plausible speed | 45 km/h (43 seen) | G1b | Guess |
+| T02 | Max plausible speed | 55 km/h (50.7 seen, ride 1) | G1b | Guess |
 | T03 | Max speed step | 15 km/h within 1 s | G1b | Guess |
 | T04 | Max battery % change while moving | 5% per 60 s | G1b | Guess |
 | T05 | Voltage range | 39.0–55.5 V | G1b | Guess |

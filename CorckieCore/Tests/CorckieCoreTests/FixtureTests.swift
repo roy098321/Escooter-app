@@ -48,7 +48,8 @@ final class FixtureTests: XCTestCase {
         let log = try LogReader.scooterLog(Fixtures.text("F1_p2lab_2oct.csv"))
         XCTAssertEqual(log.format, .packetLog)
         XCTAssertEqual(log.packets.count, 2298)
-        XCTAssertEqual(log.startTimeOfDayS ?? 0, 8 * 3600 + 17 * 60 + 30.072, accuracy: 0.01)
+        let expectedStart: Double = 28_800 + 1_020 + 30.072     // 08:17:30.072
+        XCTAssertEqual(log.startTimeOfDayS ?? 0, expectedStart, accuracy: 0.01)
         XCTAssertGreaterThan(log.durationS, 20 * 60)
     }
 

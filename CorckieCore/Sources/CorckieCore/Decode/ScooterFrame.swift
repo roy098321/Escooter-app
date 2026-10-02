@@ -38,12 +38,16 @@ public struct FrameAssembler {
     /// Packet B values older than this count as missing (CALC_SPEC §1).
     public static let maxAgeBS = 2.0
 
+    public enum Kind: Sendable { case a, b }
+
     public private(set) var lastA: PacketA?
     public private(set) var lastATime: Double?
     public private(set) var lastB: PacketB?
     public private(set) var lastBTime: Double?
     public private(set) var packetCount = 0
     public private(set) var unknownCount = 0
+    /// Which packet made the last frame
+    public private(set) var lastKind: Kind?
 
     public init() {}
 
@@ -54,9 +58,11 @@ public struct FrameAssembler {
         case .a(let a):
             lastA = a
             lastATime = t
+            lastKind = .a
         case .b(let b):
             lastB = b
             lastBTime = t
+            lastKind = .b
         case .unknown:
             unknownCount += 1
             return nil
