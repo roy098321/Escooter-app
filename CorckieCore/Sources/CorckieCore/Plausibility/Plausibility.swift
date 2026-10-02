@@ -24,13 +24,16 @@ public struct Plausibility {
     private var lastOdometer: (t: Double, km: Double)?
     private var window: [(t: Double, failed: Bool)] = []
     private var lastValidA: Double?
-    private var connectedAt: Double?
+    /// The "no packet A" watch starts at the first packet after a connection, not at the
+    /// connection itself: a link that hasn't subscribed yet is a connection problem (T100),
+    /// not a data-format change.
+    private var armedAt: Double?
 
     public init() {}
 
-    /// Call when the scooter connects (starts the "no packet A for 10 s" watch).
+    /// Call when the scooter connects; the watch re-arms on the next packet.
     public mutating func connected(at t: Double) {
-        connectedAt = t
+        armedAt = nil
         lastValidA = nil
         window.removeAll()
     }
@@ -40,6 +43,7 @@ public struct Plausibility {
         var f = input
         var dropped: [Field] = []
         let t = f.t
+        if armedAt == nil { armedAt = t }
 
         if isPacketA {
             // Speed: above T02, or a step larger than T03 per second
@@ -90,7 +94,7 @@ public struct Plausibility {
 
     /// Call regularly (every packet, or a 1 s tick) to run the "no packet A for 10 s" watch.
     public mutating func tick(at t: Double) {
-        guard !formatChanged, let since = lastValidA ?? connectedAt else { return }
+        guard !formatChanged, let since = lastValidA ?? armedAt else { return }
         if t - since > T.t07NoPacketAS {
             formatChanged = true
             formatChangeReason = "No valid packet A for \(Int(T.t07NoPacketAS)) s"

@@ -21,9 +21,12 @@ final class FixtureTests: XCTestCase {
     func test_D1_noRealDatesInFixtures() throws {
         for file in Fixtures.all(withExtension: "csv") {
             let text = try String(contentsOf: file, encoding: .utf8)
-            for year in 2001...2099 {
-                XCTAssertFalse(text.contains("\(year)-0") || text.contains("\(year)-1"),
-                               "\(file.lastPathComponent) has a real date (\(year))")
+            let dates = try NSRegularExpression(pattern: "(19|20)[0-9]{2}-[01][0-9]-[0-3][0-9]")
+            let range = NSRange(text.startIndex..., in: text)
+            for match in dates.matches(in: text, range: range) {
+                guard let r = Range(match.range, in: text) else { continue }
+                let date = String(text[r])
+                XCTAssertEqual(date, "2000-01-01", "\(file.lastPathComponent) has a real date")
             }
         }
     }

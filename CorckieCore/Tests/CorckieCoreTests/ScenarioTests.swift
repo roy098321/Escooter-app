@@ -88,9 +88,12 @@ final class ScenarioTests: XCTestCase {
     func test_formatWatch_noPacketAFor10s() {
         var g = Plausibility()
         g.connected(at: 0)
-        g.tick(at: 9)
+        g.tick(at: 30)
+        XCTAssertFalse(g.formatChanged, "not armed before the first packet")
+        _ = g.check(ScooterFrame(t: 31), isPacketA: false)     // a packet B arms the watch
+        g.tick(at: 40)
         XCTAssertFalse(g.formatChanged)
-        g.tick(at: 10.5)
+        g.tick(at: 41.5)
         XCTAssertTrue(g.formatChanged)
     }
 
