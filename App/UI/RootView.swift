@@ -1,3 +1,4 @@
+import CorckieCore
 import SwiftUI
 
 /// Tab bar per IA.md (Routes · Rides · Home · Stats · Scooter); screens arrive in P5.
@@ -55,24 +56,6 @@ struct RootView: View {
     }
 }
 
-struct HomeView: View {
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView("Foundation build", systemImage: "scooter",
-                                   description: Text("Settings → Developer → Checks has this build's check list."))
-                .navigationTitle("Home")
-                .screen("Home")
-                .toolbar {
-                    NavigationLink {
-                        SettingsView()
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                }
-        }
-    }
-}
-
 /// DATA_MODEL V4: never run on half-migrated data.
 struct DataUpdateFailedView: View {
     let message: String
@@ -127,7 +110,11 @@ enum UIShot {
             case "rides": RidesListView()
             case "outside": OutsideDataView()
             case "scooter": ScooterCheckView()
-            default: HomeView()
+            case "onboarding1": OnboardingView(previewFound: true) { _ in }
+            case "onboarding2": OnboardingView(startAt: .location, previewFound: true) { _ in }
+            case "onboarding3": OnboardingView(startAt: .notifications, previewFound: true) { _ in }
+            default:
+                if let input = HomePreview.input(name) { HomeView(preview: input) } else { HomeView() }
             }
         }
     }

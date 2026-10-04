@@ -138,6 +138,11 @@ final class PermissionsCheck: NSObject {
         }
     }
 
+    /// Onboarding: the "Change to Always Allow" prompt only; never opens iPhone Settings by itself.
+    func askLocationAlwaysQuietly() {
+        if locationStatus == .authorizedWhenInUse { locationManager.requestAlwaysAuthorization() }
+    }
+
     /// Step 4: motion (barometer) — a small activity query makes iOS ask.
     func askMotion() {
         let now = Date()

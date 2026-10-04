@@ -8,6 +8,13 @@ struct SettingsView: View {
                 LabeledContent("Version", value: AppInfo.versionLine)
                 LabeledContent("App ID", value: AppInfo.bundleID)
             }
+            Section("Help") {
+                NavigationLink {
+                    ReportProblemView()
+                } label: {
+                    Label("Report a problem", systemImage: "exclamationmark.bubble")
+                }
+            }
             Section("Costs") {
                 NavigationLink {
                     FuelPriceView()

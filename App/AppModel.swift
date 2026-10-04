@@ -105,6 +105,7 @@ final class AppModel {
             guard let self else { return }
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .disconnected))
             RecorderService.shared.scooterDisconnected(at: Date())
+            LastSeen.note(batteryPct: self.live.frame?.batteryPct, force: true)
             FieldChecks.shared.scooterDisconnected(reason: reason)
             C8Recorder.shared.linkDown(at: Date())
         }
@@ -116,6 +117,7 @@ final class AppModel {
             C8Recorder.shared.packet(bytes, at: time, background: background)
             self.live.handle(TimedScooterEvent(t: time.timeIntervalSince(self.started), event: .packet(bytes)))
             self.evaluateScooterChecks()
+            LastSeen.note(batteryPct: self.live.frame?.batteryPct)
             FieldChecks.shared.packet(batteryPct: self.live.frame?.batteryPct)
         }
     }

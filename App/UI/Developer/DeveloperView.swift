@@ -23,6 +23,7 @@ struct DeveloperView: View {
                 Text("Build \(AppInfo.versionLine) · \(AppInfo.bundleID)")
             }
             Section("Tools") {
+                ShowOnboardingRow()
                 tool("Permissions", "lock.shield", ["h1"]) { PermissionsView() }
                 tool("Scooter", "scooter", ["b1", "b2", "b3", "b4", "b5", "b8", "b9"]) { ScooterCheckView() }
                 tool("Sensors (phone locked)", "location", ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "f1"]) { SensorsView() }
