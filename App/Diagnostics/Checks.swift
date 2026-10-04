@@ -123,6 +123,8 @@ enum CheckList {
                   expected: "A test ride with samples, raw chunk, gap and stop is written, read back and deleted in a temporary database; your real rides are unchanged", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u5", group: phone, title: "Ride numbers from stored samples (M1-06)", how: "Nothing to do · Run all automatic marks it",
                   expected: "Ride 1 gives 437 Wh and 16.3 km, ride 2 gives 322 Wh and 13.7 km (±3% energy), top speed, peak temperature and time computed from one sample every 5 s", needsScooter: false, manual: false, tool: .none),
+        CheckItem(id: "u6", group: phone, title: "Live view rules and banner budget (M1-07)", how: "Nothing to do · Run all automatic marks it",
+                  expected: "SLOW above 45, clears below 43 (scooter and GPS); GPS speed labelled; banners locked from 5 km/h; 2 at ride start; hot once, very hot until it cools; one \"Going for a ride?\" per power-on", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "d7", group: phone, title: "Simulated disconnect (phone takes over)", how: "Simulated scooter → Fault \"D7 · Disconnect at 40%\" → 50× → Start",
                   expected: "GPS speed shown (labelled) during the gap; totals stay scooter-only", needsScooter: false, manual: false, tool: .simulator),
         CheckItem(id: "d8", group: phone, title: "Simulator keeps real data apart", how: "Any simulator run",

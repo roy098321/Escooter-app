@@ -17,7 +17,7 @@ final class AutoRunner {
     private(set) var summary: [String] = []
 
     /// The checks this button can settle
-    static let ids = ["h1", "a3", "a6", "u2", "u3", "u4", "u5", "e1", "d6", "d9", "d1", "d7", "d8",
+    static let ids = ["h1", "a3", "a6", "u2", "u3", "u4", "u5", "u6", "e1", "d6", "d9", "d1", "d7", "d8",
                       "e2", "e3", "e3b", "e4", "e5", "e6", "e6b", "e7"]
 
     func run() async {
@@ -47,11 +47,12 @@ final class AutoRunner {
         stepIndex = 4
         BackupRestoreTest.run()
 
-        step = "Phone replay, ride storage, ride numbers"
+        step = "Phone replay, ride storage, ride numbers, live rules"
         stepIndex = 5
         PhoneReplayCheck.run()
         RideStorageCheck.run(real: model.database)
         RideMetricsCheck.run()
+        RideRulesCheck.run()
 
         if model.scooter.connected {
             summary.append("Simulator checks skipped: the real scooter is connected (switch it off and run again)")
