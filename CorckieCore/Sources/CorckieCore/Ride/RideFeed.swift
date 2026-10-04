@@ -35,7 +35,10 @@ public struct RideFeed {
             let after = pipeline.assembler.packetCount - pipeline.assembler.unknownCount
             // G1b format-change watch → phone mode (SC-04); raw packets keep being stored by the Recorder
             var out: [RideEngineEvent] = []
-            if pipeline.plausibility.failedShareTripped, engine.untrustedSince == nil, engine.connected {
+            // (the failed-share rule, or "no valid packet A" while frames still arrive: a silent link is "gone" instead)
+            let watch = pipeline.plausibility
+            if watch.formatChanged, engine.untrustedSince == nil, engine.connected,
+               watch.failedShareTripped || engine.linkLive(at: e.t) {
                 out += engine.handle(.formatChanged, at: e.t)
             }
             guard after > before, let f = pipeline.frame else { return out + engine.handle(.tick, at: e.t) }
