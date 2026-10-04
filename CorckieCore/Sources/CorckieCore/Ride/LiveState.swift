@@ -33,10 +33,35 @@ public struct LiveInput: Equatable, Sendable {
     public var secondsWithoutGps: Double
     /// Map tiles not available (no internet)
     public var mapOffline: Bool
+    /// M1-12: where the engine is: idle / ready (no ride yet) / starting / riding
+    public var phase: RidePhase = .riding
+    /// Scooter temperature while the link is live (motor heat banners)
+    public var scooterTempC: Double?
+    /// Phone mode: the scooter readings are gone (disconnected for ~5 s, or the format changed)
+    public var phoneMode: Bool = false
+    /// The G1b format watch tripped (banner "Scooter data format changed")
+    public var formatChanged: Bool = false
+    /// "Same ride?" is waiting for an answer
+    public var sameRideOffered: Bool = false
+    /// Newest GPS fix (may be old: the dot freezes)
+    public var lat: Double?
+    public var lon: Double?
+    /// Seconds since the ride row started (the clock), nil without a ride
+    public var rideElapsedS: Double?
 
     public init(scooterSpeedKmh: Double? = nil, gpsSpeedKmh: Double? = nil, scooterLinked: Bool = true,
                 scooterBatteryPct: Double? = nil, estimatedBatteryPct: Double? = nil, starting: Bool = false,
-                secondsWithoutGps: Double = 0, mapOffline: Bool = false) {
+                secondsWithoutGps: Double = 0, mapOffline: Bool = false, phase: RidePhase = .riding,
+                scooterTempC: Double? = nil, phoneMode: Bool = false, formatChanged: Bool = false,
+                sameRideOffered: Bool = false, lat: Double? = nil, lon: Double? = nil, rideElapsedS: Double? = nil) {
+        self.phase = phase
+        self.scooterTempC = scooterTempC
+        self.phoneMode = phoneMode
+        self.formatChanged = formatChanged
+        self.sameRideOffered = sameRideOffered
+        self.lat = lat
+        self.lon = lon
+        self.rideElapsedS = rideElapsedS
         self.scooterSpeedKmh = scooterSpeedKmh
         self.gpsSpeedKmh = gpsSpeedKmh
         self.scooterLinked = scooterLinked

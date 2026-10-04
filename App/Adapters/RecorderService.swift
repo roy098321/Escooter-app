@@ -1,5 +1,6 @@
 import CorckieCore
 import Foundation
+import Network
 import Observation
 import UIKit
 
@@ -17,6 +18,15 @@ final class RecorderService {
     private(set) var live: LiveState?
     private(set) var rideActive = false
     private(set) var lastClosedRideId: String?
+    /// M1-12: everything the live ride screen draws (computed here once a second by `LiveScreenDriver`)
+    private(set) var liveScreen: LiveScreenState?
+    private(set) var livePath = LivePath()
+    /// Last known position for the map dot (nil before the first fix)
+    private(set) var livePosition: LivePath.Coord?
+    /// "Ready" (D2): the live view was asked for (notification tap) before any ride
+    private(set) var readyRequested = false
+    @ObservationIgnored private var driver = LiveScreenDriver()
+    @ObservationIgnored private var lastLiveMode: LiveMode = .ready
 
     let recorder: Recorder
     private let continuation: AsyncStream<(RecorderInput, Double)>.Continuation
@@ -36,7 +46,7 @@ final class RecorderService {
                 }
             },
             location: { on in DispatchQueue.main.async { RecorderService.shared.setLocation(on) } },
-            live: { _, state in DispatchQueue.main.async { RecorderService.shared.live = state } },
+            live: { input, state in DispatchQueue.main.async { RecorderService.shared.handleLive(input, state) } },
             rideClosed: { id, status in
                 DispatchQueue.main.async {
                     RecorderService.shared.lastClosedRideId = id
@@ -104,6 +114,40 @@ final class RecorderService {
     /// Home → Start ride, live view → Not riding / hold to end / Same ride? (M1-11, M1-12)
     func press(_ input: RideEngineInput) { send(.press(input)) }
 
+    // MARK: Live view (M1-12)
+
+    /// Once a second, on the main thread: the engine's live input goes through the display rules.
+    func handleLive(_ rawInput: LiveInput, _ state: LiveState) {
+        live = state
+        var input = rawInput
+        input.mapOffline = NetworkStatus.shared.offline
+        let screen = driver.update(input, at: Self.now())
+        if screen.mode != .ready, lastLiveMode == .ready { livePath.reset() }
+        lastLiveMode = screen.mode
+        if screen.mode != .ready { readyRequested = false }
+        if let lat = input.lat, let lon = input.lon {
+            livePosition = LivePath.Coord(lat: lat, lon: lon)
+            if screen.mode != .ready, input.secondsWithoutGps == 0 {
+                livePath.add(lat: lat, lon: lon, speedKmh: Double(screen.tiles.speedKmh ?? 0), dashed: screen.dashedPath)
+            }
+        }
+        liveScreen = screen
+    }
+
+    /// The rider taps the shown banner (refused at 5 km/h or more) or answers "Same ride?".
+    func tapBanner() {
+        let speed = Double(liveScreen?.tiles.speedKmh ?? 0)
+        driver.tapBanner(speedKmh: speed)
+    }
+
+    func answerSameRide(_ yes: Bool) {
+        press(.sameRideAnswer(yes))
+    }
+
+    /// D2: the "Going for a ride?" notification was tapped: open the live view in "Ready".
+    func requestReady() { readyRequested = true }
+    func closeReady() { readyRequested = false }
+
     // MARK: Location (ARCHITECTURE §5.1: on at stage 1, off when the ride closes)
 
     private func setLocation(_ on: Bool) {
@@ -124,5 +168,20 @@ extension Recorder {
     func attachReal(_ database: AppDatabase, stateURL: URL, now: Double) {
         setStateURL(stateURL)
         attach(database, now: now)
+    }
+}
+
+/// "Offline map" chip (STATES S5): true while the phone has no internet route.
+final class NetworkStatus {
+    static let shared = NetworkStatus()
+    private let monitor = NWPathMonitor()
+    private(set) var offline = false
+
+    private init() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            let off = path.status != .satisfied
+            DispatchQueue.main.async { self?.offline = off }
+        }
+        monitor.start(queue: DispatchQueue(label: "corckie.network"))
     }
 }

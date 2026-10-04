@@ -11,6 +11,9 @@ struct RootView: View {
         content.v1Label()
     }
 
+    /// M1-12: read in the body, so the cover follows the recorder (observation)
+    private var liveCoverShown: Bool { RecorderService.shared.rideActive || RecorderService.shared.readyRequested }
+
     @ViewBuilder private var content: some View {
         if let error = model.databaseError {
             DataUpdateFailedView(message: error)
@@ -18,6 +21,11 @@ struct RootView: View {
             UIShot.screen(shot)
         } else {
             tabs
+                .fullScreenCover(isPresented: .constant(liveCoverShown)) {
+                    // M1-12: no tab bar, no navigation, no swipe-down while a ride is on
+                    LiveRideView()
+                        .v1Label()
+                }
                 .safeAreaInset(edge: .top) {
                     VStack(spacing: 0) {
                         if model.simulator.running {
@@ -114,7 +122,13 @@ enum UIShot {
             case "onboarding2": OnboardingView(startAt: .location, previewFound: true) { _ in }
             case "onboarding3": OnboardingView(startAt: .notifications, previewFound: true) { _ in }
             default:
-                if let input = HomePreview.input(name) { HomeView(preview: input) } else { HomeView() }
+                if let live = LivePreview.make(name) {
+                    LiveRideView(preview: live)
+                } else if let input = HomePreview.input(name) {
+                    HomeView(preview: input)
+                } else {
+                    HomeView()
+                }
             }
         }
     }

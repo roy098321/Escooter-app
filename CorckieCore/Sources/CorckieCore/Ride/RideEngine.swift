@@ -312,6 +312,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
     public private(set) var currentA: Double?
     public private(set) var batteryPct: Int?
     public private(set) var odometerKm: Double?
+    /// Newest scooter temperature (M1-12: motor heat banners)
+    public private(set) var temperatureC: Double?
     /// 0x80 seen since the last (re)connect
     public private(set) var shuttingDownSeen = false
     /// After a ride ends, a new one waits until the wheel has been at ≤ T10 once (a held end while rolling)
@@ -464,6 +466,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         goneGpsM = 0
         lastFrameOdoKm = f.odometerKm
         if let s = f.speedKmh { speedKmh = s }      // a dropped reading (G1b) keeps the last one
+        if let tc = f.temperatureC { temperatureC = tc }
         currentA = f.currentA
         if let b = f.batteryPct { batteryPct = b }
         if let o = f.odometerKm { odometerKm = o }
@@ -971,6 +974,9 @@ public struct RideEngine: Codable, Equatable, Sendable {
                          estimatedBatteryPct: phone ? estimatedBatteryPct(at: t) : nil,
                          starting: phase == .starting,
                          secondsWithoutGps: freshFix(at: t) == nil ? noGps : 0,
-                         mapOffline: mapOffline)
+                         mapOffline: mapOffline, phase: phase,
+                         scooterTempC: linked ? temperatureC : nil, phoneMode: phone,
+                         formatChanged: untrustedSince != nil, sameRideOffered: pendingSameRideSeq != nil,
+                         lat: lastFix?.lat, lon: lastFix?.lon, rideElapsedS: ride.map { max(0, t - $0.startT) })
     }
 }

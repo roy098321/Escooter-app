@@ -156,7 +156,7 @@ jobs:
           APP=$(find build/Build/Products -name CorckieApp.app -path '*iphonesimulator*' | head -1)
           xcrun simctl install "$UDID" "$APP"
           mkdir -p shots
-          for screen in home settings developer checks results simulator outside rides home-first home-notconnected home-ready home-cantfind home-riding home-location home-crash onboarding1 onboarding2 onboarding3; do
+          for screen in home settings developer checks results simulator outside rides live-riding live-ready live-starting live-slow live-gps live-slowgps live-nogps live-offline live-banner live-sameride home-first home-notconnected home-ready home-cantfind home-riding home-location home-crash onboarding1 onboarding2 onboarding3; do
             xcrun simctl terminate "$UDID" com.corckieapp.app || true
             xcrun simctl launch "$UDID" com.corckieapp.app -uiShot "$screen"
             sleep 6
