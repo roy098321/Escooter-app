@@ -14,6 +14,9 @@ enum Exporter {
         try fm.createDirectory(at: folder, withIntermediateDirectories: true)
 
         let model = AppModel.shared
+        RideChecks.run(database: model.database)
+        try CheckResults.shared.p4HistoryReport().write(to: folder.appendingPathComponent("p4-history.txt"), atomically: true, encoding: .utf8)
+        try RideChecks.ridesText(database: model.database).write(to: folder.appendingPathComponent("rides.txt"), atomically: true, encoding: .utf8)
         try CheckResults.shared.report().write(to: folder.appendingPathComponent("results.txt"), atomically: true, encoding: .utf8)
         try CheckResults.shared.notesReport().write(to: folder.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
         try ErrorLog.shared.lines().joined(separator: "\n")

@@ -44,10 +44,15 @@ enum CheckList {
     static let outside = "Outside data"
     static let ride = "On a ride (P6 carry-overs)"
     static let send = "Send"
+    /// M1-16: the on-device M1 build's own groups (M1_PLAN section 4.1 to 4.3)
+    static let simM = "M1 · simulator, no scooter"
+    static let homeM = "M1 · scooter at home"
+    static let ridesM = "M1 · real rides"
 
-    static let groups = [install, scooter, background, phone, outside, ride, send]
+    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, send]
 
-    static let all: [CheckItem] = [
+    /// The P4 list, kept as it was: every P4 result stays readable under the same ID.
+    static let p4: [CheckItem] = [
         CheckItem(id: "h1", group: install, title: "Permissions", how: "Developer → Permissions: allow everything; Location must be \"Always\"",
                   expected: "Location Always, Notifications, Motion, Bluetooth all allowed", needsScooter: false, manual: false, tool: .permissions),
         CheckItem(id: "h2", group: install, title: "Notification sounds on", how: "Developer → Permissions → step 6 (Sounds on)",
@@ -193,6 +198,76 @@ enum CheckList {
                   expected: "One .zip: results, error log, Bluetooth events, raw packets", needsScooter: false, manual: false, tool: .results)
     ]
 
+    /// M1-16: the whole M1_PLAN section 4 list = the P4 list + the checks the plan adds (no ID twice).
+    /// The plan's e1-e5 and b9 got an "m" ID (e1m...) because P4 already used e1-e5 and b9 for other checks.
+    static let m1: [CheckItem] = {
+        var list = p4
+        let at = list.firstIndex { $0.id == "g1" } ?? list.count
+        list.insert(contentsOf: m1New, at: at)
+        return list
+    }()
+
+    static let all: [CheckItem] = m1
+
+    private static func m(_ id: String, _ group: String, _ title: String, _ how: String, _ expected: String,
+                          scooter: Bool = false, manual: Bool = false, tool: CheckTool = .none) -> CheckItem {
+        CheckItem(id: id, group: group, title: title, how: how, expected: expected, needsScooter: scooter, manual: manual, tool: tool)
+    }
+
+    private static let simStart = "Developer → Simulated scooter → Run on the real screens → "
+    private static let m1New: [CheckItem] = [
+        m("a8", simM, "Expiry reminder scheduled", "Nothing to do", "A reminder is pending for 1 day before the app expires", manual: true),
+        m("w1", simM, "Speed warning turns on above 45", simStart + "Scenario SPD-46 · 5× · Start", "Tile red + SLOW within 1 s of passing 45 km/h", manual: true, tool: .simulator),
+        m("w2", simM, "Warning clears below 43, no flicker", "Same run as w1 (46 → 44 → 46 → 42)", "Still red at 44, clears at 42; one on / off per crossing", manual: true, tool: .simulator),
+        m("w3", simM, "Warning on GPS speed in phone mode", simStart + "Scenario SPD-46-GPS · 5× · Start", "Red + SLOW with the GPS label while disconnected", manual: true, tool: .simulator),
+        m("p1", simM, "Phone takeover on screen", simStart + "Scenario D7 · 50× · Start", "GPS speed greyed, ~N% est., dashed path, banner; scooter numbers back on reconnect", manual: true, tool: .simulator),
+        m("p2", simM, "Data format changed", simStart + "Scenario SC-04 · 50× · Start", "Banner Scooter data format changed, phone mode, raw packets still stored", manual: true, tool: .simulator),
+        m("l1", simM, "GPS lost", simStart + "Scenario SC-07 · 5× · Start", "No GPS chip after 10 s, dot frozen grey, distance keeps counting", manual: true, tool: .simulator),
+        m("l2", simM, "No internet", "Airplane mode on → " + simStart + "Ride 2 · 50× · Start → airplane mode off", "Offline map chip, ride completes, no crash", manual: true, tool: .simulator),
+        m("l3", simM, "Safety: no tabs, banners locked while moving", "During a simulated ride try to reach a tab, swipe down, tap a banner above 5 km/h", "No tabs or navigation; banner taps do nothing while moving", manual: true, tool: .simulator),
+        m("l4", simM, "Heat banner", simStart + "Ride 1 · 50×", "Scooter hot, 90 degrees once; never two banners at once", manual: true, tool: .simulator),
+        m("e1m", simM, "End rules", simStart + "Scenarios SC-02, T8, Standstill 10 min · 50× each", "Ends by A, A2 at once (scooterOff), C (standstill); clock stops at the last movement", manual: true, tool: .simulator),
+        m("e4m", simM, "Crash mid-ride recovery", "Simulated ride → Developer → Crash during simulated ride → open the app again", "Ride recovered, ended at its last sample, 5 s lost at most", manual: true, tool: .simulator),
+        m("e5m", simM, "Phone battery low modes", simStart + "Scenario SC-13 · 50×", "GPS reduced at 19%, off at 9% with the Phone battery low banner", manual: true, tool: .simulator),
+        m("s9", simM, "Plausibility", simStart + "Scenario SC-15 · 50×", "Spikes dropped; info shows Some scooter readings were ignored", manual: true, tool: .simulator),
+        m("s8", simM, "Ride without GPS", simStart + "Scenario F1 P2 session · 50×", "Summary shows No GPS on this ride; stats complete", manual: true, tool: .simulator),
+        m("k4", simM, "Untracked km", simStart + "Scenario SC-06", "Home card 3.2 km ridden without the phone; not in rides", manual: true, tool: .simulator),
+        m("r1", simM, "Rides list layout", "After two simulated rides open Rides", "Grouped by day, Latest on top, short hop in its own section", manual: true),
+        m("r2", simM, "Filter and empty states", "Rides → filter Today, then a date with no rides", "Matching rides; then No rides match · Clear filters", manual: true),
+        m("r3", simM, "Open and delete", "Tap a simulated ride → detail → Delete → confirm", "Detail opens; ride gone after confirming; cancel keeps it", manual: true),
+
+        m("k1", homeM, "Home when connected", "Scooter on, open the app on Home", "Status card with battery %, Start ride button", scooter: true, manual: true),
+        m("k2", homeM, "Home when not connected", "Scooter off, look at Home", "Amber Connect your scooter, not connected · last seen, no Start ride", scooter: true, manual: true),
+        m("k3", homeM, "Connect fails after 30 s", "Scooter off → tap Connect your scooter → wait", "Can't find the scooter · Is it switched on? + Try again after 30 s", scooter: true, manual: true),
+        m("n1", homeM, "Going for a ride? arrives", "App in the background, phone locked · scooter off, then on", "Silent notification Scooter on · N% within 30 s", scooter: true, manual: true),
+        m("n2", homeM, "Tapping it opens the live view", "Tap the notification from n1", "Live view in Ready; no ride until the wheel moves", scooter: true, manual: true),
+        m("n3", homeM, "Not sent while the app is on screen", "App open on Home · scooter off, then on", "No notification", scooter: true, manual: true),
+        m("n4", homeM, "Removed when the scooter turns off", "After n1 switch the scooter off without riding", "Notification gone", scooter: true, manual: true),
+        m("n5", homeM, "Once per power-on", "Scooter on, app in the background, leave it 5 min", "One notification only; off / on later sends a new one", scooter: true, manual: true),
+        m("l5", homeM, "Start ride by hand", "Scooter on, standing → Home → Start ride → hold to end after ~20 s", "Live view without starting…; held end; piece under 0.5 km discarded", scooter: true, manual: true),
+        m("l6", homeM, "Hold to end, not a tap", "Start ride → tap the stop button once → then hold ~1 s", "Tap does nothing; hold ends the ride", scooter: true, manual: true),
+        m("l7", homeM, "Not riding", "Developer → Trap test → arm roll · roll the scooter by hand · tap Not riding", "Ride cancelled silently, back on Home, no ride row", scooter: true, manual: true),
+        m("l8", homeM, "App Shortcut Start ride", "Scooter on · Shortcuts or Siri → Start ride in CorckieApp → hold to end", "Ride started by the shortcut while connected", scooter: true, manual: true),
+        m("t1", homeM, "Autostart trap: walking", "Trap test → arm walk · walk the scooter switched on ~50 m", "Cancelled silently, or the walk trimmed from the ride", scooter: true, manual: true),
+        m("t2", homeM, "Autostart trap: wheel spin", "Arm spin · scooter on its stand, spin the wheel ~10 s", "Cancelled silently; no ride row", scooter: true, manual: true),
+        m("t3", homeM, "Autostart trap: kick-start", "Arm kick · kick off and ride ~100 m", "Ride starts and confirms; records which signal confirmed", scooter: true, manual: true),
+
+        m("x1", ridesM, "A real commute, end to end", "Phone locked · ride as usual · don't touch the phone", "Started by autostart, 95% of seconds sampled, ended by a rule", scooter: true),
+        m("x2", ridesM, "Two rides in a day", "Ride home the same day", "Both under today, Latest on top", scooter: true),
+        m("s1", ridesM, "Summary opens, closes to Home", "Open the app after a ride", "Summary opens by itself; closing goes to Home", scooter: true, manual: true),
+        m("s2", ridesM, "Summary numbers recorded", "Nothing to do", "Time, distance, average speed, battery used, top speed recorded", scooter: true),
+        m("s3", ridesM, "Distance matches the odometer bytes", "Nothing to do", "Speed integrated over the ride within 3% of the odometer distance", scooter: true),
+        m("s4", ridesM, "Summary vs the scooter's own display", "Read odometer and battery on the scooter before and after; compare with summary info", "Odometer difference = summary distance ± 0.1 km; battery matches ± 1", scooter: true, manual: true),
+        m("s5", ridesM, "First-ride card", "Your first real M1 ride", "Your first ride is in card", scooter: true),
+        m("s6", ridesM, "Map, chart and scooter group look right", "Look at a summary", "Path coloured by speed; chart readable; no records or celebrations", scooter: true, manual: true),
+        m("p3", ridesM, "Phone takeover: out of range and back", "Mid-ride stop, lock the phone, walk away until the scooter drops, walk back within 30 s, ride on", "Banner + GPS speed while away; reconnects by itself; gap row; distance filled from the odometer", scooter: true, manual: true),
+        m("p4", ridesM, "Phone takeover: out of range and stop", "At the end of a ride leave the scooter on, walk away, stand still ~1 min", "Phone mode, then the ride ends; end time = last riding movement", scooter: true, manual: true),
+        m("e2m", ridesM, "Scooter off ends the ride at once", "At the end of a ride switch the scooter off", "Ride ends at once, end reason scooter switched off", scooter: true),
+        m("e3m", ridesM, "Same ride", "Mid-commute switch off at a stop, set off again within 10 min", "Same ride? banner; Yes joins the two pieces", scooter: true),
+        m("w4", ridesM, "Speed warning on real rides", "Nothing to do", "Times red, seconds red, top speed per ride (for tuning)", scooter: true),
+        m("b9m", ridesM, "Link over a ride", "Nothing to do", "Disconnects per ride and their reasons", scooter: true)
+    ]
+
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }
 }
 
@@ -209,7 +284,9 @@ final class CheckResults {
 
     private(set) var entries: [String: Entry] = [:]
     @ObservationIgnored private let defaults = UserDefaults.standard
-    @ObservationIgnored private let key = "corckie.checkResults.p4"
+    /// M1-16: this build's results. The P4 results stay untouched under `p4Key` (read-only history, in the export).
+    @ObservationIgnored private let key = "corckie.checkResults.m1"
+    @ObservationIgnored private let p4Key = "corckie.checkResults.p4"
     /// Results are only saved once the stored ones are loaded, so a wake before the first unlock
     /// after a restart (settings unreadable) can never overwrite them.
     @ObservationIgnored private var loaded = false
@@ -227,6 +304,9 @@ final class CheckResults {
         if let data = defaults.data(forKey: key),
            let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) {
             saved = decoded
+        } else if defaults.data(forKey: key) == nil, let old = p4Results() {
+            // first start of the M1 build: carry the P4 results over (the P4 copy itself is never changed)
+            saved = old
         }
         entries = saved.merging(entries) { _, new in new }
         let savedNotes = defaults.dictionary(forKey: notesKey) as? [String: String] ?? [:]
@@ -240,6 +320,23 @@ final class CheckResults {
             }
         }
         persist()
+    }
+
+    private func p4Results() -> [String: Entry]? {
+        guard let data = defaults.data(forKey: p4Key) else { return nil }
+        return try? JSONDecoder().decode([String: Entry].self, from: data)
+    }
+
+    /// history.txt in the export: the P4 build's results exactly as stored (never written by this build)
+    func p4HistoryReport() -> String {
+        var out = "P4 check results (history, read-only) · \(Date().formatted())\n"
+        guard let old = p4Results(), !old.isEmpty else { return out + "\n(none stored)\n" }
+        for id in old.keys.sorted() {
+            guard let e = old[id] else { continue }
+            out += "\(e.status.icon) \(id)" + (e.note.isEmpty ? "" : " — \(e.note)")
+            out += " (\(e.date.formatted(date: .abbreviated, time: .shortened)))\n"
+        }
+        return out
     }
 
     private func persist() {

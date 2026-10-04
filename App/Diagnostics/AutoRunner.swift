@@ -59,6 +59,7 @@ final class AutoRunner {
         LiveScreenCheck.run()
         RideSummaryCheck.run()
         BackupWriteCheck.run()
+        RideChecks.run(database: model.database)
         RideEngineCheck.runStart()
         RideEngineCheck.runEnd()
         RideEngineCheck.runTakeover()
