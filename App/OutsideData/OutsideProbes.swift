@@ -39,7 +39,7 @@ final class OutsideProbes {
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         let point = PhoneSensors.shared.roundedLocation ?? Self.fallbackPoint
         let where_ = PhoneSensors.shared.roundedLocation == nil ? "fallback point (no location yet)" : "your area, rounded to ~2 km"
-        await probe("e1") { try await self.fuel() }
+        // e1: the fuel price is manual in v1 (owner, P4 D4 S); fuel() is kept for v2 but not called.
         await probe("e2") { try await self.hebcal() }
         await probe("e3") {
             let hours = try OutsideParsers.openMeteoHourly(try await self.get(OutsideParsers.openMeteoForecastURL(lat: point.lat, lon: point.lon)))
@@ -64,9 +64,14 @@ final class OutsideProbes {
 
     func report() -> String {
         var out = "Outside data probes · \(Date().formatted())\nUser-Agent: \(Self.userAgent)\n"
+        // B02: details survive a relaunch — they're kept with the check result.
+        let results = CheckResults.shared
         for item in CheckList.all where item.group == CheckList.outside {
-            let line = lines[item.id]
-            out += "\(line?.status.icon ?? "⏳") \(item.id) \(item.title): \(line?.text ?? "not run")\n"
+            let status: CheckStatus = lines[item.id]?.status ?? results.status(item.id)
+            let note = results.note(item.id)
+            let text: String = lines[item.id]?.text ?? (note.isEmpty ? "not run" : note)
+            let when: String = results.entries[item.id].map { " (\($0.date.formatted(date: .abbreviated, time: .shortened)))" } ?? ""
+            out += "\(status.icon) \(item.id) \(item.title): \(text)\(when)\n"
         }
         return out
     }

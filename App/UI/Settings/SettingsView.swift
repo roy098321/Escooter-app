@@ -8,6 +8,13 @@ struct SettingsView: View {
                 LabeledContent("Version", value: AppInfo.versionLine)
                 LabeledContent("App ID", value: AppInfo.bundleID)
             }
+            Section("Costs") {
+                NavigationLink {
+                    FuelPriceView()
+                } label: {
+                    LabeledContent("Fuel price", value: FuelPriceSetting.load(AppModel.shared.database).map(FuelPriceSetting.text) ?? "—")
+                }
+            }
             Section {
                 NavigationLink {
                     DeveloperView()
@@ -19,6 +26,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .screen("Settings")
     }
 }
 

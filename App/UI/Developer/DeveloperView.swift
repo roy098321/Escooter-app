@@ -33,6 +33,7 @@ struct DeveloperView: View {
             }
         }
         .navigationTitle("Developer")
+        .screen("Developer")
     }
 
     private func tool<Destination: View>(_ title: String, _ symbol: String, _ ids: [String],

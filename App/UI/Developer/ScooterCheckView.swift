@@ -29,6 +29,7 @@ struct ScooterCheckView: View {
             }
         }
         .navigationTitle("Scooter")
+        .screen("Scooter")
     }
 
     private var connectionSection: some View {

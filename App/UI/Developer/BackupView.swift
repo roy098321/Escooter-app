@@ -28,6 +28,7 @@ struct BackupView: View {
             }
         }
         .navigationTitle("Backup folder")
+        .screen("Backup folder")
         .fileImporter(isPresented: $picking, allowedContentTypes: [.folder]) { result in
             switch result {
             case .success(let url): backup.remember(url)

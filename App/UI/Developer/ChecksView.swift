@@ -20,6 +20,7 @@ struct ChecksView: View {
             }
         }
         .navigationTitle("Checks")
+        .screen("Checks")
     }
 }
 

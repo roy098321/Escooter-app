@@ -31,11 +31,17 @@ enum Exporter {
 
     private static func deviceText() -> String {
         let model = AppModel.shared
-        var lines = [
+        var savedScooter = "none yet"
+        if let db = model.database, let record = ScooterRecord.latest(in: db) {
+            let first = Date(timeIntervalSince1970: Double(record.firstSeenAt ?? 0) / 1000)
+            savedScooter = "\(record.fingerprint) · first seen \(first.formatted())"
+        }
+        var lines: [String] = [
             "App: \(AppInfo.displayName) \(AppInfo.versionLine) · \(AppInfo.bundleID)",
-            "Scooter: \(model.scooter.deviceInfo.fingerprint)",
+            "Scooter (this session): \(model.scooter.deviceInfo.fingerprint)",
+            "Scooter (saved): \(savedScooter)",
             "Untouched (denied) services seen: \(model.scooter.deniedSeen.joined(separator: ", "))",
-            "Packets: \(model.scooter.packets) (\(model.scooter.packetsInBackground) in the background, \(model.scooter.unknownPackets) unknown)"
+            "Packets this session: \(model.scooter.packets) (\(model.scooter.packetsInBackground) in the background, \(model.scooter.unknownPackets) unknown)"
         ]
         if let db = model.database {
             lines.append("Database: migrations \((try? db.appliedMigrations())?.joined(separator: ", ") ?? "?") · read-only \(db.isReadOnly)")

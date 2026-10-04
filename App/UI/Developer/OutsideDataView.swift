@@ -43,5 +43,6 @@ struct OutsideDataView: View {
             }
         }
         .navigationTitle("Outside data")
+        .screen("Outside data")
     }
 }

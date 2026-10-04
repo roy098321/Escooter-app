@@ -35,6 +35,7 @@ struct ReadabilityView: View {
         }
         .background(sunlight ? Color.white : Color(.systemBackground))
         .navigationTitle("Readability")
+        .screen("Readability")
         .navigationBarTitleDisplayMode(.inline)
     }
 

@@ -66,5 +66,6 @@ struct SimulatorView: View {
             }
         }
         .navigationTitle("Simulated scooter")
+        .screen("Simulated scooter")
     }
 }

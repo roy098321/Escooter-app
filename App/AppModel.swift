@@ -20,6 +20,7 @@ final class AppModel {
 
     @ObservationIgnored private let started = Date()
     @ObservationIgnored private var launched = false
+    @ObservationIgnored private var fingerprintSaved = false
 
     private init() {}
 
@@ -96,6 +97,17 @@ final class AppModel {
             results.set("b2", ok ? .pass : .fail, note)
         }
         let info = scooter.deviceInfo
+        // B03: keep the fingerprint in the `scooter` table, so exports after a relaunch have it
+        if !fingerprintSaved, let fw = info.firmware, let sw = info.software, let db = database {
+            do {
+                try ScooterRecord.save(id: scooter.knownPeripheralID ?? "scooter", name: ScooterGatt.advertisedName,
+                                       chip: info.model, firmware: fw, software: sw, in: db)
+                fingerprintSaved = true
+            } catch {
+                Log.error(source: "store", "scooter fingerprint: \(error.localizedDescription)")
+                fingerprintSaved = true
+            }
+        }
         if results.status("b3") == .pending, info.firmware != nil, info.software != nil {
             if let change = info.change(from: .p2Baseline) {
                 results.set("b3", .info, change)
@@ -120,7 +132,17 @@ enum InstallChecks {
         let results = CheckResults.shared
         let defaults = UserDefaults.standard
         results.passOnce("a1", "Opened build \(AppInfo.versionLine) on \(Date().formatted(date: .abbreviated, time: .shortened))")
-        results.set("a3", AppInfo.bundleID == "com.corckieapp.app" ? .pass : .fail, AppInfo.bundleID)
+        // a3: SideStore (free account) appends the team ID: com.corckieapp.app.<TEAMID> (P4 F11)
+        let base = "com.corckieapp.app"
+        let id = AppInfo.bundleID
+        if id == base {
+            results.set("a3", .pass, id)
+        } else if id.hasPrefix(base + ".") {
+            results.set("a3", .pass, "\(base) + SideStore team suffix .\(id.dropFirst(base.count + 1))")
+        } else {
+            results.set("a3", .fail, id)
+        }
+        FuelPriceSetting.ensureDefault(database: database)
 
         if let db = database {
             let migrations = (try? db.appliedMigrations())?.joined(separator: ", ") ?? "?"
@@ -132,17 +154,40 @@ enum InstallChecks {
         }
 
         // a4: the app bundle moves to a new folder on every install / update / SideStore refresh.
+        // a4 compares the database's install ID and launch count with what the previous
+        // launch saw; it decides when the build number or the bundle folder changed.
         let path = Bundle.main.bundlePath
         let lastPath = defaults.string(forKey: "corckie.lastBundlePath")
-        let lastBuild = defaults.string(forKey: "corckie.lastBuild") ?? "?"
-        if let lastPath, lastPath != path, let meta = database?.meta {
-            let kept = meta.launchCount > 1
-            results.set("a4", kept ? .pass : .fail,
-                        kept ? "Installed again (build \(lastBuild) → \(AppInfo.build)): install \(meta.installId.prefix(8)) kept, \(meta.launchCount) launches"
-                             : "Installed again but the data was new (launch count \(meta.launchCount))")
+        let lastBuild = defaults.string(forKey: "corckie.lastBuild")
+        let lastInstall = defaults.string(forKey: "corckie.lastInstallId")
+        let lastLaunches = defaults.integer(forKey: "corckie.lastLaunchCount")
+        let reinstalled = (lastBuild != nil && lastBuild != AppInfo.build) || (lastPath != nil && lastPath != path)
+        if reinstalled, let meta = database?.meta {
+            let sameInstall = lastInstall == nil || lastInstall == meta.installId
+            // Builds up to 19 didn't save the launch count: then the database must come from an
+            // older build and have been opened before.
+            let countKept = lastLaunches > 0
+                ? meta.launchCount > lastLaunches
+                : meta.launchCount > 1 && meta.createdBuild != AppInfo.build
+            let ok = sameInstall && countKept
+            let previousBuild: String = lastBuild ?? "?"
+            let change: String = lastBuild == AppInfo.build ? "same build \(AppInfo.build) reinstalled" : "build \(previousBuild) → \(AppInfo.build)"
+            let install: String = String(meta.installId.prefix(8))
+            let wasInstall: String = lastInstall.map { String($0.prefix(8)) } ?? "?"
+            let note: String
+            if ok {
+                note = "Updated (\(change)): install \(install) kept, launches \(lastLaunches) → \(meta.launchCount)"
+            } else {
+                note = "Updated (\(change)) but the data looks new: install \(install) (was \(wasInstall)), launches \(meta.launchCount) (was \(lastLaunches))"
+            }
+            results.set("a4", ok ? .pass : .fail, note)
         }
         defaults.set(path, forKey: "corckie.lastBundlePath")
         defaults.set(AppInfo.build, forKey: "corckie.lastBuild")
+        if let meta = database?.meta {
+            defaults.set(meta.installId, forKey: "corckie.lastInstallId")
+            defaults.set(meta.launchCount, forKey: "corckie.lastLaunchCount")
+        }
     }
 }
 

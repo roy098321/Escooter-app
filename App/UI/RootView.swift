@@ -47,6 +47,7 @@ struct RootView: View {
             ContentUnavailableView(title, systemImage: symbol,
                                    description: Text("Arrives with the first milestone (M1)."))
                 .navigationTitle(title)
+                .screen(title)
         }
         .tabItem { Label(title, systemImage: symbol) }
     }
@@ -58,6 +59,7 @@ struct HomeView: View {
             ContentUnavailableView("Foundation build", systemImage: "scooter",
                                    description: Text("Settings → Developer → Checks has this build's check list."))
                 .navigationTitle("Home")
+                .screen("Home")
                 .toolbar {
                     NavigationLink {
                         SettingsView()

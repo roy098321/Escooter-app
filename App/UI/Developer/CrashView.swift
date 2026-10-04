@@ -33,6 +33,7 @@ struct CrashView: View {
             }
         }
         .navigationTitle("Crash catcher")
+        .screen("Crash catcher")
         .onAppear { lines = ErrorLog.shared.lines() }
     }
 

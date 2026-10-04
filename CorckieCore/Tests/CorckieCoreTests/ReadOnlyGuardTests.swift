@@ -55,6 +55,15 @@ final class ReadOnlyGuardTests: XCTestCase {
         }
     }
 
+    /// B04: one shared Bluetooth connection — no screen may create its own link.
+    func test_B04_oneSharedScooterLink() throws {
+        var count = 0
+        for file in swiftFiles(in: appFolder) {
+            count += try String(contentsOf: file, encoding: .utf8).components(separatedBy: "ScooterLink()").count - 1
+        }
+        XCTAssertEqual(count, 1, "ScooterLink() must be created once (AppModel)")
+    }
+
     func test_readOnly_denyListCoversCommandsAndFirmwareUpdate() {
         XCTAssertTrue(ScooterGatt.isDenied("FFF1"))
         XCTAssertTrue(ScooterGatt.isDenied("0000fff1-0000-1000-8000-00805f9b34fb"))

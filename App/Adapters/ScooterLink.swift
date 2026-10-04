@@ -44,6 +44,8 @@ final class ScooterLink: NSObject {
     private(set) var events: [String] = []
 
     var hasKnownScooter: Bool { savedID != nil }
+    var knownPeripheralID: String? { savedID?.uuidString }
+    @ObservationIgnored private var connectedAt: Date?
 
     private var savedID: UUID? {
         get { defaults.string(forKey: Self.savedIDKey).flatMap(UUID.init(uuidString:)) }
@@ -80,7 +82,9 @@ final class ScooterLink: NSObject {
     }
 
     private func log(_ text: String) {
-        let line = "\(Date().formatted(date: .abbreviated, time: .standard)) \(text) · \(inBackground ? "app in background" : "app open")"
+        // B04: which screen was open, to tell app-caused drops from radio drops
+        let where_ = inBackground ? "app in background" : "app open · \(Screen.current)"
+        let line = "\(Date().formatted(date: .abbreviated, time: .standard)) \(text) · \(where_)"
         events.append(line)
         if events.count > 300 { events.removeFirst(events.count - 300) }
         defaults.set(events, forKey: Self.eventsKey)
@@ -134,6 +138,7 @@ extension ScooterLink: CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didConnect connectedPeripheral: CBPeripheral) {
         let background = inBackground
+        connectedAt = Date()
         log("Connected")
         didBecomeConnected(connectedPeripheral)
         connectHandlers.forEach { $0(background) }
@@ -147,7 +152,14 @@ extension ScooterLink: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral lost: CBPeripheral, error: Error?) {
         connected = false
         assembler.reset()
-        log("Disconnected")
+        // B04: log iOS's reason (CBError code) and how long the link lasted
+        let held = connectedAt.map { String(format: " after %.0f s", Date().timeIntervalSince($0)) } ?? ""
+        connectedAt = nil
+        if let error = error as NSError? {
+            log("Disconnected\(held) · CBError \(error.code): \(error.localizedDescription)")
+        } else {
+            log("Disconnected\(held) · no error (the app cancelled the connection)")
+        }
         state = "Disconnected · waiting for the scooter"
         disconnectHandlers.forEach { $0() }
         if savedID != nil { central.connect(lost) }   // pending connect, works in the background

@@ -50,6 +50,7 @@ struct SensorsView: View {
             }
         }
         .navigationTitle("Sensors")
+        .screen("Sensors")
     }
 
     private func line(_ id: String) -> some View {

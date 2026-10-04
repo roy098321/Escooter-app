@@ -37,6 +37,7 @@ struct ResultsView: View {
             }
         }
         .navigationTitle("Results")
+        .screen("Results")
     }
 
     private func makeExport() {
