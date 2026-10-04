@@ -1,3 +1,4 @@
+import CorckieCore
 import SwiftUI
 
 /// Settings (FEATURES.md → Settings); the foundation build has About and Developer only.
@@ -14,6 +15,23 @@ struct SettingsView: View {
                 } label: {
                     Label("Report a problem", systemImage: "exclamationmark.bubble")
                 }
+            }
+            Section {
+                let writer = BackupWriter.shared
+                NavigationLink {
+                    BackupView()
+                } label: {
+                    LabeledContent("Last backup", value: BackupPlan.lastBackupText(
+                        lastMs: writer.lastBackupMs, nowMs: Int64(Date().timeIntervalSince1970 * 1000),
+                        utcOffsetMin: TimeZone.current.secondsFromGMT() / 60))
+                }
+                if let error = writer.lastError {
+                    Text("Last backup failed: \(error)").font(.footnote).foregroundStyle(.red)
+                }
+            } header: {
+                Text("Backup")
+            } footer: {
+                Text("After every ride, and a full copy every week, to the folder you picked. Restore comes later.")
             }
             Section("Costs") {
                 NavigationLink {

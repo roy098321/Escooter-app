@@ -14,6 +14,7 @@ struct HomeView: View {
     @State private var showOnboarding = false
     @State private var crashDismissed = false
     @State private var lastRide: RideListItem?
+    @State private var oldestRideMs: Int64?
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var input: HomeInput {
@@ -63,6 +64,7 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 16) {
                 if m.showCrashBanner { crashCard }
+                if backupBannerShown { backupCard }
                 statusCard(m)
                 primaryButton(m)
                 if m.showLocationCard { locationCard }
@@ -128,6 +130,25 @@ struct HomeView: View {
         .background(Color.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
     }
 
+    /// M1-16 (C13 S3): 14 days without a backup
+    private var backupBannerShown: Bool {
+        guard preview == nil else { return false }
+        return BackupPlan.bannerShown(lastBackupMs: BackupWriter.shared.lastBackupMs, oldestRideMs: oldestRideMs,
+                                      nowMs: Int64(now.timeIntervalSince1970 * 1000))
+    }
+
+    private var backupCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(BackupPlan.bannerText(hasFolder: BackupFolder.shared.hasFolder), systemImage: "externaldrive.badge.exclamationmark")
+                .font(.subheadline.weight(.semibold))
+            NavigationLink("Backup folder") { BackupView() }
+                .font(.footnote.weight(.semibold))
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+    }
+
     private var crashCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label("The app closed unexpectedly last time", systemImage: "exclamationmark.triangle")
@@ -164,8 +185,10 @@ struct HomeView: View {
     }
 
     private func reloadLastRide() {
-        guard preview == nil, let db = AppModel.shared.database,
-              let r = try? RideQueries(db).rides(limit: 1).first else { return }
+        guard preview == nil, let db = AppModel.shared.database else { return }
+        oldestRideMs = try? RideQueries(db).rides().last?.startAt
+        BackupWriter.shared.runIfDue()
+        guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
         lastRide = RideListItem(id: r.id, startAt: r.startAt, utcOffsetMin: r.utcOffsetMin, kind: r.kind,
                                 distanceM: r.distanceM, totalS: r.totalS)
     }

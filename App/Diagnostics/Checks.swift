@@ -139,6 +139,8 @@ enum CheckList {
                   expected: "On the fake scooter: a 1-s link drop changes nothing; after ~5 s the phone takes over (GPS speed labelled, \"~N% est.\"), scooter numbers and odometer distance back on reconnect; SLOW above 45, clears below 43 on scooter and on GPS speed, no flicker", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u12", group: phone, title: "Recorder end to end (M1-09)", how: "Nothing to do · Run all automatic marks it (~10 s)",
                   expected: "Rides 1 and 2 through the Recorder into a temporary database: 437 Wh / 16.3 km and 322 Wh / 13.7 km, samples and raw packets stored; a kill mid-ride is recovered; your real rides unchanged", needsScooter: false, manual: false, tool: .none),
+        CheckItem(id: "u16", group: phone, title: "Backup writer (M1-16)", how: "Nothing to do · Run all automatic marks it",
+                  expected: "A full backup and a ride file are written to a temporary folder and read back (compression, check sum, database header, ride id); latest.json is there; only the newest three full backups stay", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u15", group: phone, title: "Ride summary (M1-13)", how: "Nothing to do · Run all automatic marks it. Then open a ride in Rides to look at it (a simulated ride shows the same screen)",
                   expected: "A made-up ride stored in a temporary database gives the right time, distance, average speed and battery; the path has a dashed phone stretch and a walking stretch; the notes say recovered, phone stretch, heat and on foot; a ride without GPS shows the No GPS card; delete removes the ride and its readings", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u14", group: phone, title: "Live ride screen rules (M1-12)", how: "Nothing to do · Run all automatic marks it",
@@ -180,6 +182,10 @@ enum CheckList {
                   expected: "Speed and battery readable at a glance", needsScooter: true, manual: true, tool: .readability),
         CheckItem(id: "f3", group: ride, title: "Readable in direct sun (D11)", how: "Readability → Sunlight, in direct sun",
                   expected: "Readable", needsScooter: true, manual: true, tool: .readability),
+        CheckItem(id: "q1", group: ride, title: "Phone battery per ride (M1-16)", how: "Nothing to do · ride 15 minutes or more with the phone not charging",
+                  expected: "At most 10% of phone battery per 30 min of riding; the note gives the % per ride and per 30 min", needsScooter: true, manual: false, tool: .none),
+        CheckItem(id: "d10", group: ride, title: "Backup written after a real ride (M1-16)", how: "Pick the backup folder first (Developer → Backup folder), then finish a ride",
+                  expected: "A ride file appears in CorckieApp Backup/rides in your folder, and Settings → Last backup shows the time", needsScooter: true, manual: false, tool: .none),
 
         CheckItem(id: "g1", group: send, title: "Export to Claude", how: "Developer → Results → Prepare export → Share",
                   expected: "One .zip: results, error log, Bluetooth events, raw packets", needsScooter: false, manual: false, tool: .results)

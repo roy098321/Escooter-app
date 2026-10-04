@@ -40,7 +40,12 @@ final class RecorderService {
         let (stream, continuation) = AsyncStream.makeStream(of: (RecorderInput, Double).self, bufferingPolicy: .unbounded)
         self.continuation = continuation
         let hooks = RecorderHooks(
-            rideStarted: { DispatchQueue.main.async { Notifier.shared.rideStarted() } },
+            rideStarted: {
+                DispatchQueue.main.async {
+                    Notifier.shared.rideStarted()
+                    PhoneBatteryWatch.shared.rideStarted()
+                }
+            },
             rideActive: { on in
                 DispatchQueue.main.async {
                     Notifier.shared.rideActive = on
@@ -53,6 +58,8 @@ final class RecorderService {
                 DispatchQueue.main.async {
                     RecorderService.shared.lastClosedRideId = id
                     RecorderService.shared.summaryRideId = id
+                    PhoneBatteryWatch.shared.rideEnded()
+                    BackupWriter.shared.rideEnded(rideId: id)
                     Log.info(source: "recorder", "Ride closed (\(status))")
                 }
             },
@@ -71,6 +78,7 @@ final class RecorderService {
     /// Called at launch (also the background relaunch for the scooter): the 1-s tick starts at once.
     func start() {
         guard timer == nil else { return }
+        PhoneBatteryWatch.shared.enable()
         let t = Timer(timeInterval: 1, repeats: true) { _ in
             RecorderService.shared.send(.tick)
         }

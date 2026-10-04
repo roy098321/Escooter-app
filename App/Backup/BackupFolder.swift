@@ -36,6 +36,19 @@ final class BackupFolder {
         }
     }
 
+    /// Runs `body` with the picked folder open (security scoped); refreshes a stale bookmark. Throws when none is picked.
+    func withFolder<T>(_ body: (URL) throws -> T) throws -> T {
+        guard let data = defaults.data(forKey: bookmarkKey) else {
+            throw CocoaError(.fileNoSuchFile, userInfo: [NSLocalizedDescriptionKey: "No backup folder picked"])
+        }
+        var stale = false
+        let folder = try URL(resolvingBookmarkData: data, bookmarkDataIsStale: &stale)
+        let ok = folder.startAccessingSecurityScopedResource()
+        defer { if ok { folder.stopAccessingSecurityScopedResource() } }
+        if stale, let fresh = try? folder.bookmarkData() { defaults.set(fresh, forKey: bookmarkKey) }
+        return try body(folder)
+    }
+
     /// Writes and reads back a small test file (check d2; d3 when the phone restarted since).
     func writeTestFile() {
         guard let data = defaults.data(forKey: bookmarkKey) else { return }
