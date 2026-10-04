@@ -285,6 +285,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
     var pushBatteryPct: Int?
     /// Previous ride offered as "Same ride?", waiting for the answer
     public private(set) var pendingSameRideSeq: Int?
+    /// The ride the offer is for
+    public private(set) var pendingSameRideFor: Int?
 
     /// Fixes are kept this long (≥ the longest GPS-still window, T17 30 s)
     static let fixWindowS = 40.0
@@ -471,6 +473,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         pushLastTrue = nil
         stopCandidateSince = nil
         pendingSameRideSeq = nil
+        pendingSameRideFor = nil
         out.append(.rideStarted(seq: r.seq, at: t, manual: manual))
         if manual { confirm(.manual, at: t, &out) }
     }
@@ -562,19 +565,149 @@ public struct RideEngine: Codable, Equatable, Sendable {
         trackMovement(at: t)
         if phase == .starting { evaluateStarting(at: t, &out) }
         guard ride != nil else { return }
+        updateWalk(at: t, &out)
+        updateStops(at: t)
         evaluateEnd(at: t, &out)
     }
 
-    // MARK: End (M1-04 fills the rules in)
+    // MARK: Stops (M3, T23–T26)
 
-    private mutating func evaluateEnd(at t: Double, _ out: inout [RideEngineEvent]) {}
+    private mutating func updateStops(at t: Double) {
+        guard phase == .riding, var r = ride else { return }
+        let live = linkLive(at: t)
+        let v: Double? = live ? speedKmh : gpsSpeedNow(at: t)
+        let below = live ? T.t23StopKmh : T.t26PhoneStopKmh
+        let need = live ? T.t23StopS : T.t26PhoneStopS
+        let walking = r.walks.last?.isOpen ?? false
+        defer { ride = r }
+        if let i = r.stops.indices.last, r.stops[i].isOpen {
+            if walking {
+                r.stops[i].endT = t
+            } else if let v, v > T.t24StopEndKmh {
+                r.stops[i].endT = t                  // T24 hysteresis
+                stopCandidateSince = nil
+            }
+            return
+        }
+        guard !walking, let v, v < below else {
+            stopCandidateSince = nil
+            return
+        }
+        let here = freshFix(at: t)
+        guard let since = stopCandidateSince else {
+            stopCandidateSince = t
+            stopCandidateFix = here
+            return
+        }
+        guard t - since >= need else { return }
+        if let a = stopCandidateFix, let b = here, a.metres(to: b) >= T.t23StopMovedM {
+            stopCandidateSince = t                   // rolling slowly, not standing (5 m rule)
+            stopCandidateFix = b
+            return
+        }
+        // T25: a stop within 10 s and 15 m of the previous one joins it
+        if let i = r.stops.indices.last, let end = r.stops[i].endT, since - end < T.t25StopMergeS {
+            var near = true
+            if let lat = r.stops[i].lat, let lon = r.stops[i].lon, let c = stopCandidateFix ?? here {
+                near = EngineFix(t: end, lat: lat, lon: lon, speedKmh: nil).metres(to: c) < T.t25StopMergeM
+            }
+            if near {
+                r.stops[i].endT = nil
+                return
+            }
+        }
+        let at = stopCandidateFix ?? here
+        r.stops.append(RideSpan(startT: since, lat: at?.lat, lon: at?.lon))
+    }
+
+    // MARK: Pushing / walking stretch (D3, T102)
+
+    private mutating func updateWalk(at t: Double, _ out: inout [RideEngineEvent]) {
+        guard var r = ride else { return }
+        defer { ride = r }
+        let live = linkLive(at: t)
+        let v: Double? = live ? speedKmh : gpsSpeedNow(at: t)
+        var pushing = false
+        if let v, v >= T.t102PushingMinKmh, v <= T.t102PushingMaxKmh {
+            pushing = live ? (currentA ?? 0) < T.t102PushingCurrentA : true
+        }
+        let open = r.walks.last?.isOpen ?? false
+        if pushing {
+            if pushSince == nil {
+                pushSince = t
+                pushDistanceM = 0
+                pushBatteryPct = lastMotorBatteryPct ?? batteryPct
+            }
+            pushLastTrue = t
+            if !open, phase == .riding, r.trimStartT != nil, let since = pushSince, t - since >= T.t102PushingS {
+                // A walking stretch from where the pushing began: no stops inside it
+                r.stops.removeAll { $0.startT >= since }
+                if let i = r.stops.indices.last, r.stops[i].isOpen { r.stops[i].endT = since }
+                stopCandidateSince = nil
+                let at = fixes.first { $0.t >= since } ?? lastFix
+                r.walks.append(RideSpan(startT: since, lat: at?.lat, lon: at?.lon, distanceM: pushDistanceM))
+                r.batteryAtWalkStartPct = pushBatteryPct
+                r.motorAfterWalk = false
+                out.append(.walkStarted(seq: r.seq, at: since))
+            }
+        } else if let last = pushLastTrue, t - last > Self.pushGraceS {
+            if open { r.walks[r.walks.count - 1].endT = last }
+            pushSince = nil
+            pushLastTrue = nil
+        }
+    }
+
+    // MARK: End (M2: A, A2, B, C, low battery)
+
+    private mutating func evaluateEnd(at t: Double, _ out: inout [RideEngineEvent]) {
+        guard let r = ride else { return }
+        let live = linkLive(at: t)
+        // Since when the scooter readings are gone (disconnected, or connected but silent for T07)
+        let goneSince: Double? = live ? nil : (connected ? (lastFrameT ?? disconnectedAt) : (disconnectedAt ?? lastFrameT))
+        let lastMove = r.lastMoveT ?? r.startT
+        var reason: RideEndReason?
+        if !live, shuttingDownSeen {
+            reason = .scooterOff                                 // A2: 0x80, then gone: at once
+        } else if let g = goneSince, t - g >= T.t17EndDisconnectedS, gpsStill(window: T.t17EndDisconnectedS, at: t) == true {
+            reason = .disconnected                               // A: gone 30 s and GPS still
+        } else if let g = goneSince, t - g >= T.t18EndNoGpsS, t - lastMove >= T.t17EndDisconnectedS {
+            reason = .disconnected                               // A without a good fix: gone 2 min, no movement seen
+        } else if t - lastMove >= T.t20EndStandstillS {
+            reason = .standstill                                 // C
+        }
+        guard let reason else { return }
+        if phase == .starting {
+            cancel(r, reason == .scooterOff ? .scooterOff : .disconnected, at: t, &out)
+        } else {
+            finish(reason, at: t, &out)
+        }
+    }
+
+    /// The ride as it would end now (used by `finish` and by recovery).
+    public func closing(_ reason: RideEndReason, at t: Double) -> RideEnd? {
+        guard var r = ride else { return nil }
+        let endT = max(r.startT, min(t, r.lastMoveT ?? t))
+        // A stop still open at the end is the standstill after the last movement, not a stop
+        r.stops.removeAll { $0.isOpen || $0.startT >= endT }
+        for i in r.stops.indices { r.stops[i].endT = min(r.stops[i].endT ?? endT, endT) }
+        r.walks.removeAll { $0.startT >= endT }
+        if let i = r.walks.indices.last, r.walks[i].isOpen { r.walks[i].endT = min(pushLastTrue ?? endT, endT) }
+        let distance = r.distanceAfterTrimM
+        var lowBattery: Int?
+        if reason == .scooterOff || reason == .disconnected, let b = r.lastBatteryPct, Double(b) <= T.t80ReserveDefaultPct {
+            lowBattery = b
+        }
+        var ranOut: Int?
+        if !r.walks.isEmpty, !r.motorAfterWalk, let pct = r.batteryAtWalkStartPct, Double(pct) <= T.t81LowBatteryPct {
+            ranOut = pct
+        }
+        return RideEnd(ride: r, reason: reason, endT: endT, decidedAtT: t, distanceM: distance,
+                       sizeClass: RideSizeClass.of(distanceM: distance), lowBatteryOffPct: lowBattery, batteryRanOutPct: ranOut)
+    }
 
     private mutating func finish(_ reason: RideEndReason, at t: Double, _ out: inout [RideEngineEvent]) {
-        guard let r = ride else { return }
-        let endT = max(r.startT, min(t, r.lastMoveT ?? t))
-        let distance = r.distanceAfterTrimM
-        let end = RideEnd(ride: r, reason: reason, endT: endT, decidedAtT: t, distanceM: distance,
-                          sizeClass: RideSizeClass.of(distanceM: distance), lowBatteryOffPct: nil, batteryRanOutPct: nil)
+        guard let end = closing(reason, at: t) else { return }
+        if let pct = end.batteryRanOutPct { out.append(.batteryRanOut(seq: end.ride.seq, pct: pct)) }
         out.append(.rideEnded(end))
         lastEnd = end
         ride = nil
@@ -593,11 +726,65 @@ public struct RideEngine: Codable, Equatable, Sendable {
         pushDistanceM = 0
     }
 
-    // MARK: Same ride (M1-04)
+    // MARK: Same ride (M2, T21)
 
-    private mutating func offerSameRide(at t: Double, _ out: inout [RideEngineEvent]) {}
+    private mutating func offerSameRide(at t: Double, _ out: inout [RideEngineEvent]) {
+        guard let prev = lastEnd, prev.automatic, let r = ride, r.startT - prev.endT <= T.t21SameRideS else { return }
+        if let lat = prev.ride.lastLat, let lon = prev.ride.lastLon {
+            var start = freshFix(at: t)
+            if let sLat = r.startLat, let sLon = r.startLon { start = EngineFix(t: r.startT, lat: sLat, lon: sLon, speedKmh: nil) }
+            if let start, EngineFix(t: prev.endT, lat: lat, lon: lon, speedKmh: nil).metres(to: start) > T.t21SameRideM { return }
+        }
+        pendingSameRideSeq = prev.ride.seq
+        pendingSameRideFor = r.seq
+        out.append(.sameRideOffered(seq: r.seq, previousSeq: prev.ride.seq))
+    }
 
-    private mutating func answerSameRide(_ yes: Bool, _ out: inout [RideEngineEvent]) {}
+    private mutating func answerSameRide(_ yes: Bool, _ out: inout [RideEngineEvent]) {
+        guard let prevSeq = pendingSameRideSeq, let forSeq = pendingSameRideFor else { return }
+        pendingSameRideSeq = nil
+        pendingSameRideFor = nil
+        guard yes else { return }
+        // Join the earlier ride's group (a chain of pieces keeps one group)
+        var group = prevSeq
+        if let e = lastEnd, e.ride.seq == prevSeq, let g = e.ride.mergedIntoSeq { group = g }
+        if var r = ride, r.seq == forSeq {
+            r.mergedIntoSeq = group
+            ride = r
+        } else if var e = lastEnd, e.ride.seq == forSeq {
+            e.ride.mergedIntoSeq = group      // answered after the piece already ended
+            lastEnd = e
+        } else {
+            return
+        }
+        out.append(.rideMerged(seq: forSeq, intoSeq: group))
+    }
+
+    // MARK: Recovery (M2 "Recovery", SC-14)
+
+    /// The app was relaunched with this state restored: the link and the phone start from scratch.
+    public mutating func relaunched(at t: Double) {
+        now = max(now, t)
+        connected = false
+        disconnectedAt = t
+        lastFrameT = nil
+        speedKmh = nil
+        currentA = nil
+        currentAboveSince = nil
+        gpsFastSince = nil
+        stopCandidateSince = nil
+        fixes = []
+        lastFix = nil
+        lastIntegrateT = t
+        if phase == .ready { phase = .idle }
+    }
+
+    /// Forget the open ride (after recovery ended or discarded it).
+    public mutating func dropOpenRide() {
+        ride = nil
+        connected = false
+        afterRide()
+    }
 
     // MARK: Live view hand-off (M1-07 contract; M1-05 swaps in the 3-s GPS median and the estimate)
 

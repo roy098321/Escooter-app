@@ -129,6 +129,8 @@ public struct RideMetrics: Equatable, Sendable {
     public var topSpeedKmh = 0.0
     /// M3: number of stops
     public var stops = 0
+    /// D3 / T102: distance walked (pushing) inside the ride, m; counted in `distanceM`, left out of M6 and M9
+    public var walkedM = 0.0
     /// M8: Σ V × I × Δt, Wh
     public var energyWhRaw = 0.0
     public var startRestPct: Double?
@@ -172,9 +174,11 @@ public enum RideMetricsCalculator {
     /// Computes the ride numbers from its stored samples.
     /// - Parameters:
     ///   - stops: M3 stop rows when the engine has them; otherwise stops are counted from the samples.
+    ///   - walks: D3 walking stretches from the engine (their distance counts, but not in avg. speed or %/km).
     ///   - wheelFactor: M5 wheel factor, 1.0 until 5 clean stretches exist (T31).
     ///   - maxStepS: samples further apart than this are a gap (no energy, no wheel distance between them).
-    public static func compute(_ input: [RideSample], stops: [RideStopSpan]? = nil, ignoredReadings: Int = 0,
+    public static func compute(_ input: [RideSample], stops: [RideStopSpan]? = nil, walks: [RideStopSpan] = [],
+                               ignoredReadings: Int = 0,
                                wheelFactor: Double = 1.0, maxStepS: Double = defaultMaxStepS) -> RideMetrics {
         var m = RideMetrics()
         m.ignoredReadings = ignoredReadings
@@ -217,8 +221,21 @@ public enum RideMetricsCalculator {
         // M5 distance
         applyDistance(to: &m, samples, wheelFactor: wheelFactor, maxStepS: maxStepS)
 
-        // M6
-        if m.movingS > 0, m.distanceM > 0 { m.avgMovingMps = m.distanceM / m.movingS }
+        // D3: walked distance (left sample inside a walking stretch)
+        if !walks.isEmpty {
+            for i in 1..<samples.count {
+                let a = samples[i - 1], b = samples[i]
+                let dt = b.t - a.t
+                guard dt > 0, dt <= maxStepS,
+                      walks.contains(where: { a.t >= $0.startT && a.t < ($0.endT ?? .infinity) }) else { continue }
+                m.walkedM += (a.speedKmh ?? a.gpsSpeedKmh ?? 0) / 3.6 * dt * wheelFactor
+            }
+            m.walkedM = min(m.walkedM, m.distanceM)
+        }
+        let riddenM = m.distanceM - m.walkedM
+
+        // M6 (walking left out)
+        if m.movingS > 0, riddenM > 0 { m.avgMovingMps = riddenM / m.movingS }
 
         // M7
         m.topSpeedKmh = topSpeed(samples, wheelFactor: wheelFactor, maxStepS: maxStepS)
@@ -232,8 +249,8 @@ public enum RideMetricsCalculator {
         }
 
         // M9
-        if let used = m.usedPct, m.distanceM >= T.t43BatteryPerKmAfterM {
-            m.pctPerKm = used / m.distanceKm
+        if let used = m.usedPct, riddenM >= T.t43BatteryPerKmAfterM {
+            m.pctPerKm = used / (riddenM / 1000)
         }
 
         // M10

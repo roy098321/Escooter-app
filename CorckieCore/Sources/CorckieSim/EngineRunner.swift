@@ -11,6 +11,8 @@ public enum EngineRunner {
         /// Samples per ride seq, t from the ride start (what `ride_sample` would hold)
         public var samples: [Int: [RideSample]] = [:]
         public var engine = RideEngine()
+        /// What recovery decided at each relaunch
+        public var recoveries: [RideRecovery.Decision] = []
 
         public var started: [(seq: Int, at: Double, manual: Bool)] {
             events.compactMap { item -> (seq: Int, at: Double, manual: Bool)? in
@@ -69,9 +71,11 @@ public enum EngineRunner {
 
     /// - Parameters:
     ///   - tailS: ticks keep coming this long after the last event (the end rules need time)
+    ///   - relaunchAt: the app is killed here; the engine state goes through JSON (as the Recorder stores it),
+    ///     recovery decides, and the app is back `relaunchGapS` later, with every event in between lost (SC-14)
     ///   - answerSameRide: answer every "Same ride?" offer at once with this (nil = never answer)
     public static func run(_ stream: SimStream, presses: [Press] = [], tailS: Double = 300,
-                           answerSameRide: Bool? = nil,
+                           relaunchAt: Double? = nil, relaunchGapS: Double = 3, answerSameRide: Bool? = nil,
                            sampleIntervalS: Double = 5) -> Result {
         var items = stream.scooter.map { Item.scooter($0) } + stream.phone.map { Item.phone($0) } + presses.map { Item.press($0) }
         items = items.enumerated().sorted { a, b in a.element.t == b.element.t ? a.offset < b.offset : a.element.t < b.element.t }
@@ -82,6 +86,9 @@ public enum EngineRunner {
         var sampler: RideSampler?
         var startT = 0.0
         var nextTick = firstT.rounded(.down) + 1
+        var relaunchPending = relaunchAt
+        var skipUntil = -Double.infinity
+        var lastSampleAbsT: Double?
 
         func take(_ events: [RideEngineEvent], at t: Double) {
             for e in events {
@@ -112,7 +119,37 @@ public enum EngineRunner {
             }
         }
 
+        func relaunch(at t: Double) {
+            let data = try? JSONEncoder().encode(feed.engine)
+            var restored = data.flatMap { try? JSONDecoder().decode(RideEngine.self, from: $0) } ?? RideEngine()
+            let back = t + relaunchGapS
+            let decision = RideRecovery.decide(snapshot: restored, lastDataT: lastSampleAbsT, now: back)
+            result.recoveries.append(decision)
+            switch decision {
+            case .nothingOpen, .resume:
+                restored.relaunched(at: back)
+            case .endRecovered(let end):
+                restored.dropOpenRide()
+                restored.relaunched(at: back)
+                take([.rideEnded(end)], at: back)
+            case let .discard(seq, at):
+                restored.dropOpenRide()
+                restored.relaunched(at: back)
+                take([.rideCancelled(seq: seq, at: at, reason: .unconfirmed)], at: back)
+            }
+            feed = RideFeed(engine: restored)
+            if decision != .resume { sampler = nil }
+            skipUntil = back
+            nextTick = back.rounded(.down) + 1
+        }
+
         for item in items {
+            if let r = relaunchPending, item.t >= r {
+                tick(until: r)
+                relaunch(at: r)
+                relaunchPending = nil
+            }
+            if item.t < skipUntil { continue }
             tick(until: item.t)
             switch item {
             case .scooter(let e):
@@ -120,6 +157,7 @@ public enum EngineRunner {
                 if let f = feed.lastNewFrame, feed.engine.rideActive, var s = sampler {
                     if let sample = s.offer(f, startT: startT) {
                         result.samples[feed.engine.ride?.seq ?? 0, default: []].append(sample)
+                        lastSampleAbsT = f.t
                     }
                     sampler = s
                 }

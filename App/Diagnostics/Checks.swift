@@ -133,6 +133,8 @@ enum CheckList {
                   expected: "Newest ride under Latest, other rides grouped by day, short hop kept apart, discarded hidden, date filter and delete work on made-up rides in a temporary database", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u9", group: phone, title: "Ride start and autostart traps (M1-03)", how: "Nothing to do · Run all automatic marks it",
                   expected: "On the fake scooter: walking the scooter is cancelled or trimmed away, a spinning wheel is cancelled within 20 s, a kick-start is confirmed by the motor current; Start ride skips the confirm step; Not riding cancels silently", needsScooter: false, manual: false, tool: .none),
+        CheckItem(id: "u10", group: phone, title: "Ride end, stops, pushing, Same ride, recovery (M1-04)", how: "Nothing to do · Run all automatic marks it",
+                  expected: "On the fake scooter: dropped while standing ends after 30 s, 0x80 ends at once, auto-off and 10 min standstill end the ride, end time = last movement; pushing 1 km is a walking stretch with \"battery ran out at 3%\"; Same ride offered after a switch-off at a light; a relaunch mid-ride resumes, > 2 min recovers", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "d7", group: phone, title: "Simulated disconnect (phone takes over)", how: "Simulated scooter → Fault \"D7 · Disconnect at 40%\" → 50× → Start",
                   expected: "GPS speed shown (labelled) during the gap; totals stay scooter-only", needsScooter: false, manual: false, tool: .simulator),
         CheckItem(id: "d8", group: phone, title: "Simulator keeps real data apart", how: "Any simulator run",
