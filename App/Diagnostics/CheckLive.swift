@@ -46,7 +46,7 @@ enum CheckLive {
         }
     }
 
-    /// "Run all automatic": step i of 7.
+    /// "Run all automatic": step i of 8.
     static func autoBar() -> CheckBar? {
         let auto = AutoRunner.shared
         guard auto.running else { return nil }

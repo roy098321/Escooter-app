@@ -117,6 +117,8 @@ enum CheckList {
                   expected: "A bar with time left on the 4-min test and on Run all automatic; b9 / c5 / c6 / c7 show a checklist that ticks itself", needsScooter: false, manual: true, tool: .none),
         CheckItem(id: "u2", group: phone, title: "Version 0.5 and thresholds (M1-01)", how: "Nothing to do · Run all automatic also marks it",
                   expected: "Version 0.5; speed warning on above 45 km/h, off below 43 (T99); safety margin +10% (T101)", needsScooter: false, manual: false, tool: .none),
+        CheckItem(id: "u3", group: phone, title: "Fake scooter replays phone GPS + barometer (M1-02)", how: "Nothing to do · Run all automatic marks it",
+                  expected: "The ride-2 phone track lines up with the scooter samples (≤ 5 m); GPS and barometer replay on the same clock", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "d7", group: phone, title: "Simulated disconnect (phone takes over)", how: "Simulated scooter → Fault \"D7 · Disconnect at 40%\" → 50× → Start",
                   expected: "GPS speed shown (labelled) during the gap; totals stay scooter-only", needsScooter: false, manual: false, tool: .simulator),
         CheckItem(id: "d8", group: phone, title: "Simulator keeps real data apart", how: "Any simulator run",

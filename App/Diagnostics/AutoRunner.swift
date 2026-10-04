@@ -13,11 +13,11 @@ final class AutoRunner {
     private(set) var step = ""
     /// M1-00b: which of the `stepCount` jobs is running, for the progress bar
     private(set) var stepIndex = 0
-    static let stepCount = 7
+    static let stepCount = 8
     private(set) var summary: [String] = []
 
     /// The checks this button can settle
-    static let ids = ["h1", "a3", "a6", "u2", "e1", "d6", "d9", "d1", "d7", "d8",
+    static let ids = ["h1", "a3", "a6", "u2", "u3", "e1", "d6", "d9", "d1", "d7", "d8",
                       "e2", "e3", "e3b", "e4", "e5", "e6", "e6b", "e7"]
 
     func run() async {
@@ -47,21 +47,25 @@ final class AutoRunner {
         stepIndex = 4
         BackupRestoreTest.run()
 
+        step = "Phone replay (GPS + barometer)"
+        stepIndex = 5
+        PhoneReplayCheck.run()
+
         if model.scooter.connected {
             summary.append("Simulator checks skipped: the real scooter is connected (switch it off and run again)")
         } else {
             let sim = model.simulator
             let saved = (sim.fixtureID, sim.scenarioID, sim.speed)
             step = "Simulator: ride 1"
-            stepIndex = 5
+            stepIndex = 6
             await simulate(fixture: "F2", scenario: SimScenario.clean.id)
             step = "Simulator: disconnect at 40%"
-            stepIndex = 6
+            stepIndex = 7
             await simulate(fixture: "F3", scenario: "D7")
             (sim.fixtureID, sim.scenarioID, sim.speed) = saved
         }
 
-        stepIndex = 7
+        stepIndex = 8
         step = OutsideProbes.shared.isOffline ? "Outside data (offline: e8)" : "Outside data"
         await OutsideProbes.shared.runAll()
 

@@ -63,10 +63,10 @@ public struct SimScenario: Identifiable, Sendable {
         SimScenario(id: "T8", title: "Scooter switches itself off (0x80)", playable: true) {
             [.shutdown(at: $0 + 900)]
         },
-        SimScenario(id: "SC-07", title: "GPS lost for 2 min (needs P5 phone replay)", playable: false) {
+        SimScenario(id: "SC-07", title: "GPS lost for 2 min (phone replay ready; plays in the real screens from M1-15)", playable: false) {
             [.gpsLoss(from: $0 + 600, to: $0 + 720)]
         },
-        SimScenario(id: "SC-14", title: "App killed mid-ride (needs P5 recorder)", playable: false) {
+        SimScenario(id: "SC-14", title: "App killed mid-ride (phone replay ready; plays with the recorder, M1-09 / M1-15)", playable: false) {
             [.appRelaunch(at: $0 + 600)]
         }
     ]

@@ -195,6 +195,24 @@ public enum LogReader {
         return out
     }
 
+    /// Sensor Logger: the epoch second at which seconds_elapsed is 0 (first row's time minus its offset).
+    public static func sensorLoggerEpochZeroS(_ text: String) -> Double? {
+        let all = lines(text)
+        guard all.count > 1 else { return nil }
+        let header = csvFields(all[0])
+        guard let iTime = header.firstIndex(of: "time"), let iElapsed = header.firstIndex(of: "seconds_elapsed") else { return nil }
+        let c = csvFields(all[1])
+        guard iTime < c.count, iElapsed < c.count, let ns = Double(c[iTime]), let elapsed = Double(c[iElapsed]) else { return nil }
+        return ns / 1e9 - elapsed
+    }
+
+    /// 1-per-second merged log: time of day of the first row, seconds after midnight.
+    public static func mergedStartTimeOfDayS(_ text: String) -> Double? {
+        let all = lines(text)
+        guard all.count > 1, let first = csvFields(all[1]).first else { return nil }
+        return timeOfDay(first)
+    }
+
     // MARK: Helpers
 
     /// Splits one CSV line; handles quoted fields with "" escapes (nRF lines are quoted).
