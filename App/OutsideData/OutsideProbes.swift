@@ -20,6 +20,9 @@ final class OutsideProbes {
     }
 
     private(set) var running = false
+    /// M1-00b: probes finished in the current run (of `probesPerRun`), for the progress bar
+    private(set) var probesDone = 0
+    static let probesPerRun = 9
     private(set) var lines: [String: Line] = [:]
 
     /// MET Norway and OSM require an identifying User-Agent (ARCHITECTURE §3).
@@ -49,7 +52,7 @@ final class OutsideProbes {
     var isOffline: Bool { !pathSatisfied }
 
     func runAll() async {
-        await MainActor.run { running = true }
+        await MainActor.run { running = true; probesDone = 0 }
         let offline = isOffline
         // Offline (e8): the probes run to show their fallbacks, without overwriting e2–e7
         recordChecks = !offline
@@ -134,6 +137,7 @@ final class OutsideProbes {
             await MainActor.run {
                 lines[id] = Line(id: id, status: .pass, text: text)
                 if recordChecks { CheckResults.shared.set(id, .pass, text) }
+                probesDone += 1
             }
         } catch {
             let text = "Failed: \(error.localizedDescription) · fallback: \(Self.fallback(id))"
@@ -141,6 +145,7 @@ final class OutsideProbes {
             await MainActor.run {
                 lines[id] = Line(id: id, status: .fail, text: text)
                 if recordChecks { CheckResults.shared.set(id, .fail, text) }
+                probesDone += 1
             }
         }
     }

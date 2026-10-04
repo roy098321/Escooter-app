@@ -1,3 +1,4 @@
+import CorckieCore
 import SwiftUI
 
 /// Settings → Developer → Checks: the build's whole check list (TESTING §6), a To do list,
@@ -52,9 +53,15 @@ struct ChecksView: View {
                 Task { await auto.run() }
             } label: {
                 if auto.running {
-                    HStack {
-                        ProgressView()
-                        Text(auto.step.isEmpty ? "Running…" : auto.step)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            ProgressView()
+                            Text(auto.step.isEmpty ? "Running…" : auto.step)
+                        }
+                        if let bar = CheckLive.autoBar() {
+                            ProgressView(value: bar.fraction)
+                            Text(bar.label).font(.footnote).monospacedDigit().foregroundStyle(.secondary)
+                        }
                     }
                 } else {
                     Label("Run all automatic", systemImage: "play.circle.fill").font(.headline)
@@ -67,6 +74,42 @@ struct ChecksView: View {
         } footer: {
             Text("Runs every check the phone can do by itself: permissions, settings, error log, backup + restore, the simulator ones (scooter off) and outside data. About a minute.")
         }
+    }
+}
+
+/// M1-00b: a progress bar on a running check, or a checklist that ticks itself on a multi-step
+/// one. Re-read every second, so it follows the live state even when the check runs elsewhere.
+struct LiveCheckBlock: View {
+    let id: String
+
+    var body: some View {
+        if CheckLive.steps(id) != nil || CheckLive.bar(id) != nil || Self.mayRun(id) {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                VStack(alignment: .leading, spacing: 4) {
+                    if let bar = CheckLive.bar(id, now: context.date) {
+                        ProgressView(value: bar.fraction)
+                        Text(bar.label).font(.footnote).monospacedDigit().foregroundStyle(.secondary)
+                    }
+                    if let steps = CheckLive.steps(id) {
+                        Text("Steps · (CheckProgress.tally(steps))").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        ForEach(Array(steps.enumerated()), id: .offset) { _, step in
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Image(systemName: step.done ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(step.done ? Color.green : Color.secondary)
+                                Text(step.title).font(.footnote).foregroundStyle(step.done ? .primary : .secondary)
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("(step.title), (step.done ? "done" : "not yet")")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Checks that can show a bar later even though nothing runs this second
+    private static func mayRun(_ id: String) -> Bool {
+        ["b8", "c8", "c2", "c3", "c4", "d1", "d7", "d8", "e2", "e3", "e3b", "e4", "e5", "e6", "e6b", "e7", "e8"].contains(id)
     }
 }
 
@@ -122,6 +165,7 @@ struct CheckRow: View {
             if note.isEmpty {
                 Text("Expected: \(item.expected)").font(.caption).foregroundStyle(.tertiary)
             }
+            LiveCheckBlock(id: item.id)
             let ownerNote = results.ownerNote(item.id)
             if !ownerNote.isEmpty {
                 Label(ownerNote, systemImage: "note.text").font(.caption).foregroundStyle(.blue)

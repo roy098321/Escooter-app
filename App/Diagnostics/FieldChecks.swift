@@ -18,6 +18,15 @@ final class FieldChecks: NSObject {
     private(set) var rangeArmed = false
     private(set) var rangeLostAt: Date?
     private(set) var rangeLog: [String] = []
+    /// M1-00b step ticks (observed, so the Checks screen follows them)
+    private(set) var rangeLocked = false
+    private(set) var rangeLost = false
+    private(set) var rangeBack = false
+    private(set) var restartSeen = false
+    private(set) var startedInBackground = false
+    private(set) var wakeSeen = false
+    private(set) var notificationSent = false
+    private(set) var lowPowerWoke = false
 
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private var stabilityTimer: Timer?
@@ -37,6 +46,10 @@ final class FieldChecks: NSObject {
     /// At launch (before the data is readable): remember how the app was started.
     func appLaunched() {
         launchedInBackground = UIApplication.shared.applicationState == .background
+        startedInBackground = launchedInBackground
+        NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            if self?.rangeArmed == true { self?.rangeLocked = true }
+        }
         UNUserNotificationCenter.current().delegate = self
     }
 
@@ -46,6 +59,7 @@ final class FieldChecks: NSObject {
             let boot = Date().addingTimeInterval(-ProcessInfo.processInfo.systemUptime)
             let stored = defaults.object(forKey: "corckie.lastBootSeen") as? Date
             firstLaunchSinceBoot = stored.map { abs($0.timeIntervalSince(boot)) > 120 } ?? false
+            restartSeen = firstLaunchSinceBoot == true
             defaults.set(boot, forKey: "corckie.lastBootSeen")
         }
         evaluateRestartWake()
@@ -57,8 +71,10 @@ final class FieldChecks: NSObject {
     func scooterConnected(inBackground: Bool) {
         if inBackground {
             wakeAt = Date()
+            wakeSeen = true
             evaluateRestartWake()
             if ProcessInfo.processInfo.isLowPowerModeEnabled {
+                lowPowerWoke = true
                 lowPowerWake = (AppModel.shared.scooter.packetsInBackground, PhoneSensors.shared.fixesInBackground)
             }
         }
@@ -78,6 +94,7 @@ final class FieldChecks: NSObject {
             rangeLog.append(line)
             CheckResults.shared.set("b9", inBackground ? .pass : .info, line)
             rangeLostAt = nil
+            rangeBack = true
             rangeArmed = false
         }
     }
@@ -88,6 +105,7 @@ final class FieldChecks: NSObject {
         }
         if rangeArmed, rangeLostAt == nil {
             rangeLostAt = Date()
+            rangeLost = true
             rangeLog.append("Out of range at \(Date().formatted(date: .omitted, time: .standard)) · \(reason)")
         }
     }
@@ -140,6 +158,7 @@ final class FieldChecks: NSObject {
                         CheckResults.shared.set("c6", .fail, "Couldn't send: \(error.localizedDescription)")
                     } else {
                         self.lastWakeNotification = Date()
+                        self.notificationSent = true
                         Log.info(source: "notify", "sent (\(batteryPct)%, sounds \(settings.soundSetting == .enabled ? "on" : "off"))")
                         self.checkDeliveredNotification()
                     }
@@ -209,6 +228,9 @@ final class FieldChecks: NSObject {
     func armRangeTest() {
         rangeArmed = true
         rangeLostAt = nil
+        rangeLocked = UIApplication.shared.applicationState != .active
+        rangeLost = false
+        rangeBack = false
         rangeLog.append("Armed at \(Date().formatted(date: .omitted, time: .standard)): walk away until it disconnects, then come back")
         CheckResults.shared.set("b9", .pending, "Armed · walk away with the phone, then come back")
     }

@@ -11,6 +11,9 @@ final class AutoRunner {
 
     private(set) var running = false
     private(set) var step = ""
+    /// M1-00b: which of the `stepCount` jobs is running, for the progress bar
+    private(set) var stepIndex = 0
+    static let stepCount = 7
     private(set) var summary: [String] = []
 
     /// The checks this button can settle
@@ -25,19 +28,23 @@ final class AutoRunner {
         let model = AppModel.shared
 
         step = "Permissions"
+        stepIndex = 1
         PermissionsCheck.shared.refresh()
         try? await Task.sleep(nanoseconds: 800_000_000)
 
         step = "App ID, database, fuel price setting"
+        stepIndex = 2
         InstallChecks.run(database: model.database, error: model.databaseError)
 
         step = "Error log"
+        stepIndex = 3
         let marker = "Automatic test entry \(UUID().uuidString.prefix(8))"
         Log.info(source: "developer", marker)
         let stored = model.database != nil && ErrorLog.shared.lines().contains { $0.hasSuffix(marker) }
         results.set("d6", stored ? .pass : .fail, stored ? "Stored in the database and read back" : "Not found in the database log")
 
         step = "Backup + restore"
+        stepIndex = 4
         BackupRestoreTest.run()
 
         if model.scooter.connected {
@@ -46,12 +53,15 @@ final class AutoRunner {
             let sim = model.simulator
             let saved = (sim.fixtureID, sim.scenarioID, sim.speed)
             step = "Simulator: ride 1"
+            stepIndex = 5
             await simulate(fixture: "F2", scenario: SimScenario.clean.id)
             step = "Simulator: disconnect at 40%"
+            stepIndex = 6
             await simulate(fixture: "F3", scenario: "D7")
             (sim.fixtureID, sim.scenarioID, sim.speed) = saved
         }
 
+        stepIndex = 7
         step = OutsideProbes.shared.isOffline ? "Outside data (offline: e8)" : "Outside data"
         await OutsideProbes.shared.runAll()
 
@@ -66,6 +76,7 @@ final class AutoRunner {
         summary += lines
         Log.info(source: "developer", "Run all automatic: \(passed)/\(Self.ids.count) passed")
         step = ""
+        stepIndex = 0
         running = false
     }
 
