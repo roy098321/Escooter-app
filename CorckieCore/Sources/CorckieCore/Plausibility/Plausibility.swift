@@ -113,7 +113,8 @@ public struct Plausibility {
         while let first = window.first, t - first.t > T.t07WindowS { window.removeFirst() }
         tick(at: t)
         // Needs a reasonable sample (a third of a minute of packets) before judging the share.
-        guard !formatChanged, window.count >= 40, let first = window.first, t - first.t >= 10 else { return }
+        // The share rule keeps watching after a "no packet A" trip, so the ride engine can still act on it
+        guard !failedShareTripped, window.count >= 40, let first = window.first, t - first.t >= 10 else { return }
         let share = Double(window.filter { $0.failed }.count) / Double(window.count)
         if share > T.t07FailedFrameShare {
             formatChanged = true

@@ -222,7 +222,7 @@ final class PhoneTakeoverTests: XCTestCase {
     }
 
     func test_SC04_formatChange_switchesToPhoneMode() throws {
-        let r = EngineRunner.run(try rideTwoWithPhone { [.corruptBytes(from: $0 + 700, to: $0 + 1_000, share: 0.3)] })
+        let r = EngineRunner.run(try rideTwoWithPhone { [.corruptBytes(from: $0 + 700, to: $0 + 1_000, share: 0.6)] })
         let start = try XCTUnwrap(r.phoneModeStarts.first)
         XCTAssertEqual(start.reason, .formatChanged)
         let sampleT = (r.samples.values.flatMap { $0 })
