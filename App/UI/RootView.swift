@@ -14,6 +14,8 @@ struct RootView: View {
     /// M1-12: read in the body, so the cover follows the recorder (observation)
     private var liveCoverShown: Bool { RecorderService.shared.rideActive || RecorderService.shared.readyRequested }
 
+    private var summaryShown: Bool { RecorderService.shared.summaryRideId != nil }
+
     @ViewBuilder private var content: some View {
         if let error = model.databaseError {
             DataUpdateFailedView(message: error)
@@ -21,9 +23,10 @@ struct RootView: View {
             UIShot.screen(shot)
         } else {
             tabs
-                .fullScreenCover(isPresented: .constant(liveCoverShown)) {
-                    // M1-12: no tab bar, no navigation, no swipe-down while a ride is on
-                    LiveRideView()
+                .fullScreenCover(isPresented: .constant(liveCoverShown || summaryShown)) {
+                    // M1-12: no tab bar, no navigation, no swipe-down while a ride is on.
+                    // M1-13: when the ride is over the same cover turns into its summary.
+                    RideCover()
                         .v1Label()
                 }
                 .safeAreaInset(edge: .top) {
@@ -116,6 +119,8 @@ enum UIShot {
             case "results": ResultsView()
             case "simulator": SimulatorView()
             case "rides": RidesListView()
+            case "ride-detail", "ride-nogps", "ride-gap", "ride-walk":
+                RideDetailView(rideId: nil, preview: RideDetailPreview.model(name))
             case "outside": OutsideDataView()
             case "scooter": ScooterCheckView()
             case "onboarding1": OnboardingView(previewFound: true) { _ in }
@@ -130,6 +135,21 @@ enum UIShot {
                     HomeView()
                 }
             }
+        }
+    }
+}
+
+/// M1-12 / M1-13: the full-screen cover shows the live view while a ride (or Ready) is on, then the ride's summary.
+struct RideCover: View {
+    var body: some View {
+        let service = RecorderService.shared
+        if service.rideActive || service.readyRequested {
+            LiveRideView()
+        } else if let id = service.summaryRideId {
+            NavigationStack {
+                RideDetailView(rideId: id, onDone: { RecorderService.shared.dismissSummary() })
+            }
+            .interactiveDismissDisabled(true)
         }
     }
 }

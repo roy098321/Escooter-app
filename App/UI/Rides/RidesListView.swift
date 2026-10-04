@@ -19,6 +19,7 @@ struct RidesListView: View {
     var body: some View {
         NavigationStack {
             content
+                .onAppear(perform: reload)
                 .navigationTitle("Rides")
                 .screen("Rides")
                 .toolbar {
@@ -85,12 +86,13 @@ struct RidesListView: View {
     private func row(_ ride: RideListItem, showDay: Bool = false) -> some View {
         let offset = ride.utcOffsetMin ?? TimeZone.current.secondsFromGMT() / 60
         let date = Date(timeIntervalSince1970: Double(ride.startAt) / 1000)
-        return HStack {
+        return NavigationLink {
+            RideDetailView(rideId: ride.id)
+        } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(Self.timeText(date, offsetMin: offset, withDay: showDay)).font(.body)
                 Text(Self.detail(ride)).font(.footnote).foregroundStyle(.secondary)
             }
-            Spacer()
         }
         .swipeActions {
             Button(role: .destructive) { pendingDelete = ride } label: { Label("Delete", systemImage: "trash") }

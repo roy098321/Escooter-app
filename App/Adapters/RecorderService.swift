@@ -18,6 +18,8 @@ final class RecorderService {
     private(set) var live: LiveState?
     private(set) var rideActive = false
     private(set) var lastClosedRideId: String?
+    /// M1-13: the ride whose summary is waiting to be shown once the live view is done (nil = none)
+    private(set) var summaryRideId: String?
     /// M1-12: everything the live ride screen draws (computed here once a second by `LiveScreenDriver`)
     private(set) var liveScreen: LiveScreenState?
     private(set) var livePath = LivePath()
@@ -50,6 +52,7 @@ final class RecorderService {
             rideClosed: { id, status in
                 DispatchQueue.main.async {
                     RecorderService.shared.lastClosedRideId = id
+                    RecorderService.shared.summaryRideId = id
                     Log.info(source: "recorder", "Ride closed (\(status))")
                 }
             },
@@ -143,6 +146,9 @@ final class RecorderService {
     func answerSameRide(_ yes: Bool) {
         press(.sameRideAnswer(yes))
     }
+
+    /// M1-13: the rider closed the summary (Done) or it could not load
+    func dismissSummary() { summaryRideId = nil }
 
     /// D2: the "Going for a ride?" notification was tapped: open the live view in "Ready".
     func requestReady() { readyRequested = true }
