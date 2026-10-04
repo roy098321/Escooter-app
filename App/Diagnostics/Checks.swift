@@ -131,6 +131,8 @@ enum CheckList {
                   expected: "One notification per power-on across 3 reconnect blips, removed at ride start and at scooter off, sent at night, never with the app open; every decision stored in the message log of a temporary database", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u8", group: phone, title: "Rides list rules (M1-14)", how: "Nothing to do · Run all automatic marks it",
                   expected: "Newest ride under Latest, other rides grouped by day, short hop kept apart, discarded hidden, date filter and delete work on made-up rides in a temporary database", needsScooter: false, manual: false, tool: .none),
+        CheckItem(id: "u9", group: phone, title: "Ride start and autostart traps (M1-03)", how: "Nothing to do · Run all automatic marks it",
+                  expected: "On the fake scooter: walking the scooter is cancelled or trimmed away, a spinning wheel is cancelled within 20 s, a kick-start is confirmed by the motor current; Start ride skips the confirm step; Not riding cancels silently", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "d7", group: phone, title: "Simulated disconnect (phone takes over)", how: "Simulated scooter → Fault \"D7 · Disconnect at 40%\" → 50× → Start",
                   expected: "GPS speed shown (labelled) during the gap; totals stay scooter-only", needsScooter: false, manual: false, tool: .simulator),
         CheckItem(id: "d8", group: phone, title: "Simulator keeps real data apart", how: "Any simulator run",
