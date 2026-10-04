@@ -129,6 +129,8 @@ enum CheckList {
                   expected: "SLOW above 45, clears below 43 (scooter and GPS); GPS speed labelled; banners locked from 5 km/h; 2 at ride start; hot once, very hot until it cools; one \"Going for a ride?\" per power-on", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u7", group: phone, title: "\"Going for a ride?\" rules and message log (M1-10)", how: "Nothing to do · Run all automatic marks it",
                   expected: "One notification per power-on across 3 reconnect blips, removed at ride start and at scooter off, sent at night, never with the app open; every decision stored in the message log of a temporary database", needsScooter: false, manual: false, tool: .none),
+        CheckItem(id: "u8", group: phone, title: "Rides list rules (M1-14)", how: "Nothing to do · Run all automatic marks it",
+                  expected: "Newest ride under Latest, other rides grouped by day, short hop kept apart, discarded hidden, date filter and delete work on made-up rides in a temporary database", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "d7", group: phone, title: "Simulated disconnect (phone takes over)", how: "Simulated scooter → Fault \"D7 · Disconnect at 40%\" → 50× → Start",
                   expected: "GPS speed shown (labelled) during the gap; totals stay scooter-only", needsScooter: false, manual: false, tool: .simulator),
         CheckItem(id: "d8", group: phone, title: "Simulator keeps real data apart", how: "Any simulator run",

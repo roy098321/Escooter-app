@@ -33,7 +33,9 @@ struct RootView: View {
     private var tabs: some View {
         TabView(selection: $tab) {
             placeholder("Routes", "point.topleft.down.to.point.bottomright.curvepath").tag(0)
-            placeholder("Rides", "list.bullet").tag(1)
+            RidesListView()
+                .tabItem { Label("Rides", systemImage: "list.bullet") }
+                .tag(1)
             HomeView()
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(2)
@@ -122,6 +124,7 @@ enum UIShot {
             case "checks": ChecksView()
             case "results": ResultsView()
             case "simulator": SimulatorView()
+            case "rides": RidesListView()
             case "outside": OutsideDataView()
             case "scooter": ScooterCheckView()
             default: HomeView()
