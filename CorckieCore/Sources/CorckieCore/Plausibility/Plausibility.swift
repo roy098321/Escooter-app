@@ -18,6 +18,9 @@ public struct Plausibility {
     /// The link is untrusted: banner "Scooter data format changed", phone mode (DEPENDENCIES #2).
     public private(set) var formatChanged = false
     public private(set) var formatChangeReason: String?
+    /// The failed-share rule (> T07 of the frames over 60 s) tripped. The ride engine acts on this one only:
+    /// "no packet A for 10 s" is already "scooter gone" there (connected but silent).
+    public private(set) var failedShareTripped = false
 
     private var lastSpeed: (t: Double, kmh: Double)?
     private var lastBattery: (t: Double, pct: Int)?
@@ -114,6 +117,7 @@ public struct Plausibility {
         let share = Double(window.filter { $0.failed }.count) / Double(window.count)
         if share > T.t07FailedFrameShare {
             formatChanged = true
+            failedShareTripped = true
             formatChangeReason = "\(Int((share * 100).rounded()))% of frames failed the checks in the last minute"
         }
     }

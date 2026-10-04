@@ -101,4 +101,66 @@ enum RideEngineCheck {
 
         CheckResults.shared.set("u10", ok ? .pass : .fail, notes.joined(separator: " · "))
     }
+
+    /// u11 (M1-05): phone takeover and the speed warning on the fake scooter: a 1-s blip changes nothing, after
+    /// ~5 s the phone takes over (GPS speed labelled, "~N% est.", gap row), the scooter numbers and the odometer
+    /// distance come back on reconnect; SLOW above 45 / clears below 43 on scooter speed (SPD-46) and on GPS speed
+    /// while disconnected (SPD-46-GPS), one on / off per crossing.
+    static func runTakeover() {
+        var notes: [String] = []
+        var ok = true
+        func expect(_ condition: Bool, _ what: String) {
+            notes.append((condition ? "✓ " : "✗ ") + what)
+            if !condition { ok = false }
+        }
+        func scenario(_ id: String) -> SimStream? { SyntheticScenario.all.first { $0.id == id }?.build() }
+        func f0(_ v: Double) -> String { String(format: "%.0f", v) }
+
+        if let s = scenario("SPD-46") {
+            let r = EngineRunner.run(s, tailS: 5, collectLive: true)
+            let c = r.slowChanges
+            let still44 = r.live.first { $0.t == 40 }?.state.slow ?? false
+            expect(c.count == 2 && c[0].on && !c[1].on && still44,
+                   "SPD-46: SLOW on at \(c.first.map { f0($0.t) } ?? "–") s (> 45), still red at 44, off at \(c.count > 1 ? f0(c[1].t) : "–") s (< 43), \(c.count) changes")
+        } else { expect(false, "SPD-46 scenario missing") }
+
+        if let s = scenario("SPD-46-GPS") {
+            let r = EngineRunner.run(s, tailS: 5, collectLive: true)
+            let phone = r.live.filter { $0.t >= 77 && $0.t <= 108 }
+            let gpsSlow = !phone.isEmpty && phone.allSatisfy { $0.state.slow && $0.state.speedLabel == "GPS" && $0.state.batteryEstimated }
+            let held = r.live.filter { $0.t >= 71 && $0.t <= 74 }.allSatisfy { $0.state.speedSource == .scooter }
+            let changes = r.slowChanges.filter { $0.t <= 130 }.count
+            expect(gpsSlow && held && changes == 1,
+                   "SPD-46-GPS: held for the ~5 s wait, then red + SLOW with the GPS label and ~% est. while disconnected; \(changes) change")
+            let filled = (r.ends.first?.ride ?? r.engine.ride)?.gapList.first?.odometerFilledM
+            expect(r.phoneModeEnds.count == 1 && (filled ?? 0) > 300,
+                   "reconnect: scooter numbers back, odometer filled \(filled.map { f0($0) } ?? "–") m of the gap")
+        } else { expect(false, "SPD-46-GPS scenario missing") }
+
+        // A 1-s blip: no takeover, no gap
+        var e = RideEngine()
+        e.handle(.connected, at: 0)
+        e.handle(.startPressed, at: 0.5)
+        var f = ScooterFrame(t: 1)
+        f.speedKmh = 20
+        f.currentA = 8
+        f.batteryPct = 80
+        f.odometerKm = 50
+        var events: [RideEngineEvent] = []
+        for t in stride(from: 1.0, through: 10, by: 0.5) {
+            f.t = t
+            events += e.handle(.frame(f), at: t)
+        }
+        events += e.handle(.disconnected, at: 10.2)
+        let blipLinked = e.liveInput(at: 10.8).scooterLinked
+        events += e.handle(.connected, at: 11)
+        for t in stride(from: 11.0, through: 20, by: 0.5) {
+            f.t = t
+            events += e.handle(.frame(f), at: t)
+        }
+        let takeovers = events.filter { if case .phoneModeStarted = $0 { return true } else { return false } }.count
+        expect(blipLinked && takeovers == 0, "1-s link drop: scooter numbers kept, no phone mode, no gap")
+
+        CheckResults.shared.set("u11", ok ? .pass : .fail, notes.joined(separator: " · "))
+    }
 }

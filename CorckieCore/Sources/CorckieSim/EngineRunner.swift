@@ -13,6 +13,31 @@ public enum EngineRunner {
         public var engine = RideEngine()
         /// What recovery decided at each relaunch
         public var recoveries: [RideRecovery.Decision] = []
+        /// M1-05: what the live view would show at every tick (only with `collectLive`)
+        public var live: [(t: Double, state: LiveState, input: LiveInput)] = []
+
+        public var phoneModeStarts: [(seq: Int, at: Double, reason: PhoneModeReason)] {
+            events.compactMap { item -> (seq: Int, at: Double, reason: PhoneModeReason)? in
+                if case let .phoneModeStarted(s, a, r) = item.event { return (seq: s, at: a, reason: r) }
+                return nil
+            }
+        }
+        public var phoneModeEnds: [(seq: Int, at: Double)] {
+            events.compactMap { item -> (seq: Int, at: Double)? in
+                if case let .phoneModeEnded(s, a) = item.event { return (seq: s, at: a) }
+                return nil
+            }
+        }
+        /// Times the speed warning switched on / off (from `live`)
+        public var slowChanges: [(t: Double, on: Bool)] {
+            var out: [(t: Double, on: Bool)] = []
+            var last = false
+            for item in live where item.state.slow != last {
+                out.append((t: item.t, on: item.state.slow))
+                last = item.state.slow
+            }
+            return out
+        }
 
         public var started: [(seq: Int, at: Double, manual: Bool)] {
             events.compactMap { item -> (seq: Int, at: Double, manual: Bool)? in
@@ -76,7 +101,7 @@ public enum EngineRunner {
     ///   - answerSameRide: answer every "Same ride?" offer at once with this (nil = never answer)
     public static func run(_ stream: SimStream, presses: [Press] = [], tailS: Double = 300,
                            relaunchAt: Double? = nil, relaunchGapS: Double = 3, answerSameRide: Bool? = nil,
-                           sampleIntervalS: Double = 5) -> Result {
+                           sampleIntervalS: Double = 5, collectLive: Bool = false) -> Result {
         var items = stream.scooter.map { Item.scooter($0) } + stream.phone.map { Item.phone($0) } + presses.map { Item.press($0) }
         items = items.enumerated().sorted { a, b in a.element.t == b.element.t ? a.offset < b.offset : a.element.t < b.element.t }
             .map(\.element)
@@ -89,6 +114,7 @@ public enum EngineRunner {
         var relaunchPending = relaunchAt
         var skipUntil = -Double.infinity
         var lastSampleAbsT: Double?
+        var builder = LiveStateBuilder()
 
         func take(_ events: [RideEngineEvent], at t: Double) {
             for e in events {
@@ -115,6 +141,10 @@ public enum EngineRunner {
         func tick(until t: Double) {
             while nextTick < t {
                 take(feed.input(.tick, at: nextTick), at: nextTick)
+                if collectLive {
+                    let input = feed.engine.liveInput(at: nextTick)
+                    result.live.append((t: nextTick, state: builder.update(input), input: input))
+                }
                 nextTick += 1
             }
         }
@@ -165,7 +195,16 @@ public enum EngineRunner {
                 switch e.event {
                 case .fix(let f):
                     take(feed.fix(f), at: e.t)
-                    sampler?.update(fix: f)
+                    if feed.engine.phoneMode(at: e.t), var s = sampler {
+                        // phone mode: GPS-only samples keep the path going (no scooter fields)
+                        if let sample = s.offer(fix: f, startT: startT) {
+                            result.samples[feed.engine.ride?.seq ?? 0, default: []].append(sample)
+                            lastSampleAbsT = f.t
+                        }
+                        sampler = s
+                    } else {
+                        sampler?.update(fix: f)
+                    }
                 case .baro(let b):
                     sampler?.update(baro: b)
                 default:

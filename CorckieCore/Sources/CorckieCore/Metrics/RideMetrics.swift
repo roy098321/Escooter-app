@@ -64,6 +64,11 @@ public struct RideSampler: Sendable {
     private var nextT: Double?
     private var fix: PhoneFix?
     private var baro: BaroReading?
+    var nextDueT: Double? {
+        get { nextT }
+        set { nextT = newValue }
+    }
+    var lastBaro: BaroReading? { baro }
 
     public init(intervalS: Double = 5) {
         self.intervalS = intervalS
@@ -93,6 +98,24 @@ public struct RideSampler: Sendable {
         if let b = baro, frame.t - b.t <= Self.maxFixAgeS, frame.t >= b.t {
             s.altBaroM = b.relativeAltitudeM
         }
+        return s
+    }
+}
+
+extension RideSampler {
+    /// M1-05 phone mode: a GPS-only sample (no scooter fields, so no energy and no wheel distance; the path keeps
+    /// going for the dashed stretch on the map). Shares the 5-s rhythm with `offer(_:startT:)`.
+    public mutating func offer(fix f: PhoneFix, startT: Double) -> RideSample? {
+        update(fix: f)
+        guard f.isGood else { return nil }
+        if let due = nextDueT, f.t < due { return nil }
+        nextDueT = f.t + intervalS
+        var s = RideSample(t: f.t - startT)
+        s.lat = f.lat
+        s.lon = f.lon
+        s.hAccM = f.hAccM >= 0 ? f.hAccM : nil
+        s.gpsSpeedKmh = f.speedMps >= 0 ? f.speedMps * 3.6 : nil
+        if let b = lastBaro, f.t - b.t <= Self.maxFixAgeS, f.t >= b.t { s.altBaroM = b.relativeAltitudeM }
         return s
     }
 }

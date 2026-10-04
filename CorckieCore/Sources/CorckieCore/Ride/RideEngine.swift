@@ -126,6 +126,45 @@ public struct RideSpan: Codable, Equatable, Sendable {
     public func contains(_ t: Double) -> Bool { t >= startT && t <= (endT ?? .infinity) }
 }
 
+/// Why the phone took over (G1 phone mode, M1-05).
+public enum PhoneModeReason: String, Codable, Sendable {
+    /// The scooter link dropped (or went silent) for longer than the takeover wait
+    case disconnected
+    /// G1b format-change watch: the scooter readings are no longer trusted (SC-04)
+    case formatChanged
+}
+
+/// A scooter gap inside a ride (G1, `gap` row kind `scooter`): phone mode from `startT` (when the scooter
+/// readings went) to `endT` (the first valid frame again).
+public struct RideGap: Codable, Equatable, Sendable {
+    public var startT: Double
+    /// nil while the phone is still in charge
+    public var endT: Double?
+    public var reason: PhoneModeReason
+    /// GPS distance inside the gap, m (only for the live "~N% est.", never for the totals)
+    public var gpsM: Double
+    /// Scooter battery % when the readings went (the estimate starts here, T49)
+    public var batteryAtStartPct: Int?
+    public var odoBeforeKm: Double?
+    public var odoAfterKm: Double?
+
+    public init(startT: Double, reason: PhoneModeReason, gpsM: Double = 0, batteryAtStartPct: Int? = nil, odoBeforeKm: Double? = nil) {
+        self.startT = startT
+        self.reason = reason
+        self.gpsM = gpsM
+        self.batteryAtStartPct = batteryAtStartPct
+        self.odoBeforeKm = odoBeforeKm
+    }
+
+    public var isOpen: Bool { endT == nil }
+
+    /// M5: the distance the odometer filled in on reconnect, m
+    public var odometerFilledM: Double? {
+        guard let a = odoBeforeKm, let b = odoAfterKm, b >= a else { return nil }
+        return ((b - a) * 1000 * 10).rounded() / 10
+    }
+}
+
 /// The ride the engine is working on.
 public struct EngineRide: Codable, Equatable, Sendable {
     /// Engine-local number; the Recorder maps it to the ride row id
@@ -163,6 +202,12 @@ public struct EngineRide: Codable, Equatable, Sendable {
     public var anchorFix: EngineFix?
     /// Same ride: the earlier ride this one joins (`mergeGroupId`), set when the rider says Yes
     public var mergedIntoSeq: Int?
+    /// M1-05: scooter gaps (phone mode stretches); optional so older saved states still decode
+    public var gaps: [RideGap]?
+    /// Battery % at the start (this ride's %/km for the estimate, decision 5)
+    public var firstBatteryPct: Int?
+
+    public var gapList: [RideGap] { gaps ?? [] }
 
     public init(seq: Int, startT: Double, manual: Bool) {
         self.seq = seq
@@ -220,6 +265,8 @@ public enum RideEngineInput: Equatable, Sendable {
     case endHeld
     /// Answer to the "Same ride?" banner
     case sameRideAnswer(Bool)
+    /// G1b format-change watch tripped: the scooter readings are untrusted until the next connect (SC-04)
+    case formatChanged
     /// About once a second, so the timeouts run without data
     case tick
 }
@@ -239,6 +286,11 @@ public enum RideEngineEvent: Equatable, Sendable {
     case walkStarted(seq: Int, at: Double)
     /// D3 / T80: save the % as the real empty point for range
     case batteryRanOut(seq: Int, pct: Int)
+    /// G1: the phone took over (open a `gap` row from `at`; banner "Scooter disconnected · reconnecting…" or
+    /// "Scooter data format changed")
+    case phoneModeStarted(seq: Int, at: Double, reason: PhoneModeReason)
+    /// The first valid frame again: close the gap row, scooter numbers back
+    case phoneModeEnded(seq: Int, at: Double)
     /// Close the ride row (end reason, end time, size class)
     case rideEnded(RideEnd)
 }
@@ -264,6 +316,16 @@ public struct RideEngine: Codable, Equatable, Sendable {
     public private(set) var shuttingDownSeen = false
     /// After a ride ends, a new one waits until the wheel has been at ≤ T10 once (a held end while rolling)
     public private(set) var armed = true
+    /// G1b format change seen (SC-04): readings ignored until the next connect
+    public private(set) var untrustedSince: Double?
+    /// The last scooter speed before the link went (shown through a blip shorter than the takeover wait)
+    public private(set) var heldSpeedKmh: Double?
+    /// GPS metres since the scooter readings went (the gap gets them when phone mode starts)
+    var goneGpsM = 0.0
+    /// The newest frame's own odometer reading (nil when that frame had none, e.g. the first after a reconnect)
+    var lastFrameOdoKm: Double?
+    /// Usual %/km = median of the last 10 rides (the Recorder sets it; decision 5). nil = not known yet
+    public var usualPctPerKm: Double?
 
     // Phone
     /// Good fixes of the last `fixWindowS`
@@ -294,6 +356,13 @@ public struct RideEngine: Codable, Equatable, Sendable {
     static let fixFreshS = 3.0
     /// Pushing must be broken this long before a walking stretch ends (GPS noise)
     static let pushGraceS = 3.0
+    /// M1-05: the phone takes over only after the scooter has been gone this long (P4 build 27: 1-s link drops
+    /// reconnect at once and must not switch to phone mode)
+    public static let takeoverWaitS = 5.0
+    /// G1: GPS speed is the median of this window
+    public static let gpsMedianWindowS = 3.0
+    /// Decision 5 fallback: 3.0 %/km (ride 2: 41% / 13.7 km)
+    public static let defaultPctPerKm = 3.0
 
     public init() {}
 
@@ -311,6 +380,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
             reconnected(at: t)
         case .disconnected:
             if connected { disconnectedAt = t }
+            if linkLive(at: t) { heldSpeedKmh = speedKmh }
             connected = false
             speedKmh = nil
             currentA = nil
@@ -328,6 +398,11 @@ public struct RideEngine: Codable, Equatable, Sendable {
             if ride != nil { finish(.held, at: t, &out) }
         case .sameRideAnswer(let yes):
             answerSameRide(yes, &out)
+        case .formatChanged:
+            if untrustedSince == nil, connected {
+                if linkLive(at: t) { heldSpeedKmh = speedKmh }
+                untrustedSince = t
+            }
         case .tick:
             break
         }
@@ -339,7 +414,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
 
     /// Scooter readings are arriving (connected and a frame within T07's 10 s)
     public func linkLive(at t: Double) -> Bool {
-        guard connected, let last = lastFrameT else { return false }
+        guard connected, untrustedSince == nil, let last = lastFrameT else { return false }
         return t - last <= T.t07NoPacketAS
     }
 
@@ -368,12 +443,17 @@ public struct RideEngine: Codable, Equatable, Sendable {
     private mutating func reconnected(at t: Double) {
         connected = true
         disconnectedAt = nil
+        untrustedSince = nil
         shuttingDownSeen = false
         armed = true
         if phase == .idle { phase = .ready }
     }
 
     private mutating func ingest(_ f: ScooterFrame, at t: Double, _ out: inout [RideEngineEvent]) {
+        if untrustedSince != nil, connected {
+            integrate(to: t)
+            return                         // untrusted readings (SC-04): stored raw by the Recorder, never used
+        }
         if !connected {
             reconnected(at: t)            // a log that starts mid-connection
         } else if let last = lastFrameT, t - last > T.t07NoPacketAS {
@@ -381,6 +461,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
         }
         integrate(to: t)
         lastFrameT = t
+        goneGpsM = 0
+        lastFrameOdoKm = f.odometerKm
         if let s = f.speedKmh { speedKmh = s }      // a dropped reading (G1b) keeps the last one
         currentA = f.currentA
         if let b = f.batteryPct { batteryPct = b }
@@ -400,6 +482,12 @@ public struct RideEngine: Codable, Equatable, Sendable {
             if r.odoStartKm == nil { r.odoStartKm = odometerKm }
             if odometerKm != nil { r.odoLastKm = odometerKm }
             r.lastBatteryPct = batteryPct
+            if r.firstBatteryPct == nil { r.firstBatteryPct = batteryPct }
+            // M5: the first odometer reading after a gap fills the distance
+            if let o = f.odometerKm, var gaps = r.gaps, let i = gaps.indices.last, !gaps[i].isOpen, gaps[i].odoAfterKm == nil {
+                gaps[i].odoAfterKm = o
+                r.gaps = gaps
+            }
             if motorOn, !r.walks.isEmpty { r.motorAfterWalk = true }
             ride = r
         }
@@ -443,9 +531,17 @@ public struct RideEngine: Codable, Equatable, Sendable {
         let dt = t - last
         guard dt > 0, dt <= 2.5 else { return }
         let v: Double
-        if linkLive(at: t), let s = speedKmh { v = s } else if let g = gpsSpeedNow(at: t) { v = g } else { return }
+        let live = linkLive(at: t)
+        if live, let s = speedKmh { v = s } else if let g = gpsSpeedNow(at: t) { v = g } else { return }
         let d = v / 3.6 * dt
         r.wheelM += d
+        if !live {
+            goneGpsM += d
+            if var gaps = r.gaps, let i = gaps.indices.last, gaps[i].isOpen {
+                gaps[i].gpsM += d
+                r.gaps = gaps
+            }
+        }
         if let i = r.walks.indices.last, r.walks[i].isOpen { r.walks[i].distanceM += d }
         if pushSince != nil { pushDistanceM += d }
         ride = r
@@ -459,6 +555,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         r.odoStartKm = odometerKm
         r.odoLastKm = odometerKm
         r.lastBatteryPct = batteryPct
+        r.firstBatteryPct = batteryPct
         if let f = freshFix(at: t) {
             r.anchorFix = f
             r.startLat = f.lat
@@ -565,6 +662,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         trackMovement(at: t)
         if phase == .starting { evaluateStarting(at: t, &out) }
         guard ride != nil else { return }
+        updatePhoneMode(at: t, &out)
         updateWalk(at: t, &out)
         updateStops(at: t)
         evaluateEnd(at: t, &out)
@@ -662,8 +760,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
     private mutating func evaluateEnd(at t: Double, _ out: inout [RideEngineEvent]) {
         guard let r = ride else { return }
         let live = linkLive(at: t)
-        // Since when the scooter readings are gone (disconnected, or connected but silent for T07)
-        let goneSince: Double? = live ? nil : (connected ? (lastFrameT ?? disconnectedAt) : (disconnectedAt ?? lastFrameT))
+        // Since when the scooter readings are gone (disconnected, connected but silent for T07, or untrusted)
+        let goneSince = scooterGoneSince(at: t)
         let lastMove = r.lastMoveT ?? r.startT
         var reason: RideEndReason?
         if !live, shuttingDownSeen {
@@ -692,6 +790,12 @@ public struct RideEngine: Codable, Equatable, Sendable {
         for i in r.stops.indices { r.stops[i].endT = min(r.stops[i].endT ?? endT, endT) }
         r.walks.removeAll { $0.startT >= endT }
         if let i = r.walks.indices.last, r.walks[i].isOpen { r.walks[i].endT = min(pushLastTrue ?? endT, endT) }
+        // A gap that began after the last movement is not inside the ride; one still open closes at the end
+        if var gaps = r.gaps {
+            gaps.removeAll { $0.startT >= endT }
+            if let i = gaps.indices.last, gaps[i].isOpen { gaps[i].endT = endT }
+            r.gaps = gaps.isEmpty ? nil : gaps
+        }
         let distance = r.distanceAfterTrimM
         var lowBattery: Int?
         if reason == .scooterOff || reason == .disconnected, let b = r.lastBatteryPct, Double(b) <= T.t80ReserveDefaultPct {
@@ -786,16 +890,85 @@ public struct RideEngine: Codable, Equatable, Sendable {
         afterRide()
     }
 
-    // MARK: Live view hand-off (M1-07 contract; M1-05 swaps in the 3-s GPS median and the estimate)
+    // MARK: Phone takeover (M1-05, G1)
+
+    /// Since when the scooter readings are gone: disconnected, connected but silent for T07, or untrusted (G1b).
+    /// nil = the readings are live.
+    public func scooterGoneSince(at t: Double) -> Double? {
+        if let u = untrustedSince { return u }
+        if linkLive(at: t) { return nil }
+        return connected ? (lastFrameT ?? disconnectedAt) : (disconnectedAt ?? lastFrameT)
+    }
+
+    /// Phone mode: a ride is on and the scooter readings have been gone for the takeover wait (~5 s), or are
+    /// untrusted (the format watch already took its time).
+    public func phoneMode(at t: Double) -> Bool {
+        guard rideActive, let g = scooterGoneSince(at: t) else { return false }
+        return untrustedSince != nil || t - g >= Self.takeoverWaitS
+    }
+
+    private mutating func updatePhoneMode(at t: Double, _ out: inout [RideEngineEvent]) {
+        guard var r = ride else { return }
+        let open = r.gaps?.last?.isOpen ?? false
+        if phoneMode(at: t) {
+            guard !open, let g = scooterGoneSince(at: t) else { return }
+            let reason: PhoneModeReason = untrustedSince != nil ? .formatChanged : .disconnected
+            var gaps = r.gaps ?? []
+            gaps.append(RideGap(startT: g, reason: reason, gpsM: goneGpsM, batteryAtStartPct: r.lastBatteryPct, odoBeforeKm: r.odoLastKm))
+            r.gaps = gaps
+            ride = r
+            out.append(.phoneModeStarted(seq: r.seq, at: g, reason: reason))
+        } else if open, linkLive(at: t), var gaps = r.gaps, let i = gaps.indices.last {
+            gaps[i].endT = t
+            gaps[i].odoAfterKm = lastFrameOdoKm
+            r.gaps = gaps
+            ride = r
+            out.append(.phoneModeEnded(seq: r.seq, at: t))
+        }
+    }
+
+    /// G1: GPS speed = median of the good fixes of the last 3 s (nil without a fresh fix with a speed).
+    public func gpsMedianKmh(at t: Double) -> Double? {
+        guard freshFix(at: t) != nil else { return nil }
+        let v = fixes.filter { $0.t >= t - Self.gpsMedianWindowS - 0.001 && $0.t <= t + 0.001 }.compactMap { $0.speedKmh }.sorted()
+        guard !v.isEmpty else { return nil }
+        let n = v.count
+        return n % 2 == 1 ? v[n / 2] : (v[n / 2 - 1] + v[n / 2]) / 2
+    }
+
+    /// Decision 5: usual %/km (median of the last 10 rides), else this ride's %/km after 1 km, else 3.0.
+    public var pctPerKmForEstimate: Double {
+        if let u = usualPctPerKm, u > 0 { return u }
+        if let r = ride, let a = r.firstBatteryPct, let b = r.gapList.last?.batteryAtStartPct ?? r.lastBatteryPct,
+           r.distanceAfterTrimM >= T.t43BatteryPerKmAfterM, a > b {
+            return Double(a - b) / (r.distanceAfterTrimM / 1000)
+        }
+        return Self.defaultPctPerKm
+    }
+
+    /// T49 "~N% est.": last scooter battery % − %/km × GPS km since the drop. nil outside phone mode.
+    public func estimatedBatteryPct(at t: Double) -> Double? {
+        guard phoneMode(at: t), let r = ride, let gap = r.gapList.last, gap.isOpen,
+              let base = gap.batteryAtStartPct ?? r.lastBatteryPct else { return nil }
+        return max(0, Double(base) - pctPerKmForEstimate * gap.gpsM / 1000)
+    }
+
+    // MARK: Live view hand-off (M1-07 contract)
 
     public func liveInput(at t: Double, mapOffline: Bool = false) -> LiveInput {
         let linked = linkLive(at: t)
+        let phone = phoneMode(at: t)
+        // A blip shorter than the takeover wait keeps the scooter numbers (no switch for a 1-s drop)
+        var blip = false
+        if !linked, !phone, untrustedSince == nil, let g = scooterGoneSince(at: t), t - g < Self.takeoverWaitS {
+            blip = (speedKmh ?? heldSpeedKmh) != nil
+        }
         let noGps = lastFix.map { max(0, t - $0.t) } ?? (ride.map { t - $0.startT } ?? 0)
-        return LiveInput(scooterSpeedKmh: linked ? speedKmh : nil,
-                         gpsSpeedKmh: gpsSpeedNow(at: t),
-                         scooterLinked: linked,
+        return LiveInput(scooterSpeedKmh: linked ? speedKmh : (blip ? (speedKmh ?? heldSpeedKmh) : nil),
+                         gpsSpeedKmh: gpsMedianKmh(at: t),
+                         scooterLinked: linked || blip,
                          scooterBatteryPct: batteryPct.map(Double.init),
-                         estimatedBatteryPct: nil,
+                         estimatedBatteryPct: phone ? estimatedBatteryPct(at: t) : nil,
                          starting: phase == .starting,
                          secondsWithoutGps: freshFix(at: t) == nil ? noGps : 0,
                          mapOffline: mapOffline)

@@ -11,7 +11,12 @@ public struct RideFeed {
         self.engine = engine
     }
 
-    /// The newest checked frame, when the last scooter event produced one
+    /// Why the scooter readings are untrusted ("Scooter data format changed"), nil while they are trusted
+    public var formatChangeReason: String? {
+        engine.untrustedSince != nil ? pipeline.plausibility.formatChangeReason : nil
+    }
+
+    /// The newest checked frame, when the last scooter event produced one (nil while the readings are untrusted)
     public private(set) var lastNewFrame: ScooterFrame?
 
     @discardableResult
@@ -28,9 +33,14 @@ public struct RideFeed {
             let before = pipeline.assembler.packetCount - pipeline.assembler.unknownCount
             pipeline.handle(e)
             let after = pipeline.assembler.packetCount - pipeline.assembler.unknownCount
-            guard after > before, let f = pipeline.frame else { return engine.handle(.tick, at: e.t) }
-            lastNewFrame = f
-            return engine.handle(.frame(f), at: e.t)
+            // G1b format-change watch → phone mode (SC-04); raw packets keep being stored by the Recorder
+            var out: [RideEngineEvent] = []
+            if pipeline.plausibility.failedShareTripped, engine.untrustedSince == nil, engine.connected {
+                out += engine.handle(.formatChanged, at: e.t)
+            }
+            guard after > before, let f = pipeline.frame else { return out + engine.handle(.tick, at: e.t) }
+            if engine.untrustedSince == nil { lastNewFrame = f }
+            return out + engine.handle(.frame(f), at: e.t)
         }
     }
 
