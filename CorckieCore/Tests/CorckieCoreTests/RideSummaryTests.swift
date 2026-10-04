@@ -16,10 +16,16 @@ final class RideSummaryTests: XCTestCase {
     }
 
     private func points() -> [RidePoint] {
-        (0..<20).map { i in
-            RidePoint(t: Int64(i) * 5000, lat: 40.0 + Double(i) * 0.0003, lon: -75.0 + Double(i) * 0.0003, hAccM: 5,
-                      speedKmh: Double(i) * 2, batteryPct: 88 - i / 5, mode: "scooter")
+        var out: [RidePoint] = []
+        for i in 0..<20 {
+            let step: Double = Double(i) * 0.0003
+            let lat: Double = 40.0 + step
+            let lon: Double = -75.0 + step
+            let kmh: Double = Double(i) * 2
+            let pct: Int = 88 - i / 5
+            out.append(RidePoint(t: Int64(i) * 5000, lat: lat, lon: lon, hAccM: 5, speedKmh: kmh, batteryPct: pct, mode: "scooter"))
         }
+        return out
     }
 
     private func stat(_ list: [SummaryStat], _ label: String) -> String? { list.first { $0.label == label }?.value }
@@ -117,7 +123,9 @@ final class RideSummaryTests: XCTestCase {
         r.status = "recovered"
         r.tempPeakC = 95
         let m = RideSummaryBuilder.build(r, gaps: [RideGapSpan(kind: "scooter", startT: 0, endT: 5000)], points: points())
-        let text = (m.mainStats + m.scooterStats).map { $0.label + $0.value }.joined() + m.notes.map(\.text).joined()
+        var text = ""
+        for s in m.mainStats + m.scooterStats { text += s.label + s.value }
+        for n in m.notes { text += n.text }
         for word in ["record", "best", "personal", "badge", "faster than", "your usual", "streak"] {
             XCTAssertFalse(text.lowercased().contains(word), word)
         }

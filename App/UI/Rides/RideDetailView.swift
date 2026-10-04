@@ -249,10 +249,15 @@ enum RideDetailPreview {
             energyWhRaw: 214, usedPct: 12, startRestPct: 81, endRestPct: 69, odoStartKm: 412.3, odoEndKm: 420.7,
             elevGainM: 38, elevLossM: 35, tempPeakC: 47, tempRiseC: 11, hasGps: true)
         var gaps: [RideGapSpan] = []
-        var points: [RidePoint] = (0..<60).map { i in
-            RidePoint(t: Int64(i) * 5000, lat: 40.0 + Double(i) * 0.00018,
-                      lon: -75.0 + Double(i) * 0.00022 + 0.0006 * sin(Double(i) / 6), hAccM: 6,
-                      speedKmh: 12 + 22 * abs(sin(Double(i) / 9)), batteryPct: 81 - i / 5, mode: "scooter")
+        var points: [RidePoint] = []
+        for i in 0..<60 {
+            let x = Double(i)
+            let lat: Double = 40.0 + x * 0.00018
+            let wobble: Double = 0.0006 * sin(x / 6)
+            let lon: Double = -75.0 + x * 0.00022 + wobble
+            let kmh: Double = 12 + 22 * abs(sin(x / 9))
+            let pct: Int = 81 - i / 5
+            points.append(RidePoint(t: Int64(i) * 5000, lat: lat, lon: lon, hAccM: 6, speedKmh: kmh, batteryPct: pct, mode: "scooter"))
         }
         switch name {
         case "ride-nogps":

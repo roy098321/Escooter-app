@@ -52,12 +52,17 @@ enum RideSummaryCheck {
                 return
             }
             func stat(_ label: String) -> String? { (m.mainStats + m.scooterStats).first { $0.label == label }?.value }
-            let numbersOk = stat("Distance") == "5.2 km" && stat("Time") == "17 min" && stat("Battery") == "90% \u{2192} 82%"
-                && stat("Avg. speed") == "21 km/h"
-            let pathOk = m.path.segments.contains { $0.dashed } && m.path.segments.contains { !$0.dashed } && m.path.walks.count == 1
-            let kinds = m.notes.map(\.kind)
-            let notesOk = kinds.contains(.recovered) && kinds.contains(.phone) && kinds.contains(.heat) && kinds.contains(.walk)
-                && kinds.contains(.simulated)
+            let battery: String = "90% \u{2192} 82%"
+            var numbersOk = stat("Distance") == "5.2 km"
+            if stat("Time") != "17 min" { numbersOk = false }
+            if stat("Battery") != battery { numbersOk = false }
+            if stat("Avg. speed") != "21 km/h" { numbersOk = false }
+            let hasDashed = m.path.segments.contains { $0.dashed }
+            let hasSolid = m.path.segments.contains { !$0.dashed }
+            let pathOk = hasDashed && hasSolid && m.path.walks.count == 1
+            let kinds: [SummaryNote.Kind] = m.notes.map { $0.kind }
+            var notesOk = true
+            for k in [SummaryNote.Kind.recovered, .phone, .heat, .walk, .simulated] where !kinds.contains(k) { notesOk = false }
 
             var bare = RideRecord(id: "s2", startAt: 1_790_100_000_000)
             bare.hasGps = false
