@@ -15,6 +15,8 @@ final class AppModel {
     private(set) var live = ScooterPipeline()
     /// The one database (DATA_MODEL); nil only when opening failed
     private(set) var database: AppDatabase?
+    /// What the screens read: the simulator's temporary database while a simulation is active (M1-15), else the real one
+    var displayDatabase: AppDatabase? { ScreenSimulator.shared.database ?? database }
     /// V4: "Data update failed · Send report" instead of running on half-migrated data
     private(set) var databaseError: String?
 
@@ -97,6 +99,7 @@ final class AppModel {
             }
             FieldChecks.shared.scooterConnected(inBackground: inBackground)
             C8Recorder.shared.linkUp(at: Date())
+            if ScreenSimulator.shared.running { ScreenSimulator.shared.stop(reason: "Stopped: the real scooter connected") }
             if self.simulator.running {
                 self.simulator.stop(reason: "Stopped: the real scooter connected")
             }

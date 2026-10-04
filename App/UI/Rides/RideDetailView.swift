@@ -197,7 +197,7 @@ struct RideDetailView: View {
 
     private func load() {
         guard preview == nil else { return }
-        guard let id = rideId, let db = AppModel.shared.database,
+        guard let id = rideId, let db = AppModel.shared.displayDatabase,
               let loaded = RideDetailLoader.load(id: id, db: db) else {
             missing = true
             // a summary that cannot load (a discarded piece) closes itself

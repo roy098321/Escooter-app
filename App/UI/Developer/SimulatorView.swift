@@ -6,6 +6,7 @@ import SwiftUI
 /// pipeline at 1×–50×, optionally with a fault scenario.
 struct SimulatorView: View {
     @Bindable private var sim = AppModel.shared.simulator
+    @Bindable private var screens = ScreenSimulator.shared
     private let model = AppModel.shared
     private let results = CheckResults.shared
 
@@ -15,6 +16,7 @@ struct SimulatorView: View {
                 checkLine("d1", "Ride 1 · 50× · No fault → Start")
                 checkLine("d7", "Fault D7 · 50× → Start (uses ride 2, which has GPS)")
                 checkLine("d8", "Checked after every run")
+                checkLine("d11", "Run on the real screens → watch Home, live view, summary")
             }
             Section("Replay") {
                 Picker("Ride", selection: $sim.fixtureID) {
@@ -45,6 +47,37 @@ struct SimulatorView: View {
                 if let message = sim.message {
                     Text(message).font(.footnote)
                 }
+            }
+            Section("Run on the real screens") {
+                Picker("Scenario", selection: $screens.sourceID) {
+                    ForEach(ScreenSimulator.sources) { s in
+                        Text(s.id == "F2" || s.id == "F5" || s.id == "F3" ? s.title : "\(s.id) · \(s.title)").tag(s.id)
+                    }
+                }
+                .disabled(screens.running)
+                Picker("Speed", selection: $screens.speed) {
+                    ForEach(VirtualClock.appSpeeds, id: \.self) { speed in
+                        Text("\(Int(speed))×").tag(speed)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .disabled(screens.running)
+                if screens.running {
+                    ProgressView(value: screens.progress)
+                    Button("Stop", role: .destructive) { screens.stop(reason: "Stopped") }
+                } else {
+                    Button("Start") {
+                        screens.start(realScooterConnected: model.scooter.connected, otherSimulatorRunning: sim.running)
+                    }
+                }
+                if screens.active {
+                    Button("End simulation (deletes simulated rides)", role: .destructive) { screens.end() }
+                }
+                if let message = screens.message {
+                    Text(message).font(.footnote)
+                }
+                Text("Runs the real Home, live view and ride summary on the fake scooter. Simulated rides live in a temporary database and show only while the purple SIMULATED banner is on.")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             Section("Simulated scooter (decoded)") {
                 let f = sim.pipeline.frame

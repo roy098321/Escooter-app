@@ -52,6 +52,25 @@ final class RecorderTests: XCTestCase {
         }
     }
 
+    /// M1-15 / d8: the simulator's Recorder writes only into its own temporary database; a separate (stand-in real)
+    /// database keeps every row count, and everything the simulation stored is marked simulated.
+    func test_d8_simulatedRun_keepsTheRealDatabaseApart() async throws {
+        let real = try AppDatabase.openTemporary(build: "test")
+        let simDb = try AppDatabase.openTemporary(build: "test")
+        defer { real.discardTemporary(); simDb.discardTemporary() }
+        let before = try real.rowCounts()
+        let rec = recorder(simDb, stateURL: Recorder.stateURL(for: simDb))
+        await rec.process(RecorderRunner.inputs(try stream("F5", "F5_ride2_nrf")))
+        XCTAssertEqual(try real.rowCounts(), before, "the real database is untouched")
+        XCTAssertNotEqual(real.url, simDb.url)
+        XCTAssertNotEqual(Recorder.stateURL(for: real), Recorder.stateURL(for: simDb))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: Recorder.stateURL(for: real).path))
+        XCTAssertTrue(try RideQueries(real).rides(includeDiscarded: true).isEmpty)
+        let simRides = try RideQueries(simDb).rides(includeDiscarded: true)
+        XCTAssertEqual(simRides.count, 1)
+        XCTAssertTrue(simRides.allSatisfy(\.isSimulated), "every simulated ride is marked")
+    }
+
     func test_SC14_killMidRide_young_resumes_sameRide() async throws {
         let inputs = RecorderRunner.inputs(try stream("F5", "F5_ride2_nrf"))
         let killAt = (inputs.first?.t ?? 0) + 900

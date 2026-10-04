@@ -32,6 +32,8 @@ struct RidesListView: View {
                 }
         }
         .onAppear(perform: reload)
+        .onChange(of: ScreenSimulator.shared.active) { _, _ in reload() }
+        .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reload() }
         .confirmationDialog("Delete this ride?",
                             isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
                             titleVisibility: .visible, presenting: pendingDelete) { ride in
@@ -103,7 +105,7 @@ struct RidesListView: View {
     }
 
     private func reload() {
-        guard let db = AppModel.shared.database else { items = []; return }
+        guard let db = AppModel.shared.displayDatabase else { items = []; return }
         let rows = (try? RideQueries(db).rides()) ?? []
         items = rows.map {
             RideListItem(id: $0.id, startAt: $0.startAt, utcOffsetMin: $0.utcOffsetMin, kind: $0.kind,
@@ -112,7 +114,7 @@ struct RidesListView: View {
     }
 
     private func delete(_ ride: RideListItem) {
-        guard let db = AppModel.shared.database else { return }
+        guard let db = AppModel.shared.displayDatabase else { return }
         do {
             try RideQueries(db).delete(rideId: ride.id)
             reload()

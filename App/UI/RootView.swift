@@ -31,7 +31,7 @@ struct RootView: View {
                 }
                 .safeAreaInset(edge: .top) {
                     VStack(spacing: 0) {
-                        if model.simulator.running {
+                        if model.simulator.running || ScreenSimulator.shared.active {
                             Banner(text: "SIMULATED · fake scooter replay", tint: .purple)
                         }
                         if model.database?.isReadOnly == true {
@@ -142,6 +142,14 @@ enum UIShot {
 /// M1-12 / M1-13: the full-screen cover shows the live view while a ride (or Ready) is on, then the ride's summary.
 struct RideCover: View {
     var body: some View {
+        cover.safeAreaInset(edge: .top, spacing: 0) {
+            if ScreenSimulator.shared.active {
+                Banner(text: "SIMULATED · fake scooter replay", tint: .purple)
+            }
+        }
+    }
+
+    @ViewBuilder private var cover: some View {
         let service = RecorderService.shared
         if service.rideActive || service.readyRequested {
             LiveRideView()

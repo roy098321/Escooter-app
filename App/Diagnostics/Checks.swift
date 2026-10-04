@@ -153,6 +153,8 @@ enum CheckList {
                   expected: "GPS speed shown (labelled) during the gap; totals stay scooter-only", needsScooter: false, manual: false, tool: .simulator),
         CheckItem(id: "d8", group: phone, title: "Simulator keeps real data apart", how: "Any simulator run",
                   expected: "Real database ride count unchanged", needsScooter: false, manual: false, tool: .simulator),
+        CheckItem(id: "d11", group: phone, title: "Simulator drives the real screens (M1-15)", how: "Simulated scooter → Run on the real screens → pick a ride + speed → Start",
+                  expected: "SIMULATED banner on Home, the live view and the summary; the ride appears in Rides; real Rides unchanged after End simulation", needsScooter: false, manual: true, tool: .simulator),
         CheckItem(id: "d9", group: phone, title: "Restore from backup", how: "Backup folder → Test backup + restore",
                   expected: "A test backup restored into a scratch database with the same rows", needsScooter: false, manual: false, tool: .backup),
         CheckItem(id: "e1", group: outside, title: "Fuel price setting ready (manual)", how: "Nothing to do · Settings → Fuel price to change it",

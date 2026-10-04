@@ -30,6 +30,10 @@ final class RecorderService {
     @ObservationIgnored private var driver = LiveScreenDriver()
     @ObservationIgnored private var lastLiveMode: LiveMode = .ready
 
+    /// M1-15: the simulator drives the screens; the real Recorder's live output is ignored meanwhile
+    private(set) var simActive = false
+    @ObservationIgnored private var simSink: ((RideEngineInput) -> Void)?
+
     let recorder: Recorder
     private let continuation: AsyncStream<(RecorderInput, Double)>.Continuation
     @ObservationIgnored private var timer: Timer?
@@ -48,6 +52,7 @@ final class RecorderService {
             },
             rideActive: { on in
                 DispatchQueue.main.async {
+                    guard !RecorderService.shared.simActive else { return }
                     Notifier.shared.rideActive = on
                     RecorderService.shared.rideActive = on
                 }
@@ -101,6 +106,7 @@ final class RecorderService {
     }
 
     func send(_ input: RecorderInput, at t: Double = RecorderService.now()) {
+        if case .press(let p) = input, let sink = simSink { sink(p); return }
         continuation.yield((input, t))
     }
 
@@ -128,11 +134,12 @@ final class RecorderService {
     // MARK: Live view (M1-12)
 
     /// Once a second, on the main thread: the engine's live input goes through the display rules.
-    func handleLive(_ rawInput: LiveInput, _ state: LiveState) {
+    func handleLive(_ rawInput: LiveInput, _ state: LiveState, at time: Double? = nil, fromSimulator: Bool = false) {
+        if simActive != fromSimulator { return }     // while simulating only the simulator's output counts
         live = state
         var input = rawInput
         input.mapOffline = NetworkStatus.shared.offline
-        let screen = driver.update(input, at: Self.now())
+        let screen = driver.update(input, at: time ?? Self.now())
         if screen.mode != .ready, lastLiveMode == .ready { livePath.reset() }
         lastLiveMode = screen.mode
         if screen.mode != .ready { readyRequested = false }
@@ -153,6 +160,39 @@ final class RecorderService {
 
     func answerSameRide(_ yes: Bool) {
         press(.sameRideAnswer(yes))
+    }
+
+    // MARK: Simulator (M1-15)
+
+    func beginSimulation(press: @escaping (RideEngineInput) -> Void) {
+        resetScreens()
+        simSink = press
+        simActive = true
+    }
+
+    func endSimulation() {
+        simSink = nil
+        simActive = false
+        resetScreens()
+    }
+
+    func setSimRideActive(_ on: Bool) { rideActive = on }
+
+    func simRideClosed(_ id: String) {
+        lastClosedRideId = id
+        summaryRideId = id
+    }
+
+    private func resetScreens() {
+        live = nil
+        liveScreen = nil
+        livePosition = nil
+        livePath.reset()
+        rideActive = false
+        summaryRideId = nil
+        readyRequested = false
+        driver = LiveScreenDriver()
+        lastLiveMode = .ready
     }
 
     /// M1-13: the rider closed the summary (Done) or it could not load

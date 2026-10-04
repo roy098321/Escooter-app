@@ -21,10 +21,11 @@ struct HomeView: View {
         if let preview { return preview }
         let scooter = AppModel.shared.scooter
         let seen = LastSeen.load()
-        return HomeInput(paired: scooter.hasKnownScooter, connected: scooter.connected,
+        let simulated = ScreenSimulator.shared.active
+        return HomeInput(paired: scooter.hasKnownScooter || simulated, connected: scooter.connected || simulated,
                          connectingSinceS: connectingSince?.timeIntervalSince1970,
                          nowS: now.timeIntervalSince1970,
-                         batteryPct: scooter.frame?.batteryPct,
+                         batteryPct: scooter.frame?.batteryPct ?? (simulated ? RecorderService.shared.live?.batteryPct : nil),
                          lastSeenMs: seen.ms, lastSeenPct: seen.pct,
                          utcOffsetMin: TimeZone.current.secondsFromGMT() / 60,
                          rideActive: RecorderService.shared.rideActive,
@@ -47,6 +48,8 @@ struct HomeView: View {
                 }
         }
         .onAppear(perform: reloadLastRide)
+        .onChange(of: ScreenSimulator.shared.active) { _, _ in lastRide = nil; reloadLastRide() }
+        .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reloadLastRide() }
         .onReceive(tick) { now = $0 }
         .onChange(of: AppModel.shared.scooter.connected) { _, connected in
             if connected { connectingSince = nil }
@@ -185,7 +188,7 @@ struct HomeView: View {
     }
 
     private func reloadLastRide() {
-        guard preview == nil, let db = AppModel.shared.database else { return }
+        guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
         oldestRideMs = try? RideQueries(db).rides().last?.startAt
         BackupWriter.shared.runIfDue()
         guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
