@@ -22,8 +22,10 @@ final class LiveViewGuardTests: XCTestCase {
     func test_liveViewCannotBeSwipedAwayAndSitsOverTheTabs() throws {
         XCTAssertTrue(try text("UI/Live/LiveRideView.swift").contains(".interactiveDismissDisabled(true)"))
         let root = try text("UI/RootView.swift")
-        XCTAssertTrue(root.contains(".fullScreenCover(isPresented: .constant(liveCoverShown))"),
+        // M1-13: the same cover turns into the ride summary once the ride is over (it has a Done button)
+        XCTAssertTrue(root.contains(".fullScreenCover(isPresented: .constant(liveCoverShown || summaryShown))"),
                       "the live view is a full-screen cover that nothing but the ride state can close")
+        XCTAssertTrue(root.contains("service.rideActive || service.readyRequested"), "the live view shows while a ride or Ready is on")
         XCTAssertTrue(root.contains("LiveRideView()"))
     }
 
