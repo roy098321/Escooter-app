@@ -88,6 +88,8 @@ final class PhoneSensors: NSObject {
                     return
                 }
                 guard let data else { return }
+                RecorderService.shared.barometer(relativeAltitudeM: data.relativeAltitude.doubleValue,
+                                                 pressureKPa: data.pressure.doubleValue, at: Date())
                 let background = self.inBackground
                 self.altitude.append(AltitudeSample(time: Date(), meters: data.relativeAltitude.doubleValue, background: background))
                 C8Recorder.shared.barometer(relativeAltitudeM: data.relativeAltitude.doubleValue,
@@ -160,6 +162,12 @@ final class PhoneSensors: NSObject {
 extension PhoneSensors: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let last = locations.last else { return }
+        // M1-09: every fix goes to the Recorder (the ride engine filters by accuracy, T28)
+        for l in locations {
+            RecorderService.shared.fix(lat: l.coordinate.latitude, lon: l.coordinate.longitude, hAccM: l.horizontalAccuracy,
+                                       speedMps: l.speed, courseDeg: l.course,
+                                       altitudeM: l.verticalAccuracy >= 0 ? l.altitude : nil, at: l.timestamp)
+        }
         roundedLocation = ((last.coordinate.latitude / 0.02).rounded() * 0.02, (last.coordinate.longitude / 0.02).rounded() * 0.02)
         guard recording else { return }
         fixes += locations.count

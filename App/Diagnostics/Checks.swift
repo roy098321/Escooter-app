@@ -137,6 +137,8 @@ enum CheckList {
                   expected: "On the fake scooter: dropped while standing ends after 30 s, 0x80 ends at once, auto-off and 10 min standstill end the ride, end time = last movement; pushing 1 km is a walking stretch with \"battery ran out at 3%\"; Same ride offered after a switch-off at a light; a relaunch mid-ride resumes, > 2 min recovers", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u11", group: phone, title: "Phone takeover and speed warning (M1-05)", how: "Nothing to do · Run all automatic marks it",
                   expected: "On the fake scooter: a 1-s link drop changes nothing; after ~5 s the phone takes over (GPS speed labelled, \"~N% est.\"), scooter numbers and odometer distance back on reconnect; SLOW above 45, clears below 43 on scooter and on GPS speed, no flicker", needsScooter: false, manual: false, tool: .none),
+        CheckItem(id: "u12", group: phone, title: "Recorder end to end (M1-09)", how: "Nothing to do · Run all automatic marks it (~10 s)",
+                  expected: "Rides 1 and 2 through the Recorder into a temporary database: 437 Wh / 16.3 km and 322 Wh / 13.7 km, samples and raw packets stored; a kill mid-ride is recovered; your real rides unchanged", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "d7", group: phone, title: "Simulated disconnect (phone takes over)", how: "Simulated scooter → Fault \"D7 · Disconnect at 40%\" → 50× → Start",
                   expected: "GPS speed shown (labelled) during the gap; totals stay scooter-only", needsScooter: false, manual: false, tool: .simulator),
         CheckItem(id: "d8", group: phone, title: "Simulator keeps real data apart", how: "Any simulator run",

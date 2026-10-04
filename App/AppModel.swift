@@ -31,6 +31,7 @@ final class AppModel {
         launched = true
         FieldChecks.shared.appLaunched()
         wireScooter()
+        RecorderService.shared.start()      // M1-09: the 1-s tick runs from launch (also a background relaunch)
         // After a phone restart iOS can relaunch the app for the scooter BEFORE the first
         // unlock, when files and settings can't be read yet (c5). The Bluetooth part starts
         // now; everything that reads or writes data waits until it's readable.
@@ -57,6 +58,7 @@ final class AppModel {
         CheckResults.shared.loadIfPossible()
         scooter.loadEventsIfPossible()
         openDatabase()
+        if let db = database, !db.isReadOnly { RecorderService.shared.attach(db) }
         CrashCatcher.shared.start()
         ErrorLog.shared.trim()
         InstallChecks.run(database: database, error: databaseError)
@@ -87,6 +89,7 @@ final class AppModel {
         scooter.connectHandlers.append { [weak self] inBackground in
             guard let self else { return }
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .connected))
+            RecorderService.shared.scooterConnected(at: Date())
             CheckResults.shared.passOnce("b1", "Connected to the scooter")
             if inBackground {
                 CheckResults.shared.passOnce("c1", "Connected while the app was in the background")
@@ -101,12 +104,14 @@ final class AppModel {
         scooter.disconnectHandlers.append { [weak self] reason in
             guard let self else { return }
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .disconnected))
+            RecorderService.shared.scooterDisconnected(at: Date())
             FieldChecks.shared.scooterDisconnected(reason: reason)
             C8Recorder.shared.linkDown(at: Date())
         }
         scooter.packetHandlers.append { [weak self] bytes, time, background in
             guard let self else { return }
             PacketLog.shared.add(bytes, at: time, background: background)
+            RecorderService.shared.packet(bytes, at: time)
             PhoneSensors.shared.notePacket(at: time)
             C8Recorder.shared.packet(bytes, at: time, background: background)
             self.live.handle(TimedScooterEvent(t: time.timeIntervalSince(self.started), event: .packet(bytes)))

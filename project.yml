@@ -59,8 +59,16 @@ targets:
     sources:
       - path: AppTests
       - path: App/Store
+      - path: App/Recorder                 # M1-09: the Recorder actor records into a temporary database
+      - path: CorckieCore/Tests/Fixtures   # rides 1 and 2 for the Recorder end-to-end test
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: GRDB
+      - package: CorckieCore
+        product: CorckieCore
+      - package: CorckieCore
+        product: CorckieSim
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.corckieapp.app.tests

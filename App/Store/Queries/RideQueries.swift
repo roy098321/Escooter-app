@@ -79,6 +79,57 @@ struct RideQueries {
         }
     }
 
+    // MARK: Recorder (M1-09)
+
+    /// The ride's final gap rows (the engine's list at the ride end replaces the live ones).
+    func replaceGaps(rideId: String, kind: String, gaps: [(startT: Int64, endT: Int64?)]) throws {
+        try requireWritable()
+        try writer.write { db in
+            try db.execute(sql: "DELETE FROM gap WHERE rideId = ? AND kind = ?", arguments: [rideId, kind])
+            for g in gaps {
+                var row = GapRecord(id: nil, rideId: rideId, kind: kind, startT: g.startT, endT: g.endT)
+                try row.insert(db)
+            }
+        }
+    }
+
+    /// The ride's final stop rows.
+    func replaceStops(rideId: String, stops: [StopRecord]) throws {
+        try requireWritable()
+        try writer.write { db in
+            try db.execute(sql: "DELETE FROM stop WHERE rideId = ?", arguments: [rideId])
+            for s in stops { try s.insert(db) }
+        }
+    }
+
+    /// Marks the samples between two times (ms from the ride start, inclusive) with a mode, e.g. "walk".
+    func setSampleMode(rideId: String, fromT: Int64, toT: Int64, mode: String) throws {
+        try requireWritable()
+        try writer.write { db in
+            try db.execute(sql: "UPDATE ride_sample SET mode = ? WHERE rideId = ? AND t >= ? AND t <= ?",
+                           arguments: [mode, rideId, fromT, toT])
+        }
+    }
+
+    /// `setting` row (key → JSON text).
+    func setSetting(key: String, json: String) throws {
+        try requireWritable()
+        try writer.write { db in
+            try db.execute(sql: "INSERT OR REPLACE INTO setting (key, json) VALUES (?, ?)", arguments: [key, json])
+        }
+    }
+
+    func setting(key: String) throws -> String? {
+        try writer.read { db in try String.fetchOne(db, sql: "SELECT json FROM setting WHERE key = ?", arguments: [key]) }
+    }
+
+    /// Newest stored sample time of a ride (ms from its start), nil without samples.
+    func lastSampleT(rideId: String) throws -> Int64? {
+        try writer.read { db in
+            try Int64.fetchOne(db, sql: "SELECT MAX(t) FROM ride_sample WHERE rideId = ?", arguments: [rideId])
+        }
+    }
+
     // MARK: Reading
 
     func ride(id: String) throws -> RideRecord? {
