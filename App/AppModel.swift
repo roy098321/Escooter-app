@@ -92,6 +92,7 @@ final class AppModel {
                 PhoneSensors.shared.start(fromWake: true)
             }
             FieldChecks.shared.scooterConnected(inBackground: inBackground)
+            C8Recorder.shared.linkUp(at: Date())
             if self.simulator.running {
                 self.simulator.stop(reason: "Stopped: the real scooter connected")
             }
@@ -100,11 +101,13 @@ final class AppModel {
             guard let self else { return }
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .disconnected))
             FieldChecks.shared.scooterDisconnected(reason: reason)
+            C8Recorder.shared.linkDown(at: Date())
         }
         scooter.packetHandlers.append { [weak self] bytes, time, background in
             guard let self else { return }
             PacketLog.shared.add(bytes, at: time, background: background)
             PhoneSensors.shared.notePacket(at: time)
+            C8Recorder.shared.packet(bytes, at: time, background: background)
             self.live.handle(TimedScooterEvent(t: time.timeIntervalSince(self.started), event: .packet(bytes)))
             self.evaluateScooterChecks()
             FieldChecks.shared.packet(batteryPct: self.live.frame?.batteryPct)

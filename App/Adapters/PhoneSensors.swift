@@ -62,6 +62,7 @@ final class PhoneSensors: NSObject {
     func start(fromWake: Bool = false) {
         startedByWake = fromWake
         if !recording {
+            C8Recorder.shared.start()
             sessionStart = Date()
             recordingSince = sessionStart
             sessionFixes0 = fixes
@@ -89,6 +90,8 @@ final class PhoneSensors: NSObject {
                 guard let data else { return }
                 let background = self.inBackground
                 self.altitude.append(AltitudeSample(time: Date(), meters: data.relativeAltitude.doubleValue, background: background))
+                C8Recorder.shared.barometer(relativeAltitudeM: data.relativeAltitude.doubleValue,
+                                            pressureKPa: data.pressure.doubleValue, at: Date())
                 if self.altitude.count > 20_000 { self.altitude.removeFirst(5_000) }
                 if self.altitudeInBackground >= 20 {
                     CheckResults.shared.passOnce("c4", "\(self.altitudeInBackground) barometer readings while locked")
@@ -105,6 +108,7 @@ final class PhoneSensors: NSObject {
     }
 
     func stop() {
+        C8Recorder.shared.stop()
         updateRideCheck()
         manager.stopUpdatingLocation()
         altimeter.stopRelativeAltitudeUpdates()
@@ -130,23 +134,11 @@ final class PhoneSensors: NSObject {
     /// c8 ℹ️ once a recording has run 20+ minutes.
     func updateRideCheck() {
         lastSessionUpdate = Date()
-        guard let start = sessionStart else { return }
-        let minutes = Date().timeIntervalSince(start) / 60
-        guard minutes >= 20 else { return }
-        let level = UIDevice.current.batteryLevel
-        let battery: String
-        if batteryStart >= 0, level >= 0 {
-            let used = Double(batteryStart - level) * 100
-            battery = String(format: "phone battery %.0f%% used (%.1f%% per 30 min)", used, used / (minutes / 30))
-        } else {
-            battery = "phone battery not readable"
-        }
-        let note = String(format: "%.0f min · ", minutes)
-            + "\(packetGapsOver2s) packet gaps > 2 s (longest \(Int(longestGapS)) s) · "
-            + "\(fixes - sessionFixes0) fixes (\(fixesInBackground) while locked) · "
-            + "\(altitude.count - sessionAltitude0) barometer readings · " + battery
-        CheckResults.shared.set("c8", .info, note)
+        guard let start = sessionStart, Date().timeIntervalSince(start) >= 20 * 60,
+              let summary = C8Recorder.shared.summary() else { return }
+        CheckResults.shared.set("c8", .info, summary)
     }
+
 
     func report() -> String {
         """
@@ -171,6 +163,7 @@ extension PhoneSensors: CLLocationManagerDelegate {
         roundedLocation = ((last.coordinate.latitude / 0.02).rounded() * 0.02, (last.coordinate.longitude / 0.02).rounded() * 0.02)
         guard recording else { return }
         fixes += locations.count
+        locations.forEach { C8Recorder.shared.location($0) }
         if inBackground {
             fixesInBackground += locations.count
             if fixesInBackground >= 20 {

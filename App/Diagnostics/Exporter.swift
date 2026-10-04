@@ -25,6 +25,10 @@ enum Exporter {
         try OutsideProbes.shared.report().write(to: folder.appendingPathComponent("outside-data.txt"), atomically: true, encoding: .utf8)
         try PhoneSensors.shared.report().write(to: folder.appendingPathComponent("sensors.txt"), atomically: true, encoding: .utf8)
 
+        // c8: the whole recorded ride (every packet, fix and barometer reading)
+        for file in C8Recorder.shared.exportFiles() {
+            try? fm.copyItem(at: file, to: folder.appendingPathComponent(file.lastPathComponent))
+        }
         let zip = try zipFolder(folder)
         CheckResults.shared.set("g1", .pass, "Export made: \(zip.lastPathComponent)")
         return zip
