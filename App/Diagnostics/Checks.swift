@@ -57,7 +57,7 @@ enum CheckList {
         CheckItem(id: "a2", group: install, title: "Name and icon on the Home Screen", how: "Look at the Home Screen",
                   expected: "Scooter icon; name \"CorckieApp\" in full", needsScooter: false, manual: true, tool: .none),
         CheckItem(id: "a7", group: install, title: "v1 label visible on every screen", how: "Look at the bottom-right corner on every tab, pushed screen, sheet and Developer screen",
-                  expected: "Small \"v1 · 0.4 (build)\" label, never covering anything", needsScooter: false, manual: true, tool: .none),
+                  expected: "Small \"v1 · 0.5 (build)\" label, never covering anything", needsScooter: false, manual: true, tool: .none),
         CheckItem(id: "a3", group: install, title: "Permanent app ID", how: "Nothing to do",
                   expected: "com.corckieapp.app (+ SideStore team suffix)", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "a4", group: install, title: "Update keeps data", how: "Install the same .ipa again over the app in SideStore (or let SideStore refresh it), then open",
@@ -115,6 +115,8 @@ enum CheckList {
 
         CheckItem(id: "u1", group: phone, title: "Checks show progress and step ticks (M1-00b)", how: "Start the 4-min test (b8) or Run all automatic, and watch this screen",
                   expected: "A bar with time left on the 4-min test and on Run all automatic; b9 / c5 / c6 / c7 show a checklist that ticks itself", needsScooter: false, manual: true, tool: .none),
+        CheckItem(id: "u2", group: phone, title: "Version 0.5 and thresholds (M1-01)", how: "Nothing to do · Run all automatic also marks it",
+                  expected: "Version 0.5; speed warning on above 45 km/h, off below 43 (T99); safety margin +10% (T101)", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "d7", group: phone, title: "Simulated disconnect (phone takes over)", how: "Simulated scooter → Fault \"D7 · Disconnect at 40%\" → 50× → Start",
                   expected: "GPS speed shown (labelled) during the gap; totals stay scooter-only", needsScooter: false, manual: false, tool: .simulator),
         CheckItem(id: "d8", group: phone, title: "Simulator keeps real data apart", how: "Any simulator run",

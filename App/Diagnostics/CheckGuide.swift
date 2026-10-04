@@ -113,6 +113,8 @@ struct CheckGuide {
                                  "Look at b9, c5, c6 and c7: each has a Steps list (\"0 of 5\" …) with empty circles.",
                                  "With the scooter: start b8 (Scooter → Start 4-min test): a bar with \"3:20 left\" counts down.",
                                  "Tap Pass if the bars move and the steps tick as you do them, Fail if not (add a Note)."], place: .noScooter),
+        "u2": CheckGuide(proves: "This build is 0.5 and carries the decided thresholds: speed warning on above 45 km/h and off below 43 (T99), safety margin +10% on decisions (T101).",
+                         steps: ["Nothing to do: it marks itself when the app opens.", "Look at Settings → About for the version line (v1 · 0.5)."], place: .noScooter),
         "d7": CheckGuide(proves: "When the scooter drops mid-ride, the phone takes over (GPS speed) and totals stay scooter-only.",
                          steps: ["Run all automatic, or: Simulated scooter → Fault \"D7 · Disconnect at 40%\" → 50× → Start."], place: .noScooter),
         "d8": CheckGuide(proves: "Simulated rides never touch your real data.",

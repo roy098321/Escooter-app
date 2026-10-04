@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// "v1 · 0.4 (13)" on every screen (owner, P4_DILEMMAS D3). The Home Screen name is just
+/// "v1 · 0.5 (13)" on every screen (owner, P4_DILEMMAS D3). The Home Screen name is just
 /// "CorckieApp"; inside the app the product version is always visible for future reference.
 ///
 /// One label, placed once: `RootView` applies `.v1Label()` to the whole app, so every tab and
