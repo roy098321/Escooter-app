@@ -142,6 +142,11 @@ public struct LivePath: Equatable, Sendable {
     public struct Coord: Equatable, Sendable {
         public var lat: Double
         public var lon: Double
+
+        public init(lat: Double, lon: Double) {
+            self.lat = lat
+            self.lon = lon
+        }
     }
 
     public struct Segment: Equatable, Sendable {
