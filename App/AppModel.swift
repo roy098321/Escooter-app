@@ -65,6 +65,7 @@ final class AppModel {
                                                object: nil, queue: .main) { _ in
             PermissionsCheck.shared.refresh()
             FieldChecks.shared.checkDeliveredNotification()
+            Notifier.shared.appBecameActive()
         }
         PermissionsCheck.shared.refresh()
     }

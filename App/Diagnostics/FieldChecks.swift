@@ -1,3 +1,4 @@
+import CorckieCore
 import Foundation
 import Observation
 import UIKit
@@ -37,7 +38,7 @@ final class FieldChecks: NSObject {
     @ObservationIgnored private var lowPowerWake: (packets: Int, fixes: Int)?
     @ObservationIgnored private var wakeNotificationPending = false
     @ObservationIgnored private var lastWakeNotification: Date?
-    static let wakeNotificationID = "corckie.test.goingForARide"
+    static let wakeNotificationID = GoingForARideContent.notificationID
     /// b8: 4 minutes (the scooter switches itself off after ~5 min standing)
     static let stabilitySeconds = 240
 
@@ -51,6 +52,7 @@ final class FieldChecks: NSObject {
             if self?.rangeArmed == true { self?.rangeLocked = true }
         }
         UNUserNotificationCenter.current().delegate = self
+        Notifier.shared.onSent = { [weak self] error in self?.notificationResult(error) }
     }
 
     /// When the files are readable (after the first unlock following a restart).
@@ -78,16 +80,9 @@ final class FieldChecks: NSObject {
                 lowPowerWake = (AppModel.shared.scooter.packetsInBackground, PhoneSensors.shared.fixesInBackground)
             }
         }
-        // B08: decide on every connect (also the iOS state-restoration relaunch) and log why
-        if UIApplication.shared.applicationState == .active {
-            Log.info(source: "notify", "skipped (reason: app on screen)")
-        } else if wakeNotificationPending {
-            Log.info(source: "notify", "skipped (reason: same power-on, waiting for the first battery reading)")
-        } else if let last = lastWakeNotification, Date().timeIntervalSince(last) < 120 {
-            Log.info(source: "notify", "skipped (reason: already sent \(Int(Date().timeIntervalSince(last))) s ago, same power-on)")
-        } else {
-            wakeNotificationPending = true
-        }
+        // B08 / M1-10: the real "Going for a ride?" rules decide on every connect (also the iOS
+        // state-restoration relaunch) and log why (Notifier + message_log)
+        Notifier.shared.scooterConnected()
         if let lost = rangeLostAt {
             let seconds = Int(Date().timeIntervalSince(lost))
             let line = "Back in range: reconnected after \(seconds) s\(inBackground ? " without opening the app" : " (app open)")"
@@ -100,6 +95,7 @@ final class FieldChecks: NSObject {
     }
 
     func scooterDisconnected(reason: String) {
+        Notifier.shared.scooterDisconnected()
         if stabilityRunning {
             stabilityDisconnects.append("\(stabilityElapsed) s: \(reason)")
         }
@@ -112,10 +108,7 @@ final class FieldChecks: NSObject {
 
     func packet(batteryPct: Int?) {
         let link = AppModel.shared.scooter
-        if wakeNotificationPending, UIApplication.shared.applicationState != .active, let pct = batteryPct {
-            wakeNotificationPending = false
-            sendWakeNotification(batteryPct: pct)
-        }
+        Notifier.shared.packet(batteryPct: batteryPct, shuttingDown: AppModel.shared.live.frame?.shuttingDown ?? false)
         if let start = lowPowerWake, ProcessInfo.processInfo.isLowPowerModeEnabled {
             let packets = link.packetsInBackground - start.packets
             let fixes = PhoneSensors.shared.fixesInBackground - start.fixes
@@ -133,37 +126,16 @@ final class FieldChecks: NSObject {
         CheckResults.shared.passOnce("c5", "After a phone restart the scooter woke the app at \(wake.formatted(date: .omitted, time: .shortened)), before you opened it")
     }
 
-    // MARK: c6 (a test of the "Going for a ride?" chain, not the feature)
+    // MARK: c6 (the real "Going for a ride?" notification, M1-10: Notifier sends it, this check watches it)
 
-    private func sendWakeNotification(batteryPct: Int) {
-        let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { settings in
-            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
-                DispatchQueue.main.async {
-                    Log.info(source: "notify", "skipped (reason: not authorized)")
-                    CheckResults.shared.set("c6", .fail, "Notifications aren't allowed · Permissions → allow them")
-                }
-                return
-            }
-            let content = UNMutableNotificationContent()
-            content.title = "Scooter on · \(batteryPct)%"
-            content.body = "test: going for a ride?"
-            // The owner's Kick-off chime (c6b); bundled 1.5 s WAV, original, ≤ 30 s as iOS requires
-            content.sound = UNNotificationSound(named: UNNotificationSoundName("chime2_kickoff.wav"))
-            content.interruptionLevel = .active
-            let request = UNNotificationRequest(identifier: Self.wakeNotificationID, content: content, trigger: nil)
-            center.add(request) { error in
-                DispatchQueue.main.async {
-                    if let error {
-                        CheckResults.shared.set("c6", .fail, "Couldn't send: \(error.localizedDescription)")
-                    } else {
-                        self.lastWakeNotification = Date()
-                        self.notificationSent = true
-                        Log.info(source: "notify", "sent (\(batteryPct)%, sounds \(settings.soundSetting == .enabled ? "on" : "off"))")
-                        self.checkDeliveredNotification()
-                    }
-                }
-            }
+    /// Notifier tells us how iOS took the notification
+    private func notificationResult(_ error: Error?) {
+        if let error {
+            CheckResults.shared.set("c6", .fail, "Could not send: \(error.localizedDescription) · Permissions → allow notifications")
+        } else {
+            lastWakeNotification = Date()
+            notificationSent = true
+            checkDeliveredNotification()
         }
     }
 
