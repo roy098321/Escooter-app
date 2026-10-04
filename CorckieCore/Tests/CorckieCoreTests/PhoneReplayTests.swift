@@ -156,7 +156,8 @@ final class PhoneReplayTests: XCTestCase {
         let pipeline = { () -> ScooterPipeline in var p = ScooterPipeline(); p.handle(stream.scooter); return p }()
         XCTAssertEqual(pipeline.plausibility.ignoredReadings, 0, "the ramp is smooth enough for G1b")
         // crossings of 45 going up and of 43 going down, in order: up, (44 is between), up again, down
-        let at = { (t: Double) in frames(stream.scooter).last { $0.t <= t }?.speedKmh ?? -1 }
+        let all = frames(stream.scooter)
+        let at = { (t: Double) in all.last { $0.t <= t }?.speedKmh ?? -1 }
         XCTAssertEqual(at(30), 40, accuracy: 0.6)
         XCTAssertEqual(at(36), 46, accuracy: 0.6)
         XCTAssertEqual(at(40), 44, accuracy: 0.6)
