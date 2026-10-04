@@ -81,15 +81,15 @@ struct ScooterCheckView: View {
 
     private var stabilitySection: some View {
         let field = FieldChecks.shared
-        return Section("Stable for 10 min (b8)") {
+        return Section("Stable for 4 min (b8)") {
             checkLine("b8")
             if field.stabilityRunning {
-                ProgressView(value: Double(field.stabilityElapsed), total: 600)
+                ProgressView(value: Double(field.stabilityElapsed), total: Double(FieldChecks.stabilitySeconds))
                 Text("\(field.stabilityElapsed / 60) min \(field.stabilityElapsed % 60) s · \(field.stabilityDisconnects.count) disconnects")
                     .font(.footnote).monospacedDigit()
                 Button("Stop", role: .destructive) { field.stopStabilityTest() }
             } else {
-                Button("Start 10-min test") { field.startStabilityTest() }
+                Button("Start 4-min test") { field.startStabilityTest() }
                     .disabled(!model.scooter.connected)
             }
             ForEach(field.stabilityDisconnects, id: \.self) { line in

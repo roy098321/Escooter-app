@@ -123,7 +123,13 @@ extension ScooterLink: CBCentralManagerDelegate {
             return
         }
         if let known = peripheral, known.state == .connected {
+            // B08: iOS relaunched the app with the scooter already connected: no didConnect comes,
+            // so this is the connect (wake notification, checks, sensors)
+            let background = inBackground
+            connectedAt = Date()
+            log("Connected (restored by iOS)")
             didBecomeConnected(known)
+            connectHandlers.forEach { $0(background) }
         } else if let restored = peripheral {
             // Restored by iOS (e.g. before the first unlock, when the saved ID can't be read yet)
             state = "Waiting for the scooter · switch it on"

@@ -34,6 +34,18 @@ struct SensorsView: View {
                 LabeledContent("Scooter packets while locked", value: "\(model.scooter.packetsInBackground)")
                 LabeledContent("Packet gaps > 2 s", value: "\(sensors.packetGapsOver2s) (longest \(Int(sensors.longestGapS)) s)")
                 LabeledContent("Low Power Mode", value: ProcessInfo.processInfo.isLowPowerModeEnabled ? "on" : "off")
+                if let since = sensors.recordingSince {
+                    // c8: 20 minutes needed
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let elapsed = max(0, context.date.timeIntervalSince(since))
+                        VStack(alignment: .leading, spacing: 4) {
+                            ProgressView(value: min(elapsed, 1200), total: 1200)
+                            Text(String(format: "Recording %ld:%02ld · c8 needs 20:00%@", Int(elapsed) / 60, Int(elapsed) % 60,
+                                        elapsed >= 1200 ? " ✓" : ""))
+                                .font(.footnote).monospacedDigit()
+                        }
+                    }
+                }
                 if sensors.recording {
                     Button("Stop recording", role: .destructive) { sensors.stop() }
                 } else {

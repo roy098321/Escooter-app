@@ -126,7 +126,12 @@ struct CheckRow: View {
             if !ownerNote.isEmpty {
                 Label(ownerNote, systemImage: "note.text").font(.caption).foregroundStyle(.blue)
             }
-            if item.manual {
+            if item.id == "c6b" && !PermissionsCheck.shared.soundsOn {
+                // B09: the chime can't play without notification sounds — don't let the test start
+                Label("Turn on Sounds first: Developer → Permissions → step 6 (h2 must be ✅)", systemImage: "speaker.slash.fill")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.red)
+            } else if item.manual {
                 ManualResult(id: item.id)
             }
             HStack {

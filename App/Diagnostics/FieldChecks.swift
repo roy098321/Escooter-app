@@ -29,6 +29,8 @@ final class FieldChecks: NSObject {
     @ObservationIgnored private var wakeNotificationPending = false
     @ObservationIgnored private var lastWakeNotification: Date?
     static let wakeNotificationID = "corckie.test.goingForARide"
+    /// b8: 4 minutes (the scooter switches itself off after ~5 min standing)
+    static let stabilitySeconds = 240
 
     // MARK: Launch
 
@@ -59,9 +61,16 @@ final class FieldChecks: NSObject {
             if ProcessInfo.processInfo.isLowPowerModeEnabled {
                 lowPowerWake = (AppModel.shared.scooter.packetsInBackground, PhoneSensors.shared.fixesInBackground)
             }
-            if lastWakeNotification.map({ Date().timeIntervalSince($0) > 120 }) ?? true {
-                wakeNotificationPending = true
-            }
+        }
+        // B08: decide on every connect (also the iOS state-restoration relaunch) and log why
+        if UIApplication.shared.applicationState == .active {
+            Log.info(source: "notify", "skipped (reason: app on screen)")
+        } else if wakeNotificationPending {
+            Log.info(source: "notify", "skipped (reason: same power-on, waiting for the first battery reading)")
+        } else if let last = lastWakeNotification, Date().timeIntervalSince(last) < 120 {
+            Log.info(source: "notify", "skipped (reason: already sent \(Int(Date().timeIntervalSince(last))) s ago, same power-on)")
+        } else {
+            wakeNotificationPending = true
         }
         if let lost = rangeLostAt {
             let seconds = Int(Date().timeIntervalSince(lost))
@@ -85,7 +94,7 @@ final class FieldChecks: NSObject {
 
     func packet(batteryPct: Int?) {
         let link = AppModel.shared.scooter
-        if wakeNotificationPending, UIApplication.shared.applicationState == .background, let pct = batteryPct {
+        if wakeNotificationPending, UIApplication.shared.applicationState != .active, let pct = batteryPct {
             wakeNotificationPending = false
             sendWakeNotification(batteryPct: pct)
         }
@@ -113,6 +122,7 @@ final class FieldChecks: NSObject {
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
                 DispatchQueue.main.async {
+                    Log.info(source: "notify", "skipped (reason: not authorized)")
                     CheckResults.shared.set("c6", .fail, "Notifications aren't allowed · Permissions → allow them")
                 }
                 return
@@ -130,7 +140,7 @@ final class FieldChecks: NSObject {
                         CheckResults.shared.set("c6", .fail, "Couldn't send: \(error.localizedDescription)")
                     } else {
                         self.lastWakeNotification = Date()
-                        Log.info(source: "notify", "Wake test notification sent (\(batteryPct)%)")
+                        Log.info(source: "notify", "sent (\(batteryPct)%, sounds \(settings.soundSetting == .enabled ? "on" : "off"))")
                         self.checkDeliveredNotification()
                     }
                 }
@@ -182,14 +192,14 @@ final class FieldChecks: NSObject {
             return
         }
         stabilityElapsed += 1
-        if stabilityElapsed >= 600 {
+        if stabilityElapsed >= Self.stabilitySeconds {
             UIApplication.shared.isIdleTimerDisabled = false
             stabilityTimer?.invalidate()
             stabilityRunning = false
             if stabilityDisconnects.isEmpty {
-                CheckResults.shared.set("b8", .pass, "10 min connected, 0 disconnects")
+                CheckResults.shared.set("b8", .pass, "4 min connected, 0 disconnects")
             } else {
-                CheckResults.shared.set("b8", .fail, "\(stabilityDisconnects.count) disconnects in 10 min: " + stabilityDisconnects.joined(separator: " · "))
+                CheckResults.shared.set("b8", .fail, "\(stabilityDisconnects.count) disconnects in 4 min: " + stabilityDisconnects.joined(separator: " · "))
             }
         }
     }

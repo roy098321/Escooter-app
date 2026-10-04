@@ -29,6 +29,8 @@ final class PhoneSensors: NSObject {
     @ObservationIgnored private var lastPacketAt: Date?
     @ObservationIgnored private var lastSessionUpdate = Date.distantPast
     private(set) var packetGapsOver2s = 0
+    /// c8: when the current recording started (for the timer on the Sensors screen)
+    private(set) var recordingSince: Date?
     private(set) var longestGapS = 0.0
 
     private(set) var recording = false
@@ -61,6 +63,7 @@ final class PhoneSensors: NSObject {
         startedByWake = fromWake
         if !recording {
             sessionStart = Date()
+            recordingSince = sessionStart
             sessionFixes0 = fixes
             sessionAltitude0 = altitude.count
             packetGapsOver2s = 0
@@ -107,6 +110,7 @@ final class PhoneSensors: NSObject {
         altimeter.stopRelativeAltitudeUpdates()
         recording = false
         sessionStart = nil
+        recordingSince = nil
     }
 
     /// c8: every scooter packet while recording (gaps > 2 s between packets).
