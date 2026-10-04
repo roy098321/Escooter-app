@@ -35,6 +35,12 @@ public struct RecorderClose: Equatable, Sendable {
     public var end: RideEnd
     public var topSpeedKmh: Double
     public var ignoredReadings: Int
+
+    public init(end: RideEnd, topSpeedKmh: Double, ignoredReadings: Int) {
+        self.end = end
+        self.topSpeedKmh = topSpeedKmh
+        self.ignoredReadings = ignoredReadings
+    }
 }
 
 /// What the Recorder must do, in order.
