@@ -91,15 +91,15 @@ struct LiveCheckBlock: View {
                         Text(bar.label).font(.footnote).monospacedDigit().foregroundStyle(.secondary)
                     }
                     if let steps = CheckLive.steps(id) {
-                        Text("Steps · (CheckProgress.tally(steps))").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        ForEach(Array(steps.enumerated()), id: .offset) { _, step in
+                        Text("Steps · \(CheckProgress.tally(steps))").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        ForEach(Array(steps.enumerated()), id: \.offset) { _, step in
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 Image(systemName: step.done ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(step.done ? Color.green : Color.secondary)
                                 Text(step.title).font(.footnote).foregroundStyle(step.done ? .primary : .secondary)
                             }
                             .accessibilityElement(children: .combine)
-                            .accessibilityLabel("(step.title), (step.done ? "done" : "not yet")")
+                            .accessibilityLabel("\(step.title), \(step.done ? "done" : "not yet")")
                         }
                     }
                 }
