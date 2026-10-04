@@ -162,8 +162,17 @@ public enum T {
     public static let t98NotificationsPerDay = 2
     public static let t98QuietFromHour = 22
     public static let t98QuietToHour = 7
-    public static let t99SlowKmh = 30.0
+    /// T99 speed warning: on above 45 km/h, clears below 43 (owner, 2026-10-04; was 30)
+    public static let t99SlowKmh = 45.0
+    public static let t99ClearKmh = 43.0
     public static let t100NoGpsChipS = 10.0
+    /// T101 safety margin on decisions (G2): +10% of what is needed
+    public static let t101SafetyMarginShare = 0.10
+    /// T102 pushing (walking stretch): wheel or GPS 1–7 km/h with the motor < 0.5 A for 30 s
+    public static let t102PushingMinKmh = 1.0
+    public static let t102PushingMaxKmh = 7.0
+    public static let t102PushingCurrentA = 0.5
+    public static let t102PushingS = 30.0
     public static let t100ConnectFailS = 30.0
     public static let t100LastSeenYesterdayS = 86_400.0
     public static let t100BackupWarningDays = 14.0
@@ -228,9 +237,11 @@ public enum T {
         "T74": "current ≥ 90% of learned max",
         "T75": "Light 5 kg, Heavy 15 kg",
         "T76": "same sign, within ×2",
-        "T80": "lowest % reached, else 5%",
+        "T80": "**% where the battery ran out** (pushing event, M1 D3), else lowest % reached, else 5%",
         "T81": "< 20%",
+        "T102": "wheel or GPS 1–7 km/h, motor < 0.5 A, for 30 s (M1 D3, 2026-10-04)",
         "T82": "✅ ≥ 10% spare, ⚠ < 10%, ❌ < 0",
+        "T101": "+10% of what is needed",
         "T83": "≤ every 30 s or change ≥ 1 min",
         "T84": "leave time ≥ 2 min earlier",
         "T85": "last 10 rides",
@@ -243,7 +254,7 @@ public enum T {
         "T96": "≥ 1 min or ≥ 2%",
         "T97": "≥ 5 rides, ≥ 2% unexplained, 1 / day, pause 7 days after 2 dismissals, 3 answers → factor",
         "T98": "ride start ≤ 2 · banner ≤ 8 s · tappable < 5 km/h · queue ≤ 2 · ≤ 2 notifications / day · quiet 22–07 · weekly Sun 07:30",
-        "T99": "> 30 km/h, red + \"SLOW\"",
+        "T99": "> **45 km/h**, red + \"SLOW\"; clears below 43 (owner, 2026-10-04; was 30)",
         "T100": "No GPS chip after 10 s · connect fails after 30 s · last seen \"yesterday\" after 24 h · backup warning after 14 days"
     ]
 }

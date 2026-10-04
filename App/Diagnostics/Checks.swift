@@ -92,6 +92,8 @@ enum CheckList {
                   expected: "The scooter woke the app before you opened it", needsScooter: true, manual: false, tool: .sensors),
         CheckItem(id: "c6", group: background, title: "Notification on a scooter wake", how: "Allow notifications · app in the background, phone locked · scooter on",
                   expected: "Silent \"Scooter on · 91% · test: going for a ride?\" arrives (tap it too)", needsScooter: true, manual: false, tool: .sensors),
+        CheckItem(id: "c6b", group: background, title: "Kick-off chime heard (ringer on)", how: "Ringer on · do the c6 steps · listen",
+                  expected: "The Kick-off chime plays with the notification", needsScooter: true, manual: true, tool: .sensors),
         CheckItem(id: "c7", group: background, title: "Low Power Mode wake", how: "Turn Low Power Mode on · repeat the c1 wake · lock, walk ~1 min",
                   expected: "Woke, 20+ packets and 5+ fixes while locked", needsScooter: true, manual: false, tool: .sensors),
         CheckItem(id: "c8", group: background, title: "Full ride with the phone locked", how: "Sensors → Start recording, ride 20+ min with the phone locked, then Stop",
@@ -167,6 +169,9 @@ final class CheckResults {
     /// Results are only saved once the stored ones are loaded, so a wake before the first unlock
     /// after a restart (settings unreadable) can never overwrite them.
     @ObservationIgnored private var loaded = false
+    /// The owner's own notes per check (M1-00): kept across updates, in the export
+    private(set) var notes: [String: String] = [:]
+    @ObservationIgnored private let notesKey = "corckie.checkNotes"
 
     private init() {
         loadIfPossible()
@@ -180,6 +185,8 @@ final class CheckResults {
             saved = decoded
         }
         entries = saved.merging(entries) { _, new in new }
+        let savedNotes = defaults.dictionary(forKey: notesKey) as? [String: String] ?? [:]
+        notes = savedNotes.merging(notes) { _, new in new }
         loaded = true
         // Owner verdicts (4 Oct 2026), seeded once like the P2 Lab build-4 seeding
         if !defaults.bool(forKey: "corckie.seeded.p4b") {
@@ -194,6 +201,38 @@ final class CheckResults {
     private func persist() {
         guard loaded, let data = try? JSONEncoder().encode(entries) else { return }
         defaults.set(data, forKey: key)
+        defaults.set(notes, forKey: notesKey)
+    }
+
+    func ownerNote(_ id: String) -> String { notes[id] ?? "" }
+
+    func setOwnerNote(_ id: String, _ text: String) {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        notes[id] = clean.isEmpty ? nil : clean
+        persist()
+    }
+
+    /// notes.txt in the export
+    func notesReport() -> String {
+        var out = "Owner notes · CorckieApp \(AppInfo.versionLine) · \(Date().formatted())\n"
+        for item in CheckList.all {
+            if let note = notes[item.id] { out += "\n\(item.id) \(item.title) [\(status(item.id).icon)]\n\(note)\n" }
+        }
+        return notes.isEmpty ? out + "\n(no notes)\n" : out
+    }
+
+    struct TodoGroup: Identifiable {
+        let place: CheckGuide.Place
+        let items: [CheckItem]
+        var id: String { place.rawValue }
+    }
+
+    /// The To do list: everything ⏳ or ❌, by where it's done.
+    func todo() -> [TodoGroup] {
+        CheckGuide.Place.allCases.compactMap { place -> TodoGroup? in
+            let items = CheckList.all.filter { CheckGuide.of($0.id).place == place && [CheckStatus.pending, .fail].contains(status($0.id)) }
+            return items.isEmpty ? nil : TodoGroup(place: place, items: items)
+        }
     }
 
     func status(_ id: String) -> CheckStatus { entries[id]?.status ?? .pending }
@@ -234,6 +273,7 @@ final class CheckResults {
                     out += " (\(e.date.formatted(date: .abbreviated, time: .shortened)))"
                 }
                 out += "\n"
+                if let note = notes[item.id] { out += "    Note: \(note)\n" }
             }
         }
         return out

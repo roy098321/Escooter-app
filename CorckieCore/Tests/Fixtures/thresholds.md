@@ -1,7 +1,7 @@
 | ID | Threshold | Value | Used in | Kind |
 |---|---|---|---|---|
 | T01 | Wheel speed scale | 0.0476 km/h per unit | Decode | Fact |
-| T02 | Max plausible speed (retired) | none · only the step check T03 (owner, P4 D1 A2) | G1b | Guess |
+| T02 | Max plausible speed (retired) | none · only the step check T03 (owner, P4 D1 A2) | G1b | Owner decision 2026-10-02: real speeds reach 50.7 km/h (ride 1), confirmed by GPS (ride 2) |
 | T03 | Max speed step | 15 km/h within 1 s | G1b | Guess |
 | T04 | Max battery % change while moving | 5% per 60 s | G1b | Guess |
 | T05 | Voltage range | 39.0–55.5 V | G1b | Guess |
@@ -58,9 +58,11 @@
 | T74 | Full throttle (estimated) | current ≥ 90% of learned max | M22 | Guess |
 | T75 | Load levels | Light 5 kg, Heavy 15 kg | M23 | Setting |
 | T76 | Factor confirmation | same sign, within ×2 | M24 | Guess |
-| T80 | Range reserve | lowest % reached, else 5% | M25, M27 | Guess |
+| T80 | Range reserve | **% where the battery ran out** (pushing event, M1 D3), else lowest % reached, else 5% | M25, M27 | Guess |
 | T81 | Low battery band | < 20% | M25, M27 | Guess |
+| T102 | Pushing (walking stretch) | wheel or GPS 1–7 km/h, motor < 0.5 A, for 30 s (M1 D3, 2026-10-04) | M2, M3, M4, M14 | Guess |
 | T82 | There and back | ✅ ≥ 10% spare, ⚠ < 10%, ❌ < 0 | M27 | Fixed |
+| T101 | Safety margin on decisions (G2, owner 2026-10-04) | +10% of what is needed | M27, Routes greying, V04, V06 | Fixed (policy) |
 | T83 | Arrival display | ≤ every 30 s or change ≥ 1 min | M28 | Fixed |
 | T84 | Arrive-by update | leave time ≥ 2 min earlier | M29 | Fixed |
 | T85 | Real range basis | last 10 rides | M25 | Guess |
@@ -73,5 +75,5 @@
 | T96 | Q13 noteworthy | ≥ 1 min or ≥ 2% | Q13 | Guess |
 | T97 | Smart prompt | ≥ 5 rides, ≥ 2% unexplained, 1 / day, pause 7 days after 2 dismissals, 3 answers → factor | C26 | Fixed |
 | T98 | Message budget | ride start ≤ 2 · banner ≤ 8 s · tappable < 5 km/h · queue ≤ 2 · ≤ 2 notifications / day · quiet 22–07 · weekly Sun 07:30 | C24 | Fixed |
-| T99 | Over-30 speed tile | > 30 km/h, red + "SLOW" | C30 | Fixed |
+| T99 | Speed warning tile | > **45 km/h**, red + "SLOW"; clears below 43 (owner, 2026-10-04; was 30) | C30, P3 D3 | Fixed |
 | T100 | UI timers | No GPS chip after 10 s · connect fails after 30 s · last seen "yesterday" after 24 h · backup warning after 14 days | STATES, C13 | Fixed |

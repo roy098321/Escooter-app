@@ -15,6 +15,7 @@ enum Exporter {
 
         let model = AppModel.shared
         try CheckResults.shared.report().write(to: folder.appendingPathComponent("results.txt"), atomically: true, encoding: .utf8)
+        try CheckResults.shared.notesReport().write(to: folder.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
         try ErrorLog.shared.lines().joined(separator: "\n")
             .write(to: folder.appendingPathComponent("error-log.txt"), atomically: true, encoding: .utf8)
         try model.scooter.events.joined(separator: "\n")

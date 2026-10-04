@@ -33,13 +33,17 @@ final class SimulatorRunner {
     @ObservationIgnored private var gpsTrack: [MergedSample] = []
     @ObservationIgnored private var realRidesBefore: Int?
     @ObservationIgnored private var lastVirtual = 0.0
+    /// B05: the run's fixture, scenario and speed are fixed at Start (the pickers can't change a run)
+    private(set) var runFixtureID = "F2"
+    private(set) var runScenarioID = SimScenario.clean.id
+    private(set) var runSpeed: Double = 50
 
     func start(realScooterConnected: Bool) {
         guard !realScooterConnected else {
             message = "The real scooter is connected · the simulator can't run during a real ride"
             return
         }
-        if scenarioID == "D7" { fixtureID = "F3" }        // d7 needs the ride with GPS
+        if runScenarioID == "D7" { fixtureID = "F3" }        // d7 needs the ride with GPS
         guard let fixture = SimFixture.all.first(where: { $0.id == fixtureID }),
               let url = Bundle.main.url(forResource: fixture.fileName, withExtension: "csv", subdirectory: "Fixtures") else {
             message = "Fixture not found in the app"
@@ -50,6 +54,9 @@ final class SimulatorRunner {
             var events = try fixture.events(from: text)
             gpsTrack = fixture.kind == .samples ? (try LogReader.mergedSamples(text)) : []
             let scenario = SimScenario.all.first { $0.id == scenarioID } ?? .clean
+            runFixtureID = fixture.id
+            runScenarioID = scenario.id
+            runSpeed = speed
             events = FaultInjector.apply(scenario.faults(events.first?.t ?? 0), to: events)
             session = ReplaySession(events: events, speed: speed)
             pipeline = ScooterPipeline()
@@ -89,7 +96,7 @@ final class SimulatorRunner {
         let virtual = session.clock.now
         // G1 phone takeover after the first connection: GPS speed while the scooter is gone
         if !pipeline.connected, pipeline.connects > 0, !session.isFinished {
-            gpsSpeedKmh = gpsSpeed(at: virtual)
+            gpsSpeedKmh = PhoneTakeover.gpsSpeedKmh(track: gpsTrack, at: virtual)
             phoneModeSeconds += max(0, virtual - lastVirtual)
         } else {
             gpsSpeedKmh = nil
@@ -100,21 +107,15 @@ final class SimulatorRunner {
         }
     }
 
-    private func gpsSpeed(at t: Double) -> Double? {
-        guard !gpsTrack.isEmpty else { return nil }
-        let index = min(gpsTrack.count - 1, max(0, Int(t)))
-        return gpsTrack[index].gpsSpeedKmh
-    }
-
     private func finish() {
         stop()
-        finishedFixture = fixtureID
+        finishedFixture = runFixtureID
         let t = pipeline.totals
         let summary = String(format: "%@ at %.0f×: %.0f Wh, %.1f km, top %.0f km/h, %ld readings ignored",
-                             fixtureID, speed, t.energyWhRaw, t.distanceKm, t.topSpeedKmh, pipeline.plausibility.ignoredReadings)
+                             runFixtureID, runSpeed, t.energyWhRaw, t.distanceKm, t.topSpeedKmh, pipeline.plausibility.ignoredReadings)
         message = "Finished · " + summary
         Log.info(source: "simulator", summary)
-        if fixtureID == "F2", speed >= 50, scenarioID == SimScenario.clean.id {
+        if runFixtureID == "F2", runSpeed >= 50, runScenarioID == SimScenario.clean.id {
             let ok = abs(t.energyWhRaw - 437) <= 437 * 0.03 && abs(t.distanceKm - 16.3) <= 0.05
             CheckResults.shared.set("d1", ok ? .pass : .fail, summary)
         }

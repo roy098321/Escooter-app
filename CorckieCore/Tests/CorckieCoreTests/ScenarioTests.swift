@@ -116,6 +116,37 @@ final class ScenarioTests: XCTestCase {
         XCTAssertTrue(g.formatChanged)
     }
 
+    /// B05 / d7: "Disconnect at 40%" really stops the stream for 60 s; the phone's GPS speed is
+    /// available for the gap; the totals stay scooter-only (odometer distance, no invented energy).
+    func test_D7_disconnectAt40Percent_streamStopsAndTotalsStayScooterOnly() throws {
+        let sim = try XCTUnwrap(SimFixture.all.first { $0.id == "F3" })
+        let text = try Fixtures.text("F3_ride2_merged.csv")
+        let clean = try sim.events(from: text)
+        let track = try LogReader.mergedSamples(text)
+        let d7 = try XCTUnwrap(SimScenario.all.first { $0.id == "D7" })
+        let events = FaultInjector.apply(d7.faults(clean.first?.t ?? 0), to: clean)
+        XCTAssertFalse(events.contains { $0.t > 724 && $0.t < 784 && $0.bytes != nil }, "no packets during the gap")
+
+        let session = ReplaySession(events: events, speed: 50)
+        var p = ScooterPipeline()
+        var phoneSeconds = 0.0
+        var gpsSeen = false
+        var last = 0.0
+        while !session.isFinished {
+            p.handle(Array(session.advance(realSeconds: 0.1)))
+            let now = session.clock.now
+            if !p.connected, p.connects > 0, !session.isFinished {
+                phoneSeconds += now - last
+                if let gps = PhoneTakeover.gpsSpeedKmh(track: track, at: now), gps > 0 { gpsSeen = true }
+            }
+            last = now
+        }
+        XCTAssertEqual(phoneSeconds, 60, accuracy: 6, "the phone takes over for the 60 s gap")
+        XCTAssertTrue(gpsSeen, "GPS speed is there to show during the gap")
+        XCTAssertEqual(p.totals.distanceKm, 13.7, accuracy: 0.05, "distance from the odometer")
+        XCTAssertLessThan(p.totals.energyWhRaw, 318, "no energy invented for the gap")
+    }
+
     func test_scenarioCatalog_playableOnesProduceFaults() {
         for s in SimScenario.all where s.playable && s.id != "clean" {
             XCTAssertFalse(s.faults(0).isEmpty, s.id)

@@ -59,7 +59,7 @@ final class FieldChecks: NSObject {
             if ProcessInfo.processInfo.isLowPowerModeEnabled {
                 lowPowerWake = (AppModel.shared.scooter.packetsInBackground, PhoneSensors.shared.fixesInBackground)
             }
-            if lastWakeNotification.map({ Date().timeIntervalSince($0) > 3600 }) ?? true {
+            if lastWakeNotification.map({ Date().timeIntervalSince($0) > 120 }) ?? true {
                 wakeNotificationPending = true
             }
         }
@@ -120,8 +120,9 @@ final class FieldChecks: NSObject {
             let content = UNMutableNotificationContent()
             content.title = "Scooter on · \(batteryPct)%"
             content.body = "test: going for a ride?"
-            content.sound = nil                     // silent
-            content.interruptionLevel = .passive
+            // The owner's Kick-off chime (c6b); bundled 1.5 s WAV, original, ≤ 30 s as iOS requires
+            content.sound = UNNotificationSound(named: UNNotificationSoundName("chime2_kickoff.wav"))
+            content.interruptionLevel = .active
             let request = UNNotificationRequest(identifier: Self.wakeNotificationID, content: content, trigger: nil)
             center.add(request) { error in
                 DispatchQueue.main.async {
@@ -143,7 +144,7 @@ final class FieldChecks: NSObject {
             guard list.contains(where: { $0.request.identifier == Self.wakeNotificationID }) else { return }
             DispatchQueue.main.async {
                 if CheckResults.shared.status("c6") != .pass {
-                    CheckResults.shared.set("c6", .pass, "Delivered on a scooter wake (silent)")
+                    CheckResults.shared.set("c6", .pass, "Delivered on a scooter wake (Kick-off chime)")
                 }
             }
         }
@@ -157,11 +158,13 @@ final class FieldChecks: NSObject {
         stabilityElapsed = 0
         stabilityDisconnects = []
         stabilityLastTick = Date()
+        UIApplication.shared.isIdleTimerDisabled = true      // b8: the screen stays on for the 10 min
         CheckResults.shared.set("b8", .pending, "Running… keep the app open, scooter on")
         stabilityTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.stabilityTick() }
     }
 
     func stopStabilityTest() {
+        UIApplication.shared.isIdleTimerDisabled = false
         stabilityTimer?.invalidate()
         stabilityRunning = false
         CheckResults.shared.set("b8", .pending, "Stopped after \(stabilityElapsed) s")
@@ -172,6 +175,7 @@ final class FieldChecks: NSObject {
         let gap = now.timeIntervalSince(stabilityLastTick)
         stabilityLastTick = now
         if UIApplication.shared.applicationState != .active || gap > 3 {
+            UIApplication.shared.isIdleTimerDisabled = false
             stabilityTimer?.invalidate()
             stabilityRunning = false
             CheckResults.shared.set("b8", .pending, "Interrupted: the app left the screen after \(stabilityElapsed) s · start again")
@@ -179,6 +183,7 @@ final class FieldChecks: NSObject {
         }
         stabilityElapsed += 1
         if stabilityElapsed >= 600 {
+            UIApplication.shared.isIdleTimerDisabled = false
             stabilityTimer?.invalidate()
             stabilityRunning = false
             if stabilityDisconnects.isEmpty {

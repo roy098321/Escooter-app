@@ -22,17 +22,20 @@ struct SimulatorView: View {
                         Text(fixture.title).tag(fixture.id)
                     }
                 }
+                .disabled(sim.running)
                 Picker("Speed", selection: $sim.speed) {
                     ForEach(VirtualClock.appSpeeds, id: \.self) { speed in
                         Text("\(Int(speed))×").tag(speed)
                     }
                 }
                 .pickerStyle(.segmented)
+                .disabled(sim.running)
                 Picker("Fault", selection: $sim.scenarioID) {
                     ForEach(SimScenario.all.filter(\.playable)) { scenario in
                         Text(scenario.id == "clean" ? scenario.title : "\(scenario.id) · \(scenario.title)").tag(scenario.id)
                     }
                 }
+                .disabled(sim.running)
                 if sim.running {
                     ProgressView(value: sim.progress)
                     Button("Stop", role: .destructive) { sim.stop(reason: "Stopped") }

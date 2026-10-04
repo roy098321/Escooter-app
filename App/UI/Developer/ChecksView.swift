@@ -1,26 +1,72 @@
 import SwiftUI
 
-/// Settings → Developer → Checks: the build's whole check list (TESTING §6).
+/// Settings → Developer → Checks: the build's whole check list (TESTING §6), a To do list,
+/// "Run all automatic", and per check an ⓘ guide and the owner's note (M1-00).
 struct ChecksView: View {
     private let results = CheckResults.shared
+    private let auto = AutoRunner.shared
+    @State private var showTodo = true
 
     var body: some View {
         List {
             Section {
                 CountsRow()
+                Picker("Show", selection: $showTodo) {
+                    Text("To do").tag(true)
+                    Text("All checks").tag(false)
+                }
+                .pickerStyle(.segmented)
             } footer: {
-                Text("✅ passed · ❌ failed · ⏳ not done yet · ℹ️ recorded for Claude. Do them in the order of P4_RUN_ORDER, whenever there's time; most mark themselves.")
+                Text("✅ passed · ❌ failed · ⏳ not done yet · ℹ️ recorded for Claude. Tap ⓘ for the steps of a check.")
             }
-            ForEach(CheckList.groups, id: \.self) { group in
-                Section(group) {
-                    ForEach(CheckList.all.filter { $0.group == group }) { item in
-                        CheckRow(item: item)
+            autoSection
+            if showTodo {
+                let todo = results.todo()
+                if todo.isEmpty {
+                    Section { Text("Nothing left to do. Send the export (Results).") }
+                }
+                ForEach(todo) { group in
+                    Section(group.place.rawValue) {
+                        ForEach(group.items) { item in
+                            CheckRow(item: item)
+                        }
+                    }
+                }
+            } else {
+                ForEach(CheckList.groups, id: \.self) { group in
+                    Section(group) {
+                        ForEach(CheckList.all.filter { $0.group == group }) { item in
+                            CheckRow(item: item)
+                        }
                     }
                 }
             }
         }
         .navigationTitle("Checks")
         .screen("Checks")
+    }
+
+    private var autoSection: some View {
+        Section {
+            Button {
+                Task { await auto.run() }
+            } label: {
+                if auto.running {
+                    HStack {
+                        ProgressView()
+                        Text(auto.step.isEmpty ? "Running…" : auto.step)
+                    }
+                } else {
+                    Label("Run all automatic", systemImage: "play.circle.fill").font(.headline)
+                }
+            }
+            .disabled(auto.running)
+            ForEach(Array(auto.summary.enumerated()), id: \.offset) { _, line in
+                Text(line).font(.footnote)
+            }
+        } footer: {
+            Text("Runs every check the phone can do by itself: permissions, settings, error log, backup + restore, the simulator ones (scooter off) and outside data. About a minute.")
+        }
     }
 }
 
@@ -49,6 +95,8 @@ struct CountsRow: View {
 struct CheckRow: View {
     let item: CheckItem
     private let results = CheckResults.shared
+    @State private var showGuide = false
+    @State private var editingNote = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -59,6 +107,13 @@ struct CheckRow: View {
                 if item.needsScooter {
                     Image(systemName: "scooter").foregroundStyle(.secondary).accessibilityLabel("Needs the scooter")
                 }
+                Button {
+                    showGuide = true
+                } label: {
+                    Image(systemName: "info.circle")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("How to do this check")
             }
             let note = results.note(item.id)
             Text(note.isEmpty ? item.how : note)
@@ -67,14 +122,108 @@ struct CheckRow: View {
             if note.isEmpty {
                 Text("Expected: \(item.expected)").font(.caption).foregroundStyle(.tertiary)
             }
+            let ownerNote = results.ownerNote(item.id)
+            if !ownerNote.isEmpty {
+                Label(ownerNote, systemImage: "note.text").font(.caption).foregroundStyle(.blue)
+            }
             if item.manual {
                 ManualResult(id: item.id)
             }
-            if let link = ToolLink(tool: item.tool) {
-                link
+            HStack {
+                Button {
+                    editingNote = true
+                } label: {
+                    Label(ownerNote.isEmpty ? "Note" : "Edit note", systemImage: "square.and.pencil").font(.footnote)
+                }
+                .buttonStyle(.borderless)
+                Spacer()
+                if let link = ToolLink(tool: item.tool) {
+                    link
+                }
             }
         }
         .padding(.vertical, 2)
+        .sheet(isPresented: $showGuide) {
+            CheckGuideSheet(item: item)
+                .v1Label()
+        }
+        .sheet(isPresented: $editingNote) {
+            CheckNoteSheet(item: item)
+                .v1Label()
+        }
+    }
+}
+
+/// ⓘ: what the check proves, the steps, and what to expect.
+struct CheckGuideSheet: View {
+    let item: CheckItem
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let guide = CheckGuide.of(item.id)
+        NavigationStack {
+            List {
+                Section("What it proves") {
+                    Text(guide.proves)
+                }
+                Section("Steps") {
+                    ForEach(Array(guide.steps.enumerated()), id: \.offset) { index, step in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text("\(index + 1).").monospacedDigit().foregroundStyle(.secondary)
+                            Text(step)
+                        }
+                    }
+                }
+                Section("Expected") {
+                    Text(item.expected)
+                }
+                Section {
+                    LabeledContent("Where", value: guide.place.rawValue)
+                    LabeledContent("Result", value: CheckResults.shared.status(item.id).icon)
+                }
+            }
+            .navigationTitle("\(item.id.uppercased()) · \(item.title)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// The owner's note on a check: saved with the result, kept across updates, in the export.
+struct CheckNoteSheet: View {
+    let item: CheckItem
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextEditor(text: $text)
+                        .frame(minHeight: 160)
+                } footer: {
+                    Text("Why it passed or failed, or anything for next time. Goes into the export (results.txt and notes.txt).")
+                }
+            }
+            .navigationTitle("Note · \(item.id.uppercased())")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        CheckResults.shared.setOwnerNote(item.id, text)
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear { text = CheckResults.shared.ownerNote(item.id) }
+        }
     }
 }
 

@@ -32,7 +32,8 @@ final class ThresholdsTests: XCTestCase {
             ("T06", T.t06MaxTempC), ("T07", T.t07FailedFrameShare * 100), ("T07", T.t07NoPacketAS),
             ("T10", T.t10AutostartKmh), ("T17", T.t17EndDisconnectedS), ("T20", T.t20EndStandstillS / 60),
             ("T28", T.t28GoodFixM), ("T29", T.t29GpsZeroKmh), ("T42", T.t42PackVoltage),
-            ("T42", T.t42DefaultPackAh), ("T47", T.t47HotC), ("T47", T.t47VeryHotC), ("T99", T.t99SlowKmh)
+            ("T42", T.t42DefaultPackAh), ("T47", T.t47HotC), ("T47", T.t47VeryHotC), ("T99", T.t99SlowKmh), ("T99", T.t99ClearKmh),
+            ("T101", T.t101SafetyMarginShare * 100), ("T102", T.t102PushingMaxKmh), ("T102", T.t102PushingS)
         ]
         for (id, value) in checks {
             let words = T.catalog[id] ?? ""

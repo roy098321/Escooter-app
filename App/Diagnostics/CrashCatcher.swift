@@ -23,6 +23,16 @@ final class CrashCatcher: NSObject, MXMetricManagerSubscriber {
         lastException = defaults.string(forKey: Self.exceptionKey)
         metricKitReports = defaults.stringArray(forKey: Self.reportsKey) ?? []
         defaults.removeObject(forKey: Self.exceptionKey)
+        // B06: a phone restart also ends a foreground session; tell it apart by the boot time
+        let boot = Date().addingTimeInterval(-ProcessInfo.processInfo.systemUptime)
+        let lastBoot = (defaults.object(forKey: "corckie.crashCatcherBoot") as? Date)
+            ?? (defaults.object(forKey: "corckie.lastBootSeen") as? Date)   // build 24 kept this one
+        defaults.set(boot, forKey: "corckie.crashCatcherBoot")
+        let phoneRestarted = lastBoot.map { abs($0.timeIntervalSince(boot)) > 120 } ?? false
+        if lastRunCrashed && phoneRestarted && !defaults.bool(forKey: Self.testCrashKey) {
+            lastRunCrashed = false
+            Log.info(source: "launch", "Phone restarted since the last session (not a crash)")
+        }
         if lastRunCrashed {
             let wasTest = defaults.bool(forKey: Self.testCrashKey)
             Log.error(source: "crash", "The last session ended unexpectedly\(wasTest ? " (test crash)" : "")\(lastException.map { ": \($0)" } ?? "")")

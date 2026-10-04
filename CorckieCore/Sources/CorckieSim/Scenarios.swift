@@ -71,3 +71,12 @@ public struct SimScenario: Identifiable, Sendable {
         }
     ]
 }
+
+/// G1 phone takeover for the simulator (d7): the ride's recorded GPS speed at a virtual time.
+public enum PhoneTakeover {
+    public static func gpsSpeedKmh(track: [MergedSample], at t: Double) -> Double? {
+        guard !track.isEmpty else { return nil }
+        let index = min(track.count - 1, max(0, Int(t - (track.first?.t ?? 0))))
+        return track[index].gpsSpeedKmh
+    }
+}

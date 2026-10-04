@@ -49,7 +49,8 @@ final class PermissionsCheck {
             let notifications: Item
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
-                notifications = Item(id: "notifications", name: "Notifications", state: "Allowed", ok: true)
+                let sound = settings.soundSetting == .enabled ? "sounds on" : "sounds OFF (needed for the chime, c6b)"
+                notifications = Item(id: "notifications", name: "Notifications", state: "Allowed · \(sound)", ok: true)
             case .denied:
                 notifications = Item(id: "notifications", name: "Notifications", state: "Denied", ok: false)
             default:
@@ -65,7 +66,7 @@ final class PermissionsCheck {
     }
 
     func askNotifications() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge]) { _, _ in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in
             DispatchQueue.main.async { self.refresh() }
         }
     }
