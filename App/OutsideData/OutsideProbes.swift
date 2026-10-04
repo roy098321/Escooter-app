@@ -1,6 +1,7 @@
 import CorckieCore
 import Foundation
 import GRDB
+import Network
 import Observation
 import PDFKit
 import UIKit
@@ -33,12 +34,30 @@ final class OutsideProbes {
         return URLSession(configuration: config)
     }()
 
+    /// e8: is there a network path? (NWPathMonitor)
+    @ObservationIgnored private let monitor = NWPathMonitor()
+    @ObservationIgnored private var pathSatisfied = true
+    @ObservationIgnored private var recordChecks = true
+
+    private init() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            self?.pathSatisfied = path.status == .satisfied
+        }
+        monitor.start(queue: DispatchQueue(label: "corckie.path"))
+    }
+
+    var isOffline: Bool { !pathSatisfied }
+
     func runAll() async {
         await MainActor.run { running = true }
+        let offline = isOffline
+        // Offline (e8): the probes run to show their fallbacks, without overwriting e2–e7
+        recordChecks = !offline
         PhoneSensors.shared.requestOneFix()
-        try? await Task.sleep(nanoseconds: 1_500_000_000)
-        let point = PhoneSensors.shared.roundedLocation ?? Self.fallbackPoint
-        let where_ = PhoneSensors.shared.roundedLocation == nil ? "fallback point (no location yet)" : "your area, rounded to ~2 km"
+        try? await Task.sleep(nanoseconds: 3_000_000_000)
+        let real = PhoneSensors.shared.roundedLocation
+        let point = real ?? Self.fallbackPoint
+        let where_ = real == nil ? "fallback point (no location yet)" : "your area, rounded to ~2 km"
         // e1: the fuel price is manual in v1 (owner, P4 D4 S); fuel() is kept for v2 but not called.
         await probe("e2") { try await self.hebcal() }
         await probe("e3") {
@@ -59,7 +78,35 @@ final class OutsideProbes {
             return "Elevation \(Int(metres.first ?? 0)) m"
         }
         await probe("e7") { try await self.tiles() }
-        await MainActor.run { running = false }
+        if !offline {
+            if let real {
+                await probe("e3b") {
+                    let hours = try OutsideParsers.openMeteoHourly(try await self.get(OutsideParsers.openMeteoForecastURL(lat: real.lat, lon: real.lon)))
+                    return "\(hours.count) hours for your area (rounded to ~2 km) · wind \(Int(hours.first?.windKmh ?? 0)) km/h"
+                }
+                await probe("e6b") {
+                    let metres = try OutsideParsers.elevations(try await self.get(OutsideParsers.elevationURL(lat: real.lat, lon: real.lon)))
+                    return "Elevation \(Int(metres.first ?? 0)) m for your area"
+                }
+            } else {
+                await MainActor.run {
+                    for id in ["e3b", "e6b"] {
+                        CheckResults.shared.set(id, .fail, "No location yet: the fallback point was used · Permissions → Location, then Run all again")
+                    }
+                }
+            }
+        }
+        await MainActor.run {
+            if offline {
+                let ran = ["e2", "e3", "e4", "e5", "e6", "e7"]
+                let fellBack = ran.filter { lines[$0]?.status == .fail }
+                CheckResults.shared.set("e8", fellBack.count == ran.count ? .pass : .info,
+                                        "Offline: \(fellBack.count) of \(ran.count) sources showed their fallback, no crash"
+                                        + (fellBack.count == ran.count ? "" : " (some still answered: the network came back?)"))
+            }
+            recordChecks = true
+            running = false
+        }
     }
 
     func report() -> String {
@@ -67,9 +114,11 @@ final class OutsideProbes {
         // B02: details survive a relaunch — they're kept with the check result.
         let results = CheckResults.shared
         for item in CheckList.all where item.group == CheckList.outside {
-            let status: CheckStatus = lines[item.id]?.status ?? results.status(item.id)
+            // The saved check result wins (an offline e8 run doesn't overwrite e2–e7)
+            let saved = results.status(item.id)
+            let status: CheckStatus = saved != .pending ? saved : (lines[item.id]?.status ?? .pending)
             let note = results.note(item.id)
-            let text: String = lines[item.id]?.text ?? (note.isEmpty ? "not run" : note)
+            let text: String = note.isEmpty ? (lines[item.id]?.text ?? "not run") : note
             let when: String = results.entries[item.id].map { " (\($0.date.formatted(date: .abbreviated, time: .shortened)))" } ?? ""
             out += "\(status.icon) \(item.id) \(item.title): \(text)\(when)\n"
         }
@@ -84,14 +133,14 @@ final class OutsideProbes {
             let text = try await work()
             await MainActor.run {
                 lines[id] = Line(id: id, status: .pass, text: text)
-                CheckResults.shared.set(id, .pass, text)
+                if recordChecks { CheckResults.shared.set(id, .pass, text) }
             }
         } catch {
             let text = "Failed: \(error.localizedDescription) · fallback: \(Self.fallback(id))"
             Log.warning(source: "outside", "\(id) \(text)")
             await MainActor.run {
                 lines[id] = Line(id: id, status: .fail, text: text)
-                CheckResults.shared.set(id, .fail, text)
+                if recordChecks { CheckResults.shared.set(id, .fail, text) }
             }
         }
     }
@@ -201,6 +250,8 @@ final class OutsideProbes {
         case "e5": return "retry daily for 30 days, then the Archive API"
         case "e6": return "barometer-only elevation, shown with \"~\""
         case "e7": return "OSM after CARTO, else a replay without a map background"
+        case "e3b": return "the forecast for the fallback point is not used; no forecast"
+        case "e6b": return "barometer-only elevation"
         default: return "—"
         }
     }

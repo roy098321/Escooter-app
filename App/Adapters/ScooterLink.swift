@@ -23,7 +23,9 @@ final class ScooterLink: NSObject {
     // Listeners (packet log, checks, simulator safety). Called on the main queue.
     @ObservationIgnored var packetHandlers: [([UInt8], Date, Bool) -> Void] = []
     @ObservationIgnored var connectHandlers: [(_ inBackground: Bool) -> Void] = []
-    @ObservationIgnored var disconnectHandlers: [() -> Void] = []
+    @ObservationIgnored var disconnectHandlers: [(_ reason: String) -> Void] = []
+    /// Events can only be saved once the files are readable (after the first unlock after a restart).
+    @ObservationIgnored private var eventsLoaded = false
 
     @ObservationIgnored private var central: CBCentralManager?
     @ObservationIgnored private var peripheral: CBPeripheral?
@@ -56,7 +58,7 @@ final class ScooterLink: NSObject {
 
     override init() {
         super.init()
-        events = defaults.stringArray(forKey: Self.eventsKey) ?? []
+        loadEventsIfPossible()
     }
 
     /// Creates the central (asks for Bluetooth permission the first time).
@@ -87,6 +89,15 @@ final class ScooterLink: NSObject {
         let line = "\(Date().formatted(date: .abbreviated, time: .standard)) \(text) · \(where_)"
         events.append(line)
         if events.count > 300 { events.removeFirst(events.count - 300) }
+        if eventsLoaded { defaults.set(events, forKey: Self.eventsKey) }
+    }
+
+    /// Merges the saved events with the ones logged before the data was readable.
+    func loadEventsIfPossible() {
+        guard !eventsLoaded, UIApplication.shared.isProtectedDataAvailable else { return }
+        events = (defaults.stringArray(forKey: Self.eventsKey) ?? []) + events
+        if events.count > 300 { events.removeFirst(events.count - 300) }
+        eventsLoaded = true
         defaults.set(events, forKey: Self.eventsKey)
     }
 
@@ -113,6 +124,10 @@ extension ScooterLink: CBCentralManagerDelegate {
         }
         if let known = peripheral, known.state == .connected {
             didBecomeConnected(known)
+        } else if let restored = peripheral {
+            // Restored by iOS (e.g. before the first unlock, when the saved ID can't be read yet)
+            state = "Waiting for the scooter · switch it on"
+            central.connect(restored)
         } else if let id = savedID, let known = central.retrievePeripherals(withIdentifiers: [id]).first {
             peripheral = known
             known.delegate = self
@@ -155,14 +170,16 @@ extension ScooterLink: CBCentralManagerDelegate {
         // B04: log iOS's reason (CBError code) and how long the link lasted
         let held = connectedAt.map { String(format: " after %.0f s", Date().timeIntervalSince($0)) } ?? ""
         connectedAt = nil
+        let reason: String
         if let error = error as NSError? {
-            log("Disconnected\(held) · CBError \(error.code): \(error.localizedDescription)")
+            reason = "CBError \(error.code): \(error.localizedDescription)"
         } else {
-            log("Disconnected\(held) · no error (the app cancelled the connection)")
+            reason = "no error (the app cancelled the connection)"
         }
+        log("Disconnected\(held) · \(reason)")
         state = "Disconnected · waiting for the scooter"
-        disconnectHandlers.forEach { $0() }
-        if savedID != nil { central.connect(lost) }   // pending connect, works in the background
+        disconnectHandlers.forEach { $0(reason) }
+        if savedID != nil || peripheral != nil { central.connect(lost) }   // pending connect, works in the background
     }
 }
 

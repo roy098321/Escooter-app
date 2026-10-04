@@ -21,6 +21,10 @@ struct SensorsView: View {
                 line("c2")
                 line("c3")
                 line("c4")
+                line("c5")
+                line("c6")
+                line("c7")
+                line("c8")
             }
             Section("Recording") {
                 LabeledContent("Location permission", value: sensors.permission)
@@ -28,6 +32,8 @@ struct SensorsView: View {
                 LabeledContent("Last fix", value: sensors.lastFix)
                 LabeledContent("Barometer", value: "\(sensors.altitude.count) (\(sensors.altitudeInBackground) while locked)")
                 LabeledContent("Scooter packets while locked", value: "\(model.scooter.packetsInBackground)")
+                LabeledContent("Packet gaps > 2 s", value: "\(sensors.packetGapsOver2s) (longest \(Int(sensors.longestGapS)) s)")
+                LabeledContent("Low Power Mode", value: ProcessInfo.processInfo.isLowPowerModeEnabled ? "on" : "off")
                 if sensors.recording {
                     Button("Stop recording", role: .destructive) { sensors.stop() }
                 } else {

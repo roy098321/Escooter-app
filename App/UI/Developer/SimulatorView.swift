@@ -12,14 +12,9 @@ struct SimulatorView: View {
     var body: some View {
         List {
             Section {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(results.status("d1").icon)
-                    VStack(alignment: .leading) {
-                        Text("D1 · Simulator ride at 50×")
-                        Text(results.note("d1").isEmpty ? "Ride 1 · 50× · No fault → Start" : results.note("d1"))
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
-                }
+                checkLine("d1", "Ride 1 · 50× · No fault → Start")
+                checkLine("d7", "Fault D7 · 50× → Start (uses ride 2, which has GPS)")
+                checkLine("d8", "Checked after every run")
             }
             Section("Replay") {
                 Picker("Ride", selection: $sim.fixtureID) {
@@ -50,7 +45,13 @@ struct SimulatorView: View {
             }
             Section("Simulated scooter (decoded)") {
                 let f = sim.pipeline.frame
-                LabeledContent("Speed", value: f?.speedKmh.map { String(format: "%.1f km/h", $0) } ?? "—")
+                if let gps = sim.gpsSpeedKmh {
+                    LabeledContent("Speed") {
+                        Text(String(format: "%.0f km/h · GPS (phone took over)", gps)).foregroundStyle(.secondary)
+                    }
+                } else {
+                    LabeledContent("Speed", value: f?.speedKmh.map { String(format: "%.1f km/h", $0) } ?? "—")
+                }
                 LabeledContent("Battery", value: f?.batteryPct.map { "\($0)%" } ?? "—")
                 LabeledContent("Temperature", value: f?.temperatureC.map { String(format: "%.0f °C", $0) } ?? "—")
                 LabeledContent("Energy so far", value: String(format: "%.0f Wh", sim.pipeline.totals.energyWhRaw))
@@ -67,5 +68,16 @@ struct SimulatorView: View {
         }
         .navigationTitle("Simulated scooter")
         .screen("Simulated scooter")
+    }
+
+    private func checkLine(_ id: String, _ how: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(results.status(id).icon)
+            VStack(alignment: .leading) {
+                Text("\(id.uppercased()) · \(CheckList.item(id)?.title ?? id)")
+                Text(results.note(id).isEmpty ? how : results.note(id))
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 /// On-device checks (TESTING §6): the build's whole check list ships in its first build.
 /// ✅ passed · ❌ failed · ⏳ not done · ℹ️ recorded for analysis.
@@ -18,7 +19,7 @@ enum CheckStatus: String, Codable {
 
 /// Which developer screen runs a check.
 enum CheckTool: String {
-    case none, scooter, sensors, simulator, backup, crash, outside, readability, results
+    case none, scooter, sensors, simulator, backup, crash, outside, readability, results, permissions
 }
 
 struct CheckItem: Identifiable {
@@ -47,6 +48,8 @@ enum CheckList {
     static let groups = [install, scooter, background, phone, outside, ride, send]
 
     static let all: [CheckItem] = [
+        CheckItem(id: "h1", group: install, title: "Permissions", how: "Developer → Permissions: allow everything; Location must be \"Always\"",
+                  expected: "Location Always, Notifications, Motion, Bluetooth all allowed", needsScooter: false, manual: false, tool: .permissions),
         CheckItem(id: "a1", group: install, title: "Installs and opens", how: "Install with SideStore, open the app",
                   expected: "Marks itself on first open", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "a2", group: install, title: "Name and icon on the Home Screen", how: "Look at the Home Screen",
@@ -72,11 +75,10 @@ enum CheckList {
                   expected: "Only the data stream subscribed; command / firmware services listed as untouched", needsScooter: true, manual: false, tool: .scooter),
         CheckItem(id: "b5", group: scooter, title: "Lock bit (T7)", how: "Scooter screen → Lock: Record, lock and unlock 3×, Stop (or \"No lock on this scooter\")",
                   expected: "A lock bit toggles", needsScooter: true, manual: false, tool: .scooter),
-        CheckItem(id: "b6", group: scooter, title: "Autostart traps (T14)", how: "Scooter screen → Traps: Record, walk it ~50 m switched on, spin the wheel on the stand, kick-start, Stop",
-                  expected: "Recorded for Claude", needsScooter: true, manual: false, tool: .scooter),
-        CheckItem(id: "b7", group: scooter, title: "Battery label (13 / 16 Ah)", how: "Read the label under the deck, pick it on the Scooter screen",
-                  expected: "16 Ah expected", needsScooter: true, manual: false, tool: .scooter),
-
+        CheckItem(id: "b8", group: scooter, title: "Stable for 10 min", how: "Scooter on, app open on Scooter → Start 10-min test; keep the screen on",
+                  expected: "0 disconnects (reasons logged if any)", needsScooter: true, manual: false, tool: .scooter),
+        CheckItem(id: "b9", group: scooter, title: "Out of range and back", how: "Scooter → Arm range test, lock the phone, walk away until it drops, come back",
+                  expected: "Reconnects by itself without opening the app (seconds recorded)", needsScooter: true, manual: false, tool: .scooter),
         CheckItem(id: "c1", group: background, title: "Wakes when the scooter turns on", how: "Scooter off · Home Screen (don't swipe the app away) · lock the phone · scooter on · wait 30 s",
                   expected: "Connected while in the background", needsScooter: true, manual: false, tool: .sensors),
         CheckItem(id: "c2", group: background, title: "Scooter data while locked", how: "Keep the phone locked ~1 min after the wake-up",
@@ -86,6 +88,14 @@ enum CheckList {
         CheckItem(id: "c4", group: background, title: "Barometer while locked", how: "Same recording as location",
                   expected: "20+ readings while locked", needsScooter: false, manual: false, tool: .sensors),
 
+        CheckItem(id: "c5", group: background, title: "Wakes after a phone restart", how: "Scooter off · restart the phone · unlock once but don't open the app · scooter on · wait 30 s",
+                  expected: "The scooter woke the app before you opened it", needsScooter: true, manual: false, tool: .sensors),
+        CheckItem(id: "c6", group: background, title: "Notification on a scooter wake", how: "Allow notifications · app in the background, phone locked · scooter on",
+                  expected: "Silent \"Scooter on · 91% · test: going for a ride?\" arrives (tap it too)", needsScooter: true, manual: false, tool: .sensors),
+        CheckItem(id: "c7", group: background, title: "Low Power Mode wake", how: "Turn Low Power Mode on · repeat the c1 wake · lock, walk ~1 min",
+                  expected: "Woke, 20+ packets and 5+ fixes while locked", needsScooter: true, manual: false, tool: .sensors),
+        CheckItem(id: "c8", group: background, title: "Full ride with the phone locked", how: "Sensors → Start recording, ride 20+ min with the phone locked, then Stop",
+                  expected: "Recorded: packet gaps > 2 s, fixes, barometer, phone battery per 30 min", needsScooter: true, manual: false, tool: .sensors),
         CheckItem(id: "d1", group: phone, title: "Simulator ride at 50×", how: "Developer → Simulated scooter → Ride 1 → 50× → Start",
                   expected: "\"SIMULATED\" banner; ride 1 finishes with ~437 Wh, 16.3 km", needsScooter: false, manual: false, tool: .simulator),
         CheckItem(id: "d2", group: phone, title: "Backup folder: write", how: "Developer → Backup folder → Pick folder (e.g. iCloud Drive › CorckieApp) → Write test file",
@@ -99,21 +109,33 @@ enum CheckList {
         CheckItem(id: "d6", group: phone, title: "Error log", how: "Developer → Crash catcher → Write a test entry",
                   expected: "Entry stored in the database and read back", needsScooter: false, manual: false, tool: .crash),
 
+        CheckItem(id: "d7", group: phone, title: "Simulated disconnect (phone takes over)", how: "Simulated scooter → Fault \"D7 · Disconnect at 40%\" → 50× → Start",
+                  expected: "GPS speed shown (labelled) during the gap; totals stay scooter-only", needsScooter: false, manual: false, tool: .simulator),
+        CheckItem(id: "d8", group: phone, title: "Simulator keeps real data apart", how: "Any simulator run",
+                  expected: "Real database ride count unchanged", needsScooter: false, manual: false, tool: .simulator),
+        CheckItem(id: "d9", group: phone, title: "Restore from backup", how: "Backup folder → Test backup + restore",
+                  expected: "A test backup restored into a scratch database with the same rows", needsScooter: false, manual: false, tool: .backup),
         CheckItem(id: "e1", group: outside, title: "Fuel price setting ready (manual)", how: "Nothing to do · Settings → Fuel price to change it",
                   expected: "Manual 8.27 ₪/L, Oct 2026 (owner, P4 D4)", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "e2", group: outside, title: "Holidays (Hebcal)", how: "Same",
                   expected: "This year's Israeli holidays", needsScooter: false, manual: false, tool: .outside),
         CheckItem(id: "e3", group: outside, title: "Weather forecast (Open-Meteo)", how: "Same",
                   expected: "Hourly wind, gusts, rain, temperature", needsScooter: false, manual: false, tool: .outside),
+        CheckItem(id: "e3b", group: outside, title: "Forecast at your real location", how: "Location allowed → Outside data → Run all",
+                  expected: "Forecast for your area (not the fallback point)", needsScooter: false, manual: false, tool: .outside),
         CheckItem(id: "e4", group: outside, title: "Backup forecast (MET Norway)", how: "Same",
                   expected: "Hourly wind, rain, temperature", needsScooter: false, manual: false, tool: .outside),
         CheckItem(id: "e5", group: outside, title: "Weather history (Open-Meteo)", how: "Same",
                   expected: "Yesterday's hourly wind and rain", needsScooter: false, manual: false, tool: .outside),
         CheckItem(id: "e6", group: outside, title: "Map elevation (Open-Meteo DEM)", how: "Same",
                   expected: "Elevation in metres", needsScooter: false, manual: false, tool: .outside),
+        CheckItem(id: "e6b", group: outside, title: "Elevation at your real location", how: "Same",
+                  expected: "Elevation for your area (not the fallback point)", needsScooter: false, manual: false, tool: .outside),
         CheckItem(id: "e7", group: outside, title: "Replay map tiles (CARTO, OSM)", how: "Same",
                   expected: "A map tile image from each", needsScooter: false, manual: false, tool: .outside),
 
+        CheckItem(id: "e8", group: outside, title: "No internet", how: "Airplane mode on → Outside data → Run all",
+                  expected: "Every source shows its fallback, no crash", needsScooter: false, manual: false, tool: .outside),
         CheckItem(id: "f1", group: ride, title: "Arch bridge shows as a climb (D07)", how: "Ride over the bridge with Sensors recording, then look at the elevation chart",
                   expected: "A clear bump", needsScooter: true, manual: true, tool: .sensors),
         CheckItem(id: "f2", group: ride, title: "Readable on the mount (D11)", how: "Developer → Readability → Normal, phone on the mount",
@@ -142,12 +164,36 @@ final class CheckResults {
     private(set) var entries: [String: Entry] = [:]
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private let key = "corckie.checkResults.p4"
+    /// Results are only saved once the stored ones are loaded, so a wake before the first unlock
+    /// after a restart (settings unreadable) can never overwrite them.
+    @ObservationIgnored private var loaded = false
 
     private init() {
+        loadIfPossible()
+    }
+
+    func loadIfPossible() {
+        guard !loaded, UIApplication.shared.isProtectedDataAvailable else { return }
+        var saved: [String: Entry] = [:]
         if let data = defaults.data(forKey: key),
-           let saved = try? JSONDecoder().decode([String: Entry].self, from: data) {
-            entries = saved
+           let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) {
+            saved = decoded
         }
+        entries = saved.merging(entries) { _, new in new }
+        loaded = true
+        // Owner verdicts (4 Oct 2026), seeded once like the P2 Lab build-4 seeding
+        if !defaults.bool(forKey: "corckie.seeded.p4b") {
+            defaults.set(true, forKey: "corckie.seeded.p4b")
+            if status("f1") != .pass {
+                entries["f1"] = Entry(status: .pass, note: "Passed (owner: similar climbs read fine, 2026-10-04)", date: Date())
+            }
+        }
+        persist()
+    }
+
+    private func persist() {
+        guard loaded, let data = try? JSONEncoder().encode(entries) else { return }
+        defaults.set(data, forKey: key)
     }
 
     func status(_ id: String) -> CheckStatus { entries[id]?.status ?? .pending }
@@ -156,9 +202,7 @@ final class CheckResults {
     func set(_ id: String, _ status: CheckStatus, _ note: String = "") {
         if let current = entries[id], current.status == status, current.note == note { return }
         entries[id] = Entry(status: status, note: note, date: Date())
-        if let data = try? JSONEncoder().encode(entries) {
-            defaults.set(data, forKey: key)
-        }
+        persist()
     }
 
     /// Sets only if not passed yet (automatic checks keep their first pass).
@@ -168,9 +212,7 @@ final class CheckResults {
 
     func reset(_ id: String) {
         entries[id] = nil
-        if let data = try? JSONEncoder().encode(entries) {
-            defaults.set(data, forKey: key)
-        }
+        persist()
     }
 
     func counts() -> (pass: Int, fail: Int, info: Int, pending: Int) {

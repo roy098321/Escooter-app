@@ -7,7 +7,6 @@ struct ScooterCheckView: View {
     private let model = AppModel.shared
     private let results = CheckResults.shared
     @State private var recording: String?
-    @State private var pack = ""
 
     var body: some View {
         List {
@@ -17,11 +16,8 @@ struct ScooterCheckView: View {
             stepSection("b5", title: "Lock (T7)", how: "Record, lock and unlock 3 times (~5 s apart), Stop.") {
                 Button("No lock on this scooter") { results.set("b5", .info, "No lock on this scooter (owner)") }
             }
-            stepSection("b6", title: "Autostart traps (T14)",
-                        how: "Record, walk the scooter ~50 m switched on, spin the wheel on the stand, kick-start, Stop.") {
-                EmptyView()
-            }
-            labelSection
+            stabilitySection
+            rangeSection
             Section("Bluetooth events") {
                 ForEach(model.scooter.events.suffix(15).reversed(), id: \.self) { line in
                     Text(line).font(.caption.monospaced())
@@ -83,17 +79,35 @@ struct ScooterCheckView: View {
         }
     }
 
-    private var labelSection: some View {
-        Section("Battery label (b7)") {
-            checkLine("b7")
-            Picker("Pack size on the label", selection: $pack) {
-                Text("—").tag("")
-                Text("13 Ah").tag("13 Ah")
-                Text("16 Ah").tag("16 Ah")
-                Text("Other / not shown").tag("other")
+    private var stabilitySection: some View {
+        let field = FieldChecks.shared
+        return Section("Stable for 10 min (b8)") {
+            checkLine("b8")
+            if field.stabilityRunning {
+                ProgressView(value: Double(field.stabilityElapsed), total: 600)
+                Text("\(field.stabilityElapsed / 60) min \(field.stabilityElapsed % 60) s · \(field.stabilityDisconnects.count) disconnects")
+                    .font(.footnote).monospacedDigit()
+                Button("Stop", role: .destructive) { field.stopStabilityTest() }
+            } else {
+                Button("Start 10-min test") { field.startStabilityTest() }
+                    .disabled(!model.scooter.connected)
             }
-            .onChange(of: pack) { _, value in
-                if !value.isEmpty { results.set("b7", .info, "Label says: \(value)") }
+            ForEach(field.stabilityDisconnects, id: \.self) { line in
+                Text(line).font(.caption.monospaced())
+            }
+        }
+    }
+
+    private var rangeSection: some View {
+        let field = FieldChecks.shared
+        return Section("Out of range and back (b9)") {
+            checkLine("b9")
+            Text("Arm, lock the phone, walk away until the scooter drops, then come back without opening the app.")
+                .font(.footnote).foregroundStyle(.secondary)
+            Button(field.rangeArmed ? "Armed · waiting" : "Arm range test") { field.armRangeTest() }
+                .disabled(field.rangeArmed || !model.scooter.connected)
+            ForEach(field.rangeLog.suffix(6), id: \.self) { line in
+                Text(line).font(.caption.monospaced())
             }
         }
     }
@@ -146,8 +160,6 @@ struct ScooterCheckView: View {
             let bytes14 = Set(packetsA.map { String(format: "%02X", $0.flags) }).sorted().joined(separator: " ")
             results.set(id, locked.count == 2 ? .pass : .fail,
                         "\(rows.count) packets · byte 4: \(bytes4) · byte 14: \(bytes14)")
-        case "b6":
-            results.set(id, .info, "\(rows.count) packets recorded for Claude (step b6 in the export)")
         default:
             break
         }

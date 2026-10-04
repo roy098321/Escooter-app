@@ -122,6 +122,7 @@ struct ToolLink: View {
         case .outside: return "Outside data"
         case .readability: return "Readability"
         case .results: return "Results"
+        case .permissions: return "Permissions"
         case .none: return ""
         }
     }
@@ -136,6 +137,7 @@ struct ToolLink: View {
         case .outside: OutsideDataView()
         case .readability: ReadabilityView()
         case .results: ResultsView()
+        case .permissions: PermissionsView()
         case .none: EmptyView()
         }
     }

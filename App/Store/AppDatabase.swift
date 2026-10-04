@@ -143,6 +143,14 @@ final class AppDatabase {
         }
     }
 
+    /// A consistent copy of the whole database (DATA_MODEL §5 full backup, before gzip).
+    func writeSnapshot(to target: URL) throws {
+        try? FileManager.default.removeItem(at: target)
+        try writer.writeWithoutTransaction { db in
+            try db.execute(sql: "VACUUM INTO ?", arguments: [target.path])
+        }
+    }
+
     /// Rows per table, for the migration test and the developer screen.
     func rowCounts() throws -> [String: Int] {
         try writer.read { db in

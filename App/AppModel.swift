@@ -29,16 +29,44 @@ final class AppModel {
     func launch(options: [UIApplication.LaunchOptionsKey: Any]?) {
         guard !launched else { return }
         launched = true
-        openDatabase()
-        CrashCatcher.shared.start()
-        ErrorLog.shared.trim()
+        FieldChecks.shared.appLaunched()
         wireScooter()
-        InstallChecks.run(database: database, error: databaseError)
+        // After a phone restart iOS can relaunch the app for the scooter BEFORE the first
+        // unlock, when files and settings can't be read yet (c5). The Bluetooth part starts
+        // now; everything that reads or writes data waits until it's readable.
+        if UIApplication.shared.isProtectedDataAvailable {
+            dataBecameAvailable()
+        } else {
+            NotificationCenter.default.addObserver(forName: UIApplication.protectedDataDidBecomeAvailableNotification,
+                                                   object: nil, queue: .main) { [weak self] _ in
+                self?.dataBecameAvailable()
+            }
+        }
         let relaunchedForBluetooth = options?[.bluetoothCentrals] != nil
         if relaunchedForBluetooth { Log.info(source: "launch", "Relaunched by iOS for the scooter") }
         if scooter.hasKnownScooter || relaunchedForBluetooth {
             scooter.start()
         }
+    }
+
+    @ObservationIgnored private var dataReady = false
+
+    private func dataBecameAvailable() {
+        guard !dataReady else { return }
+        dataReady = true
+        CheckResults.shared.loadIfPossible()
+        scooter.loadEventsIfPossible()
+        openDatabase()
+        CrashCatcher.shared.start()
+        ErrorLog.shared.trim()
+        InstallChecks.run(database: database, error: databaseError)
+        FieldChecks.shared.dataAvailable()
+        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
+                                               object: nil, queue: .main) { _ in
+            PermissionsCheck.shared.refresh()
+            FieldChecks.shared.checkDeliveredNotification()
+        }
+        PermissionsCheck.shared.refresh()
     }
 
     /// Opens (and if needed migrates) the database before anything else (DATA_MODEL V1).
@@ -63,19 +91,23 @@ final class AppModel {
                 CheckResults.shared.passOnce("c1", "Connected while the app was in the background")
                 PhoneSensors.shared.start(fromWake: true)
             }
+            FieldChecks.shared.scooterConnected(inBackground: inBackground)
             if self.simulator.running {
                 self.simulator.stop(reason: "Stopped: the real scooter connected")
             }
         }
-        scooter.disconnectHandlers.append { [weak self] in
+        scooter.disconnectHandlers.append { [weak self] reason in
             guard let self else { return }
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .disconnected))
+            FieldChecks.shared.scooterDisconnected(reason: reason)
         }
         scooter.packetHandlers.append { [weak self] bytes, time, background in
             guard let self else { return }
             PacketLog.shared.add(bytes, at: time, background: background)
+            PhoneSensors.shared.notePacket(at: time)
             self.live.handle(TimedScooterEvent(t: time.timeIntervalSince(self.started), event: .packet(bytes)))
             self.evaluateScooterChecks()
+            FieldChecks.shared.packet(batteryPct: self.live.frame?.batteryPct)
         }
     }
 

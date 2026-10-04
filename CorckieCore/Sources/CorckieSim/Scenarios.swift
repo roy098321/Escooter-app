@@ -47,6 +47,10 @@ public struct SimScenario: Identifiable, Sendable {
         SimScenario(id: "SC-01", title: "Scooter disconnects for 60 s while moving", playable: true) {
             [.disconnect(at: $0 + 600, durationS: 60)]
         },
+        // d7: 40% into ride 2 (1,810 s), 60 s without the scooter; the phone takes over
+        SimScenario(id: "D7", title: "Disconnect at 40% (phone takes over)", playable: true) {
+            [.disconnect(at: $0 + 724, durationS: 60)]
+        },
         SimScenario(id: "SC-02", title: "Disconnect for 40 s", playable: true) {
             [.disconnect(at: $0 + 300, durationS: 40)]
         },

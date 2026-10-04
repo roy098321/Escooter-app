@@ -21,6 +21,15 @@ final class PhoneSensors: NSObject {
     @ObservationIgnored private let manager = CLLocationManager()
     @ObservationIgnored private let altimeter = CMAltimeter()
     @ObservationIgnored private var startedByWake = false
+    // c8: one recording session's numbers
+    @ObservationIgnored private var sessionStart: Date?
+    @ObservationIgnored private var sessionFixes0 = 0
+    @ObservationIgnored private var sessionAltitude0 = 0
+    @ObservationIgnored private var batteryStart: Float = -1
+    @ObservationIgnored private var lastPacketAt: Date?
+    @ObservationIgnored private var lastSessionUpdate = Date.distantPast
+    private(set) var packetGapsOver2s = 0
+    private(set) var longestGapS = 0.0
 
     private(set) var recording = false
     private(set) var fixes = 0
@@ -50,6 +59,16 @@ final class PhoneSensors: NSObject {
     /// Starts location (best accuracy, background allowed) and the barometer.
     func start(fromWake: Bool = false) {
         startedByWake = fromWake
+        if !recording {
+            sessionStart = Date()
+            sessionFixes0 = fixes
+            sessionAltitude0 = altitude.count
+            packetGapsOver2s = 0
+            longestGapS = 0
+            lastPacketAt = nil
+            UIDevice.current.isBatteryMonitoringEnabled = true
+            batteryStart = UIDevice.current.batteryLevel
+        }
         if manager.authorizationStatus == .notDetermined || manager.authorizationStatus == .authorizedWhenInUse {
             manager.requestAlwaysAuthorization()
         }
@@ -83,9 +102,46 @@ final class PhoneSensors: NSObject {
     }
 
     func stop() {
+        updateRideCheck()
         manager.stopUpdatingLocation()
         altimeter.stopRelativeAltitudeUpdates()
         recording = false
+        sessionStart = nil
+    }
+
+    /// c8: every scooter packet while recording (gaps > 2 s between packets).
+    func notePacket(at time: Date) {
+        guard recording else { return }
+        if let last = lastPacketAt {
+            let gap = time.timeIntervalSince(last)
+            if gap > 2 {
+                packetGapsOver2s += 1
+                longestGapS = max(longestGapS, gap)
+            }
+        }
+        lastPacketAt = time
+        if Date().timeIntervalSince(lastSessionUpdate) > 30 { updateRideCheck() }
+    }
+
+    /// c8 ℹ️ once a recording has run 20+ minutes.
+    func updateRideCheck() {
+        lastSessionUpdate = Date()
+        guard let start = sessionStart else { return }
+        let minutes = Date().timeIntervalSince(start) / 60
+        guard minutes >= 20 else { return }
+        let level = UIDevice.current.batteryLevel
+        let battery: String
+        if batteryStart >= 0, level >= 0 {
+            let used = Double(batteryStart - level) * 100
+            battery = String(format: "phone battery %.0f%% used (%.1f%% per 30 min)", used, used / (minutes / 30))
+        } else {
+            battery = "phone battery not readable"
+        }
+        let note = String(format: "%.0f min · ", minutes)
+            + "\(packetGapsOver2s) packet gaps > 2 s (longest \(Int(longestGapS)) s) · "
+            + "\(fixes - sessionFixes0) fixes (\(fixesInBackground) while locked) · "
+            + "\(altitude.count - sessionAltitude0) barometer readings · " + battery
+        CheckResults.shared.set("c8", .info, note)
     }
 
     func report() -> String {
