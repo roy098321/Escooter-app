@@ -85,6 +85,8 @@ public struct StatsTotals: Equatable, Sendable {
     /// km per local day of the period (week: 7 bars, month: its days, rolling: 7 / 30)
     public var barsKm: [Double] = []
     public var isEmpty: Bool { rides == 0 && shortHops == 0 }
+
+    public init() {}
 }
 
 public enum StatsCalc {

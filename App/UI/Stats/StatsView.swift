@@ -111,7 +111,7 @@ struct StatsView: View {
             if m.recent.isEmpty {
                 Text("Nothing yet. Insights appear after rides on the same route.").font(.subheadline).foregroundStyle(.secondary)
             } else {
-                ForEach(Array(m.recent.enumerated()), id: \.offset) { i, ins in
+                ForEach(Array(m.recent.enumerated()), id: \.offset) { item in
                     if item.offset > 0 { Divider() }
                     Text(item.element.text).font(.subheadline)
                 }
@@ -139,7 +139,7 @@ struct StatsView: View {
     private func bars(_ m: StatsModel) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Distance per day").font(.footnote).foregroundStyle(.secondary)
-            Chart(Array(m.totals.barsKm.enumerated()), id: \.offset) { i, km in
+            Chart(Array(m.totals.barsKm.enumerated()), id: \.offset) { item in
                 BarMark(x: .value("Day", item.offset + 1), y: .value("km", item.element))
                     .foregroundStyle(.tint)
             }
@@ -214,7 +214,13 @@ enum StatsPreview {
             t.charges = month ? 6.8 : 1.9
             t.electricityIls = t.charges * 0.8 * 0.64
             t.fuelSavedIls = t.km * 0.07 * 8.27 - t.electricityIls
-            t.barsKm = (0..<period.dayCount).map { i in i % 7 == 5 || i % 7 == 6 ? 0 : 6 + Double((i * 5) % 9) }
+            var bars: [Double] = []
+            for i in 0..<period.dayCount {
+                let weekend: Bool = i % 7 == 5 || i % 7 == 6
+                let km: Double = weekend ? 0 : 6 + Double((i * 5) % 9)
+                bars.append(km)
+            }
+            t.barsKm = bars
         } else {
             t.barsKm = [Double](repeating: 0, count: period.dayCount)
         }
