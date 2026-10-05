@@ -61,6 +61,7 @@ final class AppModel {
         scooter.loadEventsIfPossible()
         openDatabase()
         if let db = database, !db.isReadOnly { RecorderService.shared.attach(db) }
+        OutsideDataService.shared.refresh(database: database, reason: "app open")
         CrashCatcher.shared.start()
         ErrorLog.shared.trim()
         InstallChecks.run(database: database, error: databaseError)
@@ -70,6 +71,7 @@ final class AppModel {
             PermissionsCheck.shared.refresh()
             FieldChecks.shared.checkDeliveredNotification()
             Notifier.shared.appBecameActive()
+            OutsideDataService.shared.refresh(database: AppModel.shared.database, reason: "app open")
         }
         PermissionsCheck.shared.refresh()
     }

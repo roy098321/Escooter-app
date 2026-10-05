@@ -60,7 +60,7 @@ final class OutsideProbes {
         try? await Task.sleep(nanoseconds: 3_000_000_000)
         let real = PhoneSensors.shared.roundedLocation
         let point = real ?? Self.fallbackPoint
-        let where_ = real == nil ? "fallback point (no location yet)" : "your area, rounded to ~2 km"
+        let where_ = real == nil ? "fallback point (no location yet)" : "your area, rounded to ~1 km"
         // e1: the fuel price is manual in v1 (owner, P4 D4 S); fuel() is kept for v2 but not called.
         await probe("e2") { try await self.hebcal() }
         await probe("e3") {
@@ -85,7 +85,7 @@ final class OutsideProbes {
             if let real {
                 await probe("e3b") {
                     let hours = try OutsideParsers.openMeteoHourly(try await self.get(OutsideParsers.openMeteoForecastURL(lat: real.lat, lon: real.lon)))
-                    return "\(hours.count) hours for your area (rounded to ~2 km) · wind \(Int(hours.first?.windKmh ?? 0)) km/h"
+                    return "\(hours.count) hours for your area (rounded to ~1 km) · wind \(Int(hours.first?.windKmh ?? 0)) km/h"
                 }
                 await probe("e6b") {
                     let metres = try OutsideParsers.elevations(try await self.get(OutsideParsers.elevationURL(lat: real.lat, lon: real.lon)))

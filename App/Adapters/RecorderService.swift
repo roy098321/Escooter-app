@@ -69,6 +69,7 @@ final class RecorderService {
                     RideChecks.run(database: AppModel.shared.database)
                     RouteNaming.start(rideId: id, database: AppModel.shared.database)
                     MaintenanceService.checkAtRideEnd(AppModel.shared.database)
+                    OutsideDataService.shared.refresh(database: AppModel.shared.database, reason: "ride closed")
                     Log.info(source: "recorder", "Ride closed (\(status))")
                 }
             },

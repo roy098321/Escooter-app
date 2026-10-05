@@ -39,7 +39,7 @@ final class PhoneSensors: NSObject {
     private(set) var lastFix = "—"
     private(set) var permission = "Not asked yet"
     private(set) var altitude: [AltitudeSample] = []
-    /// Rounded to 0.02° (~2 km) — what outside requests may send (ARCHITECTURE §3)
+    /// Rounded to the 0.01° cell (~1 km) — all that outside requests may send (policy P-2, ARCHITECTURE §3)
     private(set) var roundedLocation: (lat: Double, lon: Double)?
 
     var altitudeInBackground: Int { altitude.filter(\.background).count }
@@ -168,7 +168,7 @@ extension PhoneSensors: CLLocationManagerDelegate {
                                        speedMps: l.speed, courseDeg: l.course,
                                        altitudeM: l.verticalAccuracy >= 0 ? l.altitude : nil, at: l.timestamp)
         }
-        roundedLocation = ((last.coordinate.latitude / 0.02).rounded() * 0.02, (last.coordinate.longitude / 0.02).rounded() * 0.02)
+        roundedLocation = ((last.coordinate.latitude / 0.01).rounded() * 0.01, (last.coordinate.longitude / 0.01).rounded() * 0.01)
         guard recording else { return }
         fixes += locations.count
         locations.forEach { C8Recorder.shared.location($0) }

@@ -321,6 +321,15 @@ struct CheckGuide {
                            steps: ["Home → Where to? → tap the route you are about to ride → Start.", "Watch the arrival time; at the end it should have been right within about 2 minutes and not jumped. Tap Pass or Fail."], place: .ride),
         "rt20": CheckGuide(proves: "On a real ride through a place without GPS the dot keeps moving.",
                            steps: ["Pick the route under Where to?, ride it through a tunnel or underpass.", "The dot keeps moving hollow with No GPS and is right again afterwards. Tap Pass or Fail."], place: .ride),
+        "u30": CheckGuide(proves: "The outside data (weather, holidays, map elevation) is kept in a cache and keeps working when a source fails: Open-Meteo, then MET Norway, then the cached forecast with its age (up to 24 h), then no forecast. Weather history for past rides is filled once, asked again at most once a day, and from the Archive API after 30 days. Only a location rounded to about 1 km is ever sent.",
+                          steps: ["Developer → Checks → Run all automatic (a fake network, made-up places in the ocean, a temporary database; nothing is sent).", "Result: one tick per rule, and at the end this phone's real cache."], place: .noScooter),
+        "e9": CheckGuide(proves: "The app keeps its outside data up to date by itself: nobody has to press anything.",
+                         steps: ["Make sure the phone has internet and Location is allowed.", "Open CorckieApp and wait about 30 seconds.", "Developer → Outside data → look at Cache (M4-01).",
+                                 "Expected: weather forecast hours, holidays for this and next year; after a ride also history hours and elevation cells. The grey line says what the last refresh did. Tap Pass or Fail."], place: .noScooter),
+        "e10": CheckGuide(proves: "With no internet the app uses what it has cached and nothing crashes or hangs.",
+                          steps: ["Turn airplane mode on.", "Developer → Outside data → Refresh the cache now.", "Expected within a few seconds: the forecast shows how old it is (or No forecast), holidays say offline or cached, History says waiting; no crash.", "Turn airplane mode off. Tap Pass or Fail."], place: .noScooter),
+        "e11": CheckGuide(proves: "A real ride gets its weather (wind, rain, temperature) afterwards, so the factors can use it.",
+                          steps: ["Ride (any real ride) and let it end; wait at least one hour (the ride's last hour must be over).", "Developer → Outside data → Refresh the cache now.", "Expected: History says 1 filled (or cached) and the cache line shows history hours; Elevation shows new cells. Tap Pass or Fail."], place: .passive),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

@@ -10,6 +10,15 @@ public struct WeatherHour: Equatable, Sendable {
     public var gustKmh: Double?
     public var precipMm: Double?
     public var airTempC: Double?
+
+    public init(time: Date, windKmh: Double, windFromDeg: Double? = nil, gustKmh: Double? = nil, precipMm: Double? = nil, airTempC: Double? = nil) {
+        self.time = time
+        self.windKmh = windKmh
+        self.windFromDeg = windFromDeg
+        self.gustKmh = gustKmh
+        self.precipMm = precipMm
+        self.airTempC = airTempC
+    }
 }
 
 public struct Holiday: Equatable, Sendable {
@@ -17,6 +26,12 @@ public struct Holiday: Equatable, Sendable {
     public var date: String          // yyyy-MM-dd
     public var name: String
     public var kind: Kind
+
+    public init(date: String, name: String, kind: Kind) {
+        self.date = date
+        self.name = name
+        self.kind = kind
+    }
 }
 
 public enum OutsideParseError: Error, Equatable {
@@ -29,8 +44,8 @@ public enum OutsideParseError: Error, Equatable {
 public enum OutsideParsers {
     // MARK: Requests (the probes and P5 use the same URLs)
 
-    /// Location is always rounded to ~2 km before it leaves the phone (ARCHITECTURE §3).
-    public static func rounded(_ value: Double, step: Double = 0.02) -> Double {
+    /// Location is always rounded to a 0.01 degree cell (~1 km) before it leaves the phone (policy P-2, ARCHITECTURE §3).
+    public static func rounded(_ value: Double, step: Double = GeoCell.step) -> Double {
         (value / step).rounded() * step
     }
 
@@ -44,14 +59,26 @@ public enum OutsideParsers {
         return URL(string: "https://historical-forecast-api.open-meteo.com/v1/forecast?\(place)&start_date=\(day)&end_date=\(day)&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m&timezone=UTC")!
     }
 
+    /// ERA5 reanalysis, a few days behind: the history fallback for rides older than 30 days.
+    public static func openMeteoArchiveURL(lat: Double, lon: Double, day: String) -> URL {
+        let place = String(format: "latitude=%.2f&longitude=%.2f", rounded(lat), rounded(lon))
+        return URL(string: "https://archive-api.open-meteo.com/v1/archive?\(place)&start_date=\(day)&end_date=\(day)&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m&timezone=UTC")!
+    }
+
     public static func metNorwayURL(lat: Double, lon: Double) -> URL {
         URL(string: String(format: "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%.2f&lon=%.2f",
                            rounded(lat), rounded(lon)))!
     }
 
     public static func elevationURL(lat: Double, lon: Double) -> URL {
-        URL(string: String(format: "https://api.open-meteo.com/v1/elevation?latitude=%.3f&longitude=%.3f",
-                           rounded(lat, step: 0.001), rounded(lon, step: 0.001)))!
+        elevationURL(points: [(lat, lon)])
+    }
+
+    /// Up to 100 cells in one call (comma-separated lists), each rounded to the 0.01 degree cell.
+    public static func elevationURL(points: [(lat: Double, lon: Double)]) -> URL {
+        let lats = points.map { String(format: "%.2f", rounded($0.lat)) }.joined(separator: ",")
+        let lons = points.map { String(format: "%.2f", rounded($0.lon)) }.joined(separator: ",")
+        return URL(string: "https://api.open-meteo.com/v1/elevation?latitude=\(lats)&longitude=\(lons)")!
     }
 
     public static func hebcalURL(year: Int) -> URL {

@@ -52,9 +52,9 @@ final class OutsideParsersTests: XCTestCase {
 
     func test_requests_sendOnlyARoundedLocation() {
         let url = OutsideParsers.openMeteoForecastURL(lat: 10.0123, lon: -30.0291).absoluteString
-        XCTAssertTrue(url.contains("latitude=10.02"), url)
-        XCTAssertTrue(url.contains("longitude=-30.02"), url)
-        XCTAssertTrue(OutsideParsers.metNorwayURL(lat: 10.0123, lon: -30.0291).absoluteString.contains("lat=10.02&lon=-30.02"))
+        XCTAssertTrue(url.contains("latitude=10.01"), url)
+        XCTAssertTrue(url.contains("longitude=-30.03"), url)
+        XCTAssertTrue(OutsideParsers.metNorwayURL(lat: 10.0123, lon: -30.0291).absoluteString.contains("lat=10.01&lon=-30.03"))
     }
 
     func test_badResponsesAreFailures() {

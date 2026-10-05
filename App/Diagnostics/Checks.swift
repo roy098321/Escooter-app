@@ -52,8 +52,10 @@ enum CheckList {
     static let routesM = "M2 · routes"
     /// M3: battery + scooter (M3_PLAN section 4)
     static let batteryM = "M3 · battery + scooter"
+    /// M4: insights + stats (M4_PLAN section 5)
+    static let insightsM = "M4 · insights + stats"
 
-    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, batteryM, send]
+    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, batteryM, insightsM, send]
 
     /// The P4 list, kept as it was: every P4 result stays readable under the same ID.
     static let p4: [CheckItem] = [
@@ -209,6 +211,7 @@ enum CheckList {
         let at = list.firstIndex { $0.id == "g1" } ?? list.count
         list.insert(contentsOf: m1New, at: at)
         list.insert(contentsOf: m2New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
+        list.insert(contentsOf: m4New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         return list
     }()
 
@@ -339,6 +342,18 @@ enum CheckList {
           "Tyre pressure (50 PSI), Brakes, Bolts and folding joint each show km left; Mark done on tyres resets it to 300 km left (after the first ride)", manual: true),
         m("mt2s", batteryM, "Scooter tab (M3-05)", "Open the Scooter tab; tap Maintenance; go back; tap Forget scooter and Cancel (confirm only if you want to pair again)",
           "Status shows Connected or Last seen + battery; Info shows model, firmware, odometer; Maintenance opens the same screen as Settings; Forget asks first and removes the pairing only (rides stay)", manual: true)
+    ]
+
+    /// M4 (M4_PLAN section 5): each task adds its checks with it.
+    private static let m4New: [CheckItem] = [
+        m("u30", insightsM, "Outside data cache and fallbacks (M4-01)", "Nothing to do · Run all automatic marks it",
+          "Forecast cached 60 min, MET Norway when Open-Meteo is down, an old cache shown with its age and dropped after 24 h; weather history for past rides filled once, retried daily, the archive after 30 days; elevation cached forever; holidays offline then Hebcal; only a ~1 km cell is ever sent; the line ends with this phone's cache"),
+        m("e9", insightsM, "The cache fills by itself", "Open the app online, wait about 30 s, then Developer → Outside data → look at Cache (M4-01)",
+          "Weather hours (forecast), holidays for this and next year, and after a ride also history hours and elevation cells; the line under it says what the last refresh did", manual: true, tool: .outside),
+        m("e10", insightsM, "Offline: the cache is used, nothing crashes", "Airplane mode on → Developer → Outside data → Refresh the cache now → airplane mode off",
+          "Forecast shows its age (or No forecast), holidays say offline, History says waiting, no crash and no waiting for time-outs", manual: true, tool: .outside),
+        m("e11", insightsM, "Weather history for a real ride", "After a real ride that ended more than an hour ago (internet on): Developer → Outside data → Refresh the cache now",
+          "History: 1 filled (or cached) for the ride and the cache line shows history hours; Elevation shows new cells; the factors (M4-02) look the ride's weather up later", scooter: true, manual: true, tool: .outside)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

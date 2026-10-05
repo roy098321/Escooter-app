@@ -4,6 +4,9 @@ import SwiftUI
 struct OutsideDataView: View {
     private let probes = OutsideProbes.shared
     private let results = CheckResults.shared
+    @State private var cache = OutsideCacheSummary.text(AppModel.shared.database)
+    @State private var refreshing = false
+    @State private var lastRun = OutsideDataService.shared.lastRun.text
 
     var body: some View {
         List {
@@ -22,7 +25,34 @@ struct OutsideDataView: View {
                 }
                 .disabled(probes.running)
             } footer: {
-                Text("Needs internet. Only a location rounded to ~2 km is sent; with no location yet, a fixed point in the ocean is used. A failure shows the fallback the app will use.")
+                Text("Needs internet. Only a location rounded to ~1 km is sent; with no location yet, a fixed point in the ocean is used. A failure shows the fallback the app will use.")
+            }
+            Section {
+                Text(cache)
+                Text(lastRun).font(.footnote).foregroundStyle(.secondary)
+                Button {
+                    guard let db = AppModel.shared.database, !refreshing else { return }
+                    refreshing = true
+                    Task {
+                        lastRun = await OutsideDataService.shared.runNow(database: db, reason: "developer")
+                        cache = OutsideCacheSummary.text(db)
+                        refreshing = false
+                    }
+                } label: {
+                    if refreshing {
+                        HStack {
+                            ProgressView()
+                            Text("Refreshing…")
+                        }
+                    } else {
+                        Label("Refresh the cache now", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+                .disabled(refreshing)
+            } header: {
+                Text("Cache (M4-01)")
+            } footer: {
+                Text("Filled by itself at app open and after every ride: holidays, the forecast for your ~1 km cell, weather history for past rides, map elevation. Offline it uses what is cached.")
             }
             Section("Sources") {
                 ForEach(CheckList.all.filter { $0.group == CheckList.outside }) { item in
