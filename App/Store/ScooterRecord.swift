@@ -42,4 +42,13 @@ struct ScooterRecord: Equatable {
             return ScooterRecord(id: id, name: name, chip: chip, firmware: firmware, software: software, firstSeenAt: first)
         }
     }
+
+    /// Forget scooter: marks the pairing as forgotten. Rides, routes and maintenance are never touched.
+    static func forgetPairing(in db: AppDatabase) {
+        guard !db.isReadOnly else { return }
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        try? db.writer.write { d in
+            try d.execute(sql: "UPDATE scooter SET forgottenAt = ? WHERE forgottenAt IS NULL", arguments: [now])
+        }
+    }
 }

@@ -324,7 +324,9 @@ enum CheckList {
         m("u26", batteryM, "Maintenance by km (M3-06)", "Nothing to do · Run all automatic marks it",
           "Tyres (50 PSI), brakes and bolts count scooter km; due items are reminded once and again after 3 days; Mark done restarts the count; no reminder in quiet hours, after 2 a day or during a ride"),
         m("mt1", batteryM, "Maintenance screen and reminder", "Settings → Maintenance → look at the three rows, tap Mark done on Tyre pressure",
-          "Tyre pressure (50 PSI), Brakes, Bolts and folding joint each show km left; Mark done on tyres resets it to 300 km left (after the first ride)", manual: true)
+          "Tyre pressure (50 PSI), Brakes, Bolts and folding joint each show km left; Mark done on tyres resets it to 300 km left (after the first ride)", manual: true),
+        m("mt2s", batteryM, "Scooter tab (M3-05)", "Open the Scooter tab; tap Maintenance; go back; tap Forget scooter and Cancel (confirm only if you want to pair again)",
+          "Status shows Connected or Last seen + battery; Info shows model, firmware, odometer; Maintenance opens the same screen as Settings; Forget asks first and removes the pairing only (rides stay)", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

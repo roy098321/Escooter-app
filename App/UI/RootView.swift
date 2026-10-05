@@ -54,7 +54,9 @@ struct RootView: View {
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(2)
             placeholder("Stats", "chart.bar").tag(3)
-            placeholder("Scooter", "scooter").tag(4)
+            ScooterTabView()
+                .tabItem { Label("Scooter", systemImage: "scooter") }
+                .tag(4)
         }
     }
 
@@ -134,6 +136,8 @@ enum UIShot {
                                previewOffer: RouteOfferModel.make(routeId: "preview", state: .suggested, title: "Route 1", ridesOnRoute: 2))
             case "route-arriveby":
                 ScrollView { ArriveByCard(routeId: nil, destination: "Work", rides: RoutesPreview.arriveByRides(), preview: true).padding() }
+            case "scooter-tab", "scooter-tab-off", "scooter-tab-none":
+                ScooterTabView(preview: ScooterPreview.make(name))
             case "outside": OutsideDataView()
             case "scooter": ScooterCheckView()
             case "onboarding1": OnboardingView(previewFound: true) { _ in }
