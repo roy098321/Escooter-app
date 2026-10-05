@@ -107,6 +107,8 @@ struct InsightQueries {
         try guardWritable()
         try database.writer.write { db in
             try db.execute(sql: "UPDATE insight SET shownAt = ? WHERE rideId = ? AND shownAt IS NULL AND moment = 'after'", arguments: [ms, rideId])
+            // also when the ride had no card yet (weather comes later): the summary itself was seen
+            try db.execute(sql: "INSERT OR REPLACE INTO setting (key, json) VALUES (?, ?)", arguments: [Self.seenKey(rideId), "\(ms)"])
         }
     }
 
@@ -117,11 +119,15 @@ struct InsightQueries {
         }
     }
 
-    /// The ride's summary was already seen (a shown after-ride row)
+    static func seenKey(_ rideId: String) -> String { "insight.seen.\(rideId)" }
+
+    /// The ride's summary was already seen (`markShown`: a shown after-ride row, or the mark in `setting`)
     func summarySeen(rideId: String) throws -> Bool {
         try database.writer.read { db in
-            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM insight WHERE rideId = ? AND shownAt IS NOT NULL", arguments: [rideId]) ?? 0
-        } > 0
+            let shown = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM insight WHERE rideId = ? AND shownAt IS NOT NULL", arguments: [rideId]) ?? 0
+            let mark = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM setting WHERE key = ?", arguments: [Self.seenKey(rideId)]) ?? 0
+            return shown + mark > 0
+        }
     }
 
     /// The top card types of the last 3 rides before this one (freshness, 9.3)
