@@ -16,6 +16,13 @@ struct SettingsView: View {
                     Label("Report a problem", systemImage: "exclamationmark.bubble")
                 }
             }
+            Section("Scooter") {
+                NavigationLink {
+                    MaintenanceView()
+                } label: {
+                    Label("Maintenance", systemImage: "wrench.and.screwdriver")
+                }
+            }
             Section("Routes") {
                 NavigationLink {
                     PlacesView()

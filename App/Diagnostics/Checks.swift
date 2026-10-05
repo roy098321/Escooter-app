@@ -50,8 +50,10 @@ enum CheckList {
     static let ridesM = "M1 · real rides"
     /// M2: the routes build's checks (M2_PLAN section 4); they ride in the same list and the same results key
     static let routesM = "M2 · routes"
+    /// M3: battery + scooter (M3_PLAN section 4)
+    static let batteryM = "M3 · battery + scooter"
 
-    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, send]
+    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, batteryM, send]
 
     /// The P4 list, kept as it was: every P4 result stays readable under the same ID.
     static let p4: [CheckItem] = [
@@ -318,7 +320,11 @@ enum CheckList {
         m("rt16", routesM, "Parking a little differently still matches", "Start the second trip 50–150 m from the first start", "Same route, not a new suggestion", scooter: true, manual: true),
         m("rt17", routesM, "A real detour is a variant named after the street", "Ride to the same place by another street (internet on)", "A second variant via the street, or Variant 2 when no street came back", scooter: true, manual: true),
         m("rt19", routesM, "Real arrival strip", "Home → Where to? → pick the route → Start → ride it", "Arrival time within about 2 min at the end; no jumping", scooter: true, manual: true),
-        m("rt20", routesM, "Real GPS loss on a known route", "Ride a known route with Where to? set, through a tunnel or underpass", "The dot keeps moving hollow with No GPS and is right again afterwards", scooter: true, manual: true)
+        m("rt20", routesM, "Real GPS loss on a known route", "Ride a known route with Where to? set, through a tunnel or underpass", "The dot keeps moving hollow with No GPS and is right again afterwards", scooter: true, manual: true),
+        m("u26", batteryM, "Maintenance by km (M3-06)", "Nothing to do · Run all automatic marks it",
+          "Tyres (50 PSI), brakes and bolts count scooter km; due items are reminded once and again after 3 days; Mark done restarts the count; no reminder in quiet hours, after 2 a day or during a ride"),
+        m("mt1", batteryM, "Maintenance screen and reminder", "Settings → Maintenance → look at the three rows, tap Mark done on Tyre pressure",
+          "Tyre pressure (50 PSI), Brakes, Bolts and folding joint each show km left; Mark done on tyres resets it to 300 km left (after the first ride)", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

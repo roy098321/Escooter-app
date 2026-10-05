@@ -68,6 +68,7 @@ final class RecorderService {
                     BackupWriter.shared.rideEnded(rideId: id)
                     RideChecks.run(database: AppModel.shared.database)
                     RouteNaming.start(rideId: id, database: AppModel.shared.database)
+                    MaintenanceService.checkAtRideEnd(AppModel.shared.database)
                     Log.info(source: "recorder", "Ride closed (\(status))")
                 }
             },
