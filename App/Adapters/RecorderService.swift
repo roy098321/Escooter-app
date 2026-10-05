@@ -142,12 +142,16 @@ final class RecorderService {
         live = state
         var input = rawInput
         input.mapOffline = NetworkStatus.shared.offline
-        // M2-06: the route chosen with Where to? is followed from the start of the ride to its end (once per ride)
+        // M2-06: the route chosen with Where to? is followed from the start of the ride to its end (once per ride).
+        // M2-09 (Q9): at ride start, when the way back will not fit, one warning (needs the battery reading, so it waits for it).
         let rideOn = input.phase == .starting || input.phase == .riding
-        if rideOn, !followChecked {
+        if rideOn, !followChecked, input.scooterBatteryPct != nil || input.phase == .riding {
             followChecked = true
             if let id = RouteFollowSelection.shared.routeId, let db = AppModel.shared.displayDatabase {
-                driver.follow(RouteFollowLoader.follower(routeId: id, database: db), utcOffsetMin: RouteCardLoader.currentOffsetMin())
+                let battery = input.scooterBatteryPct.map { BatteryNow(pct: $0) } ?? BatteryNowSource.current(database: db)
+                let warning = battery.flatMap { RouteFollowLoader.returnWarning(routeId: id, database: db, battery: $0) }
+                driver.follow(RouteFollowLoader.follower(routeId: id, database: db), utcOffsetMin: RouteCardLoader.currentOffsetMin(),
+                              returnWarning: warning)
             }
         } else if !rideOn, followChecked {
             followChecked = false

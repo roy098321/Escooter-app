@@ -316,11 +316,12 @@ enum LivePreview {
         }
         var driver = LiveScreenDriver()
         var clock = 0.0
-        if name == "live-arrival" || name == "live-routegps" {
+        if name == "live-arrival" || name == "live-routegps" || name == "live-return" {
             // M2-06 / M2-08: a made-up straight route 2.7 km long (no real place), followed from 1.1 km
             clock = Date().timeIntervalSince1970
             let points = (0..<31).map { GeoPoint(lat: lat - 0.012 + Double($0) * 0.0009, lon: lon) }
-            driver.follow(RouteFollower(destinationName: "Work", path: points, todayS: 540), utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
+            driver.follow(RouteFollower(destinationName: "Work", path: points, todayS: 540), utcOffsetMin: TimeZone.current.secondsFromGMT() / 60,
+                          returnWarning: name == "live-return" ? "Battery 20%: enough for Work, not for the way back." : nil)
             input.rideDistanceM = 1_100
             if name == "live-routegps" {
                 _ = driver.update(input, at: clock - 20)

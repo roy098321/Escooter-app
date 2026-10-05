@@ -30,10 +30,16 @@ public struct RouteCardInput: Sendable {
     public var otherDirection: [RouteRideStats]
     public var nowMs: Int64
     public var utcOffsetMin: Int
+    /// M2-09: the battery now and "I can charge here" on the end place, for the There and back card (nil battery = no card)
+    public var battery: BatteryNow?
+    public var canChargeAtEnd: Bool
 
     public init(routeId: String, customName: String? = nil, fromName: String? = nil, toName: String? = nil, ordinal: Int = 1,
                 state: RouteState = .saved, variants: [VariantInfo] = [], rides: [RouteRideStats] = [],
-                otherDirection: [RouteRideStats] = [], nowMs: Int64, utcOffsetMin: Int = 0) {
+                otherDirection: [RouteRideStats] = [], nowMs: Int64, utcOffsetMin: Int = 0, battery: BatteryNow? = nil,
+                canChargeAtEnd: Bool = false) {
+        self.battery = battery
+        self.canChargeAtEnd = canChargeAtEnd
         self.routeId = routeId
         self.customName = customName
         self.fromName = fromName
@@ -107,6 +113,8 @@ public struct RouteCardModel: Equatable, Sendable {
     public var totalRides: Int
     /// Ride times in minutes, oldest first (the last 10), for the trend line
     public var trendMin: [Double]
+    /// M2-09: nil without a battery reading or enough rides (S9)
+    public var thereAndBack: ThereAndBackModel? = nil
 }
 
 public enum RouteCardBuilder {
@@ -216,8 +224,17 @@ public enum RouteCardBuilder {
             if let t = r.totalS { trend.append(t / 60) }
         }
 
+        var thereAndBack: ThereAndBackModel?
+        if input.state == .saved {
+            let destination = WhereTo.label(toName: input.toName, title: title)
+            thereAndBack = ThereAndBack.model(
+                there: TodayEstimator.estimate(rides: input.rides, nowMs: input.nowMs, utcOffsetMin: input.utcOffsetMin),
+                back: TodayEstimator.estimate(rides: input.otherDirection, nowMs: input.nowMs, utcOffsetMin: input.utcOffsetMin),
+                battery: input.battery, canChargeAtEnd: input.canChargeAtEnd, destination: destination)
+        }
         return RouteCardModel(title: title, subtitle: subtitle, saved: input.state == .saved, map: lines, stats: stats, today: today,
-                              variants: variantRows, elevation: elevation, rides: rows, totalRides: total, trendMin: trend)
+                              variants: variantRows, elevation: elevation, rides: rows, totalRides: total, trendMin: trend,
+                              thereAndBack: thereAndBack)
     }
 
     // MARK: Text

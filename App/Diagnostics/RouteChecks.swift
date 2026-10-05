@@ -22,6 +22,7 @@ enum RouteCheck {
         runFit()
         runArrival()
         runArriveBy()
+        runThereAndBack()
     }
 
     // MARK: u17
@@ -421,5 +422,71 @@ extension RouteCheck {
                                 "rush-hour boundary in \(rush?.iterations ?? 0) steps \(boundaryOk ? "ok" : "wrong") · outside rush hour \(calmOk ? "ok" : "wrong") · "
                                 + "margin = upper edge minus median \(marginOk ? "ok" : "wrong") · under 3 rides says so \(gateOk ? "ok" : "wrong") · "
                                 + "reminder: quiet hours held / dropped, 2 min earlier replaces \(reminderOk ? "ok" : "wrong")")
+    }
+}
+
+// MARK: u25 (M2-09)
+
+extension RouteCheck {
+    /// u25: There and back (M27, Q9) on 12 made-up rides in a temporary database (6 each way, 6% a ride: one way needs 6.6% + the
+    /// 5% reserve, the round trip 18.2%): the card, "I can charge here", and the ride-start warning from the stored rides.
+    static func runThereAndBack() {
+        let results = CheckResults.shared
+        let temp: AppDatabase
+        do {
+            temp = try AppDatabase.openTemporary(build: AppInfo.build)
+        } catch {
+            results.set("u25", .fail, "Could not open the temporary database: \(error.localizedDescription)")
+            return
+        }
+        defer { temp.discardTemporary() }
+        do {
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            let paths = (0..<6).map { _ in SyntheticRoutes.main } + (0..<6).map { _ in SyntheticRoutes.reversed(SyntheticRoutes.main) }
+            for (i, path) in paths.enumerated() {
+                let id = "t\(i)"
+                try RouteFixtures.insertRide(temp, id: id, path: path, startAt: now - Int64(paths.count - i) * 86_400_000)
+                try RouteProcessor.process(rideId: id, database: temp)
+            }
+            let store = RouteQueries(temp)
+            let routes = try store.routes()
+            for r in routes { try RouteService.save(routeId: r.id, database: temp) }
+            guard let route = routes.first else {
+                results.set("u25", .fail, "No route from 12 made-up rides")
+                return
+            }
+            func status(_ pct: Double) -> RouteFitStatus? {
+                RouteCardLoader.card(routeId: route.id, database: temp, battery: BatteryNow(pct: pct))?.thereAndBack?.status
+            }
+            let edges = status(30) == .fits && status(25) == .tight && status(15) == .oneWayOnly && status(11) == .notEnough
+            let noBattery = RouteCardLoader.card(routeId: route.id, database: temp)?.thereAndBack == nil
+            let warnOne = RouteFollowLoader.returnWarning(routeId: route.id, database: temp, battery: BatteryNow(pct: 15))?.contains("not for the way back") == true
+            let warnTight = RouteFollowLoader.returnWarning(routeId: route.id, database: temp, battery: BatteryNow(pct: 25))?.contains("just enough") == true
+            let warnFit = RouteFollowLoader.returnWarning(routeId: route.id, database: temp, battery: BatteryNow(pct: 40)) == nil
+            var chargeOk = false
+            if let to = route.toPlaceId {
+                try PlaceService.setCanCharge(placeId: to, canCharge: true, database: temp)
+                chargeOk = status(15) == .tight && status(25) == .fits
+                    && RouteFollowLoader.returnWarning(routeId: route.id, database: temp, battery: BatteryNow(pct: 25)) == nil
+            }
+            // the warning on the live screen: once, at ride start
+            let pts = (0..<31).map { GeoPoint(lat: 10 + Double($0) * 0.0009, lon: -30) }
+            var driver = LiveScreenDriver()
+            driver.follow(RouteFollower(destinationName: "Work", path: pts, todayS: 540), returnWarning: "Battery 15%: enough for Work, not for the way back.")
+            func tick(_ t: Double) -> String? {
+                driver.update(LiveInput(scooterSpeedKmh: 0, scooterBatteryPct: 15, phase: .riding, lat: 10.001, lon: -30, rideElapsedS: t, rideDistanceM: 0), at: t).bannerText
+            }
+            let first = tick(0)
+            var again = false
+            for t in 9..<40 where tick(Double(t)) == first { again = true }
+            let onceOk = first == "Battery 15%: enough for Work, not for the way back." && !again
+            let ok = edges && noBattery && warnOne && warnTight && warnFit && chargeOk && onceOk
+            results.set("u25", ok ? .pass : .fail,
+                        "fits / tight / one way only / not enough at the edges \(edges ? "ok" : "wrong") · no battery reading, no card \(noBattery ? "ok" : "wrong") · "
+                        + "start warning one way only \(warnOne ? "ok" : "wrong"), tight \(warnTight ? "ok" : "wrong"), fits is silent \(warnFit ? "ok" : "wrong") · "
+                        + "I can charge here \(chargeOk ? "ok" : "wrong") · shown once at ride start \(onceOk ? "ok" : "wrong")")
+        } catch {
+            results.set("u25", .fail, "There and back check failed: \(error.localizedDescription)")
+        }
     }
 }

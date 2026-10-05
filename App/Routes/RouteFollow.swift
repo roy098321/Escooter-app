@@ -49,3 +49,13 @@ enum RouteFollowLoader {
         return RouteFollower(destinationName: name, path: path, todayS: todayS ?? 600)
     }
 }
+
+extension RouteFollowLoader {
+    /// M2-09 (Q9): the one line shown at ride start when the way back will not fit, from `neededPct` (with the margin) of both legs.
+    /// nil = it fits, or not enough data, or no battery reading.
+    static func returnWarning(routeId: String, database: AppDatabase, battery: BatteryNow) -> String? {
+        guard let input = RouteCardLoader.cardInput(routeId: routeId, database: database, battery: battery),
+              let m = RouteCardBuilder.build(input).thereAndBack else { return nil }
+        return ThereAndBack.startWarning(m)
+    }
+}

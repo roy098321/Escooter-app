@@ -65,11 +65,15 @@ public struct LiveScreenDriver: Sendable {
     private var follower: RouteFollower?
     private var arrivalDisplay = ArrivalDisplay()
     private var utcOffsetMin = 0
+    private var returnWarning: String?
 
     public init() {}
 
     /// M2-06: the route this ride follows (Where to?), or nil. Set before the ride starts or while it runs.
-    public mutating func follow(_ route: RouteFollower?, utcOffsetMin: Int = 0) {
+    /// `returnWarning` (Q9): one line shown once at ride start when the way back will not fit (it counts in the 2 start messages).
+    public mutating func follow(_ route: RouteFollower?, utcOffsetMin: Int = 0, returnWarning: String? = nil) {
+        self.returnWarning = returnWarning
+        if returnWarning != nil, Self.active(lastPhase) { banners.raise(.returnCheck, at: 0) }
         follower = route
         self.utcOffsetMin = utcOffsetMin
         arrivalDisplay = ArrivalDisplay()
@@ -83,13 +87,14 @@ public struct LiveScreenDriver: Sendable {
         let mode: LiveMode = input.phase == .riding ? .riding : (input.phase == .starting ? .starting : .ready)
         let active = Self.active(input.phase)
         if active && !Self.active(lastPhase) {
-            banners.beginRide(messages: [])
+            banners.beginRide(messages: returnWarning == nil ? [] : [.returnCheck])
             builder.reset()
             sameRideWasOffered = false
         } else if !active && Self.active(lastPhase) {
             banners = BannerQueue()
             builder.reset()
             follower = nil
+            returnWarning = nil
         }
         lastPhase = input.phase
 
@@ -115,8 +120,9 @@ public struct LiveScreenDriver: Sendable {
         } else if shown?.banner == .noGps {
             chips = chips.filter { $0 != .noGps }
         }
-        let text: String? = shown.map { s in
-            (s.banner == .disconnected && input.formatChanged) ? "Scooter data format changed" : s.banner.text
+        let text: String? = shown.map { (s: BannerQueue.Shown) -> String in
+            if s.banner == .returnCheck, let w = returnWarning { return w }
+            return (s.banner == .disconnected && input.formatChanged) ? "Scooter data format changed" : s.banner.text
         }
         var arrival: ArrivalStrip?
         var dotOverride: LivePath.Coord?

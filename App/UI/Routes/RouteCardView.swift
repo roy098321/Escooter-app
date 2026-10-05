@@ -76,6 +76,7 @@ struct RouteCardView: View {
                 if !m.map.isEmpty { mapCard(m.map) }
                 todayCard(m.today)
                 if m.saved { arriveBy(m) }
+                if let t = m.thereAndBack { thereAndBackCard(t) }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(Array(m.stats.enumerated()), id: \.offset) { _, s in tile(s) }
                 }
@@ -93,6 +94,17 @@ struct RouteCardView: View {
         } else if let info = arriveInfo {
             ArriveByCard(routeId: routeId, destination: info.destination, rides: info.rides)
         }
+    }
+
+    private func thereAndBackCard(_ t: ThereAndBackModel) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(t.headline).font(.system(size: 20, weight: .semibold, design: .rounded))
+            Text(t.detail).font(.footnote).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 
     private var suggestionCard: some View {
@@ -249,7 +261,7 @@ struct RouteCardView: View {
 
     private func load() {
         guard preview == nil else { return }
-        guard let id = routeId, let db = AppModel.shared.displayDatabase, let loaded = RouteCardLoader.card(routeId: id, database: db) else {
+        guard let id = routeId, let db = AppModel.shared.displayDatabase, let loaded = RouteCardLoader.card(routeId: id, database: db, battery: BatteryNowSource.current(database: db)) else {
             missing = true
             return
         }
@@ -261,7 +273,7 @@ struct RouteCardView: View {
         RouteNaming.start(routeId: id, database: db)
         Task {
             try? await Task.sleep(nanoseconds: 4_000_000_000)
-            if let again = RouteCardLoader.card(routeId: id, database: db) { model = again }
+            if let again = RouteCardLoader.card(routeId: id, database: db, battery: BatteryNowSource.current(database: db)) { model = again }
         }
     }
 
@@ -270,7 +282,7 @@ struct RouteCardView: View {
         do {
             if save {
                 try RouteService.save(routeId: id, database: db)
-                model = RouteCardLoader.card(routeId: id, database: db)
+                model = RouteCardLoader.card(routeId: id, database: db, battery: BatteryNowSource.current(database: db))
             } else {
                 try RouteService.dismiss(routeId: id, database: db)
                 dismiss()
@@ -284,7 +296,7 @@ struct RouteCardView: View {
         guard preview == nil, let id = routeId, let db = AppModel.shared.displayDatabase else { return }
         do {
             try RouteService.rename(routeId: id, name: nameDraft, database: db)
-            model = RouteCardLoader.card(routeId: id, database: db)
+            model = RouteCardLoader.card(routeId: id, database: db, battery: BatteryNowSource.current(database: db))
         } catch {
             errorText = error.localizedDescription
         }

@@ -17,7 +17,8 @@ enum RouteCardLoader {
     static func currentOffsetMin() -> Int { TimeZone.current.secondsFromGMT() / 60 }
 
     /// nil: no such route.
-    static func cardInput(routeId: String, database: AppDatabase, nowMs: Int64 = currentMs(), utcOffsetMin: Int = currentOffsetMin()) -> RouteCardInput? {
+    static func cardInput(routeId: String, database: AppDatabase, nowMs: Int64 = currentMs(), utcOffsetMin: Int = currentOffsetMin(),
+                          battery: BatteryNow? = nil) -> RouteCardInput? {
         let store = RouteQueries(database)
         guard let route = try? store.route(id: routeId) else { return nil }
         let routes = (try? store.routes()) ?? []
@@ -39,11 +40,12 @@ enum RouteCardLoader {
         let ordinal = (routes.firstIndex { $0.id == routeId } ?? 0) + 1
         return RouteCardInput(routeId: routeId, customName: route.name, fromName: placeName(route.fromPlaceId), toName: placeName(route.toPlaceId),
                               ordinal: ordinal, state: RouteState(rawValue: route.state) ?? .suggested, variants: variants, rides: rides,
-                              otherDirection: other, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+                              otherDirection: other, nowMs: nowMs, utcOffsetMin: utcOffsetMin, battery: battery,
+                              canChargeAtEnd: places.first { $0.id == route.toPlaceId }?.canCharge ?? false)
     }
 
-    static func card(routeId: String, database: AppDatabase) -> RouteCardModel? {
-        cardInput(routeId: routeId, database: database).map { RouteCardBuilder.build($0) }
+    static func card(routeId: String, database: AppDatabase, battery: BatteryNow? = nil) -> RouteCardModel? {
+        cardInput(routeId: routeId, database: database, battery: battery).map { RouteCardBuilder.build($0) }
     }
 
     /// The route that goes the other way (B to A), if there is one that is not dismissed.
