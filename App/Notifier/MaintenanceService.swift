@@ -51,9 +51,10 @@ enum MaintenanceService {
         let offset = TimeZone.current.secondsFromGMT() / 60
         let odo = (try? q.odometerKm()) ?? nil
         let items = rows(db).map(\.item)
-        var sent = (try? q.notificationsSentToday(nowMs: now, utcOffsetMin: offset)) ?? 0
+        var sent = NotificationPlanner.sentToday(db, nowMs: now, utcOffsetMin: offset)
+        let weeklyDue = NotificationPlanner.weeklyDueToday(db, nowMs: now, utcOffsetMin: offset)   // M4-04: the weekly summary keeps its place
         for item in Maintenance.toRemind(items, odoKm: odo, nowMs: now) {
-            switch Maintenance.decide(nowMs: now, utcOffsetMin: offset, rideActive: rideActive, sentToday: sent) {
+            switch Maintenance.decide(nowMs: now, utcOffsetMin: offset, rideActive: rideActive, sentToday: sent, weeklyDueToday: weeklyDue) {
             case .drop(let reason):
                 Notifier.shared.log(MessageLogEntry(type: Maintenance.messageType, channel: "notification", at: Double(now) / 1000, droppedReason: reason))
             case .send:

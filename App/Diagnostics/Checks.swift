@@ -361,7 +361,13 @@ enum CheckList {
         m("u32", insightsM, "Insight catalogue: gates, ranking, N more, Recent order (M4-03)", "Nothing to do · Run all automatic marks it",
           "Every catalogue row speaks with made-up numbers and none uses reward words; 2 windy rides give only a progress line, enough rides the card; class + size ranking with the freshness penalty; at most 2 at ride start in C24 order; Recent by time; the simulated windy week in a temporary database: progress line at 4 rides, tailwind credit at 24, no duplicate on a re-run, a late card goes to Recent only, the week card is built; the line ends with this phone's insight rows"),
         m("mi1", insightsM, "Simulated windy week: the right card after the ride, the progress line before the gate", "Developer → Insights → Simulated windy week · 4 rides, then · 24 rides",
-          "4 rides: no top card, one progress line \"Headwind on Seed commute: 2 of 3 windy rides\"; 24 rides: a top card or N more with \"Tailwind saved you ~1.5 min …\", a week card; plain words, no records, streaks or praise", manual: true, tool: .insights)
+          "4 rides: no top card, one progress line \"Headwind on Seed commute: 2 of 3 windy rides\"; 24 rides: a top card or N more with \"Tailwind saved you ~1.5 min …\", a week card; plain words, no records, streaks or praise", manual: true, tool: .insights),
+        m("u33", insightsM, "Message budget: 2 a day, quiet hours, never during a ride, weekly Sunday 07:30, wind once a day (M4-04)", "Nothing to do · Run all automatic marks it",
+          "Maintenance, the weekly summary and wind picking up share one budget: none during a ride, maintenance and wind dropped 22:00-07:00, 2 a day with the weekly one keeping its place, wind once a day, the weekly one at Sunday 07:30; every send and drop is in the message log with its reason; Going for a ride and Arrive by stay outside; the line ends with this phone's count"),
+        m("mn1", insightsM, "The weekly notification arrives Sunday 07:30", "Ride on 2 different days in a week, then look at Sunday 07:30",
+          "A notification \"Your week\" with \"Last week: N km, N rides, ...\" at 07:30; tapping it opens the app (Stats, that week, once the Stats tab exists)", manual: true),
+        m("mn2", insightsM, "Wind picking up arrives once, only before a usual ride", "On a windy day, shortly before the time you usually ride a saved route (3+ rides on that weekday), internet and background refresh on",
+          "One notification \"Wind picking up\" with how it changes the ride; none the same day again; none at night or during a ride", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

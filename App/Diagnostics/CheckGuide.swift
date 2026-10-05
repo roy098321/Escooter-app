@@ -345,6 +345,13 @@ struct CheckGuide {
                                   "Tap \"Simulated windy week · 4 rides\". Expected: no top card, one progress line \"Headwind on Seed commute: 2 of 3 windy rides\".",
                                   "Tap \"Simulated windy week · 24 rides\". Expected: a card \"Tailwind saved you ~1.5 min and ~1% battery today.\" (top card or behind N more) and a week card \"Last week: …\" or \"This week so far: …\".",
                                   "Read every line: plain numbers, \"based on N rides\" where it compares, no records, streaks, goals or praise. Tap Pass or Fail."], place: .noScooter),
+        "u33": CheckGuide(proves: "Maintenance reminders, the weekly summary and the wind warning share one message budget: never during a ride, nothing at night (22:00-07:00, except the Sunday 07:30 summary), at most 2 a day, the wind warning at most once a day. Going for a ride and Arrive by are outside the budget.",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database; nothing is sent).",
+                                  "Result: one tick per rule and at the end this phone's own count of budgeted notifications."], place: .noScooter),
+        "mn1": CheckGuide(proves: "The weekly summary arrives by itself on Sunday morning at 07:30 and says how last week went.",
+                          steps: ["Ride on at least 2 different days in one week (Sunday to Saturday), keep notifications on for the app.", "On Sunday at 07:30 look at the lock screen. Expected: \"Your week\" with \"Last week: ... km, ... rides, ...\". Tap it: the app opens. Tap Pass or Fail."], place: .passive),
+        "mn2": CheckGuide(proves: "On a windy day the app warns once, shortly before a ride you usually make, and not at other times.",
+                          steps: ["Needs a saved route with 3 or more rides on the same weekday around the same time, internet on, Background App Refresh on.", "On a day with wind against that route, wait before your usual time. Expected: one notification \"Wind picking up\". It does not come again that day, not at night and not during a ride. Tap Pass or Fail."], place: .passive),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

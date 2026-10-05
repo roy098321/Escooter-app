@@ -17,7 +17,7 @@ final class AutoRunner {
     private(set) var summary: [String] = []
 
     /// The checks this button can settle
-    static let ids = ["h1", "a3", "a6", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "u10", "u11", "u12", "u13", "u14", "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u22", "u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32", "o1", "e1", "d6", "d9", "d1", "d7", "d8",
+    static let ids = ["h1", "a3", "a6", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "u10", "u11", "u12", "u13", "u14", "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u22", "u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32", "u33", "o1", "e1", "d6", "d9", "d1", "d7", "d8",
                       "e2", "e3", "e3b", "e4", "e5", "e6", "e6b", "e7"]
 
     func run() async {
@@ -66,6 +66,7 @@ final class AutoRunner {
         await OutsideDataCheck.run(real: model.database)
         FactorCheck.run(real: model.database)
         InsightCheck.run(real: model.database)
+        BudgetCheck.run(real: model.database)
         BackupWriteCheck.run()
         RideChecks.run(database: model.database)
         RideEngineCheck.runStart()

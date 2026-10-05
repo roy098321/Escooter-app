@@ -115,13 +115,12 @@ public enum Maintenance {
 
     /// The notification rules (CALC_SPEC 9.4): never during a ride, not in quiet hours (an item not marked sent is checked again
     /// at the next ride end, so nothing is lost), at most 2 notifications a day (Arrive-by excluded; `sentToday` counts the others).
-    public static func decide(nowMs: Int64, utcOffsetMin: Int, rideActive: Bool, sentToday: Int) -> MaintenanceDecision {
-        if rideActive { return .drop(reason: "ride active") }
-        let local = nowMs + Int64(utcOffsetMin) * 60_000
-        let hour = Int(((local / 3_600_000) % 24 + 24) % 24)
-        if hour >= T.t98QuietFromHour || hour < T.t98QuietToHour { return .drop(reason: "quiet hours") }
-        if sentToday >= T.t98NotificationsPerDay { return .drop(reason: "daily limit") }
-        return .send
+    public static func decide(nowMs: Int64, utcOffsetMin: Int, rideActive: Bool, sentToday: Int, weeklyDueToday: Bool = false) -> MaintenanceDecision {
+        switch NotificationBudget.decide(.maintenance, nowMs: nowMs, utcOffsetMin: utcOffsetMin, rideActive: rideActive, sentToday: sentToday,
+                                         weeklyDueToday: weeklyDueToday) {
+        case .send: return .send
+        case .drop(let reason): return .drop(reason: reason)
+        }
     }
 
     public static func text(_ item: MaintenanceItem, status: MaintenanceStatus) -> (title: String, body: String) {

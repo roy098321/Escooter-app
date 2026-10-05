@@ -110,6 +110,7 @@ final class OutsideDataService: @unchecked Sendable {
             }
             // M4-03: the week cards at app open (Q22, Q4-weekly, Q13-weekly), with the weather that just came in
             if let r = try? InsightRunner.weekly(database) { parts.append("Week " + r.text) }
+            BudgetedNotifier.refreshWeekly(database)
         }
 
         let text = parts.joined(separator: " · ")
