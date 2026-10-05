@@ -165,6 +165,23 @@ struct RouteQueries {
         }
     }
 
+    /// M2-05: the circle of a place in metres; nil = automatic (5% of the trip, T60).
+    func setRadius(placeId: String, radiusM: Double?) throws {
+        try requireWritable()
+        try writer.write { db in
+            try db.execute(sql: "UPDATE place SET radiusM = ? WHERE id = ?", arguments: [radiusM, placeId])
+        }
+    }
+
+    /// M2-05: "I can charge here" (M27: only the way there has to fit).
+    func setCanCharge(placeId: String, canCharge: Bool) throws {
+        try requireWritable()
+        try writer.write { db in
+            try db.execute(sql: "UPDATE place SET canCharge = ? WHERE id = ?", arguments: [canCharge, placeId])
+        }
+    }
+
+
     /// A name typed by the owner is final; a street name from the phone (`byHand` false) may be replaced later.
     func rename(variantId: String, name: String, byHand: Bool) throws {
         try requireWritable()

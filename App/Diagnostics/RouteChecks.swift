@@ -19,6 +19,7 @@ enum RouteCheck {
         runVariants()
         runRanges()
         runCard()
+        runFit()
     }
 
     // MARK: u17
@@ -226,6 +227,65 @@ extension RouteCheck {
                         + "rides list \(ridesOk ? "ok" : "wrong") · Routes list \(listOk ? "ok" : "wrong")")
         } catch {
             results.set("u20", .fail, "Route card check failed: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: u21 (M2-05)
+
+extension RouteCheck {
+    /// u21: greying with the safety margin (M27, G2): the edges, then the Routes list built from rides in a temporary database
+    /// (6 rides each way, 6% a ride, so one way needs 6.6% + 5% reserve = 11.6%, the round trip 18.2%).
+    static func runFit() {
+        let results = CheckResults.shared
+        let edgeOk = RouteFit.evaluate(thereNeededPct: 11, backNeededPct: nil, battery: BatteryNow(pct: 16)).greyed == false
+            && RouteFit.evaluate(thereNeededPct: 11, backNeededPct: nil, battery: BatteryNow(pct: 15.9)).greyed
+            && RouteFit.evaluate(thereNeededPct: 11, backNeededPct: 11, battery: BatteryNow(pct: 26.9)).chip == "One way only"
+            && RouteFit.evaluate(thereNeededPct: 11, backNeededPct: 11, battery: BatteryNow(pct: 36.9)).chip == "Tight"
+            && RouteFit.evaluate(thereNeededPct: 11, backNeededPct: 11, battery: BatteryNow(pct: 37)).status == .fits
+        let gateOk = RouteFit.evaluate(thereNeededPct: nil, backNeededPct: 11, battery: BatteryNow(pct: 5)) == .silent
+            && RouteFit.evaluate(thereNeededPct: 11, backNeededPct: 11, battery: nil) == .silent
+        let ageOk = BatteryNow(pct: 64, ageMin: 120).text == "64% (2 h ago)"
+
+        let temp: AppDatabase
+        do {
+            temp = try AppDatabase.openTemporary(build: AppInfo.build)
+        } catch {
+            results.set("u21", .fail, "Could not open the temporary database: \(error.localizedDescription)")
+            return
+        }
+        defer { temp.discardTemporary() }
+        do {
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            let paths = (0..<6).map { _ in SyntheticRoutes.main } + (0..<6).map { _ in SyntheticRoutes.reversed(SyntheticRoutes.main) }
+            for (i, path) in paths.enumerated() {
+                let id = "f\(i)"
+                try RouteFixtures.insertRide(temp, id: id, path: path, startAt: now - Int64(paths.count - i) * 86_400_000)
+                try RouteProcessor.process(rideId: id, database: temp)
+            }
+            let store = RouteQueries(temp)
+            let routes = try store.routes()
+            for r in routes { try RouteService.save(routeId: r.id, database: temp) }
+            func row(_ pct: Double, age: Int? = nil) -> RouteListRow? {
+                RouteCardLoader.list(database: temp, battery: BatteryNow(pct: pct, ageMin: age)).saved.first { $0.title == "Route 1" }
+            }
+            let one = row(15)?.fit.chip == "One way only" && row(15)?.fit.greyed == false
+            let grey = row(11)?.fit.greyed == true && row(11)?.fit.chip == "Not enough battery"
+            let tight = row(25)?.fit.chip == "Tight"
+            let fits = row(40)?.fit.status == .fits
+            let oldReading = row(11, age: 180)?.fit.detail?.contains("3 h ago") == true
+            var chargeOk = false
+            if let route = routes.first, let to = route.toPlaceId {
+                try PlaceService.setCanCharge(placeId: to, canCharge: true, database: temp)
+                chargeOk = row(25)?.fit.status == .fits && row(15)?.fit.chip == "Tight"
+            }
+            let ok = edgeOk && gateOk && ageOk && one && grey && tight && fits && oldReading && chargeOk
+            results.set("u21", ok ? .pass : .fail,
+                        "edges at the limit \(edgeOk ? "ok" : "wrong") · gates \(gateOk ? "ok" : "wrong") · age text \(ageOk ? "ok" : "wrong") · "
+                        + "one way only \(one ? "ok" : "wrong") · greyed \(grey ? "ok" : "wrong") · tight \(tight ? "ok" : "wrong") · fits \(fits ? "ok" : "wrong") · "
+                        + "last seen with its age \(oldReading ? "ok" : "wrong") · I can charge here \(chargeOk ? "ok" : "wrong")")
+        } catch {
+            results.set("u21", .fail, "Routes greying check failed: \(error.localizedDescription)")
         }
     }
 }

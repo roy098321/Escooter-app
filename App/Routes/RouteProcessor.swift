@@ -191,3 +191,18 @@ enum RouteService {
         return RouteOfferModel.make(routeId: routeId, state: state, title: title(routeId: routeId, database: database), ridesOnRoute: count)
     }
 }
+
+/// M2-05: what the Places screen changes.
+enum PlaceService {
+    static func rename(placeId: String, name: String?, database: AppDatabase) throws {
+        try RouteQueries(database).rename(placeId: placeId, name: name)
+    }
+
+    static func setRadius(placeId: String, radiusM: Double?, database: AppDatabase) throws {
+        try RouteQueries(database).setRadius(placeId: placeId, radiusM: radiusM)
+    }
+
+    static func setCanCharge(placeId: String, canCharge: Bool, database: AppDatabase) throws {
+        try RouteQueries(database).setCanCharge(placeId: placeId, canCharge: canCharge)
+    }
+}

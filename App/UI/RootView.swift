@@ -123,10 +123,12 @@ enum UIShot {
             case "rides": RidesListView()
             case "ride-detail", "ride-nogps", "ride-gap", "ride-walk":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model(name))
-            case "routes-empty", "routes-list":
+            case "routes-empty", "routes-list", "routes-greyed":
                 RoutesListView(preview: RoutesPreview.list(name))
             case "route-card", "route-card-sparse":
                 RouteCardView(preview: RoutesPreview.card(name))
+            case "places":
+                PlacesView(preview: RoutesPreview.places())
             case "ride-save-route":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
                                previewOffer: RouteOfferModel.make(routeId: "preview", state: .suggested, title: "Route 1", ridesOnRoute: 2))

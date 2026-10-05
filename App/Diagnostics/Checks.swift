@@ -282,6 +282,8 @@ enum CheckList {
           "Middle 80% of the last 20 rides in 90 days; under 5 rides min to max; gates 3 / 5 rides; noticeably different at 1 min or 2%; Today shown honest, the needed battery carries the 10% margin"),
         m("u20", phone, "Route card and Routes list (M2-04)", "Nothing to do · Run all automatic marks it",
           "Title, six ranges, Today strip, variants + map, elevation both ways, rides list and the Routes list are built right from stored rides"),
+        m("u21", phone, "Greying with the safety margin (M2-05)", "Nothing to do · Run all automatic marks it",
+          "Exactly at the limit fits; 0.1% under is greyed; One way only, Tight and fits at the 10% spare edge; no data = no chip; last seen shows its age; I can charge here lifts the way back"),
         m("d12", routesM, "Simulated routes never touch real routes (M2-01)", "Checked after every simulator run", "Real place, route and variant counts unchanged", tool: .simulator),
         m("q2", routesM, "Route processing is quick (M2-01)", "Nothing to do · it measures every ride", "Milliseconds for matching one ride are in the note (a ride close must stay fast)"),
         m("rt1", routesM, "Save as route? after 2 commutes", routeSim + "Scenario ROUTE-COMMUTE · 50× · Start; open the 2nd summary",
@@ -294,6 +296,8 @@ enum CheckList {
         m("rt7", routesM, "Route card reads right", routeSim + "Scenario ROUTE-COMMUTE-6 · 50× → Save the route → Routes tab → the route", "Title + based on 6 rides, six ranges, Today strip, map with the path, rides list; sections with no data are hidden", manual: true, tool: .simulator),
         m("rt8", routesM, "Routes list: saved, suggested, empty", "Routes tab with no rides, then after ROUTE-COMMUTE (before saving) and after saving", "Empty: No routes yet · Ride the same trip twice…; the suggestion sits under Suggested routes; saved routes show rides and ranges", manual: true, tool: .simulator),
         m("rt9", routesM, "Rename and remove a route", "Route card → ⋯ → Rename route; then Remove route", "The new name stays after reopening; a removed route is gone, its rides stay in Rides", manual: true, tool: .simulator),
+        m("rt10", routesM, "Greyed route and chips", routeSim + "Scenario ROUTE-LOWBATT · 50× · save both routes on their 2nd summaries · after the run open Routes",
+          "Route 2 (the way back) is greyed with Not enough battery, Route 1 has the amber chip One way only; both can still be opened", manual: true, tool: .simulator),
         m("rt13", routesM, "A real route is learned", "Ride the same trip twice (any two real rides between the same two places)", "After ride 2 the summary offers Save as route?", scooter: true, manual: true),
         m("rt16", routesM, "Parking a little differently still matches", "Start the second trip 50–150 m from the first start", "Same route, not a new suggestion", scooter: true, manual: true),
         m("rt17", routesM, "A real detour is a variant named after the street", "Ride to the same place by another street (internet on)", "A second variant via the street, or Variant 2 when no street came back", scooter: true, manual: true)

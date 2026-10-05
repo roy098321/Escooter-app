@@ -7,13 +7,23 @@ public struct RouteListInput: Sendable {
     public var state: RouteState
     public var rides: [RouteRideStats]
     public var nowMs: Int64
+    /// M2-05 greying: rides on the opposite route (the way back), the battery now, and "I can charge here" on the end place
+    public var reverseRides: [RouteRideStats]
+    public var battery: BatteryNow?
+    public var canChargeAtEnd: Bool
+    public var utcOffsetMin: Int
 
-    public init(routeId: String, title: String, state: RouteState, rides: [RouteRideStats], nowMs: Int64) {
+    public init(routeId: String, title: String, state: RouteState, rides: [RouteRideStats], nowMs: Int64,
+                reverseRides: [RouteRideStats] = [], battery: BatteryNow? = nil, canChargeAtEnd: Bool = false, utcOffsetMin: Int = 0) {
         self.routeId = routeId
         self.title = title
         self.state = state
         self.rides = rides
         self.nowMs = nowMs
+        self.reverseRides = reverseRides
+        self.battery = battery
+        self.canChargeAtEnd = canChargeAtEnd
+        self.utcOffsetMin = utcOffsetMin
     }
 }
 
@@ -26,6 +36,8 @@ public struct RouteListRow: Equatable, Sendable {
     public var summary: String
     /// Newest ride, for ordering
     public var lastRideAt: Int64
+    /// M2-05: the battery check (grey, chip, one honest line); `.silent` for suggested routes and without data
+    public var fit: RouteFitResult = .silent
 }
 
 public struct RouteListModel: Equatable, Sendable {
@@ -51,7 +63,22 @@ public enum RouteListBuilder {
             parts.append("filling up")
         }
         return RouteListRow(routeId: input.routeId, title: input.title, state: input.state, rideCount: n,
-                            summary: parts.joined(separator: " \u{00B7} "), lastRideAt: input.rides.map { $0.startAt }.max() ?? 0)
+                            summary: parts.joined(separator: " \u{00B7} "), lastRideAt: input.rides.map { $0.startAt }.max() ?? 0,
+                            fit: fit(input))
+    }
+
+    /// M27 / G2: only saved routes are judged. Both legs use `neededPct` (the 10% margin), the way back at its usual time.
+    public static func fit(_ input: RouteListInput) -> RouteFitResult {
+        guard input.state == .saved, input.battery != nil else { return .silent }
+        guard case .estimate(let there) = TodayEstimator.estimate(rides: input.rides, nowMs: input.nowMs, utcOffsetMin: input.utcOffsetMin) else {
+            return .silent
+        }
+        var back: Double?
+        if case .estimate(let b) = TodayEstimator.estimate(rides: input.reverseRides, nowMs: input.nowMs, utcOffsetMin: input.utcOffsetMin) {
+            back = b.neededPct
+        }
+        return RouteFit.evaluate(thereNeededPct: there.neededPct, thereUsedPct: there.usedPct, backNeededPct: back, battery: input.battery,
+                                 canChargeAtEnd: input.canChargeAtEnd)
     }
 
     /// Saved routes by their newest ride, suggestions apart; dismissed routes are never listed.

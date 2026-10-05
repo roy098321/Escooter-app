@@ -16,6 +16,13 @@ struct SettingsView: View {
                     Label("Report a problem", systemImage: "exclamationmark.bubble")
                 }
             }
+            Section("Routes") {
+                NavigationLink {
+                    PlacesView()
+                } label: {
+                    Label("Places", systemImage: "mappin.and.ellipse")
+                }
+            }
             Section {
                 let writer = BackupWriter.shared
                 NavigationLink {

@@ -46,14 +46,37 @@ enum RouteCardLoader {
         cardInput(routeId: routeId, database: database).map { RouteCardBuilder.build($0) }
     }
 
-    static func list(database: AppDatabase, nowMs: Int64 = currentMs()) -> RouteListModel {
+    /// The route that goes the other way (B to A), if there is one that is not dismissed.
+    static func reverse(of route: RouteRecord, in routes: [RouteRecord]) -> RouteRecord? {
+        routes.first { $0.id != route.id && $0.state != "dismissed" && $0.fromPlaceId == route.toPlaceId && $0.toPlaceId == route.fromPlaceId }
+    }
+
+    /// The Routes list. `battery` is the scooter's battery now (or last seen): with it saved routes are greyed / chipped (M2-05).
+    static func list(database: AppDatabase, nowMs: Int64 = currentMs(), battery: BatteryNow? = nil,
+                     utcOffsetMin: Int = currentOffsetMin()) -> RouteListModel {
         let store = RouteQueries(database)
+        let routes = (try? store.routes()) ?? []
+        let places = (try? store.places()) ?? []
         var inputs: [RouteListInput] = []
-        for route in (try? store.routes()) ?? [] {
+        for route in routes {
             let state = RouteState(rawValue: route.state) ?? .suggested
+            var back: [RouteRideStats] = []
+            if let r = reverse(of: route, in: routes) { back = stats((try? store.routeRides(routeId: r.id)) ?? []) }
+            let charge = places.first { $0.id == route.toPlaceId }?.canCharge ?? false
             inputs.append(RouteListInput(routeId: route.id, title: RouteService.title(routeId: route.id, database: database), state: state,
-                                         rides: stats((try? store.routeRides(routeId: route.id)) ?? []), nowMs: nowMs))
+                                         rides: stats((try? store.routeRides(routeId: route.id)) ?? []), nowMs: nowMs, reverseRides: back,
+                                         battery: battery, canChargeAtEnd: charge, utcOffsetMin: utcOffsetMin))
         }
         return RouteListBuilder.build(inputs)
+    }
+
+    /// M2-05: the Places screen rows (a place's routes are the saved or suggested ones that start or end there).
+    static func places(database: AppDatabase) -> [PlaceRowModel] {
+        let store = RouteQueries(database)
+        let routes = ((try? store.routes()) ?? []).filter { $0.state != "dismissed" }
+        return ((try? store.places()) ?? []).map { p in
+            let count = routes.filter { $0.fromPlaceId == p.id || $0.toPlaceId == p.id }.count
+            return PlaceListBuilder.row(id: p.id, name: p.name, radiusM: p.radiusM, canCharge: p.canCharge, routeCount: count)
+        }
     }
 }

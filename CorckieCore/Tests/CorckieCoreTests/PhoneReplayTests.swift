@@ -148,7 +148,7 @@ final class PhoneReplayTests: XCTestCase {
         XCTAssertEqual(SyntheticScenario.all.map(\.id), ["SPD-46", "SPD-46-GPS", "TRAP-WALK", "TRAP-SPIN", "TRAP-KICK",
                                                           "END-A", "AUTO-OFF", "OFF-0x80", "STANDSTILL-10", "PUSH-1KM", "SAME-RIDE",
                                                           "ROUTE-COMMUTE", "ROUTE-COMMUTE-6", "ROUTE-VARIANT", "ROUTE-THEREBACK", "ROUTE-LOOP",
-                                                          "ROUTE-NOGPS", "ROUTE-GPSLOSS"])
+                                                          "ROUTE-NOGPS", "ROUTE-GPSLOSS", "ROUTE-LOWBATT"])
     }
 
     /// SPD-46: the scooter goes 40 → 46 → 44 → 46 → 42 km/h; the phone's GPS says the same.

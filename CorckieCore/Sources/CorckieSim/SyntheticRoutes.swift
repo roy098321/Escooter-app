@@ -110,8 +110,11 @@ public enum SyntheticRoutes {
         public var cruiseKmh: Double
         /// GPS lost from / to (seconds from this trip's start)
         public var gpsLoss: (from: Double, to: Double)?
+        /// Battery % the trip uses
+        public var usedPct: Int
 
-        public init(_ path: [XY], cruiseKmh: Double = 25, gpsLoss: (from: Double, to: Double)? = nil) {
+        public init(_ path: [XY], cruiseKmh: Double = 25, gpsLoss: (from: Double, to: Double)? = nil, usedPct: Int = 6) {
+            self.usedPct = usedPct
             self.path = path
             self.cruiseKmh = cruiseKmh
             self.gpsLoss = gpsLoss
@@ -119,14 +122,14 @@ public enum SyntheticRoutes {
     }
 
     /// Trips one after the other, `gapS` apart (15 min: longer than the 10 min of "Same ride?"). The battery runs down 6% per trip.
-    public static func series(_ legs: [Leg], gapS: Double = 900) -> SimStream {
+    public static func series(_ legs: [Leg], gapS: Double = 900, startBattery: Int = 90, floor: Int = 20) -> SimStream {
         var scooter: [TimedScooterEvent] = []
         var phone: [TimedPhoneEvent] = []
         var clock = 0.0
         var odometer = 100.0
-        var battery = 90
+        var battery = startBattery
         for (i, leg) in legs.enumerated() {
-            let r = trip(path: leg.path, cruiseKmh: leg.cruiseKmh, seed: UInt64(7 + i), batteryStart: battery, odometerKm: odometer)
+            let r = trip(path: leg.path, cruiseKmh: leg.cruiseKmh, seed: UInt64(7 + i), batteryStart: battery, usedPct: leg.usedPct, odometerKm: odometer)
             var piece = r.stream
             if let loss = leg.gpsLoss { piece = piece.applying([.gpsLoss(from: loss.from, to: loss.to)]) }
             let moved = SyntheticScenario.shifted(piece, by: clock)
@@ -134,7 +137,7 @@ public enum SyntheticRoutes {
             phone += moved.phone
             clock += r.endT + gapS
             odometer = r.endOdometerKm + 0.1
-            battery = max(20, battery - 6)
+            battery = max(floor, battery - leg.usedPct)
         }
         return SimStream(scooter: scooter, phone: phone)
     }
@@ -159,9 +162,19 @@ public enum SyntheticRoutes {
         SyntheticScenario(id: "ROUTE-NOGPS", title: "Routes: the second trip has no GPS at the start") {
             series([Leg(main), Leg(main, cruiseKmh: 26, gpsLoss: (from: 0, to: 150))])
         },
-        SyntheticScenario(id: "ROUTE-GPSLOSS", title: "Routes: three known trips, the fourth loses GPS half way") {
+        SyntheticScenario(id: "ROUTE-GPSLOSS", title: "Routes: three known trips, the fourth loses GPS for 5 min (dot keeps moving)") {
             series([Leg(main), Leg(main, cruiseKmh: 26), Leg(main, cruiseKmh: 24),
-                    Leg(main, cruiseKmh: 25, gpsLoss: (from: 200, to: 330))])
+                    Leg(main, cruiseKmh: 25, gpsLoss: (from: 90, to: 400))])
+        },
+        SyntheticScenario(id: "ROUTE-LOWBATT", title: "Routes: 6 trips each way, ending at 10% (greyed routes, there-and-back)") {
+            // A to B uses 3%, B to A uses 6%: the last trip ends at 10%, so A to B still fits (needs 3.3 + 5) but not the round trip
+            // (3.3 + 6.6 + 5 = 14.9), and B to A does not fit at all (6.6 + 5 = 11.6)
+            var legs: [Leg] = []
+            for i in 0..<6 {
+                legs.append(Leg(main, cruiseKmh: 24 + Double(i % 3), usedPct: 3))
+                legs.append(Leg(reversed(main), cruiseKmh: 24 + Double(i % 3), usedPct: 6))
+            }
+            return series(legs, startBattery: 64, floor: 0)
         }
     ]
 }
