@@ -131,7 +131,7 @@ final class ChargeStoreTests: XCTestCase {
         try add(q, "c", hours: 48, from: 95, to: 80)
         _ = try CalibrationUpdater.update(db, nowMs: t0)
         let later = BatteryOverview.load(db, currentPct: 80, connected: false)
-        XCTAssertEqual(later.charges.count, 1)
+        XCTAssertEqual(later.charges.count, 2, "a to b (50 to 90) and b to c (50 to 95)")
         XCTAssertEqual(later.charges.first?.chargedPct, 45)
         XCTAssertGreaterThan(later.cycles, 0.9)
         if case .gathering = later.health {} else { XCTFail("health is gathering with 3 rides") }
