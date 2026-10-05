@@ -154,15 +154,16 @@ public enum BatteryCalibrator {
         return .used(whPerPct: value, dropPct: drop, endFromNextStart: fromNext)
     }
 
-    /// Sets `nextStartRestPct` on rides without a rested end, from the next ride (same simulated flag) that starts within
-    /// 24 h (T41 sag rule). Rides in any order; returned newest first.
-    public static func linkNextStarts(_ rides: [CalibrationRide]) -> [CalibrationRide] {
+    /// Sets `nextStartRestPct` on rides without a rested end, from the next ride (same simulated flag) when M30 found
+    /// **no charge** in between (`chargedAfter` = ids of rides followed by a charge, from `ChargeDetector`). Replaces the
+    /// M3-01 stand-in (within 24 h, at most +10 points). Rides in any order; returned newest first.
+    public static func linkNextStarts(_ rides: [CalibrationRide], chargedAfter: Set<String> = []) -> [CalibrationRide] {
         var sorted = rides.sorted { $0.startAt < $1.startAt }
         for i in sorted.indices where sorted[i].endRestPct == nil && sorted[i].nextStartRestPct == nil {
+            if chargedAfter.contains(sorted[i].id) { continue }
             guard let next = sorted[(i + 1)...].first(where: { $0.isSimulated == sorted[i].isSimulated && $0.kind != "discarded" }),
                   let nextStart = next.startRestPct else { continue }
-            let endMs = sorted[i].endAt ?? sorted[i].startAt
-            if Double(next.startAt - endMs) / 1000 <= T.t41NextStartMaxS { sorted[i].nextStartRestPct = nextStart }
+            sorted[i].nextStartRestPct = nextStart
         }
         return sorted.reversed()
     }

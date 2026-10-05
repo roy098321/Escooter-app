@@ -113,16 +113,15 @@ final class BatteryCalibrationTests: XCTestCase {
         XCTAssertEqual(BatteryCalibrator.evaluate(ride("c", day: 0, wh: 300, from: 96, to: nil, live: 50)), .rejected(.noRestedEnd))
     }
 
-    func test_linkNextStarts_within24hOnly() {
-        var a = ride("a", day: 0, wh: 300, from: 90, to: nil, live: 50)
+    func test_linkNextStarts_unlessAChargeWasFoundBetween() {
+        let a = ride("a", day: 0, wh: 300, from: 90, to: nil, live: 50)
         var b = ride("b", day: 0, wh: 100, from: 55, to: 40)
-        b.startAt = a.startAt + 3 * 3_600_000
+        b.startAt = a.startAt + 30 * 3_600_000   // 30 h later: the old 24 h rule would have dropped it
         let linked = BatteryCalibrator.linkNextStarts([b, a])
         XCTAssertEqual(linked.map(\.id), ["b", "a"])
         XCTAssertEqual(linked[1].nextStartRestPct, 55)
-        a.endAt = a.startAt
-        b.startAt = a.startAt + 30 * 3_600_000
-        XCTAssertNil(BatteryCalibrator.linkNextStarts([a, b]).first { $0.id == "a" }?.nextStartRestPct)
+        // M30 found a charge after "a": nothing is linked
+        XCTAssertNil(BatteryCalibrator.linkNextStarts([a, b], chargedAfter: ["a"]).first { $0.id == "a" }?.nextStartRestPct)
     }
 
     func test_calibrated_ridesUseEnergy_andTheMarginStaysOut() {

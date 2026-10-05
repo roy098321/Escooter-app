@@ -34,6 +34,8 @@ struct CalibrationInputRow: Equatable {
     /// ms, from the `gap` table (nil without gap rows)
     var longestGapMs: Int64?
     var lastLivePct: Int?
+    /// disconnected / held / standstill / scooterOff / recovered
+    var endReason: String?
     var usedPct: Double?
     var usedPctMethod: String?
     var energyWhCal: Double?
@@ -66,7 +68,7 @@ struct CalibrationQueries {
         try database.writer.read { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT r.id, r.startAt, r.endAt, r.kind, r.isSimulated, r.energyWhRaw, r.startRestPct, r.endRestPct, r.distanceM,
-                       r.gapScooterS, r.usedPct, r.usedPctMethod, r.energyWhCal,
+                       r.gapScooterS, r.usedPct, r.usedPctMethod, r.energyWhCal, r.endReason,
                        (SELECT MAX(COALESCE(g.endT, g.startT) - g.startT) FROM gap g WHERE g.rideId = r.id AND g.kind = 'scooter') AS longestGapMs,
                        (SELECT s.batteryPct FROM ride_sample s WHERE s.rideId = r.id AND s.batteryPct IS NOT NULL ORDER BY s.t DESC LIMIT 1) AS lastLivePct
                 FROM ride r WHERE r.kind != 'discarded' AND r.status != 'recording'
@@ -76,7 +78,7 @@ struct CalibrationQueries {
                 CalibrationInputRow(id: row["id"], startAt: row["startAt"], endAt: row["endAt"], kind: row["kind"],
                                     isSimulated: row["isSimulated"], energyWhRaw: row["energyWhRaw"], startRestPct: row["startRestPct"],
                                     endRestPct: row["endRestPct"], distanceM: row["distanceM"], gapScooterS: row["gapScooterS"],
-                                    longestGapMs: row["longestGapMs"], lastLivePct: row["lastLivePct"], usedPct: row["usedPct"],
+                                    longestGapMs: row["longestGapMs"], lastLivePct: row["lastLivePct"], endReason: row["endReason"], usedPct: row["usedPct"],
                                     usedPctMethod: row["usedPctMethod"], energyWhCal: row["energyWhCal"])
             }
         }
