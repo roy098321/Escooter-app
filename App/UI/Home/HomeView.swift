@@ -19,6 +19,8 @@ struct HomeView: View {
     @State private var crashDismissed = false
     @State private var lastRide: RideListItem?
     @State private var oldestRideMs: Int64?
+    /// M4-10: the newest insight (a line under the last ride)
+    @State private var newestInsight: String?
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var input: HomeInput {
@@ -80,6 +82,15 @@ struct HomeView: View {
                 primaryButton(m)
                 if m.state != .riding { whereTo }
                 if m.showLocationCard { locationCard }
+                if let text = newestInsight, m.state != .riding {
+                    HStack(alignment: .top) {
+                        Image(systemName: "text.bubble").foregroundStyle(.secondary)
+                        Text(text).font(.subheadline)
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                }
                 if let text = m.lastRideText {
                     HStack {
                         Image(systemName: "clock.arrow.circlepath").foregroundStyle(.secondary)
@@ -241,6 +252,7 @@ struct HomeView: View {
         chips = RouteFollowLoader.chips(database: db)
         if let id = RouteFollowSelection.shared.routeId, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.routeId = nil }
         oldestRideMs = try? RideQueries(db).rides().last?.startAt
+        newestInsight = ((try? InsightQueries(db).recent(limit: 1)) ?? []).first?.text
         BackupWriter.shared.runIfDue()
         guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
         lastRide = RideListItem(id: r.id, startAt: r.startAt, utcOffsetMin: r.utcOffsetMin, kind: r.kind,

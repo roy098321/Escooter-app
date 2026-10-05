@@ -372,6 +372,10 @@ struct CheckGuide {
                           steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, temporary databases)."], place: .noScooter),
         "mw1": CheckGuide(proves: "Stats shows your week in a few plain sentences and keeps the earlier weeks.",
                           steps: ["Needs rides on at least 2 different days in a week.", "Stats tab: the Weekly summary card (\"Last week: ... km, ... rides, ...\"), then Past weeks. If you got the Sunday 07:30 notification, tapping it opens Stats. Tap Pass or Fail."], place: .passive),
+        "mi2": CheckGuide(proves: "The insights show where they should: the best one on the ride summary with the rest behind \"N more\", how far along the others are, the question under it, the newest on Home, the last ten on Stats.",
+                          steps: ["Open a ride on a route you have ridden 5 or more times (or run a simulator route scenario and let the ride end).", "Expected on the summary: one card; tap \"N more\" to expand; grey lines like \"1 of 3 wet rides\"; a question card (if the ride used more battery than usual) instead of \"Save as route?\". Tap the x on the card: it does not come back.", "Home: the newest insight under the last ride. Stats: Recent insights, newest first. Tap Pass or Fail."], place: .passive),
+        "mi3": CheckGuide(proves: "After a real ride the app says something sensible, or nothing at all when it does not know enough.",
+                          steps: ["Ride a saved route (3 or more rides on it, internet on so the weather arrives) and let the ride end.", "On the summary read the card. Expected: a plain sentence with numbers and \"based on N rides\" that fits what you felt (wind, rush hour, a different variant), or no card. Tap Pass or Fail."], place: .ride),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

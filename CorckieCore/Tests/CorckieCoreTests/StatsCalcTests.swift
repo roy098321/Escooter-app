@@ -77,7 +77,12 @@ final class StatsCalcTests: XCTestCase {
         let rides = [ride(ms(2026, 10, 4, 8), km: 10, used: 12), ride(ms(2026, 10, 6, 17), km: 6, used: 8), ride(ms(2026, 10, 6, 19), km: 1.5, used: 3)]
         let t = StatsCalc.totals(rides, period: p, prices: prices, utcOffsetMin: off)
         // 10 km: 10 x 7/100 x 8.27 - 12% x 0.008 kWh x 0.64 ; 6 km likewise ; 1.5 km is under 2 km
-        let expected = (10 * 0.07 * 8.27 - 12 * 0.008 * 0.64) + (6 * 0.07 * 8.27 - 8 * 0.008 * 0.64)
+        func trip(_ km: Double, _ used: Double) -> Double {
+            let car: Double = km * 0.07 * 8.27
+            let power: Double = used * 0.008 * 0.64
+            return car - power
+        }
+        let expected: Double = trip(10, 12) + trip(6, 8)
         XCTAssertEqual(t.fuelSavedIls ?? 0, expected, accuracy: 0.001)
         // the month's own price wins over the fallback
         let byMonth = StatsPrices(packWh: 800, fuelIlsByMonth: ["2026-10": 9.0], fuelFallbackIls: 8.27)

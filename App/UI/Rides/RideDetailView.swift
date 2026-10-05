@@ -14,11 +14,15 @@ struct RideDetailView: View {
     var previewOffer: RouteOfferModel?
     /// ui-shot only: a made-up smart prompt (and the Loaded row)
     var previewPrompt: SmartPromptCard?
+    /// ui-shot only: made-up insights (top card, N more, a progress line)
+    var previewInsights: RankedInsights?
 
     @State private var model: RideSummaryModel?
     @State private var offer: RouteOfferModel?
     @State private var missing = false
     @State private var prompt: SmartPromptCard?
+    @State private var ranked: RankedInsights?
+    @State private var showMore = false
     @State private var loadLabel = "Not set"
     @State private var showKgField = false
     @State private var kgText = ""
@@ -98,8 +102,9 @@ struct RideDetailView: View {
                 }
                 .padding(.horizontal, 16)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                if let r = previewInsights ?? ranked { insightCards(r) }
                 ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in note(n) }
-                if let o = previewOffer ?? offer { offerCard(o) }
+                if previewPrompt == nil, prompt == nil, let o = previewOffer ?? offer { offerCard(o) }
                 if let p = previewPrompt ?? prompt { promptCard(p) }
                 if (rideId != nil && preview == nil) || previewPrompt != nil { loadedRow }
                 if !m.infoLines.isEmpty {
@@ -253,6 +258,7 @@ struct RideDetailView: View {
         model = loaded
         offer = RouteService.offer(rideId: id, database: db)
         refreshSmart(id, db)
+        refreshInsights(id, db)
     }
 
     private func delete() {
@@ -346,6 +352,7 @@ extension RideDetailView {
         try? SmartPromptService.answer(db, rideId: id, a)
         prompt = nil
         refreshSmart(id, db)
+        refreshInsights(id, db)
     }
 
     fileprivate func dismissPrompt() {
@@ -358,6 +365,7 @@ extension RideDetailView {
         guard let id = rideId, let db = AppModel.shared.database else { return }
         try? SmartPromptService.setLoad(db, rideId: id, level: level, kg: kg)
         refreshSmart(id, db)
+        refreshInsights(id, db)
     }
 
     fileprivate func promptCard(_ p: SmartPromptCard) -> some View {
@@ -409,6 +417,63 @@ extension RideDetailView {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("What you carried, in kg. It helps explain battery use.")
+        }
+    }
+}
+
+// MARK: M4-10: insights on the summary / ride detail
+
+extension RideDetailView {
+    fileprivate func refreshInsights(_ id: String, _ db: AppDatabase) {
+        let now = InsightRunner.nowMs()
+        ranked = try? InsightQueries(db).ranked(forRide: id, nowMs: now)
+        // the summary was seen: cards that come later (weather arrives) go to Recent insights only
+        if !db.isReadOnly { try? InsightQueries(db).markShown(rideId: id, at: now) }
+    }
+
+    fileprivate func dismissInsight(_ i: Insight) {
+        guard let id = rideId, let db = AppModel.shared.database else { return }
+        try? InsightQueries(db).dismiss(id: i.id, at: InsightRunner.nowMs())
+        refreshInsights(id, db)
+    }
+
+    @ViewBuilder fileprivate func insightCards(_ r: RankedInsights) -> some View {
+        if let top = r.top {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
+                    Text(top.text).font(.subheadline)
+                    Spacer(minLength: 0)
+                    Button { dismissInsight(top) } label: { Image(systemName: "xmark").font(.caption) }
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Dismiss")
+                }
+                if let more = r.moreText {
+                    Button(showMore ? "Show less" : more) { showMore.toggle() }
+                        .font(.footnote)
+                    if showMore {
+                        ForEach(Array(r.more.enumerated()), id: \.offset) { item in
+                            Divider()
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
+                                Text(item.element.text).font(.subheadline)
+                                Spacer(minLength: 0)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        ForEach(Array(r.progress.enumerated()), id: \.offset) { item in
+            HStack(spacing: 6) {
+                Image(systemName: "hourglass").font(.footnote)
+                Text(item.element.text).font(.footnote)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
         }
     }
 }

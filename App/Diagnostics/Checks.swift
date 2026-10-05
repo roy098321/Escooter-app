@@ -387,7 +387,11 @@ enum CheckList {
         m("u37", insightsM, "Factors page rows, week card, past weeks (M4-08, M4-09)", "Nothing to do · Run all automatic marks it",
           "An effect shows \"based on N rides\", below its gate only the progress line; the simulated week: headwind effect at 24 rides, \"2 of 3 windy rides\" at 4; the week card and past weeks are made from the rides; a week with one riding day has no summary; the line ends with this phone's factor count"),
         m("mw1", insightsM, "Weekly card and past weeks on Stats", "Stats tab (after rides on 2 or more days in a week)",
-          "\"Weekly summary\" card with \"Last week: N km, N rides, ...\" (and \"This week so far\"); Past weeks lists earlier weeks newest first; tapping the Sunday 07:30 notification opens Stats; ui-shots week-card, past-weeks", manual: true)
+          "\"Weekly summary\" card with \"Last week: N km, N rides, ...\" (and \"This week so far\"); Past weeks lists earlier weeks newest first; tapping the Sunday 07:30 notification opens Stats; ui-shots week-card, past-weeks", manual: true),
+        m("mi2", insightsM, "Insights on the ride summary, ride detail, Home and Stats", "Run a simulator route scenario (or open a ride on a route with 5+ rides) → the ride summary → Done → Home → Stats",
+          "The summary shows the top insight card with \"N more\" that expands, pattern D progress lines below, the question card under it (it replaces \"Save as route?\"); the card can be dismissed and stays gone; Home shows the newest insight under the last ride; Stats shows the last 10 by time; ui-shot ride-insights", manual: true),
+        m("mi3", insightsM, "A real ride gives a sensible after-ride card", "After a real ride on a saved route with 3+ rides and weather (internet on): the ride summary",
+          "A card that fits the ride (slower / faster than usual with its cause, or the wind credit) in plain numbers with \"based on N rides\"; nothing when there is not enough data, only a progress line", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

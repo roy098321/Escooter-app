@@ -143,6 +143,12 @@ enum UIShot {
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
                                previewPrompt: SmartPromptCard(rideId: "preview", text: "This ride used 4% more battery than usual. Wind, rush hour and load don't explain it. Anything different?",
                                                               extraPct: 4, answers: SmartAnswer.allCases))
+            case "ride-insights":
+                RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
+                               previewInsights: RankedInsights(
+                                top: Insight(type: .q4After, rideId: "p", routeId: "A", text: "1:10 min slower than usual: headwind (~1:00 min).", basedOnN: 8, createdAt: 1_790_000_000_000),
+                                more: [Insight(type: .q15After, rideId: "p", routeId: "A", text: "Headwind cost you ~1 min and ~1% battery today.", basedOnN: 9, createdAt: 1_790_000_000_000)],
+                                progress: [Insight(type: .q15After, rideId: "p", routeId: "A", text: "Rain on Seed commute: 1 of 3 wet rides", basedOnN: 1, isProgress: true, createdAt: 1_790_000_000_000)]))
             case "past-weeks":
                 NavigationStack { PastWeeksView(weeks: WeekPreview.weeks()) }
             case "stats-week", "stats-month", "stats-empty", "week-card":

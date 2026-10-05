@@ -20,7 +20,8 @@ enum BudgetCheck {
         let fire = NotificationBudget.nextWeeklyMs(nowMs: noon, utcOffsetMin: off)
         let weekday = DayClock.weekday(startAtMs: fire, utcOffsetMin: off)
         let minute = DayClock.minuteOfDay(startAtMs: fire, utcOffsetMin: off)
-        let weeklyOk = weekday == 0 && minute == 450 && fire > noon && fire - noon <= 7 * 86_400_000
+        let dayMs: Int64 = 7 * 86_400_000
+        let weeklyOk: Bool = weekday == 0 && minute == 450 && fire > noon && fire - noon <= dayMs
         let rulesOk = ride && quiet && limit && place && wind && weeklyOk
 
         var dbOk = false
@@ -69,11 +70,17 @@ enum SmartPromptCheck {
             SmartPrompt.card(rideId: "r", routeRides: rides, usedPct: used, usualUsed: usual, explanation: other.map { RideExplanation(items: [], otherPct: $0) },
                              state: state, nowMs: at, utcOffsetMin: 180)
         }
-        let gates = card() != nil && card(rides: 4) == nil && card(used: 10.5) == nil && card(other: 1.9) == nil && card(other: 2) != nil
+        let g1: Bool = card() != nil && card(rides: 4) == nil && card(used: 10.5) == nil
+        let g2: Bool = card(other: 1.9) == nil && card(other: 2) != nil
+        let gates = g1 && g2
         let shown = SmartPrompt.afterShown(SmartPromptState(), rideId: "other", nowMs: now, utcOffsetMin: 180)
         let daily = card(state: shown) == nil && card(state: shown, at: now + 86_400_000) != nil
         let twice = SmartPrompt.afterDismiss(SmartPrompt.afterDismiss(SmartPromptState(), nowMs: now), nowMs: now)
-        let pause = twice.pausedUntilMs == now + 7 * 86_400_000 && card(state: twice, at: now + 6 * 86_400_000) == nil && card(state: twice, at: now + 8 * 86_400_000) != nil
+        let pausedAt: Int64 = now + 7 * 86_400_000
+        let p1: Bool = twice.pausedUntilMs == pausedAt
+        let p2: Bool = card(state: twice, at: now + 6 * 86_400_000) == nil
+        let p3: Bool = card(state: twice, at: now + 8 * 86_400_000) != nil
+        let pause = p1 && p2 && p3
         let rulesOk = gates && daily && pause
 
         var dbOk = false
@@ -119,8 +126,10 @@ enum HeatCheck {
         var watch = HeatWatch()
         let first = watch.update(91), again = watch.update(92), veryHot = watch.update(101), stays = watch.update(95)
         let cooled = watch.update(80)
-        let levelsOk = first == .hot && again == nil && veryHot == .veryHot && stays == nil && watch.level == .normal && cooled == nil
-            && T.t47HotC == 90 && T.t47VeryHotC == 100
+        let l1: Bool = first == .hot && again == nil && veryHot == .veryHot
+        let l2: Bool = stays == nil && watch.level == .normal && cooled == nil
+        let l3: Bool = T.t47HotC == 90 && T.t47VeryHotC == 100
+        let levelsOk = l1 && l2 && l3
         let learned = HeatLimits.limits(eventTempsC: [78, 82])
         let learnedOk = learned.hotC == 73 && learned.veryHotC == 83 && HeatLimits.limits(eventTempsC: [78]).hotC == 90
         var dbOk = false
@@ -154,17 +163,26 @@ enum StatsCheck {
         let off = 180
         let now: Int64 = 1_790_000_000_000
         let week = StatsCalc.period(span: .week, mode: .calendar, nowMs: now, utcOffsetMin: off)
-        let periodsOk = week.endMs - week.startMs == 7 * 86_400_000 && DayClock.weekday(startAtMs: week.startMs, utcOffsetMin: off) == 0
-            && StatsCalc.period(span: .month, mode: .rolling, nowMs: now, utcOffsetMin: off).startMs == now - 30 * 86_400_000
+        let spanOk: Bool = week.endMs - week.startMs == 7 * 86_400_000
+        let sundayOk: Bool = DayClock.weekday(startAtMs: week.startMs, utcOffsetMin: off) == 0
+        let rolling = StatsCalc.period(span: .month, mode: .rolling, nowMs: now, utcOffsetMin: off)
+        let rollingOk: Bool = rolling.startMs == now - 30 * 86_400_000
+        let periodsOk = spanOk && sundayOk && rollingOk
         let prices = StatsPrices(packWh: 800, electricityIlsPerKwh: 0.64, fuelFallbackIls: 8.27, fuelLPer100km: 7)
         let start = week.startMs + 9 * 3_600_000
         let rides = [StatsRide(startAt: start, utcOffsetMin: off, kind: "ride", distanceM: 10_000, totalS: 900, usedPct: 12),
                      StatsRide(startAt: start + 3_600_000, utcOffsetMin: off, kind: "ride", distanceM: 1_500, totalS: 300, usedPct: 3),
                      StatsRide(startAt: start + 7_200_000, utcOffsetMin: off, kind: "shortHop", distanceM: 800, totalS: 200, usedPct: 1)]
         let t = StatsCalc.totals(rides, period: week, prices: prices, utcOffsetMin: off)
-        let fuel = 10 * 0.07 * 8.27 - 12 * 0.008 * 0.64
-        let totalsOk = t.rides == 2 && t.shortHops == 1 && abs(t.charges - 0.16) < 0.0001 && abs(t.electricityIls - 0.16 * 0.8 * 0.64) < 0.0001
-            && abs((t.fuelSavedIls ?? 0) - fuel) < 0.001 && StatsCalc.totals(rides, period: week, prices: StatsPrices(packWh: 800), utcOffsetMin: off).fuelSavedIls == nil
+        let carCost: Double = 10.0 * 0.07 * 8.27
+        let powerCost: Double = 12.0 * 0.008 * 0.64
+        let fuel: Double = carCost - powerCost
+        let wantCost: Double = 0.16 * 0.8 * 0.64
+        let countsOk: Bool = t.rides == 2 && t.shortHops == 1
+        let chargesOk: Bool = abs(t.charges - 0.16) < 0.0001 && abs(t.electricityIls - wantCost) < 0.0001
+        let fuelOk: Bool = abs((t.fuelSavedIls ?? 0) - fuel) < 0.001
+        let noPrice: Bool = StatsCalc.totals(rides, period: week, prices: StatsPrices(packWh: 800), utcOffsetMin: off).fuelSavedIls == nil
+        let totalsOk = countsOk && chargesOk && fuelOk && noPrice
         let tagged = StatsCalc.holidayTagged(week, dayOffDates: [OutsideTime.day(week.startMs + 2 * 86_400_000 + Int64(off) * 60_000)], utcOffsetMin: off)
         let holidayOk = tagged && StatsCalc.comparisonPct(rides, span: .week, mode: .calendar, nowMs: now, utcOffsetMin: off, holidayTagged: true) == nil
 
@@ -209,9 +227,10 @@ enum WeekAndFactorsCheck {
         func word(_ b: Bool) -> String { b ? "ok" : "wrong" }
         let pass = FactorsPage.rows([InsightSamples.effect("W1", "head", .time, 60, scope: .pooled), InsightSamples.effect("W1", "head", .used, 0.3, scope: .pooled)])
         let below = FactorsPage.rows([InsightSamples.effect("W1", "head", .time, nil, n: 2, nWithout: 5)])
-        let rowsOk = pass.first?.timeText == "+1 min per km" && pass.first?.basedOn == "based on 12 rides" && below.first?.progress == "2 of 3 windy rides"
-            && below.first?.timeText == nil && below.first?.batteryText == nil
-            && FactorsPage.answerRows(counts: [.tyresSoft: 3]).count == 1 && FactorsPage.answerRows(counts: [.tyresSoft: 2]).isEmpty
+        let r1: Bool = pass.first?.timeText == "+1 min per km" && pass.first?.basedOn == "based on 12 rides"
+        let r2: Bool = below.first?.progress == "2 of 3 windy rides" && below.first?.timeText == nil && below.first?.batteryText == nil
+        let r3: Bool = FactorsPage.answerRows(counts: [.tyresSoft: 3]).count == 1 && FactorsPage.answerRows(counts: [.tyresSoft: 2]).isEmpty
+        let rowsOk = r1 && r2 && r3
 
         var dbOk = false
         var detail = "?"
