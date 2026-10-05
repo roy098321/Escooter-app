@@ -81,6 +81,9 @@ public enum InsightSamples {
         out += InsightCatalogue.q22Weekly(weekStart: now, rides: week + [hop], previousWeekKm: 18, nowMs: now)
         out += InsightCatalogue.firstAndUnlock(rideId: "r1", realRides: 1, routeId: "A", routeName: "Home to Work", routeRides: 3, routeBatteryRides: 5,
                                                calibratedNow: true, whPerPct: 8.4, firstRangeKm: 31, nowMs: now)
+        let usual = (0..<6).map { HeatRide(riseC: 30 + Double($0), distanceKm: 6, airTempC: 22) }
+        out += InsightCatalogue.heatAfter(rideId: "r1", routeId: "A", peakC: 92, ride: HeatRide(riseC: 68, distanceKm: 6, airTempC: 33), routeRides: usual, nowMs: now)
+        out += InsightCatalogue.heatAfter(rideId: "r2", routeId: "A", peakC: nil, ride: HeatRide(riseC: 48, distanceKm: 6, airTempC: 22), routeRides: usual, nowMs: now)
         return out
     }
 }

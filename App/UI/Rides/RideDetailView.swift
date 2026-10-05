@@ -12,10 +12,16 @@ struct RideDetailView: View {
     var onDone: (() -> Void)?
     /// ui-shot only: a made-up route card
     var previewOffer: RouteOfferModel?
+    /// ui-shot only: a made-up smart prompt (and the Loaded row)
+    var previewPrompt: SmartPromptCard?
 
     @State private var model: RideSummaryModel?
     @State private var offer: RouteOfferModel?
     @State private var missing = false
+    @State private var prompt: SmartPromptCard?
+    @State private var loadLabel = "Not set"
+    @State private var showKgField = false
+    @State private var kgText = ""
     @State private var confirmDelete = false
     @State private var errorText: String?
     @Environment(\.dismiss) private var dismiss
@@ -94,6 +100,8 @@ struct RideDetailView: View {
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in note(n) }
                 if let o = previewOffer ?? offer { offerCard(o) }
+                if let p = previewPrompt ?? prompt { promptCard(p) }
+                if (rideId != nil && preview == nil) || previewPrompt != nil { loadedRow }
                 if !m.infoLines.isEmpty {
                     DisclosureGroup("More info") {
                         VStack(alignment: .leading, spacing: 6) {
@@ -244,6 +252,7 @@ struct RideDetailView: View {
         }
         model = loaded
         offer = RouteService.offer(rideId: id, database: db)
+        refreshSmart(id, db)
     }
 
     private func delete() {
@@ -318,5 +327,88 @@ enum RideDetailPreview {
             break
         }
         return RideSummaryBuilder.build(input, gaps: gaps, points: points)
+    }
+}
+
+// MARK: M4-05: smart prompt + Loaded tag
+
+extension RideDetailView {
+    fileprivate func refreshSmart(_ id: String, _ db: AppDatabase) {
+        let ride = try? SmartPromptQueries(db).rideAnswer(id)
+        loadLabel = LoadLevel.label(level: ride?.loadLevel, kg: ride?.loadKg)
+        guard !db.isReadOnly, let card = SmartPromptService.card(db, rideId: id) else { prompt = nil; return }
+        prompt = card
+        SmartPromptService.shown(db, rideId: id)
+    }
+
+    fileprivate func answer(_ a: SmartAnswer) {
+        guard let id = rideId, let db = AppModel.shared.database else { return }
+        try? SmartPromptService.answer(db, rideId: id, a)
+        prompt = nil
+        refreshSmart(id, db)
+    }
+
+    fileprivate func dismissPrompt() {
+        guard let id = rideId, let db = AppModel.shared.database else { return }
+        SmartPromptService.dismiss(db, rideId: id)
+        prompt = nil
+    }
+
+    fileprivate func setLoad(_ level: LoadLevel, kg: Double? = nil) {
+        guard let id = rideId, let db = AppModel.shared.database else { return }
+        try? SmartPromptService.setLoad(db, rideId: id, level: level, kg: kg)
+        refreshSmart(id, db)
+    }
+
+    fileprivate func promptCard(_ p: SmartPromptCard) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "questionmark.bubble").foregroundStyle(.secondary).frame(width: 24)
+                Text(p.text).font(.subheadline)
+                Spacer(minLength: 0)
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(p.answers, id: \.self) { a in
+                    Button(a.title) { answer(a) }
+                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            Button("Not now") { dismissPrompt() }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    fileprivate var loadedRow: some View {
+        HStack {
+            Text("Loaded")
+            Spacer()
+            Menu {
+                Button("None") { setLoad(.none) }
+                Button("Light (5 kg)") { setLoad(.light) }
+                Button("Heavy (15 kg)") { setLoad(.heavy) }
+                Button("Exact kg…") { kgText = ""; showKgField = true }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(loadLabel).foregroundStyle(.secondary)
+                    Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .alert("Exact load (kg)", isPresented: $showKgField) {
+            TextField("kg", text: $kgText).keyboardType(.decimalPad)
+            Button("Save") {
+                if let kg = Double(kgText.replacingOccurrences(of: ",", with: ".")) { setLoad(.custom, kg: kg) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("What you carried, in kg. It helps explain battery use.")
+        }
     }
 }

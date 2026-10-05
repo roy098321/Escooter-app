@@ -367,7 +367,17 @@ enum CheckList {
         m("mn1", insightsM, "The weekly notification arrives Sunday 07:30", "Ride on 2 different days in a week, then look at Sunday 07:30",
           "A notification \"Your week\" with \"Last week: N km, N rides, ...\" at 07:30; tapping it opens the app (Stats, that week, once the Stats tab exists)", manual: true),
         m("mn2", insightsM, "Wind picking up arrives once, only before a usual ride", "On a windy day, shortly before the time you usually ride a saved route (3+ rides on that weekday), internet and background refresh on",
-          "One notification \"Wind picking up\" with how it changes the ride; none the same day again; none at night or during a ride", manual: true)
+          "One notification \"Wind picking up\" with how it changes the ride; none the same day again; none at night or during a ride", manual: true),
+        m("u34", insightsM, "Smart prompt gates, answers, Loaded tag (M4-05)", "Nothing to do · Run all automatic marks it",
+          "The card appears only for a saved route with 5 rides or more, a ride 2% or more above usual that the factors do not explain, once a day, and 2 dismissals in a row pause it 7 days; a made-up ride in a temporary database: Heavy sets 15 kg, Tyres soft leaves the ride out and makes the tyre reminder due, the Loaded tag sets any kg, never asked twice"),
+        m("mp1", insightsM, "Prompt card and what each answer does", "Developer → Insights → Simulated smart prompt ride",
+          "The card \"This ride used N% more battery than usual. Wind, rush hour and load don't explain it. Anything different?\" and one line per answer (Light / Heavy set the load, Tyres soft and Rode differently leave the ride out of the usual range, Not sure changes nothing)", manual: true, tool: .insights),
+        m("mp2", insightsM, "Loaded tag on a ride", "Rides → open a ride → the Loaded row → pick Heavy",
+          "The row shows Heavy (15 kg); None / Light / Heavy / Exact kg all work; reopening the ride keeps it", manual: true),
+        m("u35", insightsM, "Heat levels, learned limit, hot-day card (M4-06)", "Nothing to do · Run all automatic marks it",
+          "Hot 90 and very hot 100 once per level and very hot stays; 2 protection events move the warnings 5 °C below the lowest; a made-up hot ride in a temporary database gives the Peak card first (class safety) and the hot-day card (air 30 °C or more, 5 °C hotter than the route median)"),
+        m("mh1", insightsM, "Peak card and hot-day card", "Developer → Insights → Simulated hot ride (heat cards)",
+          "Top card \"Peak 93 °C · +68 °C\" and behind it \"Hot day (33 °C): scooter ran 38 °C hotter than usual on this route · based on 11 rides.\"", manual: true, tool: .insights)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

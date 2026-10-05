@@ -25,6 +25,9 @@ struct InsightRideRow: Equatable {
     var loadKg: Double?
     var loadLevel: String?
     var timeAtMaxPct: Double?
+    var tempPeakC: Double?
+    var tempRiseC: Double?
+    var airTempC: Double?
 }
 
 struct InsightQueries {
@@ -180,12 +183,13 @@ struct InsightQueries {
         try database.writer.read { db in
             guard let r = try Row.fetchOne(db, sql: """
                 SELECT id, routeId, variantId, startAt, endAt, utcOffsetMin, kind, isSimulated, distanceM, totalS, movingS, usedPct, headwindKmh,
-                       loadKg, loadLevel, timeAtMaxPct FROM ride WHERE id = ?
+                       loadKg, loadLevel, timeAtMaxPct, tempPeakC, tempRiseC, airTempC FROM ride WHERE id = ?
                 """, arguments: [rideId]) else { return nil }
             return InsightRideRow(id: r["id"], routeId: r["routeId"], variantId: r["variantId"], startAt: r["startAt"], endAt: r["endAt"],
                                   utcOffsetMin: r["utcOffsetMin"], kind: r["kind"], isSimulated: r["isSimulated"], distanceM: r["distanceM"],
                                   totalS: r["totalS"], movingS: r["movingS"], usedPct: r["usedPct"], headwindKmh: r["headwindKmh"],
-                                  loadKg: r["loadKg"], loadLevel: r["loadLevel"], timeAtMaxPct: r["timeAtMaxPct"])
+                                  loadKg: r["loadKg"], loadLevel: r["loadLevel"], timeAtMaxPct: r["timeAtMaxPct"],
+                                  tempPeakC: r["tempPeakC"], tempRiseC: r["tempRiseC"], airTempC: r["airTempC"])
         }
     }
 

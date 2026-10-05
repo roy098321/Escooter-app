@@ -21,6 +21,8 @@ struct InsightsView: View {
             Section {
                 Button("Simulated windy week · 4 rides (below the gate)") { run(rides: 4) }
                 Button("Simulated windy week · 24 rides (above the gate)") { run(rides: 24) }
+                Button("Simulated hot ride (heat cards)") { runHot() }
+                Button("Simulated smart prompt ride") { runPrompt() }
             } footer: {
                 Text("Made-up rides in the ocean in a temporary database, deleted right after. Your real rides are not touched.")
             }
@@ -67,6 +69,50 @@ struct InsightsView: View {
             }
             if out.isEmpty { out.append(Line(label: "Nothing", text: "No insight for the last ride")) }
             title = "\(rides) rides on \(InsightSeed.routeName) · \(r.report.text)"
+        } catch {
+            title = "Failed"
+            out = [Line(label: "Error", text: error.localizedDescription)]
+        }
+        lines = out
+    }
+
+    /// M4-06 (mh1): a hot ride on a route with 11 other rides: the Peak card first, then the hot-day card
+    private func runHot() {
+        var out: [Line] = []
+        do {
+            let db = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { db.discardTemporary() }
+            let r = try InsightSeed.hotRide(db)
+            let ranked = try InsightQueries(db).ranked(forRide: r.lastRideId, nowMs: r.nowMs + 60_000)
+            if let top = ranked.top { out.append(Line(label: "Top card · (top.type.rawValue)", text: top.text)) }
+            for m in ranked.more { out.append(Line(label: "Behind \"(ranked.moreText ?? "more")\" · (m.type.rawValue)", text: m.text)) }
+            title = "Hot ride on (InsightSeed.routeName)"
+        } catch {
+            title = "Failed"
+            out = [Line(label: "Error", text: error.localizedDescription)]
+        }
+        lines = out
+    }
+
+    /// M4-05 (mp1): a ride that used 8 points more battery than usual: the card, then what each answer does to the ride
+    private func runPrompt() {
+        var out: [Line] = []
+        do {
+            let db = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { db.discardTemporary() }
+            let r = try InsightSeed.promptRide(db)
+            let nowMs = r.nowMs
+            if let c = SmartPromptService.card(db, rideId: r.lastRideId, nowMs: nowMs, utcOffsetMin: FactorSeed.utcOffsetMin) {
+                out.append(Line(label: "Prompt card", text: c.text))
+                for a in c.answers {
+                    try SmartPromptService.answer(db, rideId: r.lastRideId, a, nowMs: nowMs)
+                    let x = try SmartPromptQueries(db).rideAnswer(r.lastRideId)
+                    out.append(Line(label: "Answer · (a.title)", text: "load (LoadLevel.label(level: x?.loadLevel, kg: x?.loadKg)) · left out of usual: (x?.excluded == true ? "yes" : "no")"))
+                }
+            } else {
+                out.append(Line(label: "No card", text: "The prompt gates were not met"))
+            }
+            title = "Smart prompt on (InsightSeed.routeName)"
         } catch {
             title = "Failed"
             out = [Line(label: "Error", text: error.localizedDescription)]

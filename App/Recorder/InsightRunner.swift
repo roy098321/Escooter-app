@@ -61,11 +61,19 @@ enum InsightRunner {
         let calibration = CalibrationUpdater.current(database)
         let realRides = try q.endedRideCount(simulated: ride.isSimulated)
 
+        // M4-06: heat (M38): the Peak card for any ride; hot day / ran hotter on a saved route (5 rides or more)
+        func heat(_ forRoute: String?) -> [Insight] {
+            let others = forRoute.flatMap { try? SmartPromptQueries(database).heatRides(routeId: $0, excluding: rideId, simulated: ride.isSimulated) } ?? []
+            return InsightCatalogue.heatAfter(rideId: rideId, routeId: forRoute, peakC: ride.tempPeakC,
+                                              ride: HeatRide(riseC: ride.tempRiseC, distanceKm: (ride.distanceM ?? 0) / 1000, airTempC: ride.airTempC),
+                                              routeRides: others.map { HeatRide(riseC: $0.riseC, distanceKm: ($0.distanceM ?? 0) / 1000, airTempC: $0.airTempC) },
+                                              nowMs: nowMs)
+        }
         guard let routeId = ride.routeId, let route = try routes.route(id: routeId), route.state == "saved" else {
             out += InsightCatalogue.firstAndUnlock(rideId: rideId, realRides: realRides, routeId: nil, routeName: nil, routeRides: 0,
                                                    routeBatteryRides: 0, calibratedNow: !ride.isSimulated && calibration.status == .calibrated,
                                                    whPerPct: calibration.whPerPct, firstRangeKm: nil, nowMs: nowMs)
-            return out
+            return out + heat(nil)
         }
         let name = RouteService.title(routeId: routeId, database: database)
         let rows = (try? routes.routeRides(routeId: routeId)) ?? []
@@ -107,7 +115,7 @@ enum InsightRunner {
         // Q19 (load)
         out += InsightCatalogue.q19After(rideId: rideId, routeId: routeId, loadKg: ride.loadKg, loadLevel: ride.loadLevel,
                                          rideKm: (ride.distanceM ?? 0) / 1000, pooledEffects: pooled, nowMs: nowMs)
-        return out
+        return out + heat(routeId)
     }
 
     /// The route's variants with their recent rides (the usual-range selection: 90 days, newest 20, not excluded)

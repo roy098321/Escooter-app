@@ -352,6 +352,16 @@ struct CheckGuide {
                           steps: ["Ride on at least 2 different days in one week (Sunday to Saturday), keep notifications on for the app.", "On Sunday at 07:30 look at the lock screen. Expected: \"Your week\" with \"Last week: ... km, ... rides, ...\". Tap it: the app opens. Tap Pass or Fail."], place: .passive),
         "mn2": CheckGuide(proves: "On a windy day the app warns once, shortly before a ride you usually make, and not at other times.",
                           steps: ["Needs a saved route with 3 or more rides on the same weekday around the same time, internet on, Background App Refresh on.", "On a day with wind against that route, wait before your usual time. Expected: one notification \"Wind picking up\". It does not come again that day, not at night and not during a ride. Tap Pass or Fail."], place: .passive),
+        "u34": CheckGuide(proves: "After a ride that used clearly more battery than usual on a saved route (5 rides or more) and that wind, rush hour and load do not explain, the app asks once what was different. The answers change the ride (load, left out of the usual range, tyre reminder). It asks at most once a day and stops for 7 days after 2 dismissals.",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database)."], place: .noScooter),
+        "mp1": CheckGuide(proves: "The question and what each answer does to the ride.",
+                          steps: ["Developer → Insights → Simulated smart prompt ride.", "Expected: the card text and one line per answer: Light = Light (5 kg), Heavy = Heavy (15 kg), Tyres felt soft and Rode differently = left out of usual: yes, Not sure = nothing changes. Tap Pass or Fail."], place: .noScooter),
+        "mp2": CheckGuide(proves: "You can tell the app what you carried, so load is not mistaken for something else.",
+                          steps: ["Rides → open any ride → the Loaded row.", "Pick Heavy: the row shows Heavy (15 kg). Try None, Light and Exact kg (7). Go back and open the ride again: the choice is kept. Tap Pass or Fail."], place: .passive),
+        "u35": CheckGuide(proves: "Heat warnings work: hot at 90 and very hot at 100 once per ride, the limit moves lower when the scooter protects itself twice, and a hot ride gets a Peak card and, on a hot day, a card saying it ran hotter.",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database)."], place: .noScooter),
+        "mh1": CheckGuide(proves: "The after-ride heat cards read well.",
+                          steps: ["Developer → Insights → Simulated hot ride (heat cards).", "Expected: top card \"Peak 93 °C · +68 °C\", behind it a hot-day card with \"based on 11 rides\". Plain numbers, no alarm words beyond hot. Tap Pass or Fail."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

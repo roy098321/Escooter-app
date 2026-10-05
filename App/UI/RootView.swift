@@ -134,6 +134,10 @@ enum UIShot {
             case "ride-save-route":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
                                previewOffer: RouteOfferModel.make(routeId: "preview", state: .suggested, title: "Route 1", ridesOnRoute: 2))
+            case "ride-prompt":
+                RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
+                               previewPrompt: SmartPromptCard(rideId: "preview", text: "This ride used 4% more battery than usual. Wind, rush hour and load don't explain it. Anything different?",
+                                                              extraPct: 4, answers: SmartAnswer.allCases))
             case "route-arriveby":
                 ScrollView { ArriveByCard(routeId: nil, destination: "Work", rides: RoutesPreview.arriveByRides(), preview: true).padding() }
             case "scooter-tab", "scooter-tab-off", "scooter-tab-none":

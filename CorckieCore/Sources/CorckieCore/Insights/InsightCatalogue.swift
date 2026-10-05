@@ -52,6 +52,7 @@ public enum InsightType: String, CaseIterable, Sendable {
     case q1Live, q1After, q2After, q2Live, q3After, q3Verdict, q4After, q4Weekly, q9Live, q13After, q13Weekly
     case q15Live, q15After, q15Notify, q17New, q18, q19After, q22Weekly
     case firstRide, unlockTime, unlockBattery, unlockCalibration, unlockRange
+    case heatPeak, heatHotDay, heatRanHotter
 
     public var moment: InsightMoment {
         switch self {
@@ -64,8 +65,8 @@ public enum InsightType: String, CaseIterable, Sendable {
 
     public var insightClass: InsightClass {
         switch self {
-        case .q9Live: return .safety
-        case .q4After, .q4Weekly, .q19After: return .surprise
+        case .q9Live, .heatPeak: return .safety
+        case .q4After, .q4Weekly, .q19After, .heatHotDay, .heatRanHotter: return .surprise
         case .q1Live, .q1After, .q2After, .q2Live, .q3After, .q3Verdict, .q18, .q15Live, .q15Notify: return .decision
         case .q17New, .firstRide, .unlockTime, .unlockBattery, .unlockCalibration, .unlockRange: return .progress
         case .q13After, .q13Weekly, .q15After, .q22Weekly: return .credit
