@@ -142,7 +142,7 @@ final class InsightRankingTests: XCTestCase {
     func test_recent_lastTenByTime_notScore() {
         var rows: [Insight] = (0..<12).map { make(.q15After, ride: "r\($0)", time: 60, at: now + Int64($0) * 1_000) }
         rows.append(make(.q9Live, ride: "r99", at: now + 50_000))              // a start moment: not history
-        rows.append(make(.q4After, ride: "r98", progress: true, at: now + 60_000))
+        rows.append(make(.q4After, ride: "r98", at: now + 60_000, progress: true))
         rows.append(make(.q9Live, ride: "r97", at: now - 1))
         let recent = InsightRanking.recent(rows)
         XCTAssertEqual(recent.count, 10)
