@@ -179,6 +179,12 @@ public struct WhereToChip: Equatable, Sendable {
     public var label: String
     /// "Work · usual 12 min · today ~13 min · leave now, arrive ~8:56 · uses about 11%" (honest numbers, no margin)
     public var detail: String
+
+    public init(routeId: String, label: String, detail: String) {
+        self.routeId = routeId
+        self.label = label
+        self.detail = detail
+    }
 }
 
 public enum WhereTo {
