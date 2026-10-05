@@ -32,6 +32,11 @@ public struct RouteListModel: Equatable, Sendable {
     public var saved: [RouteListRow]
     public var suggested: [RouteListRow]
     public var isEmpty: Bool { saved.isEmpty && suggested.isEmpty }
+
+    public init(saved: [RouteListRow], suggested: [RouteListRow]) {
+        self.saved = saved
+        self.suggested = suggested
+    }
 }
 
 public enum RouteListBuilder {
