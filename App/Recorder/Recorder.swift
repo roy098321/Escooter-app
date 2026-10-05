@@ -158,6 +158,7 @@ actor Recorder {
             r.kind = RideSizeClass.of(distanceM: m.distanceM).rawValue
             try q.save(r)
             do { try RouteProcessor.process(rideId: r.id, database: q.database) } catch { note("routes \(r.id): \(error.localizedDescription)") }
+            do { try FactorUpdater.update(q.database, rideId: r.id) } catch { note("factors \(r.id): \(error.localizedDescription)") }
             hooks.rideClosed(r.id, r.status)
         } catch {
             note("orphan ride \(ride.id): \(error.localizedDescription)")
@@ -309,6 +310,8 @@ actor Recorder {
             do { try CalibrationUpdater.update(db, nowMs: ms(end.endT)) } catch { note("calibration \(id): \(error.localizedDescription)") }
             // M2: where does this ride belong? (places, routes, variants); a failure here never stops the close
             do { try RouteProcessor.process(rideId: id, database: db) } catch { note("routes \(id): \(error.localizedDescription)") }
+            // M4-02: the ride's factor columns (weather may still be missing: pattern W) and every factor effect rebuilt
+            do { try FactorUpdater.update(db, rideId: id, nowMs: ms(end.endT)) } catch { note("factors \(id): \(error.localizedDescription)") }
             closedRideIds.append(id)
             hooks.rideClosed(id, r.status)
             updateUsualPctPerKm(q)

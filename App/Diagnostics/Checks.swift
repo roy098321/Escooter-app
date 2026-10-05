@@ -353,7 +353,11 @@ enum CheckList {
         m("e10", insightsM, "Offline: the cache is used, nothing crashes", "Airplane mode on → Developer → Outside data → Refresh the cache now → airplane mode off",
           "Forecast shows its age (or No forecast), holidays say offline, History says waiting, no crash and no waiting for time-outs", manual: true, tool: .outside),
         m("e11", insightsM, "Weather history for a real ride", "After a real ride that ended more than an hour ago (internet on): Developer → Outside data → Refresh the cache now",
-          "History: 1 filled (or cached) for the ride and the cache line shows history hours; Elevation shows new cells; the factors (M4-02) look the ride's weather up later", scooter: true, manual: true, tool: .outside)
+          "History: 1 filled (or cached) for the ride and the cache line shows history hours; Elevation shows new cells; the factors (M4-02) look the ride's weather up later", scooter: true, manual: true, tool: .outside),
+        m("u31", insightsM, "Factors engine: wind, rain, day type, rush hour, load, effects with gates (M4-02)", "Nothing to do · Run all automatic marks it",
+          "Made-up windy commute: headwind 12 / -12 km/h, dry, workday, rush hour filled per ride; headwind and rush-hour effects found within 10%; Yom Kippur counts as Saturday, its eve as Friday; 2 windy rides show only progress; rain pooled per km; pure noise shows nothing; weather missing waits; the line ends with this phone's factor cache"),
+        m("mf1", insightsM, "Real rides get weather and a believable headwind", "After a real ride that ended more than an hour ago (internet on): Developer → Outside data → Refresh the cache now, then Rides → the ride → More info",
+          "The Factors line shows headwind or tailwind in km/h, wind level, dry or wet, temperature, day type (and rush hour on a workday morning / evening); the headwind sign fits how the wind felt", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

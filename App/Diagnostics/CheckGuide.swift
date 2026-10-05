@@ -330,6 +330,13 @@ struct CheckGuide {
                           steps: ["Turn airplane mode on.", "Developer → Outside data → Refresh the cache now.", "Expected within a few seconds: the forecast shows how old it is (or No forecast), holidays say offline or cached, History says waiting; no crash.", "Turn airplane mode off. Tap Pass or Fail."], place: .noScooter),
         "e11": CheckGuide(proves: "A real ride gets its weather (wind, rain, temperature) afterwards, so the factors can use it.",
                           steps: ["Ride (any real ride) and let it end; wait at least one hour (the ride's last hour must be over).", "Developer → Outside data → Refresh the cache now.", "Expected: History says 1 filled (or cached) and the cache line shows history hours; Elevation shows new cells. Tap Pass or Fail."], place: .passive),
+        "u31": CheckGuide(proves: "The app works out what wind, rain, the day type, rush hour and load cost on a route, and only says so once there are enough rides with and without each factor and the effect is bigger than the usual spread and confirmed by a second calculation.",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database; nothing is sent).",
+                                  "Result: one tick per rule (ride columns, effects found within 10%, day types, gates, noise, missing weather) and at the end this phone's own factor numbers."], place: .noScooter),
+        "mf1": CheckGuide(proves: "A real ride gets its weather and a headwind that matches how the wind felt.",
+                          steps: ["Ride (any real ride with GPS) and let it end; note roughly where the wind came from.", "Wait at least one hour, then with internet: Developer → Outside data → Refresh the cache now.",
+                                  "Rides → tap the ride → More info: the Factors line shows headwind or tailwind in km/h, wind level, dry / wet, temperature, day type (rush hour on a workday 07:00–09:30 or 16:00–19:00).",
+                                  "Expected: headwind when you rode into the wind, tailwind with it, a small number across it. Tap Pass or Fail."], place: .ride),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

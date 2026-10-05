@@ -101,6 +101,15 @@ final class OutsideDataService: @unchecked Sendable {
         let elevation = await client.elevations(cells: cells)
         parts.append("Elevation: \(elevation.fetched) new, \(elevation.cached) cached" + (elevation.failed > 0 ? ", \(elevation.failed) failed" : ""))
 
+        // M4-02: weather may have arrived for rides that waited (pattern W): fill their columns, rebuild the effects
+        if !database.isReadOnly {
+            do {
+                parts.append(try FactorUpdater.refreshPending(database).text)
+            } catch {
+                parts.append("Factors: \(error.localizedDescription)")
+            }
+        }
+
         let text = parts.joined(separator: " · ")
         Log.info(source: "outside", "Refresh (\(reason)): \(text)")
         finish(text)

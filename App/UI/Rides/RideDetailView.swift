@@ -274,7 +274,10 @@ enum RideDetailLoader {
             RidePoint(t: s.t, lat: s.lat, lon: s.lon, hAccM: s.hAccM, speedKmh: s.speedMps.map { v in v * 3.6 },
                       gpsSpeedKmh: s.gpsSpeedMps.map { v in v * 3.6 }, batteryPct: s.batteryPct, mode: s.mode)
         }
-        return RideSummaryBuilder.build(input, gaps: gaps, points: points)
+        var model = RideSummaryBuilder.build(input, gaps: gaps, points: points)
+        // M4-02 (check mf1): the ride's factor columns as one line under More info
+        if let line = FactorEffects.developerLine(db, rideId: id) { model.infoLines.append(line) }
+        return model
     }
 }
 
