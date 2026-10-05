@@ -32,6 +32,8 @@ struct RideRecord: Codable, FetchableRecord, PersistableRecord, Equatable {
     var topSpeedMps: Double?
     var stops: Int?
     var energyWhRaw: Double?
+    /// M3-01: E_raw ÷ k once the battery is calibrated (M8), else nil
+    var energyWhCal: Double?
     var usedPct: Double?
     var usedPctMethod: String?
     var startRestPct: Double?

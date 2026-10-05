@@ -77,6 +77,22 @@ public enum T {
     public static let t41CalibrationDropPct = 10.0
     public static let t41CalibrationMaxGapS = 60.0
     public static let t41CalibrationRides = 5
+    /// M3-01: the median is taken over the newest 10 qualifying rides
+    public static let t41CalibrationWindow = 10
+    /// M3-01: a ride further than 25% from the median of the others is an outlier (needs 3 candidates)
+    public static let t41OutlierShare = 0.25
+    /// M3-01: outside 0.5–2× the prior a ride is impossible (a decode or rested-% error), never used
+    public static let t41PlausibleLow = 0.5
+    public static let t41PlausibleHigh = 2.0
+    /// M3-01 prior: V × I Wh per 1% = pack Wh ÷ 100 × 1.06 (the logged rides: 785–850 Wh per 100% on a 768 Wh pack)
+    public static let t41PriorRawFactor = 1.06
+    /// M3-01 sag: a ride without a rested end may use the next connection's start rested % when it is at most
+    /// 10 points above the last live % (the live % reads low under load and recovers at rest) and within 24 h
+    public static let t41SagRecoveryPct = 10.0
+    public static let t41NextStartMaxS = 86_400.0
+    /// M8 confirmation: calibrated used % vs the rested drop more than 5 points apart on 3 rides in a row
+    public static let t41ConfirmPoints = 5.0
+    public static let t41ConfirmRides = 3
     public static let t42PackVoltage = 48.0
     public static let t42DefaultPackAh = 16.0
     public static let t43BatteryPerKmAfterM = 1_000.0

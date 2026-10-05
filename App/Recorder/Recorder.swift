@@ -305,6 +305,8 @@ actor Recorder {
             for w in end.ride.walks {
                 try q.setSampleMode(rideId: id, fromT: relMs(w.startT), toT: relMs(w.endT ?? end.endT), mode: "walk")
             }
+            // M3-01: battery calibration from the stored rides; re-runs the rides' used % (a failure never stops the close)
+            do { try CalibrationUpdater.update(db, nowMs: ms(end.endT)) } catch { note("calibration \(id): \(error.localizedDescription)") }
             // M2: where does this ride belong? (places, routes, variants); a failure here never stops the close
             do { try RouteProcessor.process(rideId: id, database: db) } catch { note("routes \(id): \(error.localizedDescription)") }
             closedRideIds.append(id)
@@ -322,7 +324,18 @@ actor Recorder {
             guard let used = r.usedPct, let d = r.distanceM, d >= 1_000 else { return nil }
             return used / (d / 1000)
         }.prefix(10).sorted()
-        guard !values.isEmpty else { return }
+        guard !values.isEmpty else {
+            // M3-01: no ride with a used % yet: the usual Wh/km over the calibration (prior or learned) instead of the fixed 3%/km
+            guard let db = database else { return }
+            let whPerKm = rides.compactMap { r -> Double? in
+                guard let e = r.energyWhRaw, e > 0, let d = r.distanceM, d >= 1_000, (r.gapScooterS ?? 0) <= T.t41CalibrationMaxGapS else { return nil }
+                return e / (d / 1000)
+            }.prefix(10).sorted()
+            guard !whPerKm.isEmpty else { return }
+            let m = whPerKm.count % 2 == 1 ? whPerKm[whPerKm.count / 2] : (whPerKm[whPerKm.count / 2 - 1] + whPerKm[whPerKm.count / 2]) / 2
+            core.setUsualPctPerKm(CalibrationUpdater.current(db).pctPerKm(whPerKm: m))
+            return
+        }
         let n = values.count
         let median = n % 2 == 1 ? values[n / 2] : (values[n / 2 - 1] + values[n / 2]) / 2
         core.setUsualPctPerKm(median)
@@ -399,6 +412,7 @@ actor Recorder {
         r.topSpeedMps = max(m.topSpeedKmh, topSpeedKmh) / 3.6
         r.stops = m.stops
         r.energyWhRaw = m.energyWhRaw
+        r.energyWhCal = nil
         r.usedPct = m.usedPct
         r.usedPctMethod = m.usedPctMethod
         r.startRestPct = m.startRestPct
