@@ -29,8 +29,8 @@ enum InsightCheck {
             && InsightCatalogue.q22Weekly(weekStart: 0, rides: [oneDay, oneDay], previousWeekKm: nil, nowMs: now).isEmpty
 
         // 3. ranking, freshness, N more, start pick, recent
-        func mk(_ t: InsightType, _ s: Double, at: Int64 = now) -> Insight {
-            Insight(type: t, rideId: "r", routeId: "A", text: t.rawValue, basedOnN: 5, timeS: s, createdAt: at)
+        func mk(_ t: InsightType, _ s: Double, at: Int64? = nil) -> Insight {
+            Insight(type: t, rideId: "r", routeId: "A", text: t.rawValue, basedOnN: 5, timeS: s, createdAt: at ?? InsightSamples.now)
         }
         let ranked = InsightRanking.rank([mk(.q15After, 60), mk(.q4After, 30), mk(.q1After, 240)], recentTopTypes: [], nowMs: now)
         let fresh = InsightRanking.rank([mk(.q4After, 30), mk(.q1After, 240)], recentTopTypes: [.q4After], nowMs: now)
@@ -60,18 +60,21 @@ enum InsightCheck {
             // re-run: same ids, nothing new
             let before = try store.forRide(r24.lastRideId).map(\.id)
             let again = try InsightRunner.afterRide(b, rideId: r24.lastRideId, nowMs: r24.nowMs + 60_000)
-            dedupeOk = again.inserted == 0 && Set(try store.forRide(r24.lastRideId).map(\.id)) == Set(before) && Set(before).count == before.count
+            let after = try store.forRide(r24.lastRideId).map(\.id)
+            dedupeOk = again.inserted == 0 && Set(after) == Set(before) && Set(before).count == before.count
             // the summary was seen, then a card comes late (weather arrives): Recent only
             try store.markShown(rideId: r24.lastRideId, at: r24.nowMs)
             if let id = credit?.id {
                 try b.writer.write { db in try db.execute(sql: "DELETE FROM insight WHERE id = ?", arguments: [id]) }
                 try InsightRunner.afterRide(b, rideId: r24.lastRideId, nowMs: r24.nowMs + 120_000)
                 let late = try store.forRide(r24.lastRideId).first { $0.id == id }
-                lateOk = late?.moment == .recentOnly && (try store.recent()).contains { $0.id == id }
-                    && (try store.top(forRide: r24.lastRideId, nowMs: r24.nowMs + 120_000))?.id != id
+                let inRecent = try store.recent().contains { $0.id == id }
+                let topId = try store.top(forRide: r24.lastRideId, nowMs: r24.nowMs + 120_000)?.id
+                lateOk = late?.moment == .recentOnly && inRecent && topId != id
             }
             let ws = InsightWeek.start(ms: r24.nowMs, utcOffsetMin: FactorSeed.utcOffsetMin)
-            weekOk = try (store.weekCard(weekStart: ws) + store.weekCard(weekStart: ws - 7 * OutsideTime.dayMs)).contains { $0.type == .q22Weekly }
+            let cards = try store.weekCard(weekStart: ws) + store.weekCard(weekStart: ws - 7 * OutsideTime.dayMs)
+            weekOk = cards.contains { $0.type == .q22Weekly }
         } catch {
             results.set("u32", .fail, "The simulated windy week failed: \(error.localizedDescription)")
             return
