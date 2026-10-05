@@ -329,6 +329,8 @@ enum CheckList {
           "A rested % jump between two rides is logged as a charge (+3 points or more; smaller rises and simulated rides ignored); cycles = the larger of charged and used; health only after 5 cycles and 20 rides; the sag rule uses the next start only when no charge is in between; the line ends with this phone's charge log"),
         m("u29", batteryM, "Real range and charge time (M3-03)", "Nothing to do · Run all automatic marks it",
           "Range = (current % - reserve) / my %/km over the last 10 rides (26 km from 64% at 2.3%/km); below 20% shown with ~; the 10% margin only in the decision range; charge time ~4.5 h from 40%, ~1 h from 85%, Full at 100%; the line ends with this phone's range"),
+        m("mt3b", batteryM, "Battery page (M3-04)", "Scooter tab → Battery; also Home → tap the status card",
+          "Range (honest, plus one line with the 10% safety margin), Charging (Full from now while connected), Calibration (Learning N of 5 / Calibrated, Wh per 1%), Charge log, Charge cycles, Health (Gathering data until 5 cycles and 20 rides). ui-shots: battery-page, battery-page-empty, battery-page-calibrated", manual: true),
         m("bt2", batteryM, "Real charge is found", "Ride, let the battery drop at least 10 points, rest 20 s, switch off, charge it for a while, then ride again and wait for the summary",
           "Battery page (Scooter tab → Battery) lists the charge with from % to %, and Run all automatic shows 1 or more charges at the end of u28's line", scooter: true, manual: true),
         m("bt1", batteryM, "Real calibration after real rides", "After at least 5 real rides that each used 10% or more (rest 20 s before switching off): Run all automatic, then read the end of u27's line",

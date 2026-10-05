@@ -138,6 +138,8 @@ enum UIShot {
                 ScrollView { ArriveByCard(routeId: nil, destination: "Work", rides: RoutesPreview.arriveByRides(), preview: true).padding() }
             case "scooter-tab", "scooter-tab-off", "scooter-tab-none":
                 ScooterTabView(preview: ScooterPreview.make(name))
+            case "battery-page", "battery-page-empty", "battery-page-calibrated":
+                BatteryView(preview: BatteryPreview.make(name))
             case "outside": OutsideDataView()
             case "scooter": ScooterCheckView()
             case "onboarding1": OnboardingView(previewFound: true) { _ in }

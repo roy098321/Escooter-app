@@ -72,7 +72,11 @@ struct HomeView: View {
             VStack(spacing: 16) {
                 if m.showCrashBanner { crashCard }
                 if backupBannerShown { backupCard }
-                statusCard(m)
+                if m.batteryText != nil {
+                    NavigationLink { BatteryView() } label: { statusCard(m) }.buttonStyle(.plain)
+                } else {
+                    statusCard(m)
+                }
                 primaryButton(m)
                 if m.state != .riding { whereTo }
                 if m.showLocationCard { locationCard }

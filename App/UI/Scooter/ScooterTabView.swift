@@ -64,7 +64,7 @@ struct ScooterTabView: View {
         }
         Section {
             NavigationLink("Maintenance") { MaintenanceView() }
-            LabeledContent("Battery health", value: "Coming soon")
+            NavigationLink("Battery") { BatteryView() }
         }
         Section {
             Button("Forget scooter", role: .destructive) { confirmForget = true }
