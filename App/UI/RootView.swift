@@ -132,6 +132,8 @@ enum UIShot {
             case "ride-save-route":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
                                previewOffer: RouteOfferModel.make(routeId: "preview", state: .suggested, title: "Route 1", ridesOnRoute: 2))
+            case "route-arriveby":
+                ScrollView { ArriveByCard(routeId: nil, destination: "Work", rides: RoutesPreview.arriveByRides(), preview: true).padding() }
             case "outside": OutsideDataView()
             case "scooter": ScooterCheckView()
             case "onboarding1": OnboardingView(previewFound: true) { _ in }

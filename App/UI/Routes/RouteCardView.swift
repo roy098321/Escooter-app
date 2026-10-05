@@ -17,6 +17,7 @@ struct RouteCardView: View {
     @State private var nameDraft = ""
     @State private var confirmRemove = false
     @State private var errorText: String?
+    @State private var arriveInfo: (rides: [RouteRideStats], destination: String)?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -74,6 +75,7 @@ struct RouteCardView: View {
                 if !m.saved { suggestionCard }
                 if !m.map.isEmpty { mapCard(m.map) }
                 todayCard(m.today)
+                if m.saved { arriveBy(m) }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(Array(m.stats.enumerated()), id: \.offset) { _, s in tile(s) }
                 }
@@ -82,6 +84,14 @@ struct RouteCardView: View {
                 ridesCard(m)
             }
             .padding(16)
+        }
+    }
+
+    @ViewBuilder private func arriveBy(_ m: RouteCardModel) -> some View {
+        if preview != nil {
+            ArriveByCard(routeId: nil, destination: "Work", rides: RoutesPreview.arriveByRides(), preview: true)
+        } else if let info = arriveInfo {
+            ArriveByCard(routeId: routeId, destination: info.destination, rides: info.rides)
         }
     }
 
@@ -244,6 +254,9 @@ struct RouteCardView: View {
             return
         }
         model = loaded
+        if let input = RouteCardLoader.cardInput(routeId: id, database: db) {
+            arriveInfo = (input.rides, WhereTo.label(toName: input.toName, title: loaded.title))
+        }
         // a street name from the phone may arrive a moment later: ask again, then read again
         RouteNaming.start(routeId: id, database: db)
         Task {

@@ -168,6 +168,11 @@ enum RoutesPreview {
         ])
     }
 
+    /// `-uiShot route-arriveby` and the route card preview: 6 made-up workday rides in the morning
+    static func arriveByRides() -> [RouteRideStats] {
+        (0..<6).map { ride($0, daysAgo: $0 + 1, timeS: 780 + Double($0 % 3) * 60, used: 10, variant: "v1") }
+    }
+
     /// `-uiShot places`: made-up places
     static func places() -> [PlaceRowModel] {
         [PlaceListBuilder.row(id: "p1", name: "Home", radiusM: nil, canCharge: true, routeCount: 3),

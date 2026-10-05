@@ -21,6 +21,7 @@ enum RouteCheck {
         runCard()
         runFit()
         runArrival()
+        runArriveBy()
     }
 
     // MARK: u17
@@ -380,5 +381,45 @@ extension RouteCheck {
             throw NSError(domain: "RouteCheck", code: 1, userInfo: [NSLocalizedDescriptionKey: "no followed path"])
         }
         return f
+    }
+}
+
+// MARK: u23 (M2-07)
+
+extension RouteCheck {
+    /// u23: Arrive by (M29) and the leave-by reminder rules on made-up rides (no database needed).
+    static func runArriveBy() {
+        let day: Int64 = 86_400_000
+        let monday: Int64 = 20_717
+        func ride(_ id: String, _ daysBefore: Int64, hour: Int, totalS: Double) -> RouteRideStats {
+            RouteRideStats(rideId: id, startAt: (monday - daysBefore) * day + Int64(hour) * 3_600_000, utcOffsetMin: 0, totalS: totalS,
+                           distanceM: 3_700, avgMovingMps: 7, usedPct: 8)
+        }
+        func ms(_ d: Int64, _ h: Int, _ m: Int = 0) -> Int64 { d * day + Int64(h * 60 + m) * 60_000 }
+        let split = [ride("a0", 1, hour: 8, totalS: 1_200), ride("a1", 4, hour: 8, totalS: 1_200), ride("a2", 5, hour: 8, totalS: 1_200),
+                     ride("b0", 6, hour: 12, totalS: 600), ride("b1", 7, hour: 12, totalS: 600), ride("b2", 8, hour: 12, totalS: 600)]
+        let rush = ArriveBy.plan(rides: split, targetAtMs: ms(monday, 9, 40), utcOffsetMin: 0).plan
+        let boundaryOk = rush?.leaveAtMs == ms(monday, 9, 20) && rush?.rushHourAtLeave == true && (rush?.iterations ?? 9) <= 3
+        let calm = ArriveBy.plan(rides: split, targetAtMs: ms(monday, 10, 30), utcOffsetMin: 0).plan
+        let calmOk = calm?.leaveAtMs == ms(monday, 10, 20) && calm?.iterations == 1
+        let spread = [ride("c0", 1, hour: 12, totalS: 540), ride("c1", 4, hour: 12, totalS: 600), ride("c2", 5, hour: 12, totalS: 780)]
+        let margin = ArriveBy.plan(rides: spread, targetAtMs: ms(monday, 14), utcOffsetMin: 0).plan
+        let marginOk = margin?.leaveAtMs == ms(monday, 14) - 13 * 60_000 && margin?.headline == "Leave by 13:47"
+        let gateOk = ArriveBy.plan(rides: Array(spread.prefix(2)), targetAtMs: ms(monday, 14), utcOffsetMin: 0) == .notEnough(have: 2, need: 3)
+        let now = ms(monday, 1)
+        let held = LeaveReminder.decide(leaveAtMs: ms(monday, 6, 30), targetAtMs: ms(monday, 7, 45), nowMs: now, utcOffsetMin: 0)
+            == .send(atMs: ms(monday, 7), held: true)
+        let dropped = LeaveReminder.decide(leaveAtMs: ms(monday, 6, 30), targetAtMs: ms(monday, 6, 58), nowMs: now, utcOffsetMin: 0)
+            == .drop(reason: "quiet hours, no longer relevant")
+        let plain = LeaveReminder.decide(leaveAtMs: ms(monday, 8, 30), targetAtMs: ms(monday, 9), nowMs: now, utcOffsetMin: 0)
+            == .send(atMs: ms(monday, 8, 30), held: false)
+        let earlier = LeaveReminder.shouldReplace(oldLeaveAtMs: ms(monday, 8), newLeaveAtMs: ms(monday, 8) - 120_000)
+            && !LeaveReminder.shouldReplace(oldLeaveAtMs: ms(monday, 8), newLeaveAtMs: ms(monday, 8) - 119_000)
+        let reminderOk = held && dropped && plain && earlier
+        let ok = boundaryOk && calmOk && marginOk && gateOk && reminderOk
+        CheckResults.shared.set("u23", ok ? .pass : .fail,
+                                "rush-hour boundary in \(rush?.iterations ?? 0) steps \(boundaryOk ? "ok" : "wrong") · outside rush hour \(calmOk ? "ok" : "wrong") · "
+                                + "margin = upper edge minus median \(marginOk ? "ok" : "wrong") · under 3 rides says so \(gateOk ? "ok" : "wrong") · "
+                                + "reminder: quiet hours held / dropped, 2 min earlier replaces \(reminderOk ? "ok" : "wrong")")
     }
 }

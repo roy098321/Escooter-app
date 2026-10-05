@@ -17,6 +17,8 @@ public struct TodayEstimate: Equatable, Sendable {
     public var rushHour: Bool
     /// Factor effects were added (none in M2: they arrive with M4)
     public var factorsApplied: Bool
+    /// M29: the usual range's upper edge minus its median (seconds): how much later a bad day runs than the typical one
+    public var marginS: Double = 0
 }
 
 public enum TodayResult: Equatable, Sendable {
@@ -79,6 +81,6 @@ public enum TodayEstimator {
         if let u = used { used = max(0, u + usedEffectPct) }
         return .estimate(TodayEstimate(timeS: today, widerRangeS: wider, usedPct: used, neededPct: used.map(SafetyMargin.forDecision),
                                        basedOn: timed.count, departureMinute: departure, rushHour: rush,
-                                       factorsApplied: timeEffectS != 0 || usedEffectPct != 0))
+                                       factorsApplied: timeEffectS != 0 || usedEffectPct != 0, marginS: max(0, groupRange.hi - groupRange.median)))
     }
 }
