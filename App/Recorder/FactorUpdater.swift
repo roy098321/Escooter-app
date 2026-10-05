@@ -16,6 +16,8 @@ enum FactorUpdater {
         var withWeather = 0
         var effects = 0
         var passed = 0
+        /// M4-03: rides that got their weather in this run (their insights are re-run: "weather arrives")
+        var weatherRideIds: [String] = []
 
         var text: String { "Factors: \(ridesFilled) rides (\(withWeather) with weather), \(passed) of \(effects) effects shown" }
     }
@@ -32,12 +34,18 @@ enum FactorUpdater {
         for id in ids {
             if let got = try fill(database, rideId: id) {
                 report.ridesFilled += 1
-                if got { report.withWeather += 1 }
+                if got {
+                    report.withWeather += 1
+                    report.weatherRideIds.append(id)
+                }
             }
         }
         let effects = try rebuild(database, nowMs: nowMs)
         report.effects = effects.count
         report.passed = effects.filter(\.passesGate).count
+        // M4-03 "weather arrives": the factor insights of rides that waited (the closing ride gets its own run after this)
+        let arrived = report.weatherRideIds.filter { $0 != rideId }
+        if !arrived.isEmpty { InsightRunner.weatherArrived(database, rideIds: arrived, nowMs: nowMs) }
         return report
     }
 

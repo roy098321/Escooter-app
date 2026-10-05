@@ -19,7 +19,7 @@ enum CheckStatus: String, Codable {
 
 /// Which developer screen runs a check.
 enum CheckTool: String {
-    case none, scooter, sensors, simulator, backup, crash, outside, readability, results, permissions
+    case none, scooter, sensors, simulator, backup, crash, outside, readability, results, permissions, insights
 }
 
 struct CheckItem: Identifiable {
@@ -357,7 +357,11 @@ enum CheckList {
         m("u31", insightsM, "Factors engine: wind, rain, day type, rush hour, load, effects with gates (M4-02)", "Nothing to do · Run all automatic marks it",
           "Made-up windy commute: headwind 12 / -12 km/h, dry, workday, rush hour filled per ride; headwind and rush-hour effects found within 10%; Yom Kippur counts as Saturday, its eve as Friday; 2 windy rides show only progress; rain pooled per km; pure noise shows nothing; weather missing waits; the line ends with this phone's factor cache"),
         m("mf1", insightsM, "Real rides get weather and a believable headwind", "After a real ride that ended more than an hour ago (internet on): Developer → Outside data → Refresh the cache now, then Rides → the ride → More info",
-          "The Factors line shows headwind or tailwind in km/h, wind level, dry or wet, temperature, day type (and rush hour on a workday morning / evening); the headwind sign fits how the wind felt", scooter: true, manual: true)
+          "The Factors line shows headwind or tailwind in km/h, wind level, dry or wet, temperature, day type (and rush hour on a workday morning / evening); the headwind sign fits how the wind felt", scooter: true, manual: true),
+        m("u32", insightsM, "Insight catalogue: gates, ranking, N more, Recent order (M4-03)", "Nothing to do · Run all automatic marks it",
+          "Every catalogue row speaks with made-up numbers and none uses reward words; 2 windy rides give only a progress line, enough rides the card; class + size ranking with the freshness penalty; at most 2 at ride start in C24 order; Recent by time; the simulated windy week in a temporary database: progress line at 4 rides, tailwind credit at 24, no duplicate on a re-run, a late card goes to Recent only, the week card is built; the line ends with this phone's insight rows"),
+        m("mi1", insightsM, "Simulated windy week: the right card after the ride, the progress line before the gate", "Developer → Insights → Simulated windy week · 4 rides, then · 24 rides",
+          "4 rides: no top card, one progress line \"Headwind on Seed commute: 2 of 3 windy rides\"; 24 rides: a top card or N more with \"Tailwind saved you ~1.5 min …\", a week card; plain words, no records, streaks or praise", manual: true, tool: .insights)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

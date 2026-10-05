@@ -149,11 +149,16 @@ final class RecorderService {
         let rideOn = input.phase == .starting || input.phase == .riding
         if rideOn, !followChecked, input.scooterBatteryPct != nil || input.phase == .riding {
             followChecked = true
-            if let id = RouteFollowSelection.shared.routeId, let db = AppModel.shared.displayDatabase {
+            if let db = AppModel.shared.displayDatabase {
                 let battery = input.scooterBatteryPct.map { BatteryNow(pct: $0) } ?? BatteryNowSource.current(database: db)
-                let warning = battery.flatMap { RouteFollowLoader.returnWarning(routeId: id, database: db, battery: $0) }
-                driver.follow(RouteFollowLoader.follower(routeId: id, database: db), utcOffsetMin: RouteCardLoader.currentOffsetMin(),
-                              returnWarning: warning)
+                // M4-03: the ride-start insights (Q9 folded in, Q1 destination guess, Q2 tight battery, Q15 headwind) are stored as
+                // candidates; the live view shows Q9's line as before (M2-09), the rest wait for the message budget (M4-04).
+                let start = InsightRunner.atRideStart(db, routeId: RouteFollowSelection.shared.routeId, battery: battery, lat: input.lat, lon: input.lon)
+                if let id = RouteFollowSelection.shared.routeId {
+                    let warning = (start.shown + start.toSummary).first { $0.type == .q9Live }?.text
+                    driver.follow(RouteFollowLoader.follower(routeId: id, database: db), utcOffsetMin: RouteCardLoader.currentOffsetMin(),
+                                  returnWarning: warning)
+                }
             }
         } else if !rideOn, followChecked {
             followChecked = false

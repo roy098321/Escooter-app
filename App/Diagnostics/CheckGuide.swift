@@ -337,6 +337,14 @@ struct CheckGuide {
                           steps: ["Ride (any real ride with GPS) and let it end; note roughly where the wind came from.", "Wait at least one hour, then with internet: Developer → Outside data → Refresh the cache now.",
                                   "Rides → tap the ride → More info: the Factors line shows headwind or tailwind in km/h, wind level, dry / wet, temperature, day type (rush hour on a workday 07:00–09:30 or 16:00–19:00).",
                                   "Expected: headwind when you rode into the wind, tailwind with it, a small number across it. Tap Pass or Fail."], place: .ride),
+        "u32": CheckGuide(proves: "The app only says something about a ride when it has enough rides to back it (otherwise it shows how many more it needs), picks the most useful message first, never repeats itself and never uses reward language (no records, streaks or praise).",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database; nothing is sent).",
+                                  "Result: one tick per rule (every insight speaks, no reward words, gates, ranking, ride-start pick, Recent order, the simulated windy week) and at the end this phone's own insight rows."], place: .noScooter),
+        "mi1": CheckGuide(proves: "After a ride on a route the app shows the right insight, and before it has enough rides it shows how far along it is instead of guessing.",
+                          steps: ["Developer → Insights (simulated windy week).",
+                                  "Tap \"Simulated windy week · 4 rides\". Expected: no top card, one progress line \"Headwind on Seed commute: 2 of 3 windy rides\".",
+                                  "Tap \"Simulated windy week · 24 rides\". Expected: a card \"Tailwind saved you ~1.5 min and ~1% battery today.\" (top card or behind N more) and a week card \"Last week: …\" or \"This week so far: …\".",
+                                  "Read every line: plain numbers, \"based on N rides\" where it compares, no records, streaks, goals or praise. Tap Pass or Fail."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]
