@@ -377,7 +377,17 @@ enum CheckList {
         m("u35", insightsM, "Heat levels, learned limit, hot-day card (M4-06)", "Nothing to do · Run all automatic marks it",
           "Hot 90 and very hot 100 once per level and very hot stays; 2 protection events move the warnings 5 °C below the lowest; a made-up hot ride in a temporary database gives the Peak card first (class safety) and the hot-day card (air 30 °C or more, 5 °C hotter than the route median)"),
         m("mh1", insightsM, "Peak card and hot-day card", "Developer → Insights → Simulated hot ride (heat cards)",
-          "Top card \"Peak 93 °C · +68 °C\" and behind it \"Hot day (33 °C): scooter ran 38 °C hotter than usual on this route · based on 11 rides.\"", manual: true, tool: .insights)
+          "Top card \"Peak 93 °C · +68 °C\" and behind it \"Hot day (33 °C): scooter ran 38 °C hotter than usual on this route · based on 11 rides.\"", manual: true, tool: .insights),
+        m("u36", insightsM, "Stats numbers: week / month, charges, electricity, fuel saved (M4-07)", "Nothing to do · Run all automatic marks it",
+          "Calendar week Sunday to Saturday, month, rolling 7 / 30 days; full charges = used % of rides and short hops / 100; electricity = charges x battery size x price; fuel saved only for rides over 2 km at the fuel price; a holiday week shows no comparison; the simulated week adds up to its rides; the line ends with this phone's week"),
+        m("ms1", insightsM, "Stats tab", "Open the Stats tab → toggle Week / Month and Calendar / Rolling → tap the arrows",
+          "Recent insights on top; totals (rides, distance, time), full charges, electricity cost, fuel saved (\"for the same distance\"), km per day; an empty period says so; Settings → Costs has the electricity price and car fuel use; ui-shots stats-week, stats-month, stats-empty", manual: true),
+        m("mf2", insightsM, "Factors page", "Stats → What affects my rides → switch Per km / Per trip",
+          "Each factor with its effect in time and battery and \"based on N rides\"; a factor without enough rides shows a progress line (\"2 of 3 windy rides\") and no number; ui-shots factors, factors-sparse", manual: true),
+        m("u37", insightsM, "Factors page rows, week card, past weeks (M4-08, M4-09)", "Nothing to do · Run all automatic marks it",
+          "An effect shows \"based on N rides\", below its gate only the progress line; the simulated week: headwind effect at 24 rides, \"2 of 3 windy rides\" at 4; the week card and past weeks are made from the rides; a week with one riding day has no summary; the line ends with this phone's factor count"),
+        m("mw1", insightsM, "Weekly card and past weeks on Stats", "Stats tab (after rides on 2 or more days in a week)",
+          "\"Weekly summary\" card with \"Last week: N km, N rides, ...\" (and \"This week so far\"); Past weeks lists earlier weeks newest first; tapping the Sunday 07:30 notification opens Stats; ui-shots week-card, past-weeks", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

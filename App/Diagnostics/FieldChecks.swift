@@ -217,6 +217,12 @@ extension FieldChecks: UNUserNotificationCenterDelegate {
                 CheckResults.shared.set("c6", .pass, "Delivered on a scooter wake and tapped by the owner")
             }
         }
+        // M4-09: the weekly summary opens Stats (the week card is on top there)
+        if response.notification.request.content.userInfo["open"] as? String == "stats" {
+            DispatchQueue.main.async { AppModel.shared.requestedTab = 3 }
+            completionHandler()
+            return
+        }
         // M1-12 / D2: tapping "Going for a ride?" opens the live view in "Ready" (no ride until the wheel moves)
         DispatchQueue.main.async { RecorderService.shared.requestReady() }
         completionHandler()

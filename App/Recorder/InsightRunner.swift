@@ -220,13 +220,7 @@ enum InsightRunner {
         let current = InsightWeek.start(ms: nowMs, utcOffsetMin: utcOffsetMin)
         var report = Report()
         for (start, label) in [(current - week, "Last week"), (current, "This week so far")] {
-            let rides = try store.weekRides(from: start, to: start + week)
-            let before = try store.weekRides(from: start - week, to: start)
-            let prevKm = before.isEmpty ? nil : before.reduce(0.0) { $0 + $1.ride.distanceM } / 1000
-            var candidates = InsightCatalogue.q22Weekly(weekStart: start, rides: rides.map(\.ride), previousWeekKm: prevKm, label: label, nowMs: nowMs)
-            let explanations = rides.filter { $0.ride.kind == "ride" }.compactMap { FactorEffects.forRide(database, rideId: $0.id, nowMs: nowMs) }
-            candidates += InsightCatalogue.q4Weekly(weekStart: start, explanations: explanations, nowMs: nowMs)
-            candidates += InsightCatalogue.q13Weekly(weekStart: start, rides: rides.map(\.ride), capKmh: nil, savedS: nil, costPct: nil, nowMs: nowMs)
+            let candidates = try weekCandidates(database, start: start, label: label, nowMs: nowMs)
             guard !candidates.isEmpty else { continue }
             let merge = InsightDedupe.merge(candidates: candidates, existing: try store.forWeek(start), nowMs: nowMs, summarySeen: false)
             try store.save(merge)
@@ -235,6 +229,48 @@ enum InsightRunner {
             report.updated += merge.update.count
         }
         return report
+    }
+
+    /// Q22 + Q4-weekly + Q13-weekly of one week (Sunday 00:00 local start), made from the stored rides
+    static func weekCandidates(_ database: AppDatabase, start: Int64, label: String, nowMs: Int64) throws -> [Insight] {
+        let store = InsightQueries(database)
+        let week = 7 * OutsideTime.dayMs
+        let rides = try store.weekRides(from: start, to: start + week)
+        let before = try store.weekRides(from: start - week, to: start)
+        let prevKm: Double? = before.isEmpty ? nil : before.reduce(0.0) { $0 + $1.ride.distanceM } / 1000
+        var candidates = InsightCatalogue.q22Weekly(weekStart: start, rides: rides.map(\.ride), previousWeekKm: prevKm, label: label, nowMs: nowMs)
+        let explanations = rides.filter { $0.ride.kind == "ride" }.compactMap { FactorEffects.forRide(database, rideId: $0.id, nowMs: nowMs) }
+        candidates += InsightCatalogue.q4Weekly(weekStart: start, explanations: explanations, nowMs: nowMs)
+        candidates += InsightCatalogue.q13Weekly(weekStart: start, rides: rides.map(\.ride), capKmh: nil, savedS: nil, costPct: nil, nowMs: nowMs)
+        return candidates
+    }
+
+    struct PastWeek: Identifiable, Equatable {
+        var start: Int64
+        var title: String
+        var lines: [String]
+        var id: Int64 { start }
+    }
+
+    /// M4-09: the finished weeks before the last one that have a summary (2 riding days or more), newest first; made live from the
+    /// rides (nothing stored, so a week the app was not opened in is still there)
+    static func pastWeeks(_ database: AppDatabase, count: Int = 12, nowMs: Int64 = nowMs(), utcOffsetMin: Int = RouteCardLoader.currentOffsetMin()) -> [PastWeek] {
+        let week = 7 * OutsideTime.dayMs
+        let current = InsightWeek.start(ms: nowMs, utcOffsetMin: utcOffsetMin)
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = TimeZone(secondsFromGMT: utcOffsetMin * 60)
+        df.dateFormat = "d MMM"
+        let order: [InsightType] = [.q22Weekly, .q4Weekly, .q13Weekly]
+        var out: [PastWeek] = []
+        for i in 2...max(2, count + 1) {
+            let start = current - Int64(i) * week
+            let title = "Week of " + df.string(from: Date(timeIntervalSince1970: Double(start) / 1000))
+            guard let found = try? weekCandidates(database, start: start, label: title, nowMs: nowMs), !found.isEmpty else { continue }
+            let lines = found.sorted { (order.firstIndex(of: $0.type) ?? 9) < (order.firstIndex(of: $1.type) ?? 9) }.map(\.text)
+            out.append(PastWeek(start: start, title: title, lines: lines))
+        }
+        return out
     }
 }
 

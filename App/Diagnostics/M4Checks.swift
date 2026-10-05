@@ -1,5 +1,6 @@
 import CorckieCore
 import Foundation
+import GRDB
 
 /// u33 (M4-04): the shared message budget. Core rules (never during a ride, quiet hours, 2 a day with the weekly one keeping its
 /// place, wind once a day, weekly Sunday 07:30) and the counters in a temporary database (weekly text from the simulated windy week,
@@ -140,5 +141,113 @@ enum HeatCheck {
         results.set("u35", levelsOk && learnedOk && dbOk ? .pass : .fail,
                     "hot 90 / very hot 100, once per level, very hot stays \(word(levelsOk)) · learned limit after 2 events \(word(learnedOk)) · "
                     + "simulated hot ride: top card \"\(top)\" + hot-day card \(word(dbOk))")
+    }
+}
+
+/// u36 (M4-07): the Stats numbers. Core: calendar week Sunday to Saturday, month, rolling, charges = sum of used % / 100 (short hops included),
+/// electricity cost, fuel saved only over 2 km, holiday week without comparison. Database (temporary): the simulated week's totals equal
+/// what the rides add up to.
+enum StatsCheck {
+    static func run(real: AppDatabase?) {
+        let results = CheckResults.shared
+        func word(_ b: Bool) -> String { b ? "ok" : "wrong" }
+        let off = 180
+        let now: Int64 = 1_790_000_000_000
+        let week = StatsCalc.period(span: .week, mode: .calendar, nowMs: now, utcOffsetMin: off)
+        let periodsOk = week.endMs - week.startMs == 7 * 86_400_000 && DayClock.weekday(startAtMs: week.startMs, utcOffsetMin: off) == 0
+            && StatsCalc.period(span: .month, mode: .rolling, nowMs: now, utcOffsetMin: off).startMs == now - 30 * 86_400_000
+        let prices = StatsPrices(packWh: 800, electricityIlsPerKwh: 0.64, fuelFallbackIls: 8.27, fuelLPer100km: 7)
+        let start = week.startMs + 9 * 3_600_000
+        let rides = [StatsRide(startAt: start, utcOffsetMin: off, kind: "ride", distanceM: 10_000, totalS: 900, usedPct: 12),
+                     StatsRide(startAt: start + 3_600_000, utcOffsetMin: off, kind: "ride", distanceM: 1_500, totalS: 300, usedPct: 3),
+                     StatsRide(startAt: start + 7_200_000, utcOffsetMin: off, kind: "shortHop", distanceM: 800, totalS: 200, usedPct: 1)]
+        let t = StatsCalc.totals(rides, period: week, prices: prices, utcOffsetMin: off)
+        let fuel = 10 * 0.07 * 8.27 - 12 * 0.008 * 0.64
+        let totalsOk = t.rides == 2 && t.shortHops == 1 && abs(t.charges - 0.16) < 0.0001 && abs(t.electricityIls - 0.16 * 0.8 * 0.64) < 0.0001
+            && abs((t.fuelSavedIls ?? 0) - fuel) < 0.001 && StatsCalc.totals(rides, period: week, prices: StatsPrices(packWh: 800), utcOffsetMin: off).fuelSavedIls == nil
+        let tagged = StatsCalc.holidayTagged(week, dayOffDates: [OutsideTime.day(week.startMs + 2 * 86_400_000 + Int64(off) * 60_000)], utcOffsetMin: off)
+        let holidayOk = tagged && StatsCalc.comparisonPct(rides, span: .week, mode: .calendar, nowMs: now, utcOffsetMin: off, holidayTagged: true) == nil
+
+        var dbOk = false
+        var detail = "?"
+        do {
+            let temp = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { temp.discardTemporary() }
+            let r = try InsightSeed.windyWeek(temp, rides: 24)
+            let m = StatsLoader.load(temp, span: .month, mode: .rolling, nowMs: r.nowMs, utcOffsetMin: FactorSeed.utcOffsetMin)
+            let from = r.nowMs - 30 * 86_400_000
+            let sums = try temp.writer.read { db in
+                try Row.fetchOne(db, sql: "SELECT COUNT(*) AS n, SUM(distanceM) AS d, SUM(usedPct) AS u FROM ride WHERE startAt >= ? AND startAt < ?", arguments: [from, r.nowMs + 1])
+            }
+            let n: Int = sums?["n"] ?? -1
+            let d: Double = sums?["d"] ?? -1
+            let u: Double = sums?["u"] ?? -1
+            dbOk = n > 0 && m.totals.rides == n && abs(m.totals.km - d / 1000) < 0.01 && abs(m.totals.charges - u / 100) < 0.0001
+                && m.totals.barsKm.count == 30 && abs(m.totals.barsKm.reduce(0, +) - d / 1000) < 0.01
+            detail = "\(m.totals.rides) rides, \(StatsCalc.km(m.totals.km)), \(StatsCalc.charges(m.totals.charges)) charges"
+        } catch {
+            results.set("u36", .fail, "The temporary database failed: \(error.localizedDescription)")
+            return
+        }
+        var phone = "no data"
+        if let real {
+            let m = StatsLoader.load(real, span: .week, mode: .calendar)
+            phone = "this week \(m.totals.rides) rides, \(StatsCalc.km(m.totals.km)), \(StatsCalc.charges(m.totals.charges)) charges"
+        }
+        results.set("u36", periodsOk && totalsOk && holidayOk && dbOk ? .pass : .fail,
+                    "week Sunday to Saturday, rolling \(word(periodsOk)) · charges, electricity, fuel only over 2 km \(word(totalsOk)) · holiday week no comparison \(word(holidayOk)) · "
+                    + "simulated rides add up (\(detail)) \(word(dbOk)) · this phone: \(phone)")
+    }
+}
+
+/// u37 (M4-08 / M4-09): the Factors page rows and the weekly summary. Core: an effect shows "based on N rides", below its gate only the
+/// progress line; database (temporary): the simulated week gives the headwind row with its effect at 24 rides and "2 of 3 windy rides"
+/// at 4, the week card and the past weeks are made from the rides, a week with one riding day has no summary.
+enum WeekAndFactorsCheck {
+    static func run(real: AppDatabase?) {
+        let results = CheckResults.shared
+        func word(_ b: Bool) -> String { b ? "ok" : "wrong" }
+        let pass = FactorsPage.rows([InsightSamples.effect("W1", "head", .time, 60, scope: .pooled), InsightSamples.effect("W1", "head", .used, 0.3, scope: .pooled)])
+        let below = FactorsPage.rows([InsightSamples.effect("W1", "head", .time, nil, n: 2, nWithout: 5)])
+        let rowsOk = pass.first?.timeText == "+1 min per km" && pass.first?.basedOn == "based on 12 rides" && below.first?.progress == "2 of 3 windy rides"
+            && below.first?.timeText == nil && below.first?.batteryText == nil
+            && FactorsPage.answerRows(counts: [.tyresSoft: 3]).count == 1 && FactorsPage.answerRows(counts: [.tyresSoft: 2]).isEmpty
+
+        var dbOk = false
+        var detail = "?"
+        do {
+            let a = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { a.discardTemporary() }
+            let r = try InsightSeed.windyWeek(a, rides: 24)
+            let rows = FactorsPage.rows(FactorEffects.forRoute(a, routeId: InsightSeed.routeId))
+            let effectOk = rows.contains { $0.title == "Headwind" && $0.hasEffect && ($0.basedOn ?? "").hasPrefix("based on") }
+            let past = InsightRunner.pastWeeks(a, nowMs: r.nowMs + 14 * 86_400_000, utcOffsetMin: FactorSeed.utcOffsetMin)
+            let m = StatsLoader.load(a, span: .week, mode: .calendar, nowMs: r.nowMs, utcOffsetMin: FactorSeed.utcOffsetMin)
+            let cardOk = (m.lastWeek + m.thisWeek).contains { $0.type == .q22Weekly } && !past.isEmpty && past.allSatisfy { ($0.lines.first ?? "").hasPrefix("Week of ") }
+
+            let b = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { b.discardTemporary() }
+            _ = try InsightSeed.windyWeek(b, rides: 4)
+            let few = FactorsPage.rows(FactorEffects.forRoute(b, routeId: InsightSeed.routeId))
+            let sparseOk = few.allSatisfy { !$0.hasEffect } && few.contains { $0.progress == "2 of 3 windy rides" }
+
+            let c = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { c.discardTemporary() }
+            let ids = try FactorSeed.commute(c, routeId: "seed-route", n: 1)
+            let start = InsightWeek.start(ms: try InsightQueries(c).ride(ids[0])?.startAt ?? 0, utcOffsetMin: FactorSeed.utcOffsetMin)
+            let oneDay = try InsightRunner.weekCandidates(c, start: start, label: "Week", nowMs: start + 8 * 86_400_000).isEmpty
+            dbOk = effectOk && cardOk && sparseOk && oneDay
+            detail = "headwind row \(word(effectOk)), week card + \(past.count) past weeks \(word(cardOk)), 4 rides = progress only \(word(sparseOk)), 1 riding day = no summary \(word(oneDay))"
+        } catch {
+            results.set("u37", .fail, "The temporary database failed: \(error.localizedDescription)")
+            return
+        }
+        var phone = "no data"
+        if let real {
+            let rows = FactorsPage.rows(FactorEffects.forPooled(real))
+            phone = "\(rows.filter(\.hasEffect).count) factor effects shown, \(rows.filter { $0.progress != nil }.count) still collecting"
+        }
+        results.set("u37", rowsOk && dbOk ? .pass : .fail,
+                    "factor rows: effect + \"based on N rides\", progress below the gate \(word(rowsOk)) · \(detail) · this phone: \(phone)")
     }
 }

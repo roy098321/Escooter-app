@@ -84,9 +84,9 @@ struct InsightsView: View {
             defer { db.discardTemporary() }
             let r = try InsightSeed.hotRide(db)
             let ranked = try InsightQueries(db).ranked(forRide: r.lastRideId, nowMs: r.nowMs + 60_000)
-            if let top = ranked.top { out.append(Line(label: "Top card · (top.type.rawValue)", text: top.text)) }
-            for m in ranked.more { out.append(Line(label: "Behind \"(ranked.moreText ?? "more")\" · (m.type.rawValue)", text: m.text)) }
-            title = "Hot ride on (InsightSeed.routeName)"
+            if let top = ranked.top { out.append(Line(label: "Top card · " + top.type.rawValue, text: top.text)) }
+            for m in ranked.more { out.append(Line(label: "Behind " + (ranked.moreText ?? "more") + " · " + m.type.rawValue, text: m.text)) }
+            title = "Hot ride on " + InsightSeed.routeName
         } catch {
             title = "Failed"
             out = [Line(label: "Error", text: error.localizedDescription)]
@@ -107,12 +107,14 @@ struct InsightsView: View {
                 for a in c.answers {
                     try SmartPromptService.answer(db, rideId: r.lastRideId, a, nowMs: nowMs)
                     let x = try SmartPromptQueries(db).rideAnswer(r.lastRideId)
-                    out.append(Line(label: "Answer · (a.title)", text: "load (LoadLevel.label(level: x?.loadLevel, kg: x?.loadKg)) · left out of usual: (x?.excluded == true ? "yes" : "no")"))
+                    let loadText = LoadLevel.label(level: x?.loadLevel, kg: x?.loadKg)
+                    let leftOut = x?.excluded == true ? "yes" : "no"
+                    out.append(Line(label: "Answer · " + a.title, text: "load " + loadText + " · left out of usual: " + leftOut))
                 }
             } else {
                 out.append(Line(label: "No card", text: "The prompt gates were not met"))
             }
-            title = "Smart prompt on (InsightSeed.routeName)"
+            title = "Smart prompt on " + InsightSeed.routeName
         } catch {
             title = "Failed"
             out = [Line(label: "Error", text: error.localizedDescription)]

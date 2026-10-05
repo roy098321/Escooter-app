@@ -53,6 +53,11 @@ struct SettingsView: View {
                 } label: {
                     LabeledContent("Fuel price", value: FuelPriceSetting.load(AppModel.shared.database).map(FuelPriceSetting.text) ?? "—")
                 }
+                NavigationLink {
+                    CostSettingsView()
+                } label: {
+                    Text("Electricity and fuel use")
+                }
             }
             Section {
                 NavigationLink {

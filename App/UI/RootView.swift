@@ -53,10 +53,15 @@ struct RootView: View {
             HomeView()
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(2)
-            placeholder("Stats", "chart.bar").tag(3)
+            StatsView()
+                .tabItem { Label("Stats", systemImage: "chart.bar") }
+                .tag(3)
             ScooterTabView()
                 .tabItem { Label("Scooter", systemImage: "scooter") }
                 .tag(4)
+        }
+        .onChange(of: model.requestedTab) { _, v in
+            if let v { tab = v; model.requestedTab = nil }
         }
     }
 
@@ -138,6 +143,12 @@ enum UIShot {
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
                                previewPrompt: SmartPromptCard(rideId: "preview", text: "This ride used 4% more battery than usual. Wind, rush hour and load don't explain it. Anything different?",
                                                               extraPct: 4, answers: SmartAnswer.allCases))
+            case "past-weeks":
+                NavigationStack { PastWeeksView(weeks: WeekPreview.weeks()) }
+            case "stats-week", "stats-month", "stats-empty", "week-card":
+                StatsView(preview: StatsPreview.model(name))
+            case "factors", "factors-sparse":
+                NavigationStack { FactorsView(preview: FactorsPreview.rows(name)) }
             case "route-arriveby":
                 ScrollView { ArriveByCard(routeId: nil, destination: "Work", rides: RoutesPreview.arriveByRides(), preview: true).padding() }
             case "scooter-tab", "scooter-tab-off", "scooter-tab-none":

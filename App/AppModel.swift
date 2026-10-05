@@ -17,6 +17,8 @@ final class AppModel {
     private(set) var database: AppDatabase?
     /// What the screens read: the simulator's temporary database while a simulation is active (M1-15), else the real one
     var displayDatabase: AppDatabase? { ScreenSimulator.shared.database ?? database }
+    /// A tab another part of the app asks for (the weekly notification opens Stats = 3); RootView takes it and clears it
+    var requestedTab: Int?
     /// V4: "Data update failed · Send report" instead of running on half-migrated data
     private(set) var databaseError: String?
 

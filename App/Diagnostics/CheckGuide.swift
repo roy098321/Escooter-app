@@ -362,6 +362,16 @@ struct CheckGuide {
                           steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database)."], place: .noScooter),
         "mh1": CheckGuide(proves: "The after-ride heat cards read well.",
                           steps: ["Developer → Insights → Simulated hot ride (heat cards).", "Expected: top card \"Peak 93 °C · +68 °C\", behind it a hot-day card with \"based on 11 rides\". Plain numbers, no alarm words beyond hot. Tap Pass or Fail."], place: .noScooter),
+        "u36": CheckGuide(proves: "The Stats numbers are right: a week runs Sunday to Saturday, rolling means the last 7 or 30 days, full charges are the battery percent used divided by 100, electricity is that times the battery size and your price, and fuel saved only counts rides over 2 km.",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database).", "Result: one tick per rule and at the end this phone's own week."], place: .noScooter),
+        "ms1": CheckGuide(proves: "The Stats tab shows your weeks and months in plain numbers.",
+                          steps: ["Open the Stats tab (needs a few rides to be interesting).", "Switch Week / Month and Calendar / Rolling, tap the left arrow to go back. Expected: rides, distance, time, full charges, electricity cost, fuel saved, km per day; an empty period says so.", "Settings → Costs → Electricity and fuel use: change a number and see Stats follow. Tap Pass or Fail."], place: .passive),
+        "mf2": CheckGuide(proves: "The Factors page tells you what wind, rain, hills, rush hour and load cost your rides, and says how many rides it is based on, or how many more it needs.",
+                          steps: ["Stats → What affects my rides.", "Per km: each factor with time and battery. Per trip: pick a route. Expected: numbers only where there are enough rides with and without the factor, each with \"based on N rides\"; otherwise a line like \"2 of 3 windy rides\". Tap Pass or Fail."], place: .passive),
+        "u37": CheckGuide(proves: "The Factors page and the weekly summary are built correctly: numbers only above the gate, progress lines below it, a weekly card from your rides, past weeks, and nothing for a week with a single riding day.",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, temporary databases)."], place: .noScooter),
+        "mw1": CheckGuide(proves: "Stats shows your week in a few plain sentences and keeps the earlier weeks.",
+                          steps: ["Needs rides on at least 2 different days in a week.", "Stats tab: the Weekly summary card (\"Last week: ... km, ... rides, ...\"), then Past weeks. If you got the Sunday 07:30 notification, tapping it opens Stats. Tap Pass or Fail."], place: .passive),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]
