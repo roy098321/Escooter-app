@@ -298,6 +298,8 @@ struct CheckGuide {
         "bt2": CheckGuide(proves: "A real charge between two real rides is found and logged.",
                           steps: ["Ride until the battery has dropped at least 10 points, stand still 20 seconds, switch the scooter off.", "Charge it for a while (even 20 minutes is enough for +3 points or more).",
                                   "Ride again and let the ride end. Open the Scooter tab → Battery: the charge is listed with from % to %. Expected: it matches what you did. Tap Pass or Fail."], place: .ride),
+        "u29": CheckGuide(proves: "The real range is the battery you have above the reserve divided by how much battery a kilometre costs you (the median of your last 10 rides), shown as it is. A decision (will it reach?) adds the 10% margin; the shown range does not. The charge time is steady to 85% and then about an hour for the rest, at 2 A.",
+                          steps: ["Developer → Checks → Run all automatic (made-up numbers and rides in a temporary database).", "Result: one tick per rule, and at the end this phone's range from its last battery reading."], place: .noScooter),
         "mt1": CheckGuide(proves: "The Maintenance screen lists tyres, brakes and bolts with the kilometres left, and Mark done restarts the count.",
                           steps: ["Open Settings → Maintenance.", "Expected: three rows, Tyre pressure (Check the pressure: 50 PSI), Brakes, Bolts and folding joint, each with km left or Counting starts with the first ride (before any ride).",
                                   "Tap Mark done on Tyre pressure. Expected: it shows 300 km left (after the first ride; before it, Counting starts with the first ride). Tap Pass or Fail."], place: .noScooter),

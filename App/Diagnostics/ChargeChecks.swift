@@ -91,3 +91,70 @@ enum ChargeLogCheck {
         return "\(rows.count) charge\(rows.count == 1 ? "" : "s") logged, \(String(format: "%.1f", cycles)) cycles"
     }
 }
+
+/// u29 (M3-03): real range (M25) and charge time (M37) on made-up numbers (Core) and made-up rides in a temporary
+/// database (the Battery page's loader). Shown numbers honest; the 10% margin only in the decision range. The line ends
+/// with this phone's range (read only).
+enum RealRangeCheck {
+    static func run(real: AppDatabase?) {
+        let results = CheckResults.shared
+        let cal = BatteryCalibration.prior()
+        let day: Int64 = 86_400_000
+        let rides = (0..<10).map { RangeRide(startAt: Int64($0) * day, distanceM: 10_000, usedPct: 23, endPct: 40) }
+        guard let r = RealRangeCalc.compute(currentPct: 64, rides: rides, calibration: cal, reservePct: 5) else {
+            results.set("u29", .fail, "No range from 10 made-up rides")
+            return
+        }
+        let rangeOk = abs(r.pctPerKm - 2.3) < 1e-9 && abs(r.rangeKm - 59 / 2.3) < 1e-9 && r.text.hasPrefix("26 km from 64% at your recent 2.3%/km")
+        let marginOk = abs(r.decisionRangeKm - r.rangeKm / SafetyMargin.factor) < 1e-9 && r.decisionRangeKm < r.rangeKm
+        let lowOk = RealRangeCalc.compute(currentPct: 15, rides: rides, calibration: cal)?.lowBattery == true
+        let timeOk = ChargeTime.text(hours: ChargeTime.hoursToFull(fromPct: 40, packAh: 16)) == "~4.5 h"
+            && ChargeTime.text(hours: ChargeTime.hoursToFull(fromPct: 85, packAh: 16)) == "~1 h"
+            && ChargeTime.text(hours: ChargeTime.hoursToFull(fromPct: 100, packAh: 16)) == "Full"
+
+        let temp: AppDatabase
+        do {
+            temp = try AppDatabase.openTemporary(build: AppInfo.build)
+        } catch {
+            results.set("u29", .fail, "Could not open the temporary database: \(error.localizedDescription)")
+            return
+        }
+        defer { temp.discardTemporary() }
+        do {
+            let store = RideQueries(temp)
+            let t0: Int64 = 1_790_000_000_000
+            for i in 0..<3 {
+                var ride = RideRecord(id: "r\(i)", startAt: t0 + Int64(i) * day)
+                ride.endAt = ride.startAt + 1_800_000
+                ride.status = "ended"
+                ride.distanceM = 15_000
+                ride.startRestPct = 90
+                ride.endRestPct = 50
+                ride.usedPct = 40
+                ride.usedPctMethod = "rested"
+                ride.energyWhRaw = 330
+                try store.save(ride)
+            }
+            let on = BatteryOverview.load(temp, currentPct: 50, connected: true)
+            let off = BatteryOverview.load(temp, currentPct: 50, connected: false)
+            let loadOk = on.range != nil && abs((on.range?.pctPerKm ?? 0) - 40.0 / 15) < 1e-9
+                && abs((on.chargeHours ?? 0) - 3.8) < 1e-9 && on.sinceLastRide == nil
+                && off.chargeHours == nil && off.sinceLastRide?.endPct == 50 && on.reservePct == 5
+            let ok = rangeOk && marginOk && lowOk && timeOk && loadOk
+            let phone: String
+            if let real {
+                let seen = LastSeen.load().pct
+                let o = BatteryOverview.load(real, currentPct: seen.map(Double.init), connected: false)
+                phone = o.range?.text ?? "no range yet (needs a ride and a battery reading)"
+            } else {
+                phone = "no data"
+            }
+            results.set("u29", ok ? .pass : .fail,
+                        "range 26 km from 64% at 2.3%/km \(rangeOk ? "ok" : "wrong") · margin only in the decision range \(marginOk ? "ok" : "wrong") · "
+                        + "below 20% shown with ~ \(lowOk ? "ok" : "wrong") · charge time ~4.5 h / ~1 h / Full \(timeOk ? "ok" : "wrong") · "
+                        + "page loader on made-up rides \(loadOk ? "ok" : "wrong") · this phone: \(phone)")
+        } catch {
+            results.set("u29", .fail, "Range check failed: \(error.localizedDescription)")
+        }
+    }
+}

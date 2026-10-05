@@ -108,4 +108,32 @@ final class ChargeStoreTests: XCTestCase {
         XCTAssertEqual(charged.verdicts["a"], .rejected(.noRestedEnd))
         XCTAssertEqual(charged.calibration.ridesUsed, 0)
     }
+
+    func test_batteryOverview_rangeChargeTimeAndTheTileThatHidesAfterACharge() throws {
+        let db = try open()
+        let q = RideQueries(db)
+        try add(q, "a", hours: 0, from: 90, to: 50)
+        try add(q, "b", hours: 24, from: 90, to: 50)
+        // the rides' used % is 40 over 15 km = 2.667 %/km; reserve 5% (nothing ran out)
+        let on = BatteryOverview.load(db, currentPct: 50, connected: true)
+        XCTAssertEqual(on.range?.pctPerKm ?? 0, 40.0 / 15, accuracy: 1e-9)
+        XCTAssertEqual(on.range?.rangeKm ?? 0, 45 / (40.0 / 15), accuracy: 1e-9)
+        XCTAssertEqual(on.chargeHours ?? 0, 3.8, accuracy: 1e-9)
+        XCTAssertNil(on.sinceLastRide)
+        let off = BatteryOverview.load(db, currentPct: 50, connected: false)
+        XCTAssertNil(off.chargeHours)
+        XCTAssertEqual(off.sinceLastRide?.endPct, 50)
+        // a ran-out setting is the reserve
+        try q.setSetting(key: "t80.batteryRanOut", json: "{\"pct\":3,\"rideId\":\"a\"}")
+        XCTAssertEqual(BatteryOverview.load(db, currentPct: 50, connected: false).reservePct, 3)
+        // a charge after the last ride hides the tile (found at the next ride)
+        _ = try CalibrationUpdater.update(db, nowMs: t0)
+        try add(q, "c", hours: 48, from: 95, to: 80)
+        _ = try CalibrationUpdater.update(db, nowMs: t0)
+        let later = BatteryOverview.load(db, currentPct: 80, connected: false)
+        XCTAssertEqual(later.charges.count, 1)
+        XCTAssertEqual(later.charges.first?.chargedPct, 45)
+        XCTAssertGreaterThan(later.cycles, 0.9)
+        if case .gathering = later.health {} else { XCTFail("health is gathering with 3 rides") }
+    }
 }
