@@ -168,4 +168,35 @@ final class RouteStoreTests: XCTestCase {
         XCTAssertEqual(back[1].lat, 10.12445, accuracy: 1e-5)
         XCTAssertEqual(back[1].lon, -30.54221, accuracy: 1e-5)
     }
+
+    func test_cardAndList_areBuiltFromTheStoredRides() throws {
+        let db = try open()
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        var routeId: String?
+        for k in 0..<4 {
+            try RouteFixtures.insertRide(db, id: "r\(k)", path: SyntheticRoutes.main, startAt: now - Int64(10 - k) * day, timeS: 540 + Double(k) * 30)
+            let result = try RouteProcessor.process(rideId: "r\(k)", database: db)
+            if k == 1, let id = result?.routeId {
+                routeId = id
+                try RouteService.save(routeId: id, database: db)
+            }
+        }
+        let id = try XCTUnwrap(routeId)
+        let card = try XCTUnwrap(RouteCardLoader.card(routeId: id, database: db))
+        XCTAssertEqual(card.title, "Route 1")
+        XCTAssertEqual(card.subtitle, "Saved route \u{00B7} based on 4 rides")
+        XCTAssertFalse(card.stats[0].filling, "4 rides meet the time gate")
+        XCTAssertTrue(card.stats[3].filling, "battery needs 5")
+        XCTAssertEqual(card.stats[3].value, "4 of 5 rides")
+        XCTAssertFalse(card.today.filling)
+        XCTAssertEqual(card.rides.count, 4)
+        XCTAssertEqual(card.rides[0].rideId, "r3", "newest first")
+        let list = RouteCardLoader.list(database: db)
+        XCTAssertEqual(list.saved.count, 1)
+        XCTAssertTrue(list.suggested.isEmpty)
+        XCTAssertTrue(list.saved[0].summary.hasPrefix("4 rides \u{00B7} "), list.saved[0].summary)
+        // a dismissed route is not listed and has no card to show rides
+        try RouteService.dismiss(routeId: id, database: db)
+        XCTAssertTrue(RouteCardLoader.list(database: db).isEmpty)
+    }
 }

@@ -17,6 +17,8 @@ enum RouteCheck {
     static func runAll() {
         runMatching()
         runVariants()
+        runRanges()
+        runCard()
     }
 
     // MARK: u17
@@ -128,5 +130,102 @@ extension RouteCheck {
               let ms = object["ms"] as? Int else { return }
         let pool = object["pool"] as? Int ?? 0
         CheckResults.shared.set("q2", .info, "\(ms) ms to place the last ride on a route, compared with \(pool) earlier rides")
+    }
+}
+
+// MARK: u19, u20 (M2-03, M2-04)
+
+extension RouteCheck {
+    private static let monday: Int64 = 20_717        // 20,717 days after 1970-01-01 is a Monday
+    private static let dayMs: Int64 = 86_400_000
+
+    private static func stat(_ i: Int, daysAgo: Int, minute: Int = 480, timeS: Double, used: Double?) -> RouteRideStats {
+        RouteRideStats(rideId: "c\(i)", startAt: (monday - Int64(daysAgo)) * dayMs + Int64(minute) * 60_000, utcOffsetMin: 0,
+                       totalS: timeS, distanceM: 3_700, avgMovingMps: 7, usedPct: used)
+    }
+
+    /// u19: usual ranges (M13), noticeably different (M14), Today (M26) with the 10% margin kept apart (T101).
+    static func runRanges() {
+        let results = CheckResults.shared
+        let now = monday * dayMs + 12 * 3_600_000
+        let ten = UsualRange.range([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        let middleOk = abs((ten?.lo ?? 0) - 1.9) < 1e-9 && abs((ten?.hi ?? 0) - 9.1) < 1e-9 && ten?.full == false
+        let few = UsualRange.range([30, 10, 20])
+        let fewOk = few?.full == true && few?.lo == 10 && few?.hi == 30
+        var many: [RouteRideStats] = []
+        for i in 0..<30 { many.append(stat(i, daysAgo: i + 1, timeS: 1_000, used: nil)) }
+        many.append(stat(99, daysAgo: 91, timeS: 1_000, used: nil))
+        let windowOk = UsualRange.select(many, nowMs: now).count == 20
+        let gateOk = UsualRange.range(of: .time, rides: Array(many.prefix(2))) == nil && UsualRange.range(of: .time, rides: Array(many.prefix(3))) != nil
+        let edge = UsualRangeValue(lo: 720, hi: 900, median: 800, n: 10, full: false)
+        let differentOk = UsualRange.noticeablyDifferent(value: 960, range: edge, minimumStep: UsualRange.minimumTimeStepS) == .above(by: 60)
+            && UsualRange.noticeablyDifferent(value: 905, range: edge, minimumStep: UsualRange.minimumTimeStepS) == .within
+        let rushOk = DayClock.isRushHour(weekday: 1, minuteOfDay: 7 * 60) && !DayClock.isRushHour(weekday: 1, minuteOfDay: 9 * 60 + 31)
+            && !DayClock.isRushHour(weekday: 5, minuteOfDay: 8 * 60)
+        var commute: [RouteRideStats] = []
+        for i in 0..<6 { commute.append(stat(i, daysAgo: 7 * (i + 1), timeS: 1_000 + Double(i) * 20, used: i < 2 ? 10 : (i < 4 ? 11 : 12))) }
+        var todayOk = false
+        var marginOk = false
+        var widerOk = false
+        if case .estimate(let e) = TodayEstimator.estimate(rides: commute, nowMs: now, utcOffsetMin: 0) {
+            todayOk = abs(e.timeS - 1_050) < 1e-6 && abs((e.usedPct ?? 0) - 11) < 1e-6
+            marginOk = abs((e.neededPct ?? 0) - 12.1) < 1e-6
+        }
+        if case .estimate(let e) = TodayEstimator.estimate(rides: commute, nowMs: now, utcOffsetMin: 0, timeEffectS: 300) {
+            widerOk = e.widerRangeS != nil
+        }
+        let gatesOk = TodayEstimator.estimate(rides: Array(commute.prefix(2)), nowMs: now, utcOffsetMin: 0) == .notEnough(have: 2, need: 3)
+        let ok = middleOk && fewOk && windowOk && gateOk && differentOk && rushOk && todayOk && marginOk && widerOk && gatesOk
+        results.set("u19", ok ? .pass : .fail,
+                    "middle 80% \(middleOk ? "ok" : "wrong") · under 5 rides min-max \(fewOk ? "ok" : "wrong") · 90 days / newest 20 \(windowOk ? "ok" : "wrong") · "
+                    + "gates \(gateOk && gatesOk ? "ok" : "wrong") · noticeably different \(differentOk ? "ok" : "wrong") · rush hour \(rushOk ? "ok" : "wrong") · "
+                    + "Today honest \(todayOk ? "ok" : "wrong"), needed % +10% \(marginOk ? "ok" : "wrong"), wider range \(widerOk ? "ok" : "wrong")")
+    }
+
+    /// u20: the route card and the Routes list built from rides stored in a temporary database.
+    static func runCard() {
+        let results = CheckResults.shared
+        let temp: AppDatabase
+        do {
+            temp = try AppDatabase.openTemporary(build: AppInfo.build)
+        } catch {
+            results.set("u20", .fail, "Could not open the temporary database: \(error.localizedDescription)")
+            return
+        }
+        defer { temp.discardTemporary() }
+        do {
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            let paths: [[SyntheticRoutes.XY]] = [SyntheticRoutes.main, SyntheticRoutes.main, SyntheticRoutes.main, SyntheticRoutes.main,
+                                                  SyntheticRoutes.main, SyntheticRoutes.main, SyntheticRoutes.detour, SyntheticRoutes.detour]
+            var savedRoute: String?
+            for (i, path) in paths.enumerated() {
+                let id = "r\(i)"
+                try RouteFixtures.insertRide(temp, id: id, path: path, startAt: now - Int64(paths.count - i) * dayMs, timeS: 540 + Double(i % 3) * 30)
+                let r = try RouteProcessor.process(rideId: id, database: temp)
+                if i == 1, let rid = r?.routeId {
+                    savedRoute = rid
+                    try RouteService.save(routeId: rid, database: temp)
+                }
+            }
+            guard let savedRoute, let card = RouteCardLoader.card(routeId: savedRoute, database: temp) else {
+                results.set("u20", .fail, "No route card after 8 rides")
+                return
+            }
+            let list = RouteCardLoader.list(database: temp)
+            let titleOk = card.title == "Route 1" && card.subtitle.hasPrefix("Saved route")
+            let statsOk = card.stats.count == 6 && card.stats.allSatisfy { !$0.filling }
+            let todayOk = !card.today.filling && card.today.headline.hasPrefix("Today:")
+            let variantsOk = card.variants.count == 2 && card.map.count == 2
+            let elevationOk = card.elevation?.otherIsEstimate == true
+            let ridesOk = card.totalRides == 8 && card.rides.count == 5
+            let listOk = list.saved.count == 1 && list.suggested.isEmpty && list.saved[0].rideCount == 8 && list.saved[0].summary.contains("min")
+            let ok = titleOk && statsOk && todayOk && variantsOk && elevationOk && ridesOk && listOk
+            results.set("u20", ok ? .pass : .fail,
+                        "title \(titleOk ? "ok" : "wrong") · six ranges \(statsOk ? "ok" : "wrong") · Today strip \(todayOk ? "ok" : "wrong") · "
+                        + "variants + map \(variantsOk ? "ok" : "wrong") · elevation other way is an estimate \(elevationOk ? "ok" : "wrong") · "
+                        + "rides list \(ridesOk ? "ok" : "wrong") · Routes list \(listOk ? "ok" : "wrong")")
+        } catch {
+            results.set("u20", .fail, "Route card check failed: \(error.localizedDescription)")
+        }
     }
 }

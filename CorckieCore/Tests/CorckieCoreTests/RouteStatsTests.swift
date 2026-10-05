@@ -345,3 +345,30 @@ final class RouteOfferTests: XCTestCase {
         }
     }
 }
+
+final class RouteListTests: XCTestCase {
+    private func rides(_ n: Int, daysAgo: Int) -> [RouteRideStats] {
+        (0..<n).map { i -> RouteRideStats in
+            RouteRideStats(rideId: "r\(daysAgo)-\(i)", startAt: (RouteStatsTests.monday - Int64(daysAgo) - Int64(i)) * RouteStatsTests.day + 8 * 3_600_000,
+                           totalS: 1_000 + Double(i) * 30, usedPct: 10)
+        }
+    }
+
+    func test_list_savedByNewestRide_suggestedApart_dismissedHidden() {
+        let now = RouteStatsTests.now
+        let model = RouteListBuilder.build([
+            RouteListInput(routeId: "old", title: "Old", state: .saved, rides: rides(6, daysAgo: 20), nowMs: now),
+            RouteListInput(routeId: "new", title: "New", state: .saved, rides: rides(3, daysAgo: 1), nowMs: now),
+            RouteListInput(routeId: "sug", title: "Sug", state: .suggested, rides: rides(2, daysAgo: 2), nowMs: now),
+            RouteListInput(routeId: "no", title: "No", state: .dismissed, rides: rides(4, daysAgo: 3), nowMs: now)
+        ])
+        XCTAssertEqual(model.saved.map { $0.routeId }, ["new", "old"])
+        XCTAssertEqual(model.suggested.map { $0.routeId }, ["sug"])
+        XCTAssertFalse(model.isEmpty)
+        XCTAssertTrue(model.saved[1].summary.hasPrefix("6 rides \u{00B7} "), model.saved[1].summary)
+        XCTAssertTrue(model.saved[1].summary.contains("%"), "6 rides meet the battery gate")
+        XCTAssertEqual(model.saved[0].summary, "3 rides \u{00B7} 17\u{2013}18 min")
+        XCTAssertEqual(model.suggested[0].summary, "2 rides \u{00B7} filling up")
+        XCTAssertTrue(RouteListBuilder.build([]).isEmpty)
+    }
+}

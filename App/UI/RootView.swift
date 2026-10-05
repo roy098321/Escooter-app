@@ -44,7 +44,9 @@ struct RootView: View {
 
     private var tabs: some View {
         TabView(selection: $tab) {
-            placeholder("Routes", "point.topleft.down.to.point.bottomright.curvepath").tag(0)
+            RoutesListView()
+                .tabItem { Label("Routes", systemImage: "point.topleft.down.to.point.bottomright.curvepath") }
+                .tag(0)
             RidesListView()
                 .tabItem { Label("Rides", systemImage: "list.bullet") }
                 .tag(1)
@@ -121,6 +123,10 @@ enum UIShot {
             case "rides": RidesListView()
             case "ride-detail", "ride-nogps", "ride-gap", "ride-walk":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model(name))
+            case "routes-empty", "routes-list":
+                RoutesListView(preview: RoutesPreview.list(name))
+            case "route-card", "route-card-sparse":
+                RouteCardView(preview: RoutesPreview.card(name))
             case "ride-save-route":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
                                previewOffer: RouteOfferModel.make(routeId: "preview", state: .suggested, title: "Route 1", ridesOnRoute: 2))
