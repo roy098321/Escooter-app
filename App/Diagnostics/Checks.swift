@@ -284,6 +284,10 @@ enum CheckList {
           "Title, six ranges, Today strip, variants + map, elevation both ways, rides list and the Routes list are built right from stored rides"),
         m("u21", phone, "Greying with the safety margin (M2-05)", "Nothing to do · Run all automatic marks it",
           "Exactly at the limit fits; 0.1% under is greyed; One way only, Tight and fits at the 10% spare edge; no data = no chip; last seen shows its age; I can charge here lifts the way back"),
+        m("u22", phone, "Where to? and arrival time (M2-06)", "Nothing to do · Run all automatic marks it",
+          "The chip appears only once a route is saved; arrival time on pace, running late (blended by km done), off the route (distance / typical speed); the display changes at most every 30 s or at a 1 min jump"),
+        m("u24", phone, "Dot follows the route without GPS (M2-08)", "Nothing to do · Run all automatic marks it",
+          "GPS lost on a known route: the hollow dot moves by wheel distance and is within 30 m after 2 km; off the route it stays frozen and grey"),
         m("d12", routesM, "Simulated routes never touch real routes (M2-01)", "Checked after every simulator run", "Real place, route and variant counts unchanged", tool: .simulator),
         m("q2", routesM, "Route processing is quick (M2-01)", "Nothing to do · it measures every ride", "Milliseconds for matching one ride are in the note (a ride close must stay fast)"),
         m("rt1", routesM, "Save as route? after 2 commutes", routeSim + "Scenario ROUTE-COMMUTE · 50× · Start; open the 2nd summary",
@@ -298,9 +302,15 @@ enum CheckList {
         m("rt9", routesM, "Rename and remove a route", "Route card → ⋯ → Rename route; then Remove route", "The new name stays after reopening; a removed route is gone, its rides stay in Rides", manual: true, tool: .simulator),
         m("rt10", routesM, "Greyed route and chips", routeSim + "Scenario ROUTE-LOWBATT · 50× · save both routes on their 2nd summaries · after the run open Routes",
           "Route 2 (the way back) is greyed with Not enough battery, Route 1 has the amber chip One way only; both can still be opened", manual: true, tool: .simulator),
+        m("rt11", routesM, "Where to? and the arrival strip", routeSim + "Scenario ROUTE-COMMUTE-6 · 5× · save the route on the 2nd summary · after the 3rd trip is over open Home, tap the chip, then watch the 4th trip's live screen",
+          "The chip shows once a route is saved; the live screen says Route 1 · arrive ~HH:MM · N min left and counts down without jumping", manual: true, tool: .simulator),
+        m("rt12", routesM, "The dot keeps moving without GPS", routeSim + "Scenario ROUTE-GPSLOSS · 5× · save the route on the 2nd summary · tap its Where to? chip on Home before the 4th trip",
+          "On the 4th trip the dot turns hollow with the No GPS chip, keeps moving along the route and is solid again when GPS returns", manual: true, tool: .simulator),
         m("rt13", routesM, "A real route is learned", "Ride the same trip twice (any two real rides between the same two places)", "After ride 2 the summary offers Save as route?", scooter: true, manual: true),
         m("rt16", routesM, "Parking a little differently still matches", "Start the second trip 50–150 m from the first start", "Same route, not a new suggestion", scooter: true, manual: true),
-        m("rt17", routesM, "A real detour is a variant named after the street", "Ride to the same place by another street (internet on)", "A second variant via the street, or Variant 2 when no street came back", scooter: true, manual: true)
+        m("rt17", routesM, "A real detour is a variant named after the street", "Ride to the same place by another street (internet on)", "A second variant via the street, or Variant 2 when no street came back", scooter: true, manual: true),
+        m("rt19", routesM, "Real arrival strip", "Home → Where to? → pick the route → Start → ride it", "Arrival time within about 2 min at the end; no jumping", scooter: true, manual: true),
+        m("rt20", routesM, "Real GPS loss on a known route", "Ride a known route with Where to? set, through a tunnel or underpass", "The dot keeps moving hollow with No GPS and is right again afterwards", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

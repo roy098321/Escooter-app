@@ -141,7 +141,7 @@ enum UIShot {
                 if let live = LivePreview.make(name) {
                     LiveRideView(preview: live)
                 } else if let input = HomePreview.input(name) {
-                    HomeView(preview: input)
+                    HomeView(preview: input, previewChips: HomePreview.chips(name), previewSelected: name == "home-whereto" ? "a" : nil)
                 } else {
                     HomeView()
                 }

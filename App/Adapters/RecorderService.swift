@@ -29,6 +29,7 @@ final class RecorderService {
     private(set) var readyRequested = false
     @ObservationIgnored private var driver = LiveScreenDriver()
     @ObservationIgnored private var lastLiveMode: LiveMode = .ready
+    @ObservationIgnored private var followChecked = false
 
     /// M1-15: the simulator drives the screens; the real Recorder's live output is ignored meanwhile
     private(set) var simActive = false
@@ -141,12 +142,23 @@ final class RecorderService {
         live = state
         var input = rawInput
         input.mapOffline = NetworkStatus.shared.offline
+        // M2-06: the route chosen with Where to? is followed from the start of the ride to its end (once per ride)
+        let rideOn = input.phase == .starting || input.phase == .riding
+        if rideOn, !followChecked {
+            followChecked = true
+            if let id = RouteFollowSelection.shared.routeId, let db = AppModel.shared.displayDatabase {
+                driver.follow(RouteFollowLoader.follower(routeId: id, database: db), utcOffsetMin: RouteCardLoader.currentOffsetMin())
+            }
+        } else if !rideOn, followChecked {
+            followChecked = false
+            RouteFollowSelection.shared.routeId = nil
+        }
         let screen = driver.update(input, at: time ?? Self.now())
         if screen.mode != .ready, lastLiveMode == .ready { livePath.reset() }
         lastLiveMode = screen.mode
         if screen.mode != .ready { readyRequested = false }
         if let lat = input.lat, let lon = input.lon {
-            livePosition = LivePath.Coord(lat: lat, lon: lon)
+            livePosition = screen.dotOverride ?? LivePath.Coord(lat: lat, lon: lon)   // M2-08: no GPS on a followed route
             if screen.mode != .ready, input.secondsWithoutGps == 0 {
                 livePath.add(lat: lat, lon: lon, speedKmh: Double(screen.tiles.speedKmh ?? 0), dashed: screen.dashedPath)
             }
@@ -195,6 +207,7 @@ final class RecorderService {
         readyRequested = false
         driver = LiveScreenDriver()
         lastLiveMode = .ready
+        followChecked = false
     }
 
     /// M1-13: the rider closed the summary (Done) or it could not load

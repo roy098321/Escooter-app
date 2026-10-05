@@ -8,7 +8,11 @@ import SwiftUI
 struct HomeView: View {
     /// ui-shots: a made-up input instead of the real app state
     var preview: HomeInput?
+    /// ui-shots: made-up Where to? chips and the chosen one
+    var previewChips: [WhereToChip]?
+    var previewSelected: String?
 
+    @State private var chips: [WhereToChip] = []
     @State private var now = Date()
     @State private var connectingSince: Date?
     @State private var showOnboarding = false
@@ -70,6 +74,7 @@ struct HomeView: View {
                 if backupBannerShown { backupCard }
                 statusCard(m)
                 primaryButton(m)
+                if m.state != .riding { whereTo }
                 if m.showLocationCard { locationCard }
                 if let text = m.lastRideText {
                     HStack {
@@ -117,6 +122,46 @@ struct HomeView: View {
         .controlSize(.large)
         .tint(m.primary == .connect || m.primary == .tryAgain ? .orange : .accentColor)
         .disabled(!m.primaryEnabled)
+    }
+
+    // MARK: Where to? (M2-06): one chip per saved route; hidden until a route exists (S2)
+
+    private var shownChips: [WhereToChip] { previewChips ?? chips }
+    private var selectedRoute: String? { preview != nil ? previewSelected : RouteFollowSelection.shared.routeId }
+
+    @ViewBuilder private var whereTo: some View {
+        let list = shownChips
+        if !list.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Where to?").font(.headline)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(list, id: \.routeId) { c in
+                            let on = selectedRoute == c.routeId
+                            Button {
+                                if preview == nil { RouteFollowSelection.shared.toggle(c.routeId) }
+                            } label: {
+                                Text(c.label)
+                                    .font(.subheadline.weight(.semibold))
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(on ? Color.accentColor : Color(.tertiarySystemBackground), in: Capsule())
+                                    .foregroundStyle(on ? Color.white : Color.primary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(on ? .isSelected : [])
+                        }
+                    }
+                }
+                if let sel = list.first(where: { $0.routeId == selectedRoute }) {
+                    Text(sel.detail).font(.subheadline).foregroundStyle(.secondary)
+                    Text("The arrival time shows on the ride screen.").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        }
     }
 
     private var locationCard: some View {
@@ -189,6 +234,8 @@ struct HomeView: View {
 
     private func reloadLastRide() {
         guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
+        chips = RouteFollowLoader.chips(database: db)
+        if let id = RouteFollowSelection.shared.routeId, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.routeId = nil }
         oldestRideMs = try? RideQueries(db).rides().last?.startAt
         BackupWriter.shared.runIfDue()
         guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
@@ -199,6 +246,13 @@ struct HomeView: View {
 
 /// Made-up Home states for the CI ui-shots (`-uiShot home-first` and so on).
 enum HomePreview {
+    /// M2-06: made-up chips (no real place names)
+    static func chips(_ name: String) -> [WhereToChip]? {
+        guard name == "home-whereto" else { return nil }
+        return [WhereToChip(routeId: "a", label: "Work", detail: "Work \u{00B7} today ~13 min \u{00B7} leave now, arrive ~8:56 \u{00B7} uses about 11%"),
+                WhereToChip(routeId: "b", label: "Home", detail: "Home \u{00B7} today ~14 min")]
+    }
+
     static func input(_ name: String) -> HomeInput? {
         let now = Date().timeIntervalSince1970
         let seen = Int64((now - 3 * 3600) * 1000)
@@ -208,7 +262,7 @@ enum HomePreview {
             return HomeInput(paired: false, connected: false, nowS: now)
         case "home-notconnected":
             return HomeInput(paired: true, connected: false, nowS: now, lastSeenMs: seen, lastSeenPct: 58, lastRide: ride)
-        case "home-ready":
+        case "home-ready", "home-whereto":
             return HomeInput(paired: true, connected: true, nowS: now, batteryPct: 91, lastRide: ride)
         case "home-cantfind":
             return HomeInput(paired: true, connected: false, connectingSinceS: now - 40, nowS: now, lastSeenMs: seen, lastSeenPct: 58)

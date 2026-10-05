@@ -20,6 +20,7 @@ enum RouteCheck {
         runRanges()
         runCard()
         runFit()
+        runArrival()
     }
 
     // MARK: u17
@@ -287,5 +288,97 @@ extension RouteCheck {
         } catch {
             results.set("u21", .fail, "Routes greying check failed: \(error.localizedDescription)")
         }
+    }
+}
+
+// MARK: u22 (M2-06), u24 (M2-08)
+
+extension RouteCheck {
+    private static func geo(_ p: SyntheticRoutes.XY) -> GeoPoint {
+        let c = SyntheticRoutes.coordinate(p)
+        return GeoPoint(lat: c.lat, lon: c.lon)
+    }
+
+    /// u22: Where to? chips and the arrival time from position and pace (M28) on 6 made-up commutes in a temporary database.
+    /// u24: the dot keeps moving along the followed route by wheel distance without GPS, stays frozen off the route (P3 D2).
+    static func runArrival() {
+        let results = CheckResults.shared
+        let temp: AppDatabase
+        do {
+            temp = try AppDatabase.openTemporary(build: AppInfo.build)
+        } catch {
+            results.set("u22", .fail, "Could not open the temporary database: \(error.localizedDescription)")
+            results.set("u24", .fail, "Could not open the temporary database: \(error.localizedDescription)")
+            return
+        }
+        defer { temp.discardTemporary() }
+        do {
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            for i in 0..<6 {
+                let id = "w\(i)"
+                try RouteFixtures.insertRide(temp, id: id, path: SyntheticRoutes.main, startAt: now - Int64(6 - i) * 86_400_000)
+                try RouteProcessor.process(rideId: id, database: temp)
+            }
+            let store = RouteQueries(temp)
+            let beforeSave = RouteFollowLoader.chips(database: temp).isEmpty
+            for r in try store.routes() { try RouteService.save(routeId: r.id, database: temp) }
+            let chips = RouteFollowLoader.chips(database: temp)
+            let chipOk = beforeSave && chips.count == 1 && chips[0].detail.contains("today ~")
+            guard let routeId = chips.first?.routeId, var f = RouteFollowLoader.follower(routeId: routeId, database: temp) else {
+                results.set("u22", .fail, "No chip or no followed path from 6 saved commutes (chips \(chips.count))")
+                results.set("u24", .fail, "No followed path to test")
+                return
+            }
+            let total = f.totalM
+            let today = f.todayS
+            func at(_ along: Double) -> GeoPoint { geo(SyntheticRoutes.point(on: SyntheticRoutes.main, at: along)) }
+            _ = f.update(position: at(0), gpsFresh: true, rideDistanceM: 0, elapsedS: 0)
+            let half = f.update(position: at(total / 2), gpsFresh: true, rideDistanceM: total / 2, elapsedS: today / 2)
+            let paceOk = abs(half.remainingS - today / 2) < today * 0.06 && !half.offPath
+            var late = f
+            let slow = late.update(position: at(2_000), gpsFresh: true, rideDistanceM: 2_000, elapsedS: 2_000 / total * today * 1.5)
+            let base = (total - 2_000) / total * today
+            let lateOk = slow.remainingS > base * 1.1 && slow.remainingS < base * 1.5
+            var off = f
+            let away = off.update(position: geo((x: 5_000, y: 1_000)), gpsFresh: true, rideDistanceM: 3_000, elapsedS: today)
+            let offOk = away.offPath && away.remainingS > 0
+            var disp = ArrivalDisplay()
+            let a1 = disp.show(remainingS: 600, nowS: 1_000)
+            let throttleOk = disp.show(remainingS: 590, nowS: 1_010) == a1 && disp.show(remainingS: 500, nowS: 1_015) != a1
+            let ok = chipOk && paceOk && lateOk && offOk && throttleOk
+            results.set("u22", ok ? .pass : .fail,
+                        "chip appears only once a route is saved \(chipOk ? "ok" : "wrong") · on pace \(paceOk ? "ok" : "wrong") · running late \(lateOk ? "ok" : "wrong") · "
+                        + "off the route \(offOk ? "ok" : "wrong") · display throttle \(throttleOk ? "ok" : "wrong")")
+
+            // u24
+            var g = try loadFollower(routeId: routeId, temp: temp)
+            _ = g.update(position: at(500), gpsFresh: true, rideDistanceM: 500, elapsedS: 70)
+            let dr = g.update(position: at(500), gpsFresh: false, rideDistanceM: 2_500, elapsedS: 350)
+            let dotOk = dr.deadReckoned && dr.dot.map { Geo.distanceM($0, at(2_500)) < 30 } == true
+            var h = try loadFollower(routeId: routeId, temp: temp)
+            _ = h.update(position: geo((x: 5_000, y: 0)), gpsFresh: true, rideDistanceM: 100, elapsedS: 15)
+            let frozen = h.update(position: geo((x: 5_000, y: 0)), gpsFresh: false, rideDistanceM: 900, elapsedS: 120)
+            let frozenOk = !frozen.deadReckoned && frozen.dot == nil
+            var driver = LiveScreenDriver()
+            driver.follow(try loadFollower(routeId: routeId, temp: temp), utcOffsetMin: 0)
+            let p = at(500)
+            _ = driver.update(LiveInput(scooterSpeedKmh: 25, phase: .riding, lat: p.lat, lon: p.lon, rideElapsedS: 70, rideDistanceM: 500), at: 100)
+            let s = driver.update(LiveInput(scooterSpeedKmh: 25, secondsWithoutGps: 20, phase: .riding, lat: p.lat, lon: p.lon, rideElapsedS: 140, rideDistanceM: 1_500), at: 170)
+            let driverOk = s.dotHollow && s.dotOverride != nil && s.arrival?.deadReckoned == true
+            let ok24 = dotOk && frozenOk && driverOk
+            results.set("u24", ok24 ? .pass : .fail,
+                        "dot within 30 m after 2 km without GPS \(dotOk ? "ok" : "wrong") · frozen off the route \(frozenOk ? "ok" : "wrong") · "
+                        + "hollow dot + arrival strip from the live rules \(driverOk ? "ok" : "wrong")")
+        } catch {
+            results.set("u22", .fail, "Arrival check failed: \(error.localizedDescription)")
+            results.set("u24", .fail, "Dead reckoning check failed: \(error.localizedDescription)")
+        }
+    }
+
+    private static func loadFollower(routeId: String, temp: AppDatabase) throws -> RouteFollower {
+        guard let f = RouteFollowLoader.follower(routeId: routeId, database: temp) else {
+            throw NSError(domain: "RouteCheck", code: 1, userInfo: [NSLocalizedDescriptionKey: "no followed path"])
+        }
+        return f
     }
 }

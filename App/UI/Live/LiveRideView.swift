@@ -69,10 +69,11 @@ struct LiveRideView: View {
             }
             if let p = position {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon)) {
+                    // M2-08: hollow while the dot moves by wheel distance (no GPS, known route)
                     Circle()
-                        .fill(s.dotGreyed ? Color.gray : Color.blue)
+                        .fill(s.dotHollow ? Color.white.opacity(0.6) : (s.dotGreyed ? Color.gray : Color.blue))
                         .frame(width: 20, height: 20)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 3))
+                        .overlay(Circle().stroke(s.dotHollow ? Color.blue : Color.white, lineWidth: 3))
                 }
             }
             if position == nil {
@@ -108,6 +109,15 @@ struct LiveRideView: View {
                 ForEach(Array(s.chips.enumerated()), id: \.offset) { _, c in
                     chip(c == .noGps ? "No GPS" : "Offline map", dot: nil)
                 }
+            }
+            if let a = s.arrival {
+                // M2-06 arrival strip (M28); under the banner, never over the speed and battery tiles
+                Text(a.text)
+                    .font(.headline.monospacedDigit())
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .accessibilityLabel(a.text)
             }
         }
     }
@@ -305,12 +315,25 @@ enum LivePreview {
             break
         }
         var driver = LiveScreenDriver()
-        let screen = driver.update(input, at: 0)
+        var clock = 0.0
+        if name == "live-arrival" || name == "live-routegps" {
+            // M2-06 / M2-08: a made-up straight route 2.7 km long (no real place), followed from 1.1 km
+            clock = Date().timeIntervalSince1970
+            let points = (0..<31).map { GeoPoint(lat: lat - 0.012 + Double($0) * 0.0009, lon: lon) }
+            driver.follow(RouteFollower(destinationName: "Work", path: points, todayS: 540), utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
+            input.rideDistanceM = 1_100
+            if name == "live-routegps" {
+                _ = driver.update(input, at: clock - 20)
+                input.secondsWithoutGps = 15
+                input.rideDistanceM = 1_500
+            }
+        }
+        let screen = driver.update(input, at: clock)
         var path = LivePath()
         for i in 0..<40 {
             path.add(lat: lat - 0.0008 + Double(i) * 0.00004, lon: lon - 0.0008 + Double(i) * 0.00004 + 0.0002 * sin(Double(i) / 5),
                      speedKmh: Double(i), dashed: i >= dashedFrom)
         }
-        return LiveRideView.Preview(screen: screen, path: path, position: LivePath.Coord(lat: lat, lon: lon))
+        return LiveRideView.Preview(screen: screen, path: path, position: screen.dotOverride ?? LivePath.Coord(lat: lat, lon: lon))
     }
 }

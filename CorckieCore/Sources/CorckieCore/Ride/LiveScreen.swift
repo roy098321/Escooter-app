@@ -33,6 +33,11 @@ public struct LiveScreenState: Equatable, Sendable {
     public var dashedPath: Bool
     /// No GPS for 10 s: the dot freezes, greyed
     public var dotGreyed: Bool
+    /// M2-06: "Work . arrive ~8:56 . 9 min left" while a route is followed
+    public var arrival: ArrivalStrip? = nil
+    /// M2-08: GPS lost on a followed route: the dot moves by wheel distance and is drawn hollow at `dotOverride`
+    public var dotHollow: Bool = false
+    public var dotOverride: LivePath.Coord? = nil
 }
 
 public enum LiveScreenLogic {
@@ -57,8 +62,20 @@ public struct LiveScreenDriver: Sendable {
     private var banners = BannerQueue()
     private var lastPhase: RidePhase = .idle
     private var sameRideWasOffered = false
+    private var follower: RouteFollower?
+    private var arrivalDisplay = ArrivalDisplay()
+    private var utcOffsetMin = 0
 
     public init() {}
+
+    /// M2-06: the route this ride follows (Where to?), or nil. Set before the ride starts or while it runs.
+    public mutating func follow(_ route: RouteFollower?, utcOffsetMin: Int = 0) {
+        follower = route
+        self.utcOffsetMin = utcOffsetMin
+        arrivalDisplay = ArrivalDisplay()
+    }
+
+    public var isFollowing: Bool { follower != nil }
 
     private static func active(_ p: RidePhase) -> Bool { p == .starting || p == .riding }
 
@@ -72,6 +89,7 @@ public struct LiveScreenDriver: Sendable {
         } else if !active && Self.active(lastPhase) {
             banners = BannerQueue()
             builder.reset()
+            follower = nil
         }
         lastPhase = input.phase
 
@@ -100,12 +118,29 @@ public struct LiveScreenDriver: Sendable {
         let text: String? = shown.map { s in
             (s.banner == .disconnected && input.formatChanged) ? "Scooter data format changed" : s.banner.text
         }
-        return LiveScreenState(mode: mode, tiles: tiles, banner: shown, bannerText: text,
+        var arrival: ArrivalStrip?
+        var dotOverride: LivePath.Coord?
+        if input.phase == .riding, var f = follower {
+            let pos = (input.lat != nil && input.lon != nil) ? GeoPoint(lat: input.lat!, lon: input.lon!) : nil
+            let step = f.update(position: pos, gpsFresh: input.secondsWithoutGps == 0, rideDistanceM: input.rideDistanceM,
+                                elapsedS: input.rideElapsedS ?? 0)
+            follower = f
+            let shown = arrivalDisplay.show(remainingS: step.remainingS, nowS: t)
+            arrival = ArrivalStrip(text: ArrivalStrip.text(destination: f.destinationName, arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin),
+                                   offRoute: step.offPath, deadReckoned: step.deadReckoned)
+            if step.deadReckoned, let d = step.dot { dotOverride = LivePath.Coord(lat: d.lat, lon: d.lon) }
+        }
+        var state = LiveScreenState(mode: mode, tiles: tiles, banner: shown, bannerText: text,
                                bannerIsSameRide: shown?.banner == .sameRide,
                                chips: chips, showClock: active, clockText: LiveScreenLogic.clock(input.rideElapsedS),
                                canClose: mode == .ready, showHoldToEnd: active, showNotRiding: mode == .starting,
                                dashedPath: active && input.phoneMode,
                                dotGreyed: tiles.chips.contains(.noGps))
+        state.arrival = arrival
+        state.dotOverride = dotOverride
+        state.dotHollow = dotOverride != nil
+        if dotOverride != nil { state.dotGreyed = false }
+        return state
     }
 
     /// The rider taps a banner away (or answers it). Refused (false) at 5 km/h or more.

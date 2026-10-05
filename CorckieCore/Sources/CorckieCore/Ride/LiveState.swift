@@ -48,12 +48,15 @@ public struct LiveInput: Equatable, Sendable {
     public var lon: Double?
     /// Seconds since the ride row started (the clock), nil without a ride
     public var rideElapsedS: Double?
+    /// M2-08: wheel distance of this ride so far, m (moves the dot along a followed route when GPS is lost)
+    public var rideDistanceM: Double?
 
     public init(scooterSpeedKmh: Double? = nil, gpsSpeedKmh: Double? = nil, scooterLinked: Bool = true,
                 scooterBatteryPct: Double? = nil, estimatedBatteryPct: Double? = nil, starting: Bool = false,
                 secondsWithoutGps: Double = 0, mapOffline: Bool = false, phase: RidePhase = .riding,
                 scooterTempC: Double? = nil, phoneMode: Bool = false, formatChanged: Bool = false,
-                sameRideOffered: Bool = false, lat: Double? = nil, lon: Double? = nil, rideElapsedS: Double? = nil) {
+                sameRideOffered: Bool = false, lat: Double? = nil, lon: Double? = nil, rideElapsedS: Double? = nil, rideDistanceM: Double? = nil) {
+        self.rideDistanceM = rideDistanceM
         self.phase = phase
         self.scooterTempC = scooterTempC
         self.phoneMode = phoneMode
