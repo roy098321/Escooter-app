@@ -157,6 +157,7 @@ actor Recorder {
             r.endAt = ride.startAt + last.t
             r.kind = RideSizeClass.of(distanceM: m.distanceM).rawValue
             try q.save(r)
+            do { try RouteProcessor.process(rideId: r.id, database: q.database) } catch { note("routes \(r.id): \(error.localizedDescription)") }
             hooks.rideClosed(r.id, r.status)
         } catch {
             note("orphan ride \(ride.id): \(error.localizedDescription)")
@@ -304,6 +305,8 @@ actor Recorder {
             for w in end.ride.walks {
                 try q.setSampleMode(rideId: id, fromT: relMs(w.startT), toT: relMs(w.endT ?? end.endT), mode: "walk")
             }
+            // M2: where does this ride belong? (places, routes, variants); a failure here never stops the close
+            do { try RouteProcessor.process(rideId: id, database: db) } catch { note("routes \(id): \(error.localizedDescription)") }
             closedRideIds.append(id)
             hooks.rideClosed(id, r.status)
             updateUsualPctPerKm(q)

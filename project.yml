@@ -9,7 +9,7 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "0.5"          # milestone: 0.4 = P4 foundation build, 0.5 = M1 Riding … 1.0 = v1
+    MARKETING_VERSION: "0.6"          # milestone: 0.4 = P4 foundation build, 0.5 = M1 Riding, 0.6 = M2 Routes … 1.0 = v1
     CURRENT_PROJECT_VERSION: "1"      # CI passes the run number (ARCHITECTURE §1.3)
     SWIFT_VERSION: "5.0"              # Swift 6 toolchain, Swift 5 language mode (§1.1)
     TARGETED_DEVICE_FAMILY: "1"
@@ -60,6 +60,7 @@ targets:
       - path: AppTests
       - path: App/Store
       - path: App/Recorder                 # M1-09: the Recorder actor records into a temporary database
+      - path: App/Routes                   # M2-01: route processing (places, routes, variants) on a temporary database
       - path: CorckieCore/Tests/Fixtures   # rides 1 and 2 for the Recorder end-to-end test
         type: folder
         buildPhase: resources

@@ -48,8 +48,10 @@ enum CheckList {
     static let simM = "M1 · simulator, no scooter"
     static let homeM = "M1 · scooter at home"
     static let ridesM = "M1 · real rides"
+    /// M2: the routes build's checks (M2_PLAN section 4); they ride in the same list and the same results key
+    static let routesM = "M2 · routes"
 
-    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, send]
+    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, send]
 
     /// The P4 list, kept as it was: every P4 result stays readable under the same ID.
     static let p4: [CheckItem] = [
@@ -62,7 +64,7 @@ enum CheckList {
         CheckItem(id: "a2", group: install, title: "Name and icon on the Home Screen", how: "Look at the Home Screen",
                   expected: "Scooter icon; name \"CorckieApp\" in full", needsScooter: false, manual: true, tool: .none),
         CheckItem(id: "a7", group: install, title: "v1 label visible on every screen", how: "Look at the bottom-right corner on every tab, pushed screen, sheet and Developer screen",
-                  expected: "Small \"v1 · 0.5 (build)\" label, never covering anything", needsScooter: false, manual: true, tool: .none),
+                  expected: "Small \"v1 · 0.6 (build)\" label, never covering anything", needsScooter: false, manual: true, tool: .none),
         CheckItem(id: "a3", group: install, title: "Permanent app ID", how: "Nothing to do",
                   expected: "com.corckieapp.app (+ SideStore team suffix)", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "a4", group: install, title: "Update keeps data", how: "Install the same .ipa again over the app in SideStore (or let SideStore refresh it), then open",
@@ -122,8 +124,8 @@ enum CheckList {
 
         CheckItem(id: "u1", group: phone, title: "Checks show progress and step ticks (M1-00b)", how: "Start the 4-min test (b8) or Run all automatic, and watch this screen",
                   expected: "A bar with time left on the 4-min test and on Run all automatic; b9 / c5 / c6 / c7 show a checklist that ticks itself", needsScooter: false, manual: true, tool: .none),
-        CheckItem(id: "u2", group: phone, title: "Version 0.5 and thresholds (M1-01)", how: "Nothing to do · Run all automatic also marks it",
-                  expected: "Version 0.5; speed warning on above 45 km/h, off below 43 (T99); safety margin +10% (T101)", needsScooter: false, manual: false, tool: .none),
+        CheckItem(id: "u2", group: phone, title: "Version 0.6 and thresholds (M1-01)", how: "Nothing to do · Run all automatic also marks it",
+                  expected: "Version 0.6; speed warning on above 45 km/h, off below 43 (T99); safety margin +10% (T101)", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u3", group: phone, title: "Fake scooter replays phone GPS + barometer (M1-02)", how: "Nothing to do · Run all automatic marks it",
                   expected: "The ride-2 phone track lines up with the scooter samples (≤ 5 m); GPS and barometer replay on the same clock", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u4", group: phone, title: "Ride storage (M1-08)", how: "Nothing to do · Run all automatic marks it",
@@ -204,6 +206,7 @@ enum CheckList {
         var list = p4
         let at = list.firstIndex { $0.id == "g1" } ?? list.count
         list.insert(contentsOf: m1New, at: at)
+        list.insert(contentsOf: m2New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         return list
     }()
 
@@ -266,6 +269,27 @@ enum CheckList {
         m("e3m", ridesM, "Same ride", "Mid-commute switch off at a stop, set off again within 10 min", "Same ride? banner; Yes joins the two pieces", scooter: true),
         m("w4", ridesM, "Speed warning on real rides", "Nothing to do", "Times red, seconds red, top speed per ride (for tuning)", scooter: true),
         m("b9m", ridesM, "Link over a ride", "Nothing to do", "Disconnects per ride and their reasons", scooter: true)
+    ]
+
+    private static let routeSim = "Developer → Simulated scooter → Run on the real screens → "
+    /// M2_PLAN section 4. Entries are added as their task is built (the ID list there is the full list).
+    private static let m2New: [CheckItem] = [
+        m("u17", phone, "Places, matching, Save as route (M2-01)", "Nothing to do · Run all automatic marks it",
+          "Tolerance 100 m to 1 km; the 2nd trip suggests a route; parked 120 m away still matches; a loop, a ride with no GPS and a dismissed trip never make a suggestion"),
+        m("u18", phone, "Variants and street names (M2-02)", "Nothing to do · Run all automatic marks it",
+          "A detour is a new variant; a street name from the phone replaces Variant 2, an owner name stays; the way back is its own route"),
+        m("d12", routesM, "Simulated routes never touch real routes (M2-01)", "Checked after every simulator run", "Real place, route and variant counts unchanged", tool: .simulator),
+        m("q2", routesM, "Route processing is quick (M2-01)", "Nothing to do · it measures every ride", "Milliseconds for matching one ride are in the note (a ride close must stay fast)"),
+        m("rt1", routesM, "Save as route? after 2 commutes", routeSim + "Scenario ROUTE-COMMUTE · 50× · Start; open the 2nd summary",
+          "After trip 2 the summary shows Save as route?; Save makes it a route; trip 3 joins it", manual: true, tool: .simulator),
+        m("rt2", routesM, "Not a route is remembered", "Same run → Not a route on the 2nd summary → run the scenario again", "The card does not come back for this trip", manual: true, tool: .simulator),
+        m("rt3", routesM, "A loop and a ride with no GPS are never offered", "Scenarios ROUTE-LOOP and ROUTE-NOGPS · 50×", "No Save as route? card", manual: true, tool: .simulator),
+        m("rt4", routesM, "A detour becomes a variant", routeSim + "Scenario ROUTE-VARIANT · 50× → Routes → the route", "Two variants, the second named Variant 2 (the fake map has no streets)", manual: true, tool: .simulator),
+        m("rt5", routesM, "Street names offline", "Airplane mode on → Scenario ROUTE-VARIANT · 50×", "Variant 2 stays, nothing crashes, nothing waits", manual: true, tool: .simulator),
+        m("rt6", routesM, "There and back are two routes", routeSim + "Scenario ROUTE-THEREBACK · 50× → Routes", "A to B and B to A listed separately", manual: true, tool: .simulator),
+        m("rt13", routesM, "A real route is learned", "Ride the same trip twice (any two real rides between the same two places)", "After ride 2 the summary offers Save as route?", scooter: true, manual: true),
+        m("rt16", routesM, "Parking a little differently still matches", "Start the second trip 50–150 m from the first start", "Same route, not a new suggestion", scooter: true, manual: true),
+        m("rt17", routesM, "A real detour is a variant named after the street", "Ride to the same place by another street (internet on)", "A second variant via the street, or Variant 2 when no street came back", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

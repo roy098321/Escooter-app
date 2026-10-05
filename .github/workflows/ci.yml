@@ -47,7 +47,7 @@ jobs:
         run: |
           BEFORE="${{ github.event.before }}"
           if [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then BEFORE=HEAD~1; fi
-          if ls AppTests/*.swift >/dev/null 2>&1 && git diff --name-only "$BEFORE" HEAD | grep -qE '^(App/Store/|App/Recorder/|AppTests/|project.yml|CorckieCore/Sources/CorckieCore/Ride/RideRecorderCore.swift)'; then
+          if ls AppTests/*.swift >/dev/null 2>&1 && git diff --name-only "$BEFORE" HEAD | grep -qE '^(App/Store/|App/Recorder/|App/Routes/|AppTests/|project.yml|CorckieCore/Sources/CorckieCore/Ride/RideRecorderCore.swift|CorckieCore/Sources/CorckieCore/Routes/)'; then
             echo "store=true" >> "$GITHUB_OUTPUT"
           else
             echo "store=false" >> "$GITHUB_OUTPUT"
@@ -156,7 +156,7 @@ jobs:
           APP=$(find build/Build/Products -name CorckieApp.app -path '*iphonesimulator*' | head -1)
           xcrun simctl install "$UDID" "$APP"
           mkdir -p shots
-          for screen in home settings developer checks results simulator outside rides ride-detail ride-nogps ride-gap ride-walk live-riding live-ready live-starting live-slow live-gps live-slowgps live-nogps live-offline live-banner live-sameride home-first home-notconnected home-ready home-cantfind home-riding home-location home-crash onboarding1 onboarding2 onboarding3; do
+          for screen in home settings developer checks results simulator outside rides ride-detail ride-nogps ride-gap ride-walk live-riding live-ready live-starting live-slow live-gps live-slowgps live-nogps live-offline live-banner live-sameride home-first home-notconnected home-ready home-cantfind home-riding home-location home-crash onboarding1 onboarding2 onboarding3 ride-save-route; do
             xcrun simctl terminate "$UDID" com.corckieapp.app || true
             xcrun simctl launch "$UDID" com.corckieapp.app -uiShot "$screen"
             sleep 6

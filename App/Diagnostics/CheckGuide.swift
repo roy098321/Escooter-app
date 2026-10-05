@@ -10,6 +10,8 @@ struct CheckGuide {
         case passive = "Passive"
     }
 
+    private static let routeStepSim = "Developer → Simulated scooter → Run on the real screens."
+
     let proves: String
     let steps: [String]
     let place: Place
@@ -118,8 +120,8 @@ struct CheckGuide {
                                  "Look at b9, c5, c6 and c7: each has a Steps list (\"0 of 5\" …) with empty circles.",
                                  "With the scooter: start b8 (Scooter → Start 4-min test): a bar with \"3:20 left\" counts down.",
                                  "Tap Pass if the bars move and the steps tick as you do them, Fail if not (add a Note)."], place: .noScooter),
-        "u2": CheckGuide(proves: "This build is 0.5 and carries the decided thresholds: speed warning on above 45 km/h and off below 43 (T99), safety margin +10% on decisions (T101).",
-                         steps: ["Nothing to do: it marks itself when the app opens.", "Look at Settings → About for the version line (v1 · 0.5)."], place: .noScooter),
+        "u2": CheckGuide(proves: "This build is 0.6 and carries the decided thresholds: speed warning on above 45 km/h and off below 43 (T99), safety margin +10% on decisions (T101).",
+                         steps: ["Nothing to do: it marks itself when the app opens.", "Look at Settings → About for the version line (v1 · 0.6)."], place: .noScooter),
         "u3": CheckGuide(proves: "The fake scooter can also replay the phone's own GPS and barometer from a real ride, on the same clock as the scooter data. Later steps use this to test the ride engine without riding.",
                          steps: ["Developer → Checks → Run all automatic (it runs this check in a second).", "Or just open the app: nothing else to do.",
                                  "Result: how many GPS fixes and barometer readings replayed and how close the phone track is to the scooter log."], place: .noScooter),
@@ -213,6 +215,42 @@ struct CheckGuide {
                          steps: ["Developer → Readability → Normal, phone on the mount.", "Tap Pass or Fail."], place: .ride),
         "f3": CheckGuide(proves: "The sunlight style is readable in direct sun.",
                          steps: ["Readability → Sunlight, in direct sun.", "Tap Pass or Fail."], place: .ride),
+        "u17": CheckGuide(proves: "The app finds your places and routes by itself: two rides between the same two spots (a start and an end that are close to each other, within 5% of the trip length, at least 100 m and at most 1 km) make a suggested route, and the second ride asks Save as route?. Parking a little differently (120 m away) still matches. A loop (start and end are the same spot), a ride with no GPS at one end, or a trip you said Not a route to never make a suggestion.",
+                          steps: ["Developer → Checks → Run all automatic (runs in a second, on made-up rides on an imaginary map in a temporary database).",
+                                   "Result: one tick per rule and how many milliseconds matching the last ride took.",
+                                   "The screen versions (rt1 to rt3) use the simulator; the real one is rt13."], place: .noScooter),
+        "u18": CheckGuide(proves: "A different way to the same place becomes a variant of the route (a stretch of at least 5% of the route, and at least 100 m, more than 50 m from the usual way). Different parking spots or GPS wobble do not. A variant is named after the longest street along its different part (the phone looks the street up; with no answer it is Variant 2), and a name you typed is never replaced. The way back is a separate route.",
+                          steps: ["Developer → Checks → Run all automatic (runs in a second, on made-up rides in a temporary database).",
+                                   "Result: one tick per rule.",
+                                   "The screen versions (rt4 to rt6) use the simulator; the real one is rt17."], place: .noScooter),
+        "d12": CheckGuide(proves: "Simulated rides never create places, routes or variants in your real data.",
+                          steps: ["Run any simulator scenario on the real screens (Developer → Simulated scooter).", "Tap End simulation: the check marks itself with the real counts before and after."], place: .noScooter),
+        "q2": CheckGuide(proves: "Working out where a finished ride belongs takes milliseconds, so closing a ride stays fast even after a year of rides.",
+                         steps: ["Nothing to do: every ride that closes records how long it took.", "Result: the note says the milliseconds and how many earlier rides were compared."], place: .noScooter),
+        "rt1": CheckGuide(proves: "After the same commute twice, the ride summary offers Save as route?, and a third trip joins the saved route.",
+                          steps: [routeStepSim, "Pick the scenario ROUTE-COMMUTE (the same commute 3 times), 50×, tap Start; the real scooter must be off.",
+                                  "Wait for the first summary (no card yet) and tap Done.", "The second summary shows a Save as route? card: tap Save route.",
+                                  "After the third trip the summary says Route · (name) and that it is one of 3 rides.", "Tap End simulation when done. Tap Pass if all of that happened."], place: .noScooter),
+        "rt2": CheckGuide(proves: "When you say Not a route, the app never offers that trip again.",
+                          steps: [routeStepSim, "Run ROUTE-COMMUTE; on the second summary tap Not a route (the card goes away).",
+                                  "Wait for the third trip: its summary must not show Save as route? either (the app remembers). Tap Pass or Fail."], place: .noScooter),
+        "rt3": CheckGuide(proves: "A round trip (a loop) and a ride with no GPS at its start are never offered as routes.",
+                          steps: [routeStepSim, "Run ROUTE-LOOP at 50×: two round trips, no Save as route? card.", "End simulation, then run ROUTE-NOGPS at 50×: the second trip lost GPS at its start, no card.", "Tap Pass or Fail."], place: .noScooter),
+        "rt4": CheckGuide(proves: "Riding to the same place another way creates a second variant, shown on the route card.",
+                          steps: [routeStepSim, "Run ROUTE-VARIANT at 50× (twice the usual way, then a detour); on the second summary tap Save route.",
+                                  "After the run, open the Routes tab, the route, and look at Variants (the Routes screens arrive with M2-04; until then the check stays on the To do list).",
+                                  "Expected: two variants; the second is called Variant 2 on the imaginary map. Tap Pass or Fail."], place: .noScooter),
+        "rt5": CheckGuide(proves: "With no internet the variant keeps its fallback name and nothing breaks or waits.",
+                          steps: ["Turn airplane mode on.", routeStepSim, "Run ROUTE-VARIANT at 50×.", "Variant 2 stays; the app does not freeze. Turn airplane mode off. Tap Pass or Fail."], place: .noScooter),
+        "rt6": CheckGuide(proves: "A to B and B to A are two different routes.",
+                          steps: [routeStepSim, "Run ROUTE-THEREBACK at 50× (A to B, B to A, twice each).", "Save the suggestion on the second summary of each direction.",
+                                  "Routes tab: two routes listed (arrives with M2-04). Tap Pass or Fail."], place: .noScooter),
+        "rt13": CheckGuide(proves: "The app learns a real route by itself after the same real trip twice.",
+                           steps: ["Ride the same trip twice (two real rides between the same two places, any day).", "After the second ride the summary shows Save as route?.", "Tap Save route. Tap Pass or Fail (the Note says where it started or ended if the places look wrong)."], place: .ride),
+        "rt16": CheckGuide(proves: "Parking 50 to 150 m from the first start does not make a new route.",
+                           steps: ["Ride the trip once (first start).", "Next time park a little away (50 to 150 m) and ride the same trip.", "The ride joins the same route (no new suggestion). Tap Pass or Fail."], place: .ride),
+        "rt17": CheckGuide(proves: "A real detour is a new variant and is named after its street.",
+                           steps: ["Internet on.", "Ride to the same place by another street (at least about 5% of the trip and 100 m different).", "Open the route card: a second variant via the street. If no street came back it is Variant 2. Tap Pass or Fail."], place: .ride),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

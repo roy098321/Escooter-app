@@ -12,11 +12,11 @@ final class VersionLabelGuardTests: XCTestCase {
         try String(contentsOf: appFolder.appendingPathComponent(path), encoding: .utf8)
     }
 
-    /// M1-01: the milestone version is 0.5 (bumped per milestone: M2 → 0.6 …), and the label reads it from the bundle.
-    func test_M1_01_versionIs05() throws {
+    /// M1-01: the milestone version is 0.6 (bumped per milestone: M2 → 0.6, M3 → 0.7 …), and the label reads it from the bundle.
+    func test_M2_01_versionIs06() throws {
         let yml = try String(contentsOf: appFolder.deletingLastPathComponent().appendingPathComponent("project.yml"), encoding: .utf8)
         let line = yml.split(separator: "\n").first { $0.contains("MARKETING_VERSION") } ?? ""
-        XCTAssertTrue(line.contains("\"0.5\""), "project.yml MARKETING_VERSION must be 0.5 for M1: \(line)")
+        XCTAssertTrue(line.contains("\"0.6\""), "project.yml MARKETING_VERSION must be 0.6 for M2: \(line)")
         XCTAssertTrue(try text("UI/Settings/SettingsView.swift").contains("CFBundleShortVersionString"))
     }
 

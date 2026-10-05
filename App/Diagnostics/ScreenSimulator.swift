@@ -41,6 +41,7 @@ final class ScreenSimulator {
     @ObservationIgnored private var realStart = Date()
     @ObservationIgnored private var runSpeed = 50.0
     @ObservationIgnored private var realRidesBefore: Int?
+    @ObservationIgnored private var realRoutesBefore: [Int]?
 
     private init() {}
 
@@ -96,6 +97,7 @@ final class ScreenSimulator {
             endSimulationQuietly()
             let db = try AppDatabase.openTemporary(build: AppInfo.build)
             realRidesBefore = Self.realRideCount()
+            realRoutesBefore = Self.realRouteCounts()
             let (s, c) = AsyncStream.makeStream(of: (RecorderInput, Double).self, bufferingPolicy: .unbounded)
             let rec = Recorder(database: db, simulated: true, build: AppInfo.build, stateURL: Recorder.stateURL(for: db),
                                hooks: Self.hooks())
@@ -202,6 +204,7 @@ final class ScreenSimulator {
                 DispatchQueue.main.async {
                     guard ScreenSimulator.shared.active else { return }
                     RecorderService.shared.simRideClosed(id)
+                    RouteNaming.start(rideId: id, database: ScreenSimulator.shared.database)
                     Log.info(source: "simulator", "Simulated ride closed (\(status))")
                 }
             },
@@ -210,11 +213,21 @@ final class ScreenSimulator {
 
     /// d8: a simulator run never changes the real database.
     private func checkRealDataApart() {
+        if let routesBefore = realRoutesBefore, let routesAfter = Self.realRouteCounts() {
+            realRoutesBefore = nil
+            CheckResults.shared.set("d12", routesAfter == routesBefore ? .pass : .fail,
+                                    "Real places / routes / variants before \(routesBefore), after \(routesAfter) (simulated routes live in a temporary database)")
+        }
         guard let before = realRidesBefore else { return }
         realRidesBefore = nil
         guard let after = Self.realRideCount() else { return }
         CheckResults.shared.set("d8", after == before ? .pass : .fail,
                                 "Real rides before \(before), after \(after) (simulated rides kept in a temporary database)")
+    }
+
+    private static func realRouteCounts() -> [Int]? {
+        guard let db = AppModel.shared.database, let c = try? RouteQueries(db).counts() else { return nil }
+        return [c.places, c.routes, c.variants]
     }
 
     private static func realRideCount() -> Int? {

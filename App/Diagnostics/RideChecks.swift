@@ -27,6 +27,7 @@ enum RideChecks {
             case .info: results.set(verdict.id, .info, verdict.note)
             }
         }
+        RouteCheck.timing(database: database)
     }
 
     /// rides.txt in the export: one line per ride, no coordinates and no ride ids.

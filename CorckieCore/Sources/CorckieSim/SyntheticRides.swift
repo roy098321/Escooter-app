@@ -98,7 +98,9 @@ public struct SyntheticScenario: Identifiable, Sendable {
     static let spd46GpsProfile: [(t: Double, kmh: Double)] = [(0, 0), (30, 40), (45, 46), (130, 46)]
     static let kickProfile: [(t: Double, kmh: Double)] = [(0, 0), (5, 3), (14, 18), (60, 18)]
 
-    public static let all: [SyntheticScenario] = [
+    public static let all: [SyntheticScenario] = base + SyntheticRoutes.scenarios
+
+    static let base: [SyntheticScenario] = [
         // M1-05 / T99: the scooter ramps 40 → 46 → 44 → 46 → 42 km/h; the warning must not flicker
         SyntheticScenario(id: "SPD-46", title: "Speed ramps 40 → 46 → 44 → 46 → 42 km/h") {
             SyntheticScenario.stream(seconds: 90, scooterKmh: { SyntheticScenario.linear(SyntheticScenario.spd46Profile, at: $0) },

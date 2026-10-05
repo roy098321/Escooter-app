@@ -190,10 +190,10 @@ enum InstallChecks {
         }
         FuelPriceSetting.ensureDefault(database: database)
 
-        // u2 (M1-01): version 0.5 and the decided thresholds
+        // u2 (M1-01): version 0.6 and the decided thresholds
         let thresholdsOk = T.t99SlowKmh == 45 && T.t99ClearKmh == 43 && T.t101SafetyMarginShare == 0.10
         let line = "Version \(AppInfo.version) · speed warning on > \(Int(T.t99SlowKmh)) / off < \(Int(T.t99ClearKmh)) km/h · margin +\(Int((T.t101SafetyMarginShare * 100).rounded()))%"
-        results.set("u2", thresholdsOk && AppInfo.version == "0.5" ? .pass : .fail, line)
+        results.set("u2", thresholdsOk && AppInfo.version == "0.6" ? .pass : .fail, line)
 
         if let db = database {
             let migrations = (try? db.appliedMigrations())?.joined(separator: ", ") ?? "?"

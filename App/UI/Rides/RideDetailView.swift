@@ -10,8 +10,11 @@ struct RideDetailView: View {
     var preview: RideSummaryModel?
     /// Summary after a ride: a Done button closes it. Nil = pushed from the Rides list (back button).
     var onDone: (() -> Void)?
+    /// ui-shot only: a made-up route card
+    var previewOffer: RouteOfferModel?
 
     @State private var model: RideSummaryModel?
+    @State private var offer: RouteOfferModel?
     @State private var missing = false
     @State private var confirmDelete = false
     @State private var errorText: String?
@@ -90,6 +93,7 @@ struct RideDetailView: View {
                 .padding(.horizontal, 16)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in note(n) }
+                if let o = previewOffer ?? offer { offerCard(o) }
                 if !m.infoLines.isEmpty {
                     DisclosureGroup("More info") {
                         VStack(alignment: .leading, spacing: 6) {
@@ -137,6 +141,40 @@ struct RideDetailView: View {
         }
         .padding(14)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    /// M2-01: "Save as route?" after the same trip twice, or the ride's route once saved
+    private func offerCard(_ o: RouteOfferModel) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "point.topleft.down.to.point.bottomright.curvepath").foregroundStyle(.tint).frame(width: 24)
+                Text(o.headline).font(.headline)
+            }
+            Text(o.detail).font(.subheadline).foregroundStyle(.secondary)
+            if !o.saved {
+                HStack(spacing: 12) {
+                    Button("Save route") { routeAction(o.routeId, save: true) }.buttonStyle(.borderedProminent)
+                    Button("Not a route") { routeAction(o.routeId, save: false) }.buttonStyle(.bordered)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func routeAction(_ routeId: String, save: Bool) {
+        guard preview == nil, let id = rideId, let db = AppModel.shared.displayDatabase else { return }
+        do {
+            if save {
+                try RouteService.save(routeId: routeId, database: db)
+            } else {
+                try RouteService.dismiss(routeId: routeId, database: db)
+            }
+            offer = RouteService.offer(rideId: id, database: db)
+        } catch {
+            errorText = error.localizedDescription
+        }
     }
 
     /// S7: no path to draw
@@ -205,6 +243,7 @@ struct RideDetailView: View {
             return
         }
         model = loaded
+        offer = RouteService.offer(rideId: id, database: db)
     }
 
     private func delete() {

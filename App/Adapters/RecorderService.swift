@@ -66,6 +66,7 @@ final class RecorderService {
                     PhoneBatteryWatch.shared.rideEnded()
                     BackupWriter.shared.rideEnded(rideId: id)
                     RideChecks.run(database: AppModel.shared.database)
+                    RouteNaming.start(rideId: id, database: AppModel.shared.database)
                     Log.info(source: "recorder", "Ride closed (\(status))")
                 }
             },
