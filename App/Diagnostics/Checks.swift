@@ -56,8 +56,10 @@ enum CheckList {
     static let insightsM = "M4 · insights + stats"
     /// M5: ride tools + data (M5_PLAN section 4)
     static let toolsM = "M5 · ride tools + data"
+    /// M6: fastest way + polish (M6_PLAN section 3)
+    static let fastM = "M6 · fastest way + polish"
 
-    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, batteryM, insightsM, toolsM, send]
+    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, batteryM, insightsM, toolsM, fastM, send]
 
     /// The P4 list, kept as it was: every P4 result stays readable under the same ID.
     static let p4: [CheckItem] = [
@@ -215,6 +217,7 @@ enum CheckList {
         list.insert(contentsOf: m2New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         list.insert(contentsOf: m4New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         list.insert(contentsOf: m5New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
+        list.insert(contentsOf: m6New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         return list
     }()
 
@@ -420,6 +423,14 @@ enum CheckList {
           "Nine groups in the C23 order (Battery and charging, Units and display, Costs, Rider, Voice and notifications, Places, Data and backup, Help, Developer) plus Scooter (Maintenance) and About; each control keeps its value after leaving and coming back; the Battery page follows the battery size; ui-shots settings-full, settings-data", manual: true),
         m("md1", toolsM, "Full ride detail: map layers, elevation, charts (M5-03)", "Rides → open a real ride with GPS → switch the map between Speed, Hills and Wind → scroll to Elevation and Speed and battery",
           "Hills colours the path blue downhill, grey flat, red uphill; Wind shows with / across / against you (or says it has no wind data yet); Elevation lists each climb as \"+33 m · 3% battery · 4% grade\"; the speed and battery charts follow the ride; on the newest ride the scooter group ends with To full; ui-shot ride-detail-full", manual: true)
+    ]
+
+    /// M6 (M6_PLAN section 3): each task adds its checks with it.
+    private static let m6New: [CheckItem] = [
+        m("u42", fastM, "Fastest combination: choice points, option times, gates, Follow path, Q3 (M6-01)", "Nothing to do · Run all automatic marks it",
+          "Nine made-up rides on a 4 km route in the ocean (3 the usual way, 3 via a park detour, 3 left at the lights) are written to a temporary database: 2 choice points with 2 options each and 18 option times are stored; the fastest combination is park + left (never ridden as a whole, ~1:30 faster than the fastest way ridden), Follow gives a path on ridden stretches only; with one way seen twice the card says 2 of 3; Q3 gets a verdict for the park; the line ends with this phone's choice points"),
+        m("mq1", fastM, "Fastest combination on a real route and Follow", "Routes → a saved route you ride more than one way → scroll to Fastest combination → Follow this next ride → ride it",
+          "The section says which ways make the fastest mix and how much faster (or \"not enough data yet\" with how many rides each way still needs); Follow paints the path green on the map and Home's Where to? shows the route selected; on the ride the arrival time and route progress follow that path; after the ride a different way at a choice point gets a Q3 card (\"... saved you 1:10 on that stretch\") once that way has 3 rides", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

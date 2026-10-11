@@ -115,6 +115,8 @@ public struct RouteCardModel: Equatable, Sendable {
     public var trendMin: [Double]
     /// M2-09: nil without a battery reading or enough rides (S9)
     public var thereAndBack: ThereAndBackModel? = nil
+    /// M6-01 (Q23): the Fastest combination section (nil = no choice points, S9); filled by the app from the choice tables
+    public var fastest: FastestCard? = nil
 }
 
 public enum RouteCardBuilder {

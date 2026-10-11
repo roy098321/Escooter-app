@@ -94,9 +94,9 @@ enum InsightRunner {
         // Q1 / Q2 / Q18 (variants)
         out += InsightCatalogue.q1q2After(rideId: rideId, routeId: routeId, rideVariantId: ride.variantId, rideTimeS: ride.totalS, variants: variants, nowMs: nowMs)
         out += InsightCatalogue.q18(rideId: rideId, routeId: routeId, variants: variants, nowMs: nowMs)
-        // Q3 (choice points)
-        for o in (try? q.optionTimes(rideId: rideId)) ?? [] {
-            out += InsightCatalogue.q3(rideId: rideId, routeId: routeId, optionId: o.optionId, optionName: o.name ?? "shortcut",
+        // Q3 (choice points, M6-01 fills them): only for a ride that took another way than the usual one there
+        for o in (try? q.optionTimes(rideId: rideId)) ?? [] where !o.optionId.hasSuffix(":ref") {
+            out += InsightCatalogue.q3(rideId: rideId, routeId: routeId, optionId: o.optionId, optionName: (o.name ?? "shortcut").hasPrefix("via ") ? "way " + (o.name ?? "") : (o.name ?? "shortcut"),
                                        rideOptionTimeS: o.rideTimeS, optionTimesS: o.optionTimesS, otherTimesS: o.otherTimesS, nowMs: nowMs)
         }
         // Q4 (noticeably different + causes)

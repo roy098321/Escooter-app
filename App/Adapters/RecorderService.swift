@@ -156,13 +156,15 @@ final class RecorderService {
                 let start = InsightRunner.atRideStart(db, routeId: RouteFollowSelection.shared.routeId, battery: battery, lat: input.lat, lon: input.lon)
                 if let id = RouteFollowSelection.shared.routeId {
                     let warning = (start.shown + start.toSummary).first { $0.type == .q9Live }?.text
-                    driver.follow(RouteFollowLoader.follower(routeId: id, database: db), utcOffsetMin: RouteCardLoader.currentOffsetMin(),
+                    driver.follow(RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination),
+                                  utcOffsetMin: RouteCardLoader.currentOffsetMin(),
                                   returnWarning: warning)
                 }
             }
         } else if !rideOn, followChecked {
             followChecked = false
             RouteFollowSelection.shared.routeId = nil
+            RouteFollowSelection.shared.combination = false
         }
         let screen = driver.update(input, at: time ?? Self.now())
         if screen.mode != .ready, lastLiveMode == .ready { livePath.reset() }

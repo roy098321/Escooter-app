@@ -45,7 +45,10 @@ enum RouteCardLoader {
     }
 
     static func card(routeId: String, database: AppDatabase, battery: BatteryNow? = nil) -> RouteCardModel? {
-        cardInput(routeId: routeId, database: database, battery: battery).map { RouteCardBuilder.build($0) }
+        guard let input = cardInput(routeId: routeId, database: database, battery: battery) else { return nil }
+        var model = RouteCardBuilder.build(input)
+        if model.saved { model.fastest = FastestService.card(database, routeId: routeId) }     // M6-01 (Q23)
+        return model
     }
 
     /// The route that goes the other way (B to A), if there is one that is not dismissed.

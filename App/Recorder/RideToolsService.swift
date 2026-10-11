@@ -292,6 +292,7 @@ enum RideToolsService {
         _ = try? CalibrationUpdater.update(database, nowMs: nowMs)
         if routes { _ = try? RouteProcessor.process(rideId: rideId, database: database) }
         _ = try? FactorUpdater.update(database, rideId: rideId, nowMs: nowMs)
+        _ = try? FastestService.update(database, rideId: rideId)                 // M6-01: choice points (Q23, Q3)
         if routes { _ = try? InsightRunner.afterRide(database, rideId: rideId, nowMs: nowMs) }
     }
 }

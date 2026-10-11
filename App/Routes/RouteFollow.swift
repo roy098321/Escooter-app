@@ -8,9 +8,25 @@ import Observation
 final class RouteFollowSelection {
     static let shared = RouteFollowSelection()
     var routeId: String?
+    /// M6-01 (Q23): follow the fastest combination of this route instead of its usual path (cleared with the route)
+    var combination = false
     private init() {}
 
-    func toggle(_ id: String) { routeId = routeId == id ? nil : id }
+    func toggle(_ id: String) {
+        routeId = routeId == id ? nil : id
+        combination = false
+    }
+
+    /// Route card → "Follow this next ride": the next ride follows the combination (tap again to stop)
+    func followCombination(_ id: String) {
+        if routeId == id && combination {
+            routeId = nil
+            combination = false
+        } else {
+            routeId = id
+            combination = true
+        }
+    }
 }
 
 /// Reads the route tables into the Core builders of M2-06 (`WhereTo`, `RouteFollower`). Compiled into AppTests too.
@@ -30,9 +46,16 @@ enum RouteFollowLoader {
     /// The followed path is the reference variant (else the first one); Today is for leaving now. Without 3 rides the median of what
     /// exists, else the length at 5.5 m/s.
     static func follower(routeId: String, database: AppDatabase, nowMs: Int64 = RouteCardLoader.currentMs(),
-                         utcOffsetMin: Int = RouteCardLoader.currentOffsetMin()) -> RouteFollower? {
+                         utcOffsetMin: Int = RouteCardLoader.currentOffsetMin(), combination: Bool = false) -> RouteFollower? {
         let store = RouteQueries(database)
         guard let route = try? store.route(id: routeId) else { return nil }
+        // M6-01 (Q23): the fastest combination (ridden stretches only) with its own estimate; none any more = the usual path
+        if combination, let c = FastestService.answer(database, routeId: routeId, nowMs: nowMs, utcOffsetMin: utcOffsetMin)?.combo,
+           c.path.count >= 2 {
+            let to = route.toPlaceId.flatMap { try? store.place(id: $0) }?.name
+            let name = WhereTo.label(toName: to, title: RouteService.title(routeId: routeId, database: database))
+            return RouteFollower(destinationName: name, path: c.path, todayS: c.timeS)
+        }
         let variants = (try? store.variants(routeId: routeId)) ?? []
         guard let v = variants.first(where: { $0.isReference }) ?? variants.first, let line = v.polyline else { return nil }
         let path = Geo.decode(line)

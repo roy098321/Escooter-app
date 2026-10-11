@@ -18,6 +18,7 @@ struct RouteCardView: View {
     @State private var confirmRemove = false
     @State private var errorText: String?
     @State private var arriveInfo: (rides: [RouteRideStats], destination: String)?
+    @State private var previewFollow = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -73,7 +74,7 @@ struct RouteCardView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text(m.subtitle).font(.subheadline).foregroundStyle(.secondary)
                 if !m.saved { suggestionCard }
-                if !m.map.isEmpty { mapCard(m.map) }
+                if !m.map.isEmpty { mapCard(m.map, highlight: followingCombination ? m.fastest?.path : nil) }
                 todayCard(m.today)
                 if m.saved { arriveBy(m) }
                 if let t = m.thereAndBack { thereAndBackCard(t) }
@@ -81,6 +82,7 @@ struct RouteCardView: View {
                     ForEach(Array(m.stats.enumerated()), id: \.offset) { _, s in tile(s) }
                 }
                 if !m.variants.isEmpty { variantsCard(m.variants) }
+                if let f = m.fastest { fastestCard(f) }
                 if let e = m.elevation { elevationCard(e) }
                 ridesCard(m)
             }
@@ -122,12 +124,17 @@ struct RouteCardView: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func mapCard(_ lines: [RouteMapLine]) -> some View {
+    private func mapCard(_ lines: [RouteMapLine], highlight: [GeoPoint]? = nil) -> some View {
         Map(initialPosition: Self.position(lines), interactionModes: [.pan, .zoom]) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, l in
                 MapPolyline(coordinates: l.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(l.dashed ? Color.orange : Color.blue,
                             style: StrokeStyle(lineWidth: l.dashed ? 4 : 5, lineCap: .round, lineJoin: .round, dash: l.dashed ? [2, 8] : []))
+            }
+            // M6-01: the fastest combination being followed, on top of the variants
+            if let h = highlight, h.count >= 2 {
+                MapPolyline(coordinates: h.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                    .stroke(Color.green, style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
             }
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
@@ -193,6 +200,46 @@ struct RouteCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    /// M6-01 (Q23): the next ride follows the combination of this route (Home's Where to? shows the route selected)
+    private var followingCombination: Bool {
+        if preview != nil { return previewFollow }
+        guard let id = routeId else { return false }
+        return RouteFollowSelection.shared.routeId == id && RouteFollowSelection.shared.combination
+    }
+
+    private func fastestCard(_ f: FastestCard) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(f.headline)
+                .font(.system(size: 20, weight: .semibold, design: .rounded).monospacedDigit())
+                .foregroundStyle(f.filling ? Color.secondary : Color.primary)
+            Text(f.detail).font(.subheadline)
+            if let n = f.note { Text(n).font(.footnote).foregroundStyle(.secondary) }
+            ForEach(Array(f.waiting.enumerated()), id: \.offset) { _, w in
+                Text(w).font(.caption).foregroundStyle(.secondary)
+            }
+            if f.canFollow {
+                Button {
+                    if preview != nil {
+                        previewFollow.toggle()
+                    } else if let id = routeId {
+                        RouteFollowSelection.shared.followCombination(id)
+                    }
+                } label: {
+                    Label(followingCombination ? "Following on the next ride" : "Follow this next ride",
+                          systemImage: followingCombination ? "checkmark.circle.fill" : "point.topleft.down.to.point.bottomright.curvepath")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(followingCombination ? .green : .accentColor)
+                .padding(.top, 4)
+                .accessibilityHint("The next ride follows this combination. Only ways you have ridden before.")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .contain)
     }
 
     private func elevationCard(_ e: RouteElevationModel) -> some View {

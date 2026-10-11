@@ -193,7 +193,10 @@ enum RoutesPreview {
         for i in 0..<9 {
             rides.append(ride(i, daysAgo: 7 * (i + 1) % 80 + 1, timeS: 1_080 + Double(i % 4) * 60, used: 10 + Double(i % 3), variant: i < 6 ? "v1" : "v2"))
         }
-        return RouteCardBuilder.build(RouteCardInput(routeId: "a", fromName: "Home", toName: "Work", ordinal: 1, state: .saved, variants: variants,
-                                                     rides: rides, otherDirection: rides, nowMs: now, battery: BatteryNow(pct: 31, ageMin: 90)))
+        var model = RouteCardBuilder.build(RouteCardInput(routeId: "a", fromName: "Home", toName: "Work", ordinal: 1, state: .saved, variants: variants,
+                                                          rides: rides, otherDirection: rides, nowMs: now, battery: BatteryNow(pct: 31, ageMin: 90)))
+        // M6-01: the Fastest combination section from the made-up choice-point rides (Q23)
+        model.fastest = FastestCard.make(ChoiceSamples.answer(ChoiceSamples.nineRides).answer)
+        return model
     }
 }

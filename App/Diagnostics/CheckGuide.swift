@@ -404,6 +404,14 @@ struct CheckGuide {
         "md1": CheckGuide(proves: "The ride detail shows the whole ride: where it was uphill, where the wind was against you, what each climb cost and how speed and battery moved.",
                           steps: ["Rides → open a real ride that has GPS (and a barometer).", "Under the map pick Hills, then Wind. Expected: Hills blue = downhill, grey = flat, red = uphill; Wind blue = with you, red = against you (an hour or so after the ride; before that it says there is no wind data yet).",
                                   "Scroll: Elevation with each climb (\"+33 m · 3% battery · 4% grade\"), then the speed and battery charts. On the newest ride the scooter group ends with To full. Tap Pass or Fail."], place: .passive),
+        "u42": CheckGuide(proves: "The app finds the places where your usual paths split and rejoin, learns how long each way takes, and only suggests a mix of ways when it has 3 rides of each and saves more than a minute.",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database; nothing on this phone changes).",
+                                  "Result: one tick per rule and, at the end, how many choice points this phone has found on your own routes."], place: .noScooter),
+        "mq1": CheckGuide(proves: "The fastest combination of your own ways shows on the route card and the next ride can follow it.",
+                          steps: ["Routes → open a saved route you have ridden more than one way (at least 3 rides each way for an answer).",
+                                  "Scroll to Fastest combination. Expected: \"Fastest combination ~13:10\" with the ways that make it and \"never ridden as a whole\", or \"not enough data yet\" with how many rides are missing.",
+                                  "Tap Follow this next ride: the path turns green on the map and the button says Following on the next ride. Go Home: Where to? shows the route selected.",
+                                  "Ride it: the live screen's arrival time and progress follow the green path. Tap Pass or Fail (Notes: anything that felt wrong)."], place: .passive),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]
