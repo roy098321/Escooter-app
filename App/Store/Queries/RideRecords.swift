@@ -24,6 +24,8 @@ struct RideRecord: Codable, FetchableRecord, PersistableRecord, Equatable {
     var utcOffsetMin: Int?
     /// disconnected / held / standstill / scooterOff / recovered
     var endReason: String?
+    var trimStartAt: Int64?
+    var trimEndAt: Int64?
     var mergeGroupId: String?
     var distanceM: Double?
     var totalS: Double?

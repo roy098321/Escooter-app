@@ -178,6 +178,8 @@ public struct RideMetrics: Equatable, Sendable {
     /// From the plausibility filter, shown in ⋯ info as "Some scooter readings were ignored"
     public var ignoredReadings = 0
 
+    public init() {}
+
     public var distanceKm: Double { distanceM / 1000 }
     public var topSpeedMps: Double { topSpeedKmh / 3.6 }
     public var showsIgnoredReadingsNote: Bool { ignoredReadings > 0 }

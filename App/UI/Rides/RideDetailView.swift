@@ -28,7 +28,25 @@ struct RideDetailView: View {
     @State private var kgText = ""
     @State private var confirmDelete = false
     @State private var errorText: String?
+    // M5-01 / M5-02: compare, merge, trim
+    @State private var switched: String?
+    @State private var showCompare = false
+    @State private var showMerge = false
+    @State private var showTrim = false
+    @State private var mergeInfo: MergeInfo?
+    @State private var isTrimmed = false
+    @State private var canUndoMerge = false
+    @State private var toast: String?
     @Environment(\.dismiss) private var dismiss
+
+    struct MergeInfo {
+        var previousId: String
+        var previousTitle: String
+        var offer: MergeOffer
+    }
+
+    /// The ride shown: after a merge this ride is the earlier one
+    private var activeId: String? { switched ?? rideId }
 
     var body: some View {
         Group {
@@ -51,6 +69,17 @@ struct RideDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    if preview == nil, activeId != nil {
+                        Button { showCompare = true } label: { Label("Compare with another ride", systemImage: "arrow.left.arrow.right") }
+                        if mergeInfo != nil {
+                            Button { showMerge = true } label: { Label("Merge with previous ride", systemImage: "arrow.triangle.merge") }
+                        }
+                        Button { showTrim = true } label: { Label(isTrimmed ? "Trim again or reset" : "Trim start / end", systemImage: "scissors") }
+                        if canUndoMerge {
+                            Button { undoMerge() } label: { Label("Undo last merge", systemImage: "arrow.uturn.backward") }
+                        }
+                        Divider()
+                    }
                     Button(role: .destructive) { confirmDelete = true } label: { Label("Delete ride", systemImage: "trash") }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -70,7 +99,66 @@ struct RideDetailView: View {
             Text(errorText ?? "")
         }
         .onAppear(perform: load)
+        .sheet(isPresented: $showCompare) {
+            if let id = activeId { CompareSheet(rideId: id) }
+        }
+        .sheet(isPresented: $showMerge) {
+            if let id = activeId, let info = mergeInfo {
+                MergeSheet(rideId: id, previousId: info.previousId, offer: info.offer, onMerged: { kept in
+                    switched = kept
+                    toast = "Rides merged into one."
+                    load()
+                })
+            }
+        }
+        .sheet(isPresented: $showTrim) {
+            if let id = activeId { TrimSheet(rideId: id, onChanged: { toast = "Trim saved."; load() }) }
+        }
+        .overlay(alignment: .bottom) { toastBar }
+        .task(id: toast) {
+            guard toast != nil else { return }
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            toast = nil
+        }
         .screen(onDone != nil ? "Ride summary" : "Ride detail")
+    }
+
+    @ViewBuilder private var toastBar: some View {
+        if let toast {
+            HStack {
+                Text(toast).font(.subheadline)
+                Spacer()
+                if canUndoMerge && toast.hasPrefix("Rides merged") {
+                    Button("Undo") { undoMerge() }.fontWeight(.semibold)
+                }
+            }
+            .padding(14)
+            .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(16)
+        }
+    }
+
+    private func undoMerge() {
+        guard let db = AppModel.shared.database else { return }
+        do {
+            try RideToolsService.undoMerge(db)
+            switched = nil
+            toast = "Merge undone. Both rides are back."
+            load()
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func refreshTools(_ id: String, _ db: AppDatabase) {
+        guard !db.isReadOnly else { return }
+        if let m = RideToolsService.mergeOffer(db, rideId: id) {
+            mergeInfo = MergeInfo(previousId: m.previousId, previousTitle: m.previousTitle, offer: m.offer)
+        } else {
+            mergeInfo = nil
+        }
+        isTrimmed = ((try? RideQueries(db).ride(id: id))?.trimStartAt) != nil
+        canUndoMerge = RideToolsService.canUndoMerge(db)
     }
 
     // MARK: Layout
@@ -106,7 +194,7 @@ struct RideDetailView: View {
                 ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in note(n) }
                 if previewPrompt == nil, prompt == nil, let o = previewOffer ?? offer { offerCard(o) }
                 if let p = previewPrompt ?? prompt { promptCard(p) }
-                if (rideId != nil && preview == nil) || previewPrompt != nil { loadedRow }
+                if (activeId != nil && preview == nil) || previewPrompt != nil { loadedRow }
                 if !m.infoLines.isEmpty {
                     DisclosureGroup("More info") {
                         VStack(alignment: .leading, spacing: 6) {
@@ -177,7 +265,7 @@ struct RideDetailView: View {
     }
 
     private func routeAction(_ routeId: String, save: Bool) {
-        guard preview == nil, let id = rideId, let db = AppModel.shared.displayDatabase else { return }
+        guard preview == nil, let id = activeId, let db = AppModel.shared.displayDatabase else { return }
         do {
             if save {
                 try RouteService.save(routeId: routeId, database: db)
@@ -248,7 +336,7 @@ struct RideDetailView: View {
 
     private func load() {
         guard preview == nil else { return }
-        guard let id = rideId, let db = AppModel.shared.displayDatabase,
+        guard let id = activeId, let db = AppModel.shared.displayDatabase,
               let loaded = RideDetailLoader.load(id: id, db: db) else {
             missing = true
             // a summary that cannot load (a discarded piece) closes itself
@@ -256,13 +344,14 @@ struct RideDetailView: View {
             return
         }
         model = loaded
+        refreshTools(id, db)
         offer = RouteService.offer(rideId: id, database: db)
         refreshSmart(id, db)
         refreshInsights(id, db)
     }
 
     private func delete() {
-        guard preview == nil, let id = rideId, let db = AppModel.shared.database else { return }
+        guard preview == nil, let id = activeId, let db = AppModel.shared.database else { return }
         do {
             try RideQueries(db).delete(rideId: id)
             if let onDone { onDone() } else { dismiss() }
@@ -348,7 +437,7 @@ extension RideDetailView {
     }
 
     fileprivate func answer(_ a: SmartAnswer) {
-        guard let id = rideId, let db = AppModel.shared.database else { return }
+        guard let id = activeId, let db = AppModel.shared.database else { return }
         try? SmartPromptService.answer(db, rideId: id, a)
         prompt = nil
         refreshSmart(id, db)
@@ -356,13 +445,13 @@ extension RideDetailView {
     }
 
     fileprivate func dismissPrompt() {
-        guard let id = rideId, let db = AppModel.shared.database else { return }
+        guard let id = activeId, let db = AppModel.shared.database else { return }
         SmartPromptService.dismiss(db, rideId: id)
         prompt = nil
     }
 
     fileprivate func setLoad(_ level: LoadLevel, kg: Double? = nil) {
-        guard let id = rideId, let db = AppModel.shared.database else { return }
+        guard let id = activeId, let db = AppModel.shared.database else { return }
         try? SmartPromptService.setLoad(db, rideId: id, level: level, kg: kg)
         refreshSmart(id, db)
         refreshInsights(id, db)
@@ -432,7 +521,7 @@ extension RideDetailView {
     }
 
     fileprivate func dismissInsight(_ i: Insight) {
-        guard let id = rideId, let db = AppModel.shared.database else { return }
+        guard let id = activeId, let db = AppModel.shared.database else { return }
         try? InsightQueries(db).dismiss(id: i.id, at: InsightRunner.nowMs())
         refreshInsights(id, db)
     }

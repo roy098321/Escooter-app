@@ -376,6 +376,16 @@ struct CheckGuide {
                           steps: ["Open a ride on a route you have ridden 5 or more times (or run a simulator route scenario and let the ride end).", "Expected on the summary: one card; tap \"N more\" to expand; grey lines like \"1 of 3 wet rides\"; a question card (if the ride used more battery than usual) instead of \"Save as route?\". Tap the x on the card: it does not come back.", "Home: the newest insight under the last ride. Stats: Recent insights, newest first. Tap Pass or Fail."], place: .passive),
         "mi3": CheckGuide(proves: "After a real ride the app says something sensible, or nothing at all when it does not know enough.",
                           steps: ["Ride a saved route (3 or more rides on it, internet on so the weather arrives) and let the ride end.", "On the summary read the card. Expected: a plain sentence with numbers and \"based on N rides\" that fits what you felt (wind, rush hour, a different variant), or no card. Tap Pass or Fail."], place: .ride),
+        "u38": CheckGuide(proves: "Rides can be compared, joined and cut without losing anything: two rides become one with the right totals and the stop between them counted as a stop, a merge can be undone, a trim only changes the numbers and can be reset.",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database).",
+                                  "Result: one tick per rule (compare, merge offer, merge, undo, trim, reset trim) and at the end this phone's own ride count."], place: .noScooter),
+        "mc1": CheckGuide(proves: "Comparing two rides is clear, and the right rides are suggested.",
+                          steps: ["Rides → open a ride you have ridden twice on the same trip → the ... menu → Compare with another ride.",
+                                  "Expected: the earlier ride of the same trip is already picked, a table with both rides and the difference (this ride minus the other), no \"better\" or \"worse\". Tap another ride in the list: the table follows. Tap Pass or Fail."], place: .passive),
+        "mm1": CheckGuide(proves: "Joining two rides, cutting a ride and undoing both work on real rides.",
+                          steps: ["Use two rides where you stopped for a few minutes (or two simulator rides at the same place within 30 minutes).",
+                                  "Open the later ride → ... → Merge with previous ride. Expected: both rides and the stop between them; tap Merge: one ride, the total time includes the stop, the moving time does not. Tap Undo on the toast: both rides are back.",
+                                  "Open a ride → ... → Trim start / end → drag the start later → the numbers under the chart change → Save trim. Then ... → Trim again or reset → Reset trim: the old numbers return. Tap Pass or Fail."], place: .passive),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

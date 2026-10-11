@@ -54,8 +54,10 @@ enum CheckList {
     static let batteryM = "M3 · battery + scooter"
     /// M4: insights + stats (M4_PLAN section 5)
     static let insightsM = "M4 · insights + stats"
+    /// M5: ride tools + data (M5_PLAN section 4)
+    static let toolsM = "M5 · ride tools + data"
 
-    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, batteryM, insightsM, send]
+    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, batteryM, insightsM, toolsM, send]
 
     /// The P4 list, kept as it was: every P4 result stays readable under the same ID.
     static let p4: [CheckItem] = [
@@ -212,6 +214,7 @@ enum CheckList {
         list.insert(contentsOf: m1New, at: at)
         list.insert(contentsOf: m2New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         list.insert(contentsOf: m4New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
+        list.insert(contentsOf: m5New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         return list
     }()
 
@@ -392,6 +395,16 @@ enum CheckList {
           "The summary shows the top insight card with \"N more\" that expands, pattern D progress lines below, the question card under it (it replaces \"Save as route?\"); the card can be dismissed and stays gone; Home shows the newest insight under the last ride; Stats shows the last 10 by time; ui-shot ride-insights", manual: true),
         m("mi3", insightsM, "A real ride gives a sensible after-ride card", "After a real ride on a saved route with 3+ rides and weather (internet on): the ride summary",
           "A card that fits the ride (slower / faster than usual with its cause, or the wind credit) in plain numbers with \"based on N rides\"; nothing when there is not enough data, only a progress line", scooter: true, manual: true)
+    ]
+
+    /// M5 (M5_PLAN section 4): each task adds its checks with it.
+    private static let m5New: [CheckItem] = [
+        m("u38", toolsM, "Compare, merge offer, merge + undo, trim + reset (M5-01, M5-02)", "Nothing to do · Run all automatic marks it",
+          "Compare rows with plain differences and the same route first; the merge offer needs 30 min and 200 m; two made-up rides in a temporary database merge into one (distance adds up, the stop between counts as a stop and not as missing data), Undo brings both back with their own numbers; trim recomputes from the window (at least 1 min), Reset trim brings the original numbers back; the line ends with this phone's count"),
+        m("mc1", toolsM, "Compare two real rides", "Rides → open a ride → ... → Compare with another ride",
+          "The same trip you rode before is suggested first; two columns with both values and a plain difference (this ride minus the other); no \"better\" or \"best\" anywhere", manual: true),
+        m("mm1", toolsM, "Merge two real rides, undo, trim, reset", "Ride something, switch off at a light for a few minutes, ride on (or use two simulator rides); Rides → the second ride → ... → Merge with previous ride",
+          "The sheet shows both rides and the stop between; after Merge one ride, time includes the stop, moving time does not, one more stop; Undo (toast or ... menu) brings both back. ... → Trim start / end: drag, numbers update, Save; Reset trim brings the original numbers back", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }
