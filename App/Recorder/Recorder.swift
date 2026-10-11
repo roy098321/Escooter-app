@@ -51,6 +51,8 @@ actor Recorder {
     private var stateURL: URL?
     /// Added to the input clock to get epoch seconds (0 for the real app, which feeds epoch seconds)
     private let epochOffset: Double
+    /// Import ride logs: the UTC offset of the ride's own clock (the real app leaves it nil: the phone's current offset)
+    private let utcOffsetMin: Int?
 
     /// Rides closed so far (row ids, newest last)
     private(set) var closedRideIds: [String] = []
@@ -58,7 +60,8 @@ actor Recorder {
     private(set) var lastLive: LiveState?
 
     init(database: AppDatabase?, simulated: Bool, build: String, stateURL: URL?, epochOffset: Double = 0,
-         hooks: RecorderHooks = .none) {
+         utcOffsetMin: Int? = nil, hooks: RecorderHooks = .none) {
+        self.utcOffsetMin = utcOffsetMin
         self.database = database
         self.simulated = simulated
         self.build = build
@@ -215,7 +218,7 @@ actor Recorder {
                 var r = RideRecord(id: id, startAt: ms(startT))
                 r.isSimulated = simulated
                 r.createdBuild = build
-                r.utcOffsetMin = TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: startT + epochOffset)) / 60
+                r.utcOffsetMin = utcOffsetMin ?? TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: startT + epochOffset)) / 60
                 try q.save(r)
                 trimIds()
             case let .rideCancelled(seq):

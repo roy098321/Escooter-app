@@ -247,7 +247,7 @@ enum RestoreService {
     }
 
     /// What depends on the rides: battery calibration and the factor numbers. Never throws.
-    private static func finish(_ db: AppDatabase) {
+    static func finish(_ db: AppDatabase) {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         _ = try? CalibrationUpdater.update(db, nowMs: now)
         _ = try? FactorUpdater.update(db, rideId: nil, nowMs: now)
@@ -264,7 +264,7 @@ enum DeleteAllData {
         guard !db.isReadOnly else { throw RestoreError.readOnly }
         try db.writer.write { d in
             for name in tables { try d.execute(sql: "DELETE FROM \(name)") }
-            try d.execute(sql: "DELETE FROM setting WHERE key LIKE 'trim.original.%' OR key = 'merge.undo'")
+            try d.execute(sql: "DELETE FROM setting WHERE key LIKE 'trim.original.%' OR key = 'merge.undo' OR key LIKE 'import.ride.%'")
         }
     }
 }

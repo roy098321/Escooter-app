@@ -1,4 +1,5 @@
 import CorckieCore
+import CorckieSim
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -156,6 +157,67 @@ struct RestoreView: View {
     }
 }
 
+/// Import ride logs: rides recorded before 1.0 (a 0.4 c8 set, or an nRF Connect log with Sensor Logger files) replayed through the real
+/// recorder into the real database as normal rides. Importing the same files twice adds nothing.
+struct ImportRideLogsView: View {
+    @State private var picking = false
+    @State private var working = false
+    @State private var result = ""
+    @State private var errorText: String?
+
+    var body: some View {
+        List {
+            Section {
+                Button("Pick log files\u{2026}") { picking = true }.disabled(working)
+            } header: {
+                Text("Import ride logs")
+            } footer: {
+                Text("Pick the files of one or more rides together (.csv or .txt). They are recognised by their first line, so the names do not matter: the 0.4 set c8-scooter-packets.csv with c8-location.csv and c8-barometer.csv, or an nRF Connect log export with the Sensor Logger Location.csv and Barometer.csv of the same ride. Each ride is replayed through the recorder and stored as a normal ride with its real date; rides already on this phone are skipped.")
+            }
+            if working {
+                Section { HStack { Text("Importing\u{2026}"); Spacer(); ProgressView() } }
+            }
+            if !result.isEmpty {
+                Section("Result") { Text(result) }
+            }
+        }
+        .navigationTitle("Import ride logs")
+        .fileImporter(isPresented: $picking, allowedContentTypes: [.commaSeparatedText, .plainText, .text], allowsMultipleSelection: true) { outcome in
+            if case .success(let urls) = outcome { Task { await run(urls) } }
+        }
+        .alert("Could not import", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
+            Button("OK") {}
+        } message: {
+            Text(errorText ?? "")
+        }
+        .screen("Import ride logs")
+    }
+
+    private func run(_ urls: [URL]) async {
+        guard let db = AppModel.shared.database else { return }
+        working = true
+        defer { working = false }
+        var files: [ImportFileText] = []
+        for url in urls {
+            let opened = url.startAccessingSecurityScopedResource()
+            defer { if opened { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url) else { continue }
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            files.append(ImportFileText(name: url.lastPathComponent, text: String(decoding: data, as: UTF8.self), modified: modified))
+        }
+        let build = AppInfo.build
+        let picked = files
+        do {
+            let report = try await Task.detached(priority: .userInitiated) {
+                try await RideLogImporter.run(db, files: picked, build: build)
+            }.value
+            result = report.text
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+}
+
 /// Settings → Data and backup, as rows of the Settings list (the caller puts them in a Section).
 struct DataSettingsRows: View {
     @State private var retention = RawRetention.default
@@ -183,6 +245,11 @@ struct DataSettingsRows: View {
                 RestoreView()
             } label: {
                 Label("Restore", systemImage: "arrow.counterclockwise")
+            }
+            NavigationLink {
+                ImportRideLogsView()
+            } label: {
+                Label("Import ride logs", systemImage: "square.and.arrow.down.on.square")
             }
             Button(role: .destructive) { confirmDelete = true } label: { Label("Delete all data", systemImage: "trash") }
         }
