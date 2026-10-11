@@ -109,6 +109,12 @@ public struct ReplayTile: Equatable, Hashable, Sendable {
     public var z: Int
     public var x: Int
     public var y: Int
+
+    public init(z: Int, x: Int, y: Int) {
+        self.z = z
+        self.x = x
+        self.y = y
+    }
 }
 
 public enum ReplayBuilder {
