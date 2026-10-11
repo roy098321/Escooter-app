@@ -210,7 +210,7 @@ public enum RideLayers {
                     lowIndex = i
                 }
             } else {
-                if a < profile[lowIndex].altM { lowIndex = i }
+                if a <= profile[lowIndex].altM { lowIndex = i }
                 if a - profile[lowIndex].altM >= drop {
                     startIndex = lowIndex
                     highIndex = i
