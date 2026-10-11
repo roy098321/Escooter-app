@@ -44,6 +44,8 @@ final class ScooterLink: NSObject {
     /// Denied UUIDs the scooter offered; listed so the owner can see they were never touched.
     private(set) var deniedSeen: [String] = []
     private(set) var events: [String] = []
+    /// T-00: this session's events with their time, for the "last 15 minutes" report
+    @ObservationIgnored private(set) var timedEvents: [(at: Date, line: String)] = []
 
     var hasKnownScooter: Bool { savedID != nil }
     var knownPeripheralID: String? { savedID?.uuidString }
@@ -88,6 +90,8 @@ final class ScooterLink: NSObject {
         let where_ = inBackground ? "app in background" : "app open · \(Screen.current)"
         let line = "\(Date().formatted(date: .abbreviated, time: .standard)) \(text) · \(where_)"
         events.append(line)
+        timedEvents.append((Date(), line))
+        if timedEvents.count > 300 { timedEvents.removeFirst(timedEvents.count - 300) }
         if events.count > 300 { events.removeFirst(events.count - 300) }
         if eventsLoaded { defaults.set(events, forKey: Self.eventsKey) }
     }

@@ -229,11 +229,21 @@ struct RideDetailView: View {
                 }
                 .padding(.horizontal, 16)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                if let id = activeId, preview == nil {
+                    VStack(spacing: 0) {
+                        ThumbsRow(kind: "start", subjectId: id, label: "Right? Start")
+                        ThumbsRow(kind: "end", subjectId: id, label: "Right? End")
+                        ThumbsRow(kind: "distance", subjectId: id, label: "Right? Distance")
+                    }
+                    .padding(.horizontal, 16)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
                 if let r = previewInsights ?? ranked { insightCards(r) }
                 ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in note(n) }
                 if previewPrompt == nil, prompt == nil, let o = previewOffer ?? offer { offerCard(o) }
                 if let p = previewPrompt ?? prompt { promptCard(p) }
                 if (activeId != nil && preview == nil) || previewPrompt != nil { loadedRow }
+                if let id = activeId, preview == nil { RideNoteCard(rideId: id) }
                 if !m.infoLines.isEmpty {
                     DisclosureGroup("More info") {
                         VStack(alignment: .leading, spacing: 6) {
@@ -625,6 +635,7 @@ extension RideDetailView {
                     Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
                     Text(top.text).font(.subheadline)
                     Spacer(minLength: 0)
+                    ThumbsRow(kind: "insight", subjectId: top.id, subjectText: top.text).fixedSize()
                     Button { dismissInsight(top) } label: { Image(systemName: "xmark").font(.caption).frame(minWidth: 44, minHeight: 44) }
                         .foregroundStyle(.secondary)
                         .accessibilityLabel("Dismiss")
@@ -639,6 +650,7 @@ extension RideDetailView {
                                 Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
                                 Text(item.element.text).font(.subheadline)
                                 Spacer(minLength: 0)
+                                ThumbsRow(kind: "insight", subjectId: item.element.id, subjectText: item.element.text).fixedSize()
                             }
                         }
                     }

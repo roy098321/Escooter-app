@@ -17,6 +17,12 @@ enum Exporter {
         RideChecks.run(database: model.database)
         try CheckResults.shared.p4HistoryReport().write(to: folder.appendingPathComponent("p4-history.txt"), atomically: true, encoding: .utf8)
         try RideChecks.ridesText(database: model.database).write(to: folder.appendingPathComponent("rides.txt"), atomically: true, encoding: .utf8)
+        // T-00 part 1: notes, thumbs and the last 15 minutes of logs
+        let notesText = model.database.flatMap { try? FieldKitQueries($0).rideNotesText() } ?? "Ride notes: (database not open)\n"
+        try notesText.write(to: folder.appendingPathComponent("ride-notes.txt"), atomically: true, encoding: .utf8)
+        let thumbsText = model.database.flatMap { try? FieldKitQueries($0).feedbackText() } ?? "Feedback: (database not open)\n"
+        try thumbsText.write(to: folder.appendingPathComponent("feedback.txt"), atomically: true, encoding: .utf8)
+        try RecentLogs.text().write(to: folder.appendingPathComponent("last-15-min.txt"), atomically: true, encoding: .utf8)
         try CheckResults.shared.report().write(to: folder.appendingPathComponent("results.txt"), atomically: true, encoding: .utf8)
         try CheckResults.shared.notesReport().write(to: folder.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
         try ErrorLog.shared.lines().joined(separator: "\n")

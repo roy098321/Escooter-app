@@ -236,7 +236,7 @@ final class RideStoreTests: XCTestCase {
         let temp = try AppDatabase.openTemporary(build: "sim")
         XCTAssertNotEqual(temp.url, real.url)
         XCTAssertTrue(temp.url.path.hasPrefix(FileManager.default.temporaryDirectory.path))
-        XCTAssertEqual(try temp.appliedMigrations(), ["v1"])
+        XCTAssertEqual(try temp.appliedMigrations(), ["v1", "v2"])
         XCTAssertEqual(Set(try temp.rowCounts().keys), Set(Migration0001.tables), "same schema")
         let tempStore = RideQueries(temp)
         var simRide = RideRecord(id: "sim-ride", startAt: 9_000)

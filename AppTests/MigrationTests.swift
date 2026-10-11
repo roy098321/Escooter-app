@@ -30,7 +30,7 @@ final class MigrationTests: XCTestCase {
         let db = try AppDatabase(url: folder.appendingPathComponent("corckie.sqlite"), build: "test-1")
         XCTAssertFalse(db.isReadOnly)
         XCTAssertNil(db.preMigrationCopy, "nothing to back up on a fresh install")
-        XCTAssertEqual(try db.appliedMigrations(), ["v1"])
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2"])
         let counts = try db.rowCounts()
         XCTAssertEqual(Set(counts.keys), Set(Migration0001.tables))
         XCTAssertEqual(counts["app_meta"], 1)
@@ -71,7 +71,7 @@ final class MigrationTests: XCTestCase {
         let db = try AppDatabase(url: url, build: "test-3", migrator: migrator)
         let copy = try XCTUnwrap(db.preMigrationCopy)
         XCTAssertTrue(FileManager.default.fileExists(atPath: copy.path))
-        XCTAssertEqual(db.migratedNow, ["v2-test"])
+        XCTAssertEqual(db.migratedNow, ["v2", "v2-test"])
         let copiedRides = try DatabaseQueue(path: copy.path).read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM ride") }
         XCTAssertEqual(copiedRides, 3)
 
