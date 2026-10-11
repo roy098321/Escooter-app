@@ -58,7 +58,7 @@ enum RideLogImporter {
                 report.notes.append("\(log.fileNames[0]): no ride in it (the scooter never moved, or the log is too short).")
                 continue
             }
-            let existing = try db.writer.read { d in
+            let existing = try await db.writer.read { d in
                 try Row.fetchAll(d, sql: "SELECT id, startAt, distanceM FROM ride").map {
                     RestoreRide(id: $0["id"], startAt: $0["startAt"], distanceM: $0["distanceM"])
                 }
