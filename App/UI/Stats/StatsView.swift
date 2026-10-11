@@ -78,7 +78,7 @@ struct StatsView: View {
                         Spacer()
                         Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
                     }
-                    .padding(14)
+                    .padding(16)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -120,7 +120,7 @@ struct StatsView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -134,7 +134,7 @@ struct StatsView: View {
             if let note { Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .accessibilityElement(children: .combine)
     }
@@ -150,7 +150,7 @@ struct StatsView: View {
             .frame(height: 140)
             .accessibilityLabel("Distance per day, bar chart")
         }
-        .padding(14)
+        .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -256,7 +256,7 @@ extension StatsView {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
+                .padding(16)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             if !m.pastWeeks.isEmpty {
@@ -267,7 +267,7 @@ extension StatsView {
                         Text("\(m.pastWeeks.count)").foregroundStyle(.secondary)
                         Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
                     }
-                    .padding(14)
+                    .padding(16)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)

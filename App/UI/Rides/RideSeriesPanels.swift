@@ -49,7 +49,7 @@ struct RideSeriesPanels: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -87,7 +87,7 @@ struct RideSeriesPanels: View {
             .accessibilityLabel("Battery chart, percent against minutes")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

@@ -161,7 +161,7 @@ struct RideDetailView: View {
                     Button("Undo") { undoMerge() }.fontWeight(.semibold)
                 }
             }
-            .padding(14)
+            .padding(16)
             .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .padding(16)
         }
@@ -258,7 +258,7 @@ struct RideDetailView: View {
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .accessibilityElement(children: .combine)
     }
@@ -280,7 +280,7 @@ struct RideDetailView: View {
             Text(n.text).font(.subheadline)
             Spacer(minLength: 0)
         }
-        .padding(14)
+        .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -300,7 +300,7 @@ struct RideDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -567,7 +567,7 @@ extension RideDetailView {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
-        .padding(14)
+        .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -644,7 +644,7 @@ extension RideDetailView {
                     }
                 }
             }
-            .padding(14)
+            .padding(16)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         ForEach(Array(r.progress.enumerated()), id: \.offset) { item in

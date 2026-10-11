@@ -1,3 +1,4 @@
+import CorckieCore
 import CoreLocation
 import CoreMotion
 import Foundation

@@ -122,7 +122,7 @@ struct HomeView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20))
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         .opacity(m.greyed ? 0.65 : 1)
         .accessibilityElement(children: .combine)
     }

@@ -18,7 +18,7 @@ struct VersionLabel: View {
             .foregroundStyle(.secondary)
             .padding(.horizontal, 6)
             .padding(.vertical, 1)
-            .background(.ultraThinMaterial, in: Capsule())
+            .sunPanel(Capsule())
             .allowsHitTesting(false)
             .accessibilityLabel("Version 1, build \(AppInfo.versionLine)")
     }
