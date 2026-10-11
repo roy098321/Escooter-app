@@ -161,7 +161,8 @@ public struct ChoicePrompter: Equatable, Sendable {
             activeId = nil
             return ChoicePromptUpdate(prompt: nil, newPath: nil)
         }
-        let etaS = (next.splitAlong - alongM) / max(speedMps, Self.minSpeedMps)
+        // the rider has to choose where the ways part (the detected split is where they are 30 m apart)
+        let etaS = (max(0, next.splitAlong - ChoicePointDetector.leaveM) - alongM) / max(speedMps, Self.minSpeedMps)
         guard etaS <= Self.aheadS else {
             activeId = nil
             return ChoicePromptUpdate(prompt: nil, newPath: nil)

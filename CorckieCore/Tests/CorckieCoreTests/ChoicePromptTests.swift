@@ -54,7 +54,7 @@ final class ChoicePromptTests: XCTestCase {
         let r = ride(s, spec: S(.park, left: true), prompter: ChoicePrompter(combo: s.combo, points: s.points))
         let shown = prompts(r.steps)
         XCTAssertFalse(shown.isEmpty)
-        // first split at 800 m: the prompt starts 13...16 s before it (6 m/s => 78...96 m)
+        // the ways part at 800 m: the prompt starts 13...16 s before (6 m/s => 78...96 m)
         let first = shown.first!
         XCTAssertGreaterThanOrEqual(800 - first.alongM, 70)
         XCTAssertLessThanOrEqual(800 - first.alongM, 100)
