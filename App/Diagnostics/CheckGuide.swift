@@ -431,7 +431,7 @@ struct CheckGuide {
         "u46": CheckGuide(proves: "Ride notes, thumbs and the last 15 minutes of logs reach the export.",
                           steps: ["Developer → Checks → Run all automatic (made-up ride in a temporary database).",
                                   "Result: ride-notes.txt, feedback.txt and last 15 minutes each say ok."], place: .noScooter),
-        "mf1": CheckGuide(proves: "You can leave a note and thumbs right after a ride, and Report a problem carries them with the last 15 minutes of logs.",
+        "mk1": CheckGuide(proves: "You can leave a note and thumbs right after a ride, and Report a problem carries them with the last 15 minutes of logs.",
                           steps: ["Finish a real ride. On the summary tap the keyboard mic in Note for Claude and say what happened, then tap Done.",
                                   "Tap the thumbs for Start, End and Distance, and on an insight card. On a thumbs-down pick what was wrong and Save.",
                                   "Rides → that ride: the note and thumbs are still there. Settings → Report a problem → Prepare report → Share: the zip has ride-notes.txt, feedback.txt, last-15-min.txt. Tap Pass or Fail (Notes: what was missing)."], place: .passive),
