@@ -65,7 +65,7 @@ struct RideSeriesPanels: View {
                     }
                 }
             }
-            .chartYScale(domain: 0...)
+            .chartYScale(domain: .automatic(includesZero: true))
             .chartXAxisLabel("min")
             .chartYAxisLabel("km/h")
             .frame(height: 110)
