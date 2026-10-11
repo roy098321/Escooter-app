@@ -27,9 +27,9 @@ public enum ReplayHTML {
     static func json(_ data: ReplayData) -> String {
         let encoder = JSONEncoder()
         guard let bytes = try? encoder.encode(data), let text = String(data: bytes, encoding: .utf8) else { return "null" }
-        return text.replacingOccurrences(of: "</", with: "<\/")
-            .replacingOccurrences(of: "\u{2028}", with: "\u2028")
-            .replacingOccurrences(of: "\u{2029}", with: "\u2029")
+        return text.replacingOccurrences(of: "</", with: "<\\/")
+            .replacingOccurrences(of: "\u{2028}", with: "\\u2028")
+            .replacingOccurrences(of: "\u{2029}", with: "\\u2029")
     }
 
     static func escape(_ text: String) -> String {
@@ -39,7 +39,7 @@ public enum ReplayHTML {
 
     /// "Ride Replay – Morning ride 2026-10-06.html" (no characters a file system dislikes)
     public static func fileName(title: String, isoDate: String) -> String {
-        let bad = CharacterSet(charactersIn: "/\:*?\"<>|")
+        let bad = CharacterSet(charactersIn: "/\\:*?\"<>|")
         let clean = title.components(separatedBy: bad).joined(separator: "-").trimmingCharacters(in: .whitespaces)
         return "Ride Replay \u{2013} \(clean.isEmpty ? "Ride" : clean) \(isoDate).html"
     }

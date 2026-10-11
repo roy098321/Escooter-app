@@ -17,7 +17,7 @@ enum RideExportService {
         let offset = ride.utcOffsetMin ?? 0
         let title = RideSummaryBuilder.title(startAt: ride.startAt, utcOffsetMin: offset)
         let day = RideQueries.dayKey(startAt: ride.startAt, utcOffsetMin: offset)
-        let clean = title.components(separatedBy: CharacterSet(charactersIn: "/\:*?\"<>|")).joined(separator: "-")
+        let clean = title.components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|")).joined(separator: "-")
         return "Ride \(clean) \(day).\(format.rawValue)"
     }
 
