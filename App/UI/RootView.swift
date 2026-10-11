@@ -136,6 +136,8 @@ enum UIShot {
                 RouteCardView(preview: RoutesPreview.card(name))
             case "places":
                 PlacesView(preview: RoutesPreview.places())
+            case "ride-detail-full":
+                RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"), previewSeries: RideDetailPreview.series())
             case "ride-save-route":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
                                previewOffer: RouteOfferModel.make(routeId: "preview", state: .suggested, title: "Route 1", ridesOnRoute: 2))

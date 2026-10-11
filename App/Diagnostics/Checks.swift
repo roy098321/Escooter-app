@@ -405,6 +405,9 @@ enum CheckList {
           "The same trip you rode before is suggested first; two columns with both values and a plain difference (this ride minus the other); no \"better\" or \"best\" anywhere", manual: true),
         m("mm1", toolsM, "Merge two real rides, undo, trim, reset", "Ride something, switch off at a light for a few minutes, ride on (or use two simulator rides); Rides → the second ride → ... → Merge with previous ride",
           "The sheet shows both rides and the stop between; after Merge one ride, time includes the stop, moving time does not, one more stop; Undo (toast or ... menu) brings both back. ... → Trim start / end: drag, numbers update, Save; Reset trim brings the original numbers back", manual: true)
+        ,
+        m("md1", toolsM, "Full ride detail: map layers, elevation, charts (M5-03)", "Rides → open a real ride with GPS → switch the map between Speed, Hills and Wind → scroll to Elevation and Speed and battery",
+          "Hills colours the path blue downhill, grey flat, red uphill; Wind shows with / across / against you (or says it has no wind data yet); Elevation lists each climb as \"+33 m · 3% battery · 4% grade\"; the speed and battery charts follow the ride; on the newest ride the scooter group ends with To full; ui-shot ride-detail-full", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

@@ -386,6 +386,9 @@ struct CheckGuide {
                           steps: ["Use two rides where you stopped for a few minutes (or two simulator rides at the same place within 30 minutes).",
                                   "Open the later ride → ... → Merge with previous ride. Expected: both rides and the stop between them; tap Merge: one ride, the total time includes the stop, the moving time does not. Tap Undo on the toast: both rides are back.",
                                   "Open a ride → ... → Trim start / end → drag the start later → the numbers under the chart change → Save trim. Then ... → Trim again or reset → Reset trim: the old numbers return. Tap Pass or Fail."], place: .passive),
+        "md1": CheckGuide(proves: "The ride detail shows the whole ride: where it was uphill, where the wind was against you, what each climb cost and how speed and battery moved.",
+                          steps: ["Rides → open a real ride that has GPS (and a barometer).", "Under the map pick Hills, then Wind. Expected: Hills blue = downhill, grey = flat, red = uphill; Wind blue = with you, red = against you (an hour or so after the ride; before that it says there is no wind data yet).",
+                                  "Scroll: Elevation with each climb (\"+33 m · 3% battery · 4% grade\"), then the speed and battery charts. On the newest ride the scooter group ends with To full. Tap Pass or Fail."], place: .passive),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

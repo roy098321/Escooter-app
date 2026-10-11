@@ -16,6 +16,8 @@ struct RideDetailView: View {
     var previewPrompt: SmartPromptCard?
     /// ui-shot only: made-up insights (top card, N more, a progress line)
     var previewInsights: RankedInsights?
+    /// ui-shot only: made-up layers, elevation and charts
+    var previewSeries: RideSeries?
 
     @State private var model: RideSummaryModel?
     @State private var offer: RouteOfferModel?
@@ -37,6 +39,9 @@ struct RideDetailView: View {
     @State private var isTrimmed = false
     @State private var canUndoMerge = false
     @State private var toast: String?
+    // M5-03: map layers, elevation, charts
+    @State private var series: RideSeries?
+    @State private var layer: MapLayer = .speed
     @Environment(\.dismiss) private var dismiss
 
     struct MergeInfo {
@@ -100,7 +105,7 @@ struct RideDetailView: View {
         }
         .onAppear(perform: load)
         .sheet(isPresented: $showCompare) {
-            if let id = activeId { CompareSheet(rideId: id) }
+            if let id = activeId { CompareSheet(rideId: id).v1Label() }
         }
         .sheet(isPresented: $showMerge) {
             if let id = activeId, let info = mergeInfo {
@@ -109,10 +114,11 @@ struct RideDetailView: View {
                     toast = "Rides merged into one."
                     load()
                 })
+                .v1Label()
             }
         }
         .sheet(isPresented: $showTrim) {
-            if let id = activeId { TrimSheet(rideId: id, onChanged: { toast = "Trim saved."; load() }) }
+            if let id = activeId { TrimSheet(rideId: id, onChanged: { toast = "Trim saved."; load() }).v1Label() }
         }
         .overlay(alignment: .bottom) { toastBar }
         .task(id: toast) {
@@ -174,6 +180,7 @@ struct RideDetailView: View {
                 } else {
                     mapCard(m.path)
                 }
+                if let s = previewSeries ?? series { RideSeriesPanels(series: s) }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(Array(m.mainStats.enumerated()), id: \.offset) { _, s in tile(s) }
                 }
@@ -293,8 +300,18 @@ struct RideDetailView: View {
 
     private func mapCard(_ path: RidePathModel) -> some View {
         VStack(alignment: .leading, spacing: 6) {
+            if previewSeries != nil || series != nil {
+                Picker("Layer", selection: $layer) {
+                    ForEach(MapLayer.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            }
             Map(initialPosition: Self.position(path), interactionModes: [.pan, .zoom]) {
-                ForEach(Array(path.segments.enumerated()), id: \.offset) { _, seg in
+                ForEach(Array(layerSegments.enumerated()), id: \.offset) { _, seg in
+                    MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                        .stroke(MapLayer.color(level: seg.level), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                }
+                ForEach(Array((layer == .speed ? path.segments : []).enumerated()), id: \.offset) { _, seg in
                     MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                         .stroke(LiveRideView.color(seg.bucket),
                                 style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round, dash: seg.dashed ? [2, 9] : []))
@@ -315,8 +332,17 @@ struct RideDetailView: View {
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
             .frame(height: 280)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            Text(Self.legend(path)).font(.caption).foregroundStyle(.secondary)
+            Text(layerLegend(path)).font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    /// Hills / Wind stretches for the chosen layer (empty for Speed)
+    private var layerSegments: [LayerSegment] { (previewSeries ?? series)?.segments(layer) ?? [] }
+
+    private func layerLegend(_ path: RidePathModel) -> String {
+        if layer == .speed { return Self.legend(path) }
+        if layer == .wind, (previewSeries ?? series)?.wind == nil { return "No wind data yet. It arrives with the weather, a little after the ride." }
+        return layer.legend
     }
 
     static func position(_ path: RidePathModel) -> MapCameraPosition {
@@ -343,7 +369,10 @@ struct RideDetailView: View {
             onDone?()
             return
         }
-        model = loaded
+        var withExtras = loaded
+        if let full = RideSeriesLoader.toFull(db, rideId: id) { withExtras.scooterStats.append(SummaryStat("To full", full)) }
+        model = withExtras
+        series = RideSeriesLoader.load(db, rideId: id)
         refreshTools(id, db)
         offer = RouteService.offer(rideId: id, database: db)
         refreshSmart(id, db)
@@ -422,6 +451,35 @@ enum RideDetailPreview {
             break
         }
         return RideSummaryBuilder.build(input, gaps: gaps, points: points)
+    }
+}
+
+extension RideDetailPreview {
+    /// Made-up layers, a climb and charts for `-uiShot ride-detail-full` (not a real place)
+    static func series() -> RideSeries {
+        var points: [SeriesPoint] = []
+        for i in 0..<120 {
+            let x = Double(i)
+            let lat: Double = 40.0 + x * 0.000_18
+            let lon: Double = -75.0 + x * 0.000_22 + 0.0006 * sin(x / 6)
+            let speed: Double = 12 + 22 * abs(sin(x / 9))
+            let alt: Double = i < 40 ? 20 : (i < 80 ? 20 + Double(i - 40) * 0.8 : 52 - Double(i - 80) * 0.6)
+            points.append(SeriesPoint(t: x * 5, lat: lat, lon: lon, hAccM: 6, speedKmh: speed, batteryPct: 81 - i / 10, altM: alt))
+        }
+        var series = RideSeries()
+        series.points = points
+        series.hasAltitude = true
+        series.hills = RideLayers.hills(points)
+        let elevation = RideLayers.elevation(points)
+        series.profile = elevation.profile
+        series.climbs = elevation.climbs
+        series.chart = RideLayers.chartSeries(points)
+        let start: Int64 = 1_790_000_000_000
+        let hour = (start / 3_600_000) * 3_600_000
+        let rows = [WeatherRow(cellKey: "preview", hourAt: hour, source: "preview", kind: .history, windKmh: 22, windFromDeg: 250, fetchedAt: 0),
+                    WeatherRow(cellKey: "preview", hourAt: hour + 3_600_000, source: "preview", kind: .history, windKmh: 22, windFromDeg: 250, fetchedAt: 0)]
+        series.wind = RideLayers.wind(points, rideStartMs: start, rows: rows)
+        return series
     }
 }
 
