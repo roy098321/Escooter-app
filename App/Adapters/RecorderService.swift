@@ -156,13 +156,19 @@ final class RecorderService {
                 let start = InsightRunner.atRideStart(db, routeId: RouteFollowSelection.shared.routeId, battery: battery, lat: input.lat, lon: input.lon)
                 if let id = RouteFollowSelection.shared.routeId {
                     let warning = (start.shown + start.toSummary).first { $0.type == .q9Live }?.text
-                    driver.follow(RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination),
+                    let combination = RouteFollowSelection.shared.combination
+                    driver.follow(RouteFollowLoader.follower(routeId: id, database: db, combination: combination),
                                   utcOffsetMin: RouteCardLoader.currentOffsetMin(),
-                                  returnWarning: warning)
+                                  returnWarning: warning,
+                                  prompts: combination ? FastestService.prompter(db, routeId: id) : nil)     // M6-02
                 }
             }
         } else if !rideOn, followChecked {
             followChecked = false
+            // M6-02: prompts shown / quiet re-plans of the ride that just ended, for the ride's developer line (P6)
+            if driver.promptsShownNow > 0, let db = AppModel.shared.displayDatabase, !db.isReadOnly {
+                try? RideQueries(db).setSetting(key: "m6.lastRidePrompts", json: "{\"shown\":\(driver.promptsShownNow),\"replans\":\(driver.choiceReplansNow)}")
+            }
             RouteFollowSelection.shared.routeId = nil
             RouteFollowSelection.shared.combination = false
         }

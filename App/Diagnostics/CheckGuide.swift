@@ -412,6 +412,12 @@ struct CheckGuide {
                                   "Scroll to Fastest combination. Expected: \"Fastest combination ~13:10\" with the ways that make it and \"never ridden as a whole\", or \"not enough data yet\" with how many rides are missing.",
                                   "Tap Follow this next ride: the path turns green on the map and the button says Following on the next ride. Go Home: Where to? shows the route selected.",
                                   "Ride it: the live screen's arrival time and progress follow the green path. Tap Pass or Fail (Notes: anything that felt wrong)."], place: .passive),
+        "u43": CheckGuide(proves: "While you follow a combination, the app tells you which way to take about 15 seconds before the place, only when it really saves time, and stays quiet if you take the other way.",
+                          steps: ["Developer → Checks → Run all automatic (made-up rides in the ocean, a temporary database).",
+                                  "Result: one tick per rule (15 s ahead, gone after the place, small saving, close ways, quiet re-plan)."], place: .noScooter),
+        "mq2": CheckGuide(proves: "The prompt is readable on a real ride and comes early enough.",
+                          steps: ["Routes → a route with a fastest combination → Follow this next ride.", "Ride it with the phone in the holder. Expected: about 15 seconds before a place where the mix takes another way the banner names the way and what it saves; it goes away after the place.",
+                                  "Take the other way once: no message, the arrival time stays sensible. Tap Pass or Fail (Notes: too early, too late, hard to read)."], place: .passive),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

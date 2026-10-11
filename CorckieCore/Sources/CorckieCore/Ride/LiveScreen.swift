@@ -66,13 +66,24 @@ public struct LiveScreenDriver: Sendable {
     private var arrivalDisplay = ArrivalDisplay()
     private var utcOffsetMin = 0
     private var returnWarning: String?
+    private var prompter: ChoicePrompter?
+    private var activePromptId: String?
+    private var promptText: String?
+    /// Choice-point prompts shown in the ride that just ended (or the running one)
+    public private(set) var choicePromptsShown = 0
+    public private(set) var choiceReplans = 0
 
     public init() {}
 
     /// M2-06: the route this ride follows (Where to?), or nil. Set before the ride starts or while it runs.
     /// `returnWarning` (Q9): one line shown once at ride start when the way back will not fit (it counts in the 2 start messages).
-    public mutating func follow(_ route: RouteFollower?, utcOffsetMin: Int = 0, returnWarning: String? = nil) {
+    public mutating func follow(_ route: RouteFollower?, utcOffsetMin: Int = 0, returnWarning: String? = nil, prompts: ChoicePrompter? = nil) {
         self.returnWarning = returnWarning
+        self.prompter = route == nil ? nil : prompts
+        activePromptId = nil
+        promptText = nil
+        choicePromptsShown = 0
+        choiceReplans = 0
         if returnWarning != nil, Self.active(lastPhase) { banners.raise(.returnCheck, at: 0) }
         follower = route
         self.utcOffsetMin = utcOffsetMin
@@ -80,6 +91,11 @@ public struct LiveScreenDriver: Sendable {
     }
 
     public var isFollowing: Bool { follower != nil }
+    /// The path being followed (changes after a quiet re-plan, M6-02)
+    public var followedPath: [GeoPoint]? { follower?.path }
+    /// Prompts shown so far in the running ride, or in the last one
+    public var promptsShownNow: Int { prompter?.shown ?? choicePromptsShown }
+    public var choiceReplansNow: Int { prompter?.replans ?? choiceReplans }
 
     private static func active(_ p: RidePhase) -> Bool { p == .starting || p == .riding }
 
@@ -95,12 +111,51 @@ public struct LiveScreenDriver: Sendable {
             builder.reset()
             follower = nil
             returnWarning = nil
+            choicePromptsShown = prompter?.shown ?? choicePromptsShown
+            choiceReplans = prompter?.replans ?? choiceReplans
+            prompter = nil
+            activePromptId = nil
+            promptText = nil
         }
         lastPhase = input.phase
 
         let tiles = builder.update(input)
+        // the follower first: the choice-point prompt (M6-02) needs where the rider is on the path
+        var step: RouteFollower.Step?
+        var prompt: ChoicePrompt?
+        if input.phase == .riding, var f = follower {
+            let pos = (input.lat != nil && input.lon != nil) ? GeoPoint(lat: input.lat!, lon: input.lon!) : nil
+            let fresh = input.secondsWithoutGps == 0
+            var s = f.update(position: pos, gpsFresh: fresh, rideDistanceM: input.rideDistanceM, elapsedS: input.rideElapsedS ?? 0)
+            if var p = prompter {
+                let u = p.update(position: pos, gpsFresh: fresh, alongM: s.alongM, offPath: s.offPath,
+                                 speedMps: Double(tiles.speedKmh ?? 0) / 3.6)
+                prompter = p
+                prompt = u.prompt
+                if let np = u.newPath, var nf = RouteFollower(destinationName: f.destinationName, path: np, todayS: f.todayS) {
+                    s = nf.update(position: pos, gpsFresh: fresh, rideDistanceM: input.rideDistanceM, elapsedS: input.rideElapsedS ?? 0)
+                    f = nf
+                }
+            }
+            follower = f
+            step = s
+        }
         var shown: BannerQueue.Shown?
         if active {
+            if let p = prompt {
+                if p.id != activePromptId {
+                    banners.clear(.choicePoint)
+                    banners.hold(.choicePoint, true)
+                    banners.raise(.choicePoint, at: t)
+                    activePromptId = p.id
+                }
+                promptText = p.text
+            } else if activePromptId != nil {
+                banners.hold(.choicePoint, false)
+                banners.clear(.choicePoint)
+                activePromptId = nil
+                promptText = nil
+            }
             banners.setActive(.disconnected, input.phoneMode, at: t)
             banners.setActive(.noGps, tiles.chips.contains(.noGps), at: t)
             if let temp = input.scooterTempC { banners.feedHeat(tempC: temp, at: t) }
@@ -122,15 +177,12 @@ public struct LiveScreenDriver: Sendable {
         }
         let text: String? = shown.map { (s: BannerQueue.Shown) -> String in
             if s.banner == .returnCheck, let w = returnWarning { return w }
+            if s.banner == .choicePoint, let pt = promptText { return pt }
             return (s.banner == .disconnected && input.formatChanged) ? "Scooter data format changed" : s.banner.text
         }
         var arrival: ArrivalStrip?
         var dotOverride: LivePath.Coord?
-        if input.phase == .riding, var f = follower {
-            let pos = (input.lat != nil && input.lon != nil) ? GeoPoint(lat: input.lat!, lon: input.lon!) : nil
-            let step = f.update(position: pos, gpsFresh: input.secondsWithoutGps == 0, rideDistanceM: input.rideDistanceM,
-                                elapsedS: input.rideElapsedS ?? 0)
-            follower = f
+        if let step = step, let f = follower {
             let shown = arrivalDisplay.show(remainingS: step.remainingS, nowS: t)
             arrival = ArrivalStrip(text: ArrivalStrip.text(destination: f.destinationName, arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin),
                                    offRoute: step.offPath, deadReckoned: step.deadReckoned)

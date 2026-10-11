@@ -114,6 +114,17 @@ enum FastestService {
                                                           todayLevels: today, nowMs: nowMs))
     }
 
+    /// M6-02: the live prompts of the combination being followed (nil: no combination, or nothing to prompt)
+    static func prompter(_ database: AppDatabase, routeId: String, nowMs: Int64 = RouteCardLoader.currentMs(),
+                         utcOffsetMin: Int = RouteCardLoader.currentOffsetMin()) -> ChoicePrompter? {
+        guard let a = answer(database, routeId: routeId, nowMs: nowMs, utcOffsetMin: utcOffsetMin), let c = a.combo else { return nil }
+        let store = RouteQueries(database)
+        guard let ref = ((try? store.variants(routeId: routeId)) ?? []).first(where: { $0.isReference }) ?? (try? store.variants(routeId: routeId))?.first,
+              let line = ref.polyline,
+              let set = try? ChoiceQueries(database).set(routeId: routeId, reference: Geo.decode(line)) else { return nil }
+        return ChoicePrompter(combo: c, points: set.points)
+    }
+
     static func card(_ database: AppDatabase, routeId: String, nowMs: Int64 = RouteCardLoader.currentMs()) -> FastestCard? {
         answer(database, routeId: routeId, nowMs: nowMs).flatMap(FastestCard.make)
     }

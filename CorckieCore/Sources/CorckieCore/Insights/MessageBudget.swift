@@ -76,6 +76,7 @@ public struct BannerQueue: Sendable {
     private var current: (banner: LiveBanner, since: Double)?
     private var waiting: [LiveBanner] = []              // arrival order
     private var raisedThisRide: Set<LiveBanner> = []
+    private var held: Set<LiveBanner> = []                // timed banners that stay while their condition lasts (choice point)
     private var heat = HeatWatch()
     /// Messages that never got on screen; the ride summary shows them
     public private(set) var droppedToSummary: [LiveBanner] = []
@@ -91,6 +92,7 @@ public struct BannerQueue: Sendable {
         current = nil
         waiting = []
         raisedThisRide = []
+        held = []
         heat = HeatWatch()
         droppedToSummary = []
         let timed = Array(Set(messages.filter { !$0.isSticky })).sorted()
@@ -127,6 +129,17 @@ public struct BannerQueue: Sendable {
         }
     }
 
+    /// M6-02: a timed banner that stays on screen while its condition lasts (no 8 s limit); `clear` takes it away.
+    public mutating func hold(_ banner: LiveBanner, _ on: Bool) {
+        if on { held.insert(banner) } else { held.remove(banner) }
+    }
+
+    /// Takes a timed banner off the screen and out of the queue (the choice point was passed).
+    public mutating func clear(_ banner: LiveBanner) {
+        if current?.banner == banner { current = nil }
+        waiting.removeAll { $0 == banner }
+    }
+
     /// M38 through `HeatWatch`: very hot stays until the motor is below hot; hot is announced once.
     public mutating func feedHeat(tempC: Double, at t: Double) {
         let announced = heat.update(tempC)
@@ -148,7 +161,7 @@ public struct BannerQueue: Sendable {
 
     /// Call about once a second with the speed shown on screen. Returns the banner to show, if any.
     public mutating func tick(at t: Double, speedKmh: Double) -> Shown? {
-        if let c = current, t - c.since >= bannerS { current = nil }
+        if let c = current, t - c.since >= bannerS, !held.contains(c.banner) { current = nil }
 
         var best: (banner: LiveBanner, isSticky: Bool)?
         for b in sticky.keys where best == nil || b < best!.banner { best = (b, true) }

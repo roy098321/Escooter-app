@@ -429,8 +429,13 @@ enum CheckList {
     private static let m6New: [CheckItem] = [
         m("u42", fastM, "Fastest combination: choice points, option times, gates, Follow path, Q3 (M6-01)", "Nothing to do · Run all automatic marks it",
           "Nine made-up rides on a 4 km route in the ocean (3 the usual way, 3 via a park detour, 3 left at the lights) are written to a temporary database: 2 choice points with 2 options each and 18 option times are stored; the fastest combination is park + left (never ridden as a whole, ~1:30 faster than the fastest way ridden), Follow gives a path on ridden stretches only; with one way seen twice the card says 2 of 3; Q3 gets a verdict for the park; the line ends with this phone's choice points"),
+        m("u43", fastM, "Live choice-point prompts: 15 s ahead, gates, one at a time, quiet re-plan (M6-02)", "Nothing to do · Run all automatic marks it",
+          "The nine made-up rides are ridden again through the live screen with Follow on: the prompt comes about 15 s before the first split and goes 30 m after it, the second comes later, one at a time; with a saving under 20 s or ways under 30 m apart nothing shows; taking the usual way where the park was chosen shows nothing and the arrival time stays on the path (quiet re-plan); the prompts are counted for the ride's developer line"),
         m("mq1", fastM, "Fastest combination on a real route and Follow", "Routes → a saved route you ride more than one way → scroll to Fastest combination → Follow this next ride → ride it",
           "The section says which ways make the fastest mix and how much faster (or \"not enough data yet\" with how many rides each way still needs); Follow paints the path green on the map and Home's Where to? shows the route selected; on the ride the arrival time and route progress follow that path; after the ride a different way at a choice point gets a Q3 card (\"... saved you 1:10 on that stretch\") once that way has 3 rides", manual: true)
+        ,
+        m("mq2", fastM, "Live prompt on a real ride (phone in the holder)", "Follow a combination (mq1), ride it with the phone in the holder",
+          "About 15 s before a place where the fastest mix takes another way the banner says which way (\"Keep right · Way via Park Ave · saves ~1:40\" or \"Stay on the usual way · saves ~40 s\") and goes away after the place; readable at speed; taking the other way gives no message; with the phone in the pocket nothing is seen, by design", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }
