@@ -389,10 +389,17 @@ enum RideToolsPreview {
     }
 
     static func samples() -> [RideSample] {
-        (0..<120).map { i in
+        var out: [RideSample] = []
+        for i in 0..<120 {
             let x = Double(i)
-            return RideSample(t: x * 5, speedKmh: 14 + 12 * abs(sin(x / 9)), lat: 40 + x * 0.000_18, lon: -75 + x * 0.000_22, hAccM: 6,
-                              altBaroM: 30 + 8 * sin(x / 20), voltage: 54, currentA: 4, batteryPct: 81 - i / 24, tempC: 30, odometerKm: 100 + x * 0.025)
+            let speed: Double = 14 + 12 * abs(sin(x / 9))
+            let lat: Double = 40 + x * 0.000_18
+            let lon: Double = -75 + x * 0.000_22
+            let alt: Double = 30 + 8 * sin(x / 20)
+            let odo: Double = 100 + x * 0.025
+            out.append(RideSample(t: x * 5, speedKmh: speed, lat: lat, lon: lon, hAccM: 6, altBaroM: alt,
+                                  voltage: 54, currentA: 4, batteryPct: 81 - i / 24, tempC: 30, odometerKm: odo))
         }
+        return out
     }
 }

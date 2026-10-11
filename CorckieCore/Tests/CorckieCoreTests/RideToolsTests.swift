@@ -8,11 +8,18 @@ final class RideToolsTests: XCTestCase {
     /// A made-up ride: `n` samples 5 s apart at 18 km/h, odometer +0.025 km per sample, 216 W, battery 80% falling 1 point per 20 samples.
     private func ride(startT: Double = 0, odoStartKm: Double = 100, n: Int = 100, lat: Double = 10, lon: Double = 20,
                       batteryStart: Int = 80) -> [RideSample] {
-        (0..<n).map { i in
-            RideSample(t: startT + Double(i) * 5, speedKmh: 18, gpsSpeedKmh: 18, lat: lat + Double(i) * 0.000_2, lon: lon,
-                       hAccM: 5, altBaroM: 50 + Double(i) * 0.1, voltage: 54, currentA: 4, batteryPct: batteryStart - i / 20,
-                       tempC: 30, odometerKm: odoStartKm + Double(i) * 0.025)
+        var out: [RideSample] = []
+        for i in 0..<n {
+            let step = Double(i)
+            let t: Double = startT + step * 5
+            let la: Double = lat + step * 0.000_2
+            let alt: Double = 50 + step * 0.1
+            let odo: Double = odoStartKm + step * 0.025
+            let pct: Int = batteryStart - i / 20
+            out.append(RideSample(t: t, speedKmh: 18, gpsSpeedKmh: 18, lat: la, lon: lon, hAccM: 5, altBaroM: alt,
+                                  voltage: 54, currentA: 4, batteryPct: pct, tempC: 30, odometerKm: odo))
         }
+        return out
     }
 
     private func compareRide(_ id: String, route: String? = nil, variant: String? = nil, start: Int64 = 0, dist: Double = 5_000,

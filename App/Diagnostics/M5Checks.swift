@@ -11,8 +11,11 @@ enum RideToolsCheck {
         let a = CompareRide(id: "a", routeId: "r", variantId: "v", distanceM: 5_000, totalS: 1_200, usedPct: 10)
         let b = CompareRide(id: "b", startAt: 5, routeId: "r", variantId: "w", distanceM: 5_000, totalS: 1_270, usedPct: 12)
         let rows = RideCompareBuilder.rows(a, b)
-        let compareOk: Bool = rows.count == 9 && rows[0].difference == "\u{2212}1 min 10 s" && RideCompareBuilder.relation(a, b) == "Same route"
-            && RideCompareBuilder.suggestions(for: a, among: [a, b]).map(\.id) == ["b"]
+        let c1: Bool = rows.count == 9
+        let c2: Bool = rows[0].difference == "\u{2212}1 min 10 s"
+        let c3: Bool = RideCompareBuilder.relation(a, b) == "Same route"
+        let c4: Bool = RideCompareBuilder.suggestions(for: a, among: [a, b]).map(\.id) == ["b"]
+        let compareOk = c1 && c2 && c3 && c4
         let prev = MergeEnd(id: "p", startAt: 0, endAt: 1_000_000, endLat: 10, endLon: 20)
         let near = MergeEnd(id: "n", startAt: 1_600_000, endAt: nil, startLat: 10.000_5, startLon: 20)
         let late = MergeEnd(id: "l", startAt: 3_000_000, endAt: nil, startLat: 10, startLon: 20)
@@ -36,22 +39,30 @@ enum RideToolsCheck {
             let merged = try q.ride(id: "A")
             let gone = try q.ride(id: "B") == nil
             let samples = try q.sampleCount(rideId: "A")
-            let mergeOk: Bool = offered && gone && samples == 200 && abs((merged?.distanceM ?? 0) - 4_950) < 2
-                && merged?.stops == 1 && (merged?.gapScooterS ?? 99) < 1
+            let mergedKm: Double = merged?.distanceM ?? 0
+            let m1: Bool = abs(mergedKm - 4_950) < 2
+            let m2: Bool = merged?.stops == 1
+            let m3: Bool = (merged?.gapScooterS ?? 99) < 1
+            let mergeOk: Bool = offered && gone && samples == 200 && m1 && m2 && m3
             try RideToolsService.undoMerge(temp, undoFolder: folder)
             let backA = try q.ride(id: "A")
             let backB = try q.ride(id: "B")
             let countA = try q.sampleCount(rideId: "A")
             let countB = try q.sampleCount(rideId: "B")
-            let undoOk: Bool = backA != nil && backB != nil && abs((backA?.distanceM ?? 0) - before) < 0.5
-                && countA == 100 && countB == 100 && !RideToolsService.canUndoMerge(temp)
+            let backKm: Double = backA?.distanceM ?? 0
+            let u1: Bool = backA != nil && backB != nil
+            let u2: Bool = abs(backKm - before) < 0.5
+            let u3: Bool = countA == 100 && countB == 100
+            let undoOk: Bool = u1 && u2 && u3 && !RideToolsService.canUndoMerge(temp)
             try RideToolsService.trim(temp, rideId: "A", startS: 100, endS: 300)
             let cut = try q.ride(id: "A")
             let countCut = try q.sampleCount(rideId: "A")
-            let trimOk: Bool = abs((cut?.distanceM ?? 0) - 1_000) < 2 && cut?.trimStartAt != nil && countCut == 100
+            let cutKm: Double = cut?.distanceM ?? 0
+            let trimOk: Bool = abs(cutKm - 1_000) < 2 && cut?.trimStartAt != nil && countCut == 100
             try RideToolsService.resetTrim(temp, rideId: "A")
             let reset = try q.ride(id: "A")
-            let resetOk: Bool = reset?.trimStartAt == nil && abs((reset?.distanceM ?? 0) - before) < 0.5
+            let resetKm: Double = reset?.distanceM ?? 0
+            let resetOk: Bool = reset?.trimStartAt == nil && abs(resetKm - before) < 0.5
             dbOk = mergeOk && undoOk && trimOk && resetOk
             detail = "merge \(word(mergeOk)), undo \(word(undoOk)), trim \(word(trimOk)), reset trim \(word(resetOk))"
         } catch {
