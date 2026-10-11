@@ -9,7 +9,7 @@ import Foundation
 /// condition lasts; hot is announced once per ride.
 
 public enum LiveBanner: Int, CaseIterable, Comparable, Sendable {
-    case veryHot = 1, choicePoint, disconnected, noGps, batteryTight, returnCheck, hot, sameRide, starting, notRiding, destination, headwind
+    case veryHot = 1, choicePoint, disconnected, noGps, batteryTight, returnCheck, phoneBatteryLow, hot, sameRide, starting, notRiding, destination, headwind
 
     /// C24 order: 1 = most important. Disconnected and No GPS share row 3.
     public var priority: Int {
@@ -17,7 +17,7 @@ public enum LiveBanner: Int, CaseIterable, Comparable, Sendable {
         case .veryHot: return 1
         case .choicePoint: return 2
         case .disconnected, .noGps: return 3
-        case .batteryTight, .returnCheck: return 4
+        case .batteryTight, .returnCheck, .phoneBatteryLow: return 4
         case .hot: return 5
         case .sameRide, .starting, .notRiding: return 6
         case .destination: return 7
@@ -32,7 +32,7 @@ public enum LiveBanner: Int, CaseIterable, Comparable, Sendable {
     /// Stays while its condition lasts (no 8 s limit, no queue)
     public var isSticky: Bool {
         switch self {
-        case .veryHot, .disconnected, .noGps: return true
+        case .veryHot, .disconnected, .noGps, .phoneBatteryLow: return true
         default: return false
         }
     }
@@ -48,6 +48,7 @@ public enum LiveBanner: Int, CaseIterable, Comparable, Sendable {
         case .noGps: return "No GPS"
         case .batteryTight: return "Battery is tight for this ride"
         case .returnCheck: return "Battery may not last for the way back"
+        case .phoneBatteryLow: return PhoneBatteryPolicy.bannerText
         case .hot: return "Motor hot"
         case .sameRide: return "Same ride?"
         case .starting: return "Starting…"

@@ -75,6 +75,8 @@ struct HomeView: View {
             VStack(spacing: 16) {
                 if m.showCrashBanner { crashCard }
                 if backupBannerShown { backupCard }
+                if let n = EdgeWatch.shared.expiryNotice { noticeCard(n, symbol: "clock.badge.exclamationmark") }
+                if let n = EdgeWatch.shared.storageNotice { noticeCard(n, symbol: "internaldrive") }
                 if m.batteryText != nil {
                     NavigationLink { BatteryView() } label: { statusCard(m) }.buttonStyle(.plain)
                 } else {
@@ -213,6 +215,15 @@ struct HomeView: View {
         .background(Color.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
     }
 
+    /// M6-06 (C28): the 7-day expiry and phone storage
+    private func noticeCard(_ text: String, symbol: String) -> some View {
+        Label(text, systemImage: symbol)
+            .font(.subheadline.weight(.semibold))
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+    }
+
     private var crashCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label("The app closed unexpectedly last time", systemImage: "exclamationmark.triangle")
@@ -255,6 +266,7 @@ struct HomeView: View {
         oldestRideMs = try? RideQueries(db).rides().last?.startAt
         newestInsight = ((try? InsightQueries(db).recent(limit: 1)) ?? []).first?.text
         BackupWriter.shared.runIfDue()
+        EdgeWatch.shared.refresh(database: db)
         guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
         lastRide = RideListItem(id: r.id, startAt: r.startAt, utcOffsetMin: r.utcOffsetMin, kind: r.kind,
                                 distanceM: r.distanceM, totalS: r.totalS)

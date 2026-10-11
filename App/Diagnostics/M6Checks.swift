@@ -192,3 +192,61 @@ enum StatesCheck {
                                   : "\(n) screens drawn, blank: " + blank.joined(separator: ", "))
     }
 }
+
+/// u45 (M6-06, C28): the edge-case rules from Core on made-up values, and the early thinning of raw data on a temporary database.
+enum EdgeCheck {
+    static func run() {
+        let results = CheckResults.shared
+        func word(_ b: Bool) -> String { b ? "ok" : "wrong" }
+        let battery: Bool = PhoneBatteryPolicy.gps(pct: 25, charging: false, lowPowerMode: false) == .normal
+            && PhoneBatteryPolicy.gps(pct: 19, charging: false, lowPowerMode: false) == .reduced
+            && PhoneBatteryPolicy.gps(pct: 9, charging: false, lowPowerMode: false) == .off
+            && PhoneBatteryPolicy.gps(pct: 9, charging: true, lowPowerMode: false) == .normal
+            && PhoneBatteryPolicy.gps(pct: 60, charging: false, lowPowerMode: true) == .reduced
+        let banner: Bool = {
+            var d = LiveScreenDriver()
+            let input = LiveInput(scooterSpeedKmh: 20, scooterBatteryPct: 70, secondsWithoutGps: 30, rideElapsedS: 60, phoneGpsOff: true)
+            _ = d.update(input, at: 1)
+            let s = d.update(input, at: 2)
+            return s.banner?.banner == .phoneBatteryLow && s.tiles.speedKmh == 20
+        }()
+        let storage: Bool = StoragePolicy.level(freeBytes: 2_000_000_000) == .ok
+            && StoragePolicy.level(freeBytes: 800_000_000) == .thin
+            && StoragePolicy.level(freeBytes: 100_000_000) == .warn
+        let now: Int64 = 1_800_000_000_000
+        let day: Int64 = 86_400_000
+        let expiry: Bool = AppExpiry.plan(expiryMs: now + 3 * day, nowMs: now) == .remind(atMs: now + 2 * day)
+            && AppExpiry.plan(expiryMs: now + day / 4, nowMs: now) == .soon(hoursLeft: 6)
+            && AppExpiry.plan(expiryMs: now - 1, nowMs: now) == .expired
+        let clock: Bool = {
+            let g = ClockGuard(wall: 1_000, mono: 10)
+            return g.isJump(wall: 1_000 + 3_600 + 60, mono: 70) && !g.isJump(wall: 1_060.5, mono: 70)
+                && abs(g.engineTime(ofWall: 1_000 + 3_600 + 58, wall: 1_000 + 3_600 + 60, mono: 70) - 1_058) < 0.001
+        }()
+        var thin = "-"
+        var thinOk = false
+        do {
+            let temp = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { temp.discardTemporary() }
+            try RideToolsSeed.ride(temp, id: "R1", startAt: now - 100 * day)
+            let q = RideQueries(temp)
+            try q.insert(chunk: RawChunkRecord(rideId: "R1", seq: 0, startAt: now - 100 * day, endAt: now - 99 * day, kind: "scooter", blob: Data([1])))
+            try q.insert(chunk: RawChunkRecord(rideId: "R1", seq: 1, startAt: now - 100 * day, endAt: now - 99 * day, kind: "energy", blob: Data([1])))
+            try q.insert(chunk: RawChunkRecord(rideId: "R1", seq: 2, startAt: now - 3 * day, endAt: now - 2 * day, kind: "scooter", blob: Data([1])))
+            let cutoff = StoragePolicy.thinCutoffMs(.thin, nowMs: now) ?? 0
+            let deleted = try RetentionService.thinEarly(temp, cutoffMs: cutoff)
+            let left = try temp.writer.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM raw_chunk") ?? 0 }
+            let rides = try temp.writer.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM ride") ?? 0 }
+            thinOk = deleted == 1 && left == 2 && rides == 1
+            thin = "\(deleted) old raw chunk removed, \(left) kept (energy + recent), \(rides) ride"
+        } catch {
+            thin = error.localizedDescription
+        }
+        let realNow = Int64(Date().timeIntervalSince1970 * 1000)
+        let expiryText = EdgeWatch.expiryMs().map { "\(($0 - realNow) / day) days left" } ?? "unknown (no profile)"
+        let phone = (EdgeWatch.freeStorageBytes().map { "\($0 / 1_000_000) MB free" } ?? "free space unknown") + ", app signature: " + expiryText
+        let all = battery && banner && storage && expiry && clock && thinOk
+        results.set("u45", all ? .pass : .fail,
+                    "phone battery 20% / 10% / charging / Low Power Mode \(word(battery)) · banner Phone battery low, tiles untouched \(word(banner)) · storage levels \(word(storage)) · expiry reminder 1 day before \(word(expiry)) · clock change keeps the ride's timeline \(word(clock)) · early thinning keeps energy, recent data and rides \(word(thinOk)) (\(thin)) · this phone: \(phone)")
+    }
+}

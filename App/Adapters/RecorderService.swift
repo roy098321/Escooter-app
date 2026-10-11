@@ -70,6 +70,7 @@ final class RecorderService {
                     RouteNaming.start(rideId: id, database: AppModel.shared.database)
                     MaintenanceService.checkAtRideEnd(AppModel.shared.database)
                     OutsideDataService.shared.refresh(database: AppModel.shared.database, reason: "ride closed")
+                    EdgeWatch.shared.refresh(database: AppModel.shared.database)
                     Log.info(source: "recorder", "Ride closed (\(status))")
                 }
             },
@@ -83,7 +84,8 @@ final class RecorderService {
         }
     }
 
-    static func now() -> Double { Date().timeIntervalSince1970 }
+    /// The engine's time (M6-06: the wall clock until somebody changes it, then its own timeline, see `EngineClock`)
+    static func now() -> Double { EngineClock.shared.now() }
 
     /// Called at launch (also the background relaunch for the scooter): the 1-s tick starts at once.
     func start() {
@@ -96,7 +98,7 @@ final class RecorderService {
         timer = t
         let recorder = self.recorder
         NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
-            Task { await recorder.flush(at: Date().timeIntervalSince1970) }
+            Task { await recorder.flush(at: EngineClock.shared.now()) }
         }
     }
 
@@ -117,19 +119,20 @@ final class RecorderService {
 
     // MARK: Sources
 
-    func scooterConnected(at date: Date) { send(.scooter(TimedScooterEvent(t: date.timeIntervalSince1970, event: .connected)), at: date.timeIntervalSince1970) }
-    func scooterDisconnected(at date: Date) { send(.scooter(TimedScooterEvent(t: date.timeIntervalSince1970, event: .disconnected)), at: date.timeIntervalSince1970) }
+    func scooterConnected(at date: Date) { let t = EngineClock.shared.fromWall(date); send(.scooter(TimedScooterEvent(t: t, event: .connected)), at: t) }
+    func scooterDisconnected(at date: Date) { let t = EngineClock.shared.fromWall(date); send(.scooter(TimedScooterEvent(t: t, event: .disconnected)), at: t) }
     func packet(_ bytes: [UInt8], at date: Date) {
-        send(.scooter(TimedScooterEvent(t: date.timeIntervalSince1970, event: .packet(bytes))), at: date.timeIntervalSince1970)
+        let t = EngineClock.shared.fromWall(date)
+        send(.scooter(TimedScooterEvent(t: t, event: .packet(bytes))), at: t)
     }
 
     func fix(lat: Double, lon: Double, hAccM: Double, speedMps: Double, courseDeg: Double, altitudeM: Double?, at date: Date) {
-        let t = date.timeIntervalSince1970
+        let t = EngineClock.shared.fromWall(date)
         send(.fix(PhoneFix(t: t, lat: lat, lon: lon, hAccM: hAccM, speedMps: speedMps, courseDeg: courseDeg, altitudeM: altitudeM)), at: t)
     }
 
     func barometer(relativeAltitudeM: Double, pressureKPa: Double?, at date: Date) {
-        let t = date.timeIntervalSince1970
+        let t = EngineClock.shared.fromWall(date)
         send(.baro(BaroReading(t: t, relativeAltitudeM: relativeAltitudeM, pressureKPa: pressureKPa)), at: t)
     }
 
@@ -144,6 +147,8 @@ final class RecorderService {
         live = state
         var input = rawInput
         input.mapOffline = NetworkStatus.shared.offline
+        input.phoneGpsOff = PhoneSensors.shared.gpsMode == .off          // M6-06: phone battery < 10%
+        input.locationDenied = PhoneSensors.shared.locationDenied        // M6-06: location turned off for the app
         // M2-06: the route chosen with Where to? is followed from the start of the ride to its end (once per ride).
         // M2-09 (Q9): at ride start, when the way back will not fit, one warning (needs the battery reading, so it waits for it).
         let rideOn = input.phase == .starting || input.phase == .riding
@@ -166,12 +171,14 @@ final class RecorderService {
         } else if !rideOn, followChecked {
             followChecked = false
             // M6-02: prompts shown / quiet re-plans of the ride that just ended, for the ride's developer line (P6)
-            if driver.promptsShownNow > 0, let db = AppModel.shared.displayDatabase, !db.isReadOnly {
-                try? RideQueries(db).setSetting(key: "m6.lastRidePrompts", json: "{\"shown\":\(driver.promptsShownNow),\"replans\":\(driver.choiceReplansNow)}")
+            if driver.promptsShownNow > 0 || EngineClock.shared.jumpsThisRide > 0, let db = AppModel.shared.displayDatabase, !db.isReadOnly {
+                try? RideQueries(db).setSetting(key: "m6.lastRidePrompts",
+                                                json: "{\"shown\":\(driver.promptsShownNow),\"replans\":\(driver.choiceReplansNow),\"clockChanges\":\(EngineClock.shared.jumpsThisRide)}")
             }
             RouteFollowSelection.shared.routeId = nil
             RouteFollowSelection.shared.combination = false
         }
+        EngineClock.shared.check(rideActive: rideOn)                    // M6-06: a changed phone clock
         let screen = driver.update(input, at: time ?? Self.now())
         if screen.mode != .ready, lastLiveMode == .ready { livePath.reset() }
         lastLiveMode = screen.mode

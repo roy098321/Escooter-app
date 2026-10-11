@@ -34,6 +34,10 @@ final class PhoneSensors: NSObject {
     private(set) var longestGapS = 0.0
 
     private(set) var recording = false
+    /// M6-06 (C28): what the phone's battery allows the GPS to do (normal, less often below 20% or in Low Power Mode, off below 10%)
+    private(set) var gpsMode: PhoneGps = .normal
+    /// M6-06: the rider turned location off for the app
+    var locationDenied: Bool { manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted }
     private(set) var fixes = 0
     private(set) var fixesInBackground = 0
     private(set) var lastFix = "—"
@@ -56,6 +60,37 @@ final class PhoneSensors: NSObject {
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.activityType = .otherNavigation
         updatePermission()
+        let names: [Notification.Name] = [UIDevice.batteryLevelDidChangeNotification, UIDevice.batteryStateDidChangeNotification,
+                                          Notification.Name.NSProcessInfoPowerStateDidChange]
+        for name in names {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.applyPolicy() }
+        }
+    }
+
+    /// M6-06 (C28): the GPS follows the phone battery. Below 20% (or Low Power Mode) fixes come less often, below 10% the GPS is off
+    /// (scooter data only, banner "Phone battery low . map paused"); charging keeps it normal.
+    func applyPolicy(force: Bool = false) {
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        let level = UIDevice.current.batteryLevel
+        let state = UIDevice.current.batteryState
+        let mode = PhoneBatteryPolicy.gps(pct: level < 0 ? nil : Int((level * 100).rounded()), charging: state == .charging || state == .full,
+                                          lowPowerMode: ProcessInfo.processInfo.isLowPowerModeEnabled)
+        guard force || mode != gpsMode else { return }
+        gpsMode = mode
+        guard recording else { return }
+        switch mode {
+        case .normal:
+            manager.desiredAccuracy = kCLLocationAccuracyBest
+            manager.distanceFilter = kCLDistanceFilterNone
+            manager.startUpdatingLocation()
+        case .reduced:
+            manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+            manager.distanceFilter = PhoneBatteryPolicy.reducedDistanceFilterM
+            manager.startUpdatingLocation()
+        case .off:
+            manager.stopUpdatingLocation()
+        }
+        Log.info(source: "location", "Phone battery policy: GPS \(mode.rawValue)")
     }
 
     /// Starts location (best accuracy, background allowed) and the barometer.
@@ -101,6 +136,7 @@ final class PhoneSensors: NSObject {
             }
         }
         recording = true
+        applyPolicy(force: true)
     }
 
     /// Asks for location once, without recording (for outside-data requests).
@@ -187,5 +223,6 @@ extension PhoneSensors: CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         updatePermission()
+        if locationDenied, recording { Log.warning(source: "location", "Location was turned off for the app while recording") }
     }
 }

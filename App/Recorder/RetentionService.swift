@@ -29,6 +29,20 @@ enum RetentionService {
         }
     }
 
+    /// M6-06 (C28): phone storage is low, the raw packet stream older than `cutoffMs` goes early (energy chunks, rides, samples stay).
+    @discardableResult
+    static func thinEarly(_ db: AppDatabase, cutoffMs: Int64) throws -> Int {
+        guard !db.isReadOnly else { return 0 }
+        let kept = Array(RawRetention.keptKinds)
+        let marks = kept.map { _ in "?" }.joined(separator: ", ")
+        var args: [DatabaseValueConvertible?] = [cutoffMs]
+        args.append(contentsOf: kept)
+        return try db.writer.write { d in
+            try d.execute(sql: "DELETE FROM raw_chunk WHERE endAt < ? AND kind NOT IN (\(marks))", arguments: StatementArguments(args))
+            return d.changesCount
+        }
+    }
+
     /// Chunks and bytes of raw data on this phone, for the Settings line
     static func usage(_ db: AppDatabase) -> (chunks: Int, bytes: Int) {
         let row = try? db.writer.read { d in

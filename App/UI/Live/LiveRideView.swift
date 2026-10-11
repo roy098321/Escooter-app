@@ -290,8 +290,7 @@ struct LiveRideView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Hold to end the ride")
         .accessibilityHint("Press and hold for one second")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction(named: "End the ride") { RecorderService.shared.press(.endHeld) }
+        .accessibilityAddTraits([.isButton, .allowsDirectInteraction])      // VoiceOver: the hold works by touching it directly
     }
 
     private func tickHold() {

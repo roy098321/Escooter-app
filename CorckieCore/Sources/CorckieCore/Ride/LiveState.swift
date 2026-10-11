@@ -50,12 +50,19 @@ public struct LiveInput: Equatable, Sendable {
     public var rideElapsedS: Double?
     /// M2-08: wheel distance of this ride so far, m (moves the dot along a followed route when GPS is lost)
     public var rideDistanceM: Double?
+    /// M6-06: the phone battery is below 10%: GPS is off on purpose (banner "Phone battery low \u{00B7} map paused", no "No GPS")
+    public var phoneGpsOff: Bool = false
+    /// M6-06: the rider turned location off for the app (during the ride): "No GPS \u{00B7} location is off for CorckieApp"
+    public var locationDenied: Bool = false
 
     public init(scooterSpeedKmh: Double? = nil, gpsSpeedKmh: Double? = nil, scooterLinked: Bool = true,
                 scooterBatteryPct: Double? = nil, estimatedBatteryPct: Double? = nil, starting: Bool = false,
                 secondsWithoutGps: Double = 0, mapOffline: Bool = false, phase: RidePhase = .riding,
                 scooterTempC: Double? = nil, phoneMode: Bool = false, formatChanged: Bool = false,
-                sameRideOffered: Bool = false, lat: Double? = nil, lon: Double? = nil, rideElapsedS: Double? = nil, rideDistanceM: Double? = nil) {
+                sameRideOffered: Bool = false, lat: Double? = nil, lon: Double? = nil, rideElapsedS: Double? = nil, rideDistanceM: Double? = nil,
+                phoneGpsOff: Bool = false, locationDenied: Bool = false) {
+        self.phoneGpsOff = phoneGpsOff
+        self.locationDenied = locationDenied
         self.rideDistanceM = rideDistanceM
         self.phase = phase
         self.scooterTempC = scooterTempC

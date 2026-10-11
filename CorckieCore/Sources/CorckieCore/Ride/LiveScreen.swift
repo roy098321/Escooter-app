@@ -157,7 +157,8 @@ public struct LiveScreenDriver: Sendable {
                 promptText = nil
             }
             banners.setActive(.disconnected, input.phoneMode, at: t)
-            banners.setActive(.noGps, tiles.chips.contains(.noGps), at: t)
+            banners.setActive(.noGps, tiles.chips.contains(.noGps) && !input.phoneGpsOff, at: t)
+            banners.setActive(.phoneBatteryLow, input.phoneGpsOff, at: t)           // M6-06: phone battery < 10%, GPS off
             if let temp = input.scooterTempC { banners.feedHeat(tempC: temp, at: t) }
             if input.sameRideOffered && !sameRideWasOffered { banners.raise(.sameRide, at: t) }
             sameRideWasOffered = input.sameRideOffered
@@ -178,6 +179,7 @@ public struct LiveScreenDriver: Sendable {
         let text: String? = shown.map { (s: BannerQueue.Shown) -> String in
             if s.banner == .returnCheck, let w = returnWarning { return w }
             if s.banner == .choicePoint, let pt = promptText { return pt }
+            if s.banner == .noGps && input.locationDenied { return "No GPS \u{00B7} location is off for CorckieApp" }     // M6-06: permission revoked
             return (s.banner == .disconnected && input.formatChanged) ? "Scooter data format changed" : s.banner.text
         }
         var arrival: ArrivalStrip?
