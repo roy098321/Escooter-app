@@ -127,4 +127,19 @@ final class StatsCalcTests: XCTestCase {
         XCTAssertEqual(StatsCalc.duration(5_400), "1 h 30 min")
         XCTAssertEqual(StatsCalc.duration(600), "10 min")
     }
+
+    func testFirstWeekNoteForAPartialFirstWeek() {
+        let now = ms(2026, 10, 8, 12)
+        let w = StatsCalc.period(span: .week, mode: .calendar, nowMs: now, utcOffsetMin: off)
+        // first ever ride on Wednesday 7 Oct: this week is the partial first one
+        XCTAssertEqual(StatsCalc.firstWeekNote(firstRideMs: ms(2026, 10, 7, 10), period: w, span: .week, mode: .calendar, utcOffsetMin: off),
+                       "First week \u{00B7} from Wed 7 Oct")
+        // first ride on the week's first day (Sunday): a whole first week, no note
+        XCTAssertNil(StatsCalc.firstWeekNote(firstRideMs: ms(2026, 10, 4, 9), period: w, span: .week, mode: .calendar, utcOffsetMin: off))
+        // an older first ride, no rides yet, month view, rolling mode: no note
+        XCTAssertNil(StatsCalc.firstWeekNote(firstRideMs: ms(2026, 9, 1), period: w, span: .week, mode: .calendar, utcOffsetMin: off))
+        XCTAssertNil(StatsCalc.firstWeekNote(firstRideMs: nil, period: w, span: .week, mode: .calendar, utcOffsetMin: off))
+        XCTAssertNil(StatsCalc.firstWeekNote(firstRideMs: ms(2026, 10, 7, 10), period: w, span: .month, mode: .calendar, utcOffsetMin: off))
+        XCTAssertNil(StatsCalc.firstWeekNote(firstRideMs: ms(2026, 10, 7, 10), period: w, span: .week, mode: .rolling, utcOffsetMin: off))
+    }
 }

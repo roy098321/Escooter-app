@@ -6,6 +6,7 @@ import SwiftUI
 /// electricity cost (M35), fuel money saved (M35b, manual fuel price), km per day. Numbers are made in CorckieCore (`StatsCalc`,
 /// unit tested); this view draws them. No records, goals or streaks (P-3).
 struct StatsView: View {
+    @ScaledMetric(relativeTo: .body) private var tileMin: CGFloat = 150
     var preview: StatsModel?
 
     @AppStorage("stats.span") private var spanRaw = StatsSpan.week.rawValue
@@ -65,7 +66,7 @@ struct StatsView: View {
                 if let text = StatsLoader.comparisonText(m) {
                     Text(text).font(.subheadline).foregroundStyle(.secondary)
                 }
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: 12)], spacing: 12) {
                     ForEach(Array(StatsLoader.tiles(m).enumerated()), id: \.offset) { _, t in tile(t.label, t.value, t.note) }
                 }
                 bars(m)
@@ -89,7 +90,7 @@ struct StatsView: View {
     private func periodHeader(_ m: StatsModel) -> some View {
         HStack {
             if m.mode == .calendar || m.period.dayCount > 0 {
-                Button { back += 1 } label: { Image(systemName: "chevron.left") }
+                Button { back += 1 } label: { Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44) }
                     .accessibilityLabel("Earlier")
                     .disabled(preview != nil)
             }
@@ -97,9 +98,10 @@ struct StatsView: View {
             VStack(spacing: 2) {
                 Text(m.period.label).font(.headline)
                 if m.holidayTagged { Text("Holiday week").font(.caption).foregroundStyle(.secondary) }
+                if let note = m.firstWeekNote { Text(note).font(.caption).foregroundStyle(.secondary) }
             }
             Spacer()
-            Button { back = max(0, back - 1) } label: { Image(systemName: "chevron.right") }
+            Button { back = max(0, back - 1) } label: { Image(systemName: "chevron.right").frame(minWidth: 44, minHeight: 44) }
                 .accessibilityLabel("Later")
                 .disabled(back == 0 || preview != nil)
         }
@@ -126,7 +128,7 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).font(.footnote).foregroundStyle(.secondary)
             Text(value)
-                .font(.system(size: 24, weight: .semibold, design: .rounded).monospacedDigit())
+                .scaledFont(24, weight: .semibold, mono: true)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
             if let note { Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2) }
@@ -134,6 +136,7 @@ struct StatsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 
     private func bars(_ m: StatsModel) -> some View {
@@ -145,6 +148,7 @@ struct StatsView: View {
             }
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 7)) }
             .frame(height: 140)
+            .accessibilityLabel("Distance per day, bar chart")
         }
         .padding(14)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -202,6 +206,7 @@ enum StatsPreview {
     static func model(_ name: String) -> StatsModel {
         let month = name == "stats-month"
         let empty = name == "stats-empty"
+        let firstWeek = name == "stats-first-week"
         let now: Int64 = 1_790_000_000_000
         let period = StatsCalc.period(span: month ? .month : .week, mode: .calendar, nowMs: now, utcOffsetMin: 180)
         var t = StatsTotals()
@@ -229,9 +234,11 @@ enum StatsPreview {
             Insight(type: .q15After, rideId: "p1", routeId: "A", text: "Tailwind saved you ~1.5 min and ~1% battery today.", basedOnN: 9, createdAt: now),
             Insight(type: .q4After, rideId: "p2", routeId: "A", text: "1:10 min slower than usual: headwind (~1:00 min).", basedOnN: 8, createdAt: now - 86_400_000),
         ]
-        return StatsModel(span: month ? .month : .week, mode: .calendar, period: period, totals: t, comparisonPct: empty ? nil : 12, holidayTagged: false,
-                          recent: insights, electricityIlsPerKwh: 0.64, fuelLPer100km: 7, fuelPriceIls: 8.27, packWh: 800, lastWeek: week,
-                          pastWeeks: name == "week-card" ? WeekPreview.weeks() : [])
+        var model = StatsModel(span: month ? .month : .week, mode: .calendar, period: period, totals: t, comparisonPct: empty || firstWeek ? nil : 12,
+                               holidayTagged: false, recent: insights, electricityIlsPerKwh: 0.64, fuelLPer100km: 7, fuelPriceIls: 8.27, packWh: 800,
+                               lastWeek: week, pastWeeks: name == "week-card" ? WeekPreview.weeks() : [])
+        if firstWeek { model.firstWeekNote = "First week \u{00B7} from Wed 7 Oct" }
+        return model
     }
 }
 

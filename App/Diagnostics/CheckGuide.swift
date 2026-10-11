@@ -418,6 +418,17 @@ struct CheckGuide {
         "mq2": CheckGuide(proves: "The prompt is readable on a real ride and comes early enough.",
                           steps: ["Routes → a route with a fastest combination → Follow this next ride.", "Ride it with the phone in the holder. Expected: about 15 seconds before a place where the mix takes another way the banner names the way and what it saves; it goes away after the place.",
                                   "Take the other way once: no message, the arrival time stays sensible. Tap Pass or Fail (Notes: too early, too late, hard to read)."], place: .passive),
+        "u44": CheckGuide(proves: "No screen of the app comes out blank, in any of its states, at the normal and the largest text size.",
+                          steps: ["Developer → Checks → Run all automatic (takes about 30 seconds more than before: it draws about 70 screens off-screen).",
+                                  "Result: how many screens were drawn, or the names of the ones that came out blank."], place: .noScooter),
+        "ma1": CheckGuide(proves: "The app works with the largest text size and with VoiceOver.",
+                          steps: ["Settings app → Accessibility → Display & Text Size → Larger Text: drag to the largest, switch on Larger Accessibility Sizes.",
+                                  "Open Home, Rides, a ride, Routes, a route, Stats, Settings: nothing cut off, nothing on top of something else.",
+                                  "Settings → Accessibility → VoiceOver on. Swipe through Home, Stats and a ride: every button and tile is read with its meaning. Tap Pass or Fail (Notes: the screen and what was wrong). Put the text size back."], place: .passive),
+        "ms3": CheckGuide(proves: "The screen is readable in direct sun, and the speed colours work if you cannot tell red from green.",
+                          steps: ["Settings → Units and display → Sunlight mode: On. Look at Home, then start the live view (or open a ride): solid panels with a black edge, bold text, a thick path.",
+                                  "Set it to Auto, turn the screen brightness to the maximum outside in daylight: it switches on by itself within 30 seconds; at night, or with low brightness, it stays off.",
+                                  "Turn on Colour-blind friendly speed colours: the live path, the ride detail legend and the Replay use blue to orange-red. Tap Pass or Fail (Notes: what was hard to read)."], place: .passive),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

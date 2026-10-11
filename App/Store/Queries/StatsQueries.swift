@@ -11,6 +11,13 @@ struct StatsQueries {
         self.database = database
     }
 
+    /// The start of the oldest real ride (the first week is partial, S12)
+    func firstRideMs() -> Int64? {
+        try? database.writer.read { db in
+            try Int64.fetchOne(db, sql: "SELECT MIN(startAt) FROM ride WHERE endAt IS NOT NULL AND kind IN ('ride', 'shortHop') AND isSimulated = 0")
+        }
+    }
+
     func rides(from: Int64, to: Int64) throws -> [StatsRide] {
         try database.writer.read { db in
             try Row.fetchAll(db, sql: """

@@ -21,6 +21,8 @@ struct StatsModel {
     var lastWeek: [Insight] = []
     var thisWeek: [Insight] = []
     var pastWeeks: [InsightRunner.PastWeek] = []
+    /// S12: "First week \u{00B7} from Wed 30 Sep" while the shown week is the partial first one
+    var firstWeekNote: String?
 }
 
 enum StatsLoader {
@@ -55,10 +57,12 @@ enum StatsLoader {
                     (try? InsightQueries(db).weekCard(weekStart: start)) ?? [],
                     InsightRunner.pastWeeks(db, nowMs: nowMs, utcOffsetMin: utcOffsetMin))
         }
-        return StatsModel(span: span, mode: mode, period: p, totals: totals, comparisonPct: pct, holidayTagged: tagged,
+        var model = StatsModel(span: span, mode: mode, period: p, totals: totals, comparisonPct: pct, holidayTagged: tagged,
                           recent: (try? InsightQueries(db).recent()) ?? [], electricityIlsPerKwh: prices.electricityIlsPerKwh,
                           fuelLPer100km: prices.fuelLPer100km, fuelPriceIls: prices.fuelFallbackIls, packWh: prices.packWh,
                           lastWeek: week.last, thisWeek: week.now, pastWeeks: week.past)
+        model.firstWeekNote = StatsCalc.firstWeekNote(firstRideMs: q.firstRideMs(), period: p, span: span, mode: mode, utcOffsetMin: utcOffsetMin)
+        return model
     }
 
     /// Texts of the tiles, in one place (the view draws them; the ui-shot preview and the check use the same)

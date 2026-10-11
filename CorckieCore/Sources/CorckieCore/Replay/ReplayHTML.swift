@@ -3,8 +3,18 @@ import Foundation
 /// M5-04: puts a ride's data (and its map tiles) into the page. `tileHref` decides where a tile comes from: a `data:` address for the
 /// downloaded file, a `corckie-tile://` address for the in-app viewer, nil to leave a tile out (offline, nothing cached).
 public enum ReplayHTML {
-    public static func build(_ data: ReplayData, tileHref: (ReplayTile) -> String?) -> String {
+    /// - colourBlind: the colour-blind speed colours (M6-03); highContrast: the sunlight style, black on white (M6-03)
+    public static func build(_ data: ReplayData, colourBlind: Bool = false, highContrast: Bool = false,
+                             tileHref: (ReplayTile) -> String?) -> String {
         var html = ReplayTemplate.html
+        if colourBlind {
+            let list = SpeedPalette.colourBlindHex.map { "'" + $0.lowercased() + "'" }.joined(separator: ", ")
+            html = html.replacingOccurrences(of: "var HEX = ['#7fd37f', '#22b24c', '#f2d21b', '#f28c1b', '#e53935'];", with: "var HEX = [" + list + "];")
+        }
+        if highContrast {
+            let css = ":root{--bg:#ffffff;--card:#ffffff;--ink:#000000;--mut:#202020;--line:#000000;--map:#ffffff}body{font-weight:600}"
+            html = html.replacingOccurrences(of: "</style>", with: css + "</style>")
+        }
         html = html.replacingOccurrences(of: "/*TITLE*/", with: escape(data.title))
         html = html.replacingOccurrences(of: "/*TILES*/", with: tilesMarkup(data, tileHref: tileHref))
         html = html.replacingOccurrences(of: "/*DATA*/null", with: json(data))

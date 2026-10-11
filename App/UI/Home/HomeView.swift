@@ -51,6 +51,7 @@ struct HomeView: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .accessibilityLabel("Settings")
                 }
         }
         .onAppear(perform: reloadLastRide)

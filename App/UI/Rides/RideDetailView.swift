@@ -6,6 +6,7 @@ import SwiftUI
 /// All numbers, labels and notes are made in CorckieCore (`RideSummaryBuilder`, unit tested); this view draws them.
 /// No records, badges or comparisons (CONCEPT P-3): only this ride's own numbers.
 struct RideDetailView: View {
+    @ScaledMetric(relativeTo: .body) private var tileMin: CGFloat = 150
     var rideId: String?
     var preview: RideSummaryModel?
     /// Summary after a ride: a Done button closes it. Nil = pushed from the Rides list (back button).
@@ -87,8 +88,12 @@ struct RideDetailView: View {
                         if mergeInfo != nil {
                             Button { showMerge = true } label: { Label("Merge with previous ride", systemImage: "arrow.triangle.merge") }
                         }
-                        Button { replayDownload = false; showReplay = true } label: { Label("Ride Replay", systemImage: "play.circle") }
+                        // S11 (C15): a ride without GPS has no map to replay: greyed, with the reason
+                        let needsGps = (preview ?? model)?.noGps == true
+                        Button { replayDownload = false; showReplay = true } label: { Label(needsGps ? "Ride Replay \u{00B7} needs GPS" : "Ride Replay", systemImage: "play.circle") }
+                            .disabled(needsGps)
                         Button { replayDownload = true; showReplay = true } label: { Label("Download Ride Replay", systemImage: "square.and.arrow.down") }
+                            .disabled(needsGps)
                         Menu {
                             Button("CSV (one line per reading)") { exportRide(.csv) }
                             Button("GPX (Strava, Komoot)") { exportRide(.gpx) }
@@ -208,7 +213,7 @@ struct RideDetailView: View {
                     mapCard(m.path)
                 }
                 if let s = previewSeries ?? series { RideSeriesPanels(series: s) }
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: 12)], spacing: 12) {
                     ForEach(Array(m.mainStats.enumerated()), id: \.offset) { _, s in tile(s) }
                 }
                 VStack(spacing: 0) {
@@ -248,13 +253,14 @@ struct RideDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(s.label).font(.footnote).foregroundStyle(.secondary)
             Text(s.value)
-                .font(.system(size: 24, weight: .semibold, design: .rounded).monospacedDigit())
+                .scaledFont(24, weight: .semibold, mono: true)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 
     private func note(_ n: SummaryNote) -> some View {
@@ -358,6 +364,7 @@ struct RideDetailView: View {
             }
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
             .frame(height: 280)
+            .accessibilityLabel("Map of the ride")
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             Text(layerLegend(path)).font(.caption).foregroundStyle(.secondary)
         }
@@ -379,7 +386,7 @@ struct RideDetailView: View {
     }
 
     static func legend(_ path: RidePathModel) -> String {
-        var parts = ["Colour = speed (light green slow, red fast)"]
+        var parts = [SpeedPalette.legendText(colourBlind: DisplaySettings.colourBlind)]
         if path.segments.contains(where: { $0.dashed }) { parts.append("dashed = phone only") }
         if !path.walks.isEmpty { parts.append("grey = on foot") }
         return parts.joined(separator: " \u{00B7} ")
@@ -618,7 +625,7 @@ extension RideDetailView {
                     Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
                     Text(top.text).font(.subheadline)
                     Spacer(minLength: 0)
-                    Button { dismissInsight(top) } label: { Image(systemName: "xmark").font(.caption) }
+                    Button { dismissInsight(top) } label: { Image(systemName: "xmark").font(.caption).frame(minWidth: 44, minHeight: 44) }
                         .foregroundStyle(.secondary)
                         .accessibilityLabel("Dismiss")
                 }

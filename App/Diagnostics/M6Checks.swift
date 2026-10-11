@@ -1,6 +1,7 @@
 import CorckieCore
 import Foundation
 import GRDB
+import SwiftUI
 
 /// u42 (M6-01, Q23): the made-up choice-point rides (`ChoiceSeed`) in temporary databases: the tables are filled, the fastest
 /// combination is the never-ridden park + left mix, the Follow path stays on ridden stretches, an option seen twice waits ("2 of 3"),
@@ -127,5 +128,67 @@ enum PromptCheck {
         } catch {
             results.set("u43", .fail, "The temporary database failed: \(error.localizedDescription)")
         }
+    }
+}
+
+/// u44 (M6-05, C15): every screen in every state of the ui-shot list is built and drawn off-screen, once at the normal text size and once
+/// at the largest accessibility size; none may crash or come out blank.
+@MainActor
+enum StatesCheck {
+    static func looksBlank(_ image: UIImage) -> Bool {
+        guard let cg = image.cgImage else { return true }
+        let w = 24
+        let h = 48
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        let drew: Bool = px.withUnsafeMutableBytes { raw in
+            guard let ctx = CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            ctx.interpolationQuality = .low
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return true
+        }
+        guard drew else { return true }
+        var seen = Set<UInt32>()
+        for i in stride(from: 0, to: px.count, by: 4) {
+            seen.insert(UInt32(px[i]) << 16 | UInt32(px[i + 1]) << 8 | UInt32(px[i + 2]))
+        }
+        return seen.count < 2
+    }
+
+    static func render(_ name: String, big: Bool, window: UIWindow, root: UIViewController) async -> UIImage {
+        let view = UIShot.screen(name).dynamicTypeSize(big ? DynamicTypeSize.accessibility5 : DynamicTypeSize.large)
+        let host = UIHostingController(rootView: view)
+        let frame = CGRect(x: 3_000, y: 0, width: 390, height: 844)
+        root.addChild(host)
+        host.view.frame = frame
+        window.addSubview(host.view)
+        host.didMove(toParent: root)
+        host.view.layoutIfNeeded()
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        let image = UIGraphicsImageRenderer(size: frame.size).image { _ in
+            host.view.drawHierarchy(in: CGRect(origin: .zero, size: frame.size), afterScreenUpdates: true)
+        }
+        host.willMove(toParent: nil)
+        host.view.removeFromSuperview()
+        host.removeFromParent()
+        return image
+    }
+
+    static func run() async {
+        let results = CheckResults.shared
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first, let root = window.rootViewController else {
+            results.set("u44", .fail, "No window to draw in")
+            return
+        }
+        var blank: [String] = []
+        for name in UIShot.allNames {
+            if looksBlank(await render(name, big: false, window: window, root: root)) { blank.append(name) }
+            if looksBlank(await render(name, big: true, window: window, root: root)) { blank.append(name + " (large text)") }
+        }
+        let n = UIShot.allNames.count
+        results.set("u44", blank.isEmpty ? .pass : .fail,
+                    blank.isEmpty ? "\(n) screens and states drawn at normal and largest text, none blank"
+                                  : "\(n) screens drawn, blank: " + blank.joined(separator: ", "))
     }
 }

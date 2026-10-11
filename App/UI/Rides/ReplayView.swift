@@ -81,7 +81,7 @@ struct ReplayView: View {
         guard html.isEmpty else { return }
         if let previewData {
             ride = ReplayRide(data: previewData, fileName: "Ride Replay \u{2013} Sample.html")
-            html = ReplayHTML.build(previewData) { _ in nil }
+            html = ReplayHTML.build(previewData, colourBlind: DisplaySettings.colourBlind, highContrast: SunlightMonitor.shared.on) { _ in nil }
             return
         }
         guard let id = rideId, let db = AppModel.shared.displayDatabase, let loaded = ReplayDataLoader.load(db, rideId: id) else {
@@ -89,7 +89,7 @@ struct ReplayView: View {
             return
         }
         ride = loaded
-        html = ReplayHTML.build(loaded.data) { ReplaySchemeHandler.href($0) }
+        html = ReplayHTML.build(loaded.data, colourBlind: DisplaySettings.colourBlind, highContrast: SunlightMonitor.shared.on) { ReplaySchemeHandler.href($0) }
         if startDownload { Task { await download() } }
     }
 
@@ -103,7 +103,7 @@ struct ReplayView: View {
         let got = await TileCache.shared.fetchAll(tiles) { done, total in
             DispatchQueue.main.async { buildText = "\(done) of \(total)" }
         }
-        let page = ReplayHTML.build(ride.data) { tile in
+        let page = ReplayHTML.build(ride.data, colourBlind: DisplaySettings.colourBlind) { tile in
             got[tile].map { "data:image/png;base64," + $0.base64EncodedString() }
         }
         do {

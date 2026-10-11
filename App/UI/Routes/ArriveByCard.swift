@@ -48,7 +48,7 @@ struct ArriveByCard: View {
             case .notEnough(let have, let need):
                 Text("\(have) of \(need) rides until Arrive by can say when to leave.").font(.subheadline).foregroundStyle(.secondary)
             case .plan(let p):
-                Text(p.headline).font(.system(size: 22, weight: .semibold, design: .rounded))
+                Text(p.headline).scaledFont(22, weight: .semibold)
                 Text(p.detail).font(.footnote).foregroundStyle(.secondary)
                 if p.leaveAtMs <= nowMs {
                     Text("That time has passed: you would be about \(max(1, Int(Double(nowMs - p.leaveAtMs) / 60_000))) min late.")

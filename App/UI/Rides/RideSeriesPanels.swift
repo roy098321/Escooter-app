@@ -31,6 +31,7 @@ struct RideSeriesPanels: View {
                 .chartXAxisLabel("km")
                 .chartYAxisLabel("m")
                 .frame(height: 130)
+                .accessibilityLabel("Elevation chart, metres against kilometres")
                 if series.climbs.isEmpty {
                     Text("No climbs of 5 m or more.").font(.footnote).foregroundStyle(.secondary)
                 } else {
@@ -69,6 +70,7 @@ struct RideSeriesPanels: View {
             .chartXAxisLabel("min")
             .chartYAxisLabel("km/h")
             .frame(height: 110)
+            .accessibilityLabel("Speed chart, kilometres per hour against minutes")
             Chart {
                 ForEach(Array(series.chart.enumerated()), id: \.offset) { _, p in
                     if let b = p.batteryPct {
@@ -82,6 +84,7 @@ struct RideSeriesPanels: View {
             .chartXAxisLabel("min")
             .chartYAxisLabel("%")
             .frame(height: 90)
+            .accessibilityLabel("Battery chart, percent against minutes")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)

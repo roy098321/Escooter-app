@@ -8,6 +8,7 @@ import SwiftUI
 /// nothing to show are left out (STATES S9). All text comes from CorckieCore (`RouteCardBuilder`); this view only draws it.
 /// Later milestones add: Arrive by and there-and-back (M2-07 / M2-09), choice points and the fastest combination (M6), factors (M4).
 struct RouteCardView: View {
+    @ScaledMetric(relativeTo: .body) private var tileMin: CGFloat = 150
     var routeId: String?
     var preview: RouteCardModel?
 
@@ -78,7 +79,7 @@ struct RouteCardView: View {
                 todayCard(m.today)
                 if m.saved { arriveBy(m) }
                 if let t = m.thereAndBack { thereAndBackCard(t) }
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: 12)], spacing: 12) {
                     ForEach(Array(m.stats.enumerated()), id: \.offset) { _, s in tile(s) }
                 }
                 if !m.variants.isEmpty { variantsCard(m.variants) }
@@ -100,7 +101,7 @@ struct RouteCardView: View {
 
     private func thereAndBackCard(_ t: ThereAndBackModel) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(t.headline).font(.system(size: 20, weight: .semibold, design: .rounded))
+            Text(t.headline).scaledFont(20, weight: .semibold)
             Text(t.detail).font(.footnote).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -139,6 +140,7 @@ struct RouteCardView: View {
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .frame(height: 240)
+        .accessibilityLabel("Map of the route")
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(alignment: .topTrailing) {
             if lines.count > 1 {
@@ -153,7 +155,7 @@ struct RouteCardView: View {
 
     private func todayCard(_ t: RouteTodayStrip) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(t.headline).font(.system(size: 22, weight: .semibold, design: .rounded)).foregroundStyle(t.filling ? Color.secondary : Color.primary)
+            Text(t.headline).scaledFont(22, weight: .semibold).foregroundStyle(t.filling ? Color.secondary : Color.primary)
             Text(t.detail).font(.footnote).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -165,7 +167,7 @@ struct RouteCardView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(s.label).font(.footnote).foregroundStyle(.secondary)
             Text(s.value)
-                .font(.system(size: s.filling ? 17 : 22, weight: .semibold, design: .rounded).monospacedDigit())
+                .scaledFont(s.filling ? 17 : 22, weight: .semibold, mono: true)
                 .foregroundStyle(s.filling ? Color.secondary : Color.primary)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
@@ -176,6 +178,7 @@ struct RouteCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 
     private func variantsCard(_ rows: [RouteVariantRow]) -> some View {
@@ -212,7 +215,7 @@ struct RouteCardView: View {
     private func fastestCard(_ f: FastestCard) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(f.headline)
-                .font(.system(size: 20, weight: .semibold, design: .rounded).monospacedDigit())
+                .scaledFont(20, weight: .semibold, mono: true)
                 .foregroundStyle(f.filling ? Color.secondary : Color.primary)
             Text(f.detail).font(.subheadline)
             if let n = f.note { Text(n).font(.footnote).foregroundStyle(.secondary) }

@@ -14,6 +14,8 @@ struct LiveRideView: View {
     }
 
     var preview: Preview?
+    @Environment(\.sunlight) private var sunlight
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var hold = HoldToEnd()
     @State private var holdProgress = 0.0
@@ -53,6 +55,11 @@ struct LiveRideView: View {
             .padding(.bottom, 28)
         }
         .interactiveDismissDisabled(true)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)       // the numbers keep their size; the rest does not outgrow the screen (M6-04)
+        .onChange(of: s.bannerText) { _, text in
+            // VoiceOver: say a new banner (choice-point prompt, motor hot ...) out loud
+            if let text { AccessibilityNotification.Announcement(text).post() }
+        }
         .onReceive(ticker) { _ in tickHold() }
         .onChange(of: position?.lat) { _, _ in follow() }
         .screen("Live ride")
@@ -65,7 +72,7 @@ struct LiveRideView: View {
             ForEach(Array(path.segments.enumerated()), id: \.offset) { _, seg in
                 MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(Self.color(seg.bucket),
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round, dash: seg.dashed ? [2, 10] : []))
+                            style: StrokeStyle(lineWidth: sunlight ? 9 : 6, lineCap: .round, lineJoin: .round, dash: seg.dashed ? [2, 10] : []))
             }
             if let p = position {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon)) {
@@ -81,20 +88,23 @@ struct LiveRideView: View {
             }
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+        .accessibilityLabel("Map, following your position")
     }
 
     private func follow() {
         guard preview == nil, let p = position else { return }
-        withAnimation(.easeInOut(duration: 0.8)) {
-            camera = .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon), distance: 700))
+        let target = MapCameraPosition.camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon), distance: 700))
+        if reduceMotion {
+            camera = target
+        } else {
+            withAnimation(.easeInOut(duration: 0.8)) { camera = target }
         }
     }
 
     static func color(_ bucket: Int) -> Color {
         // M5-06: the colour-blind friendly speed colours (blue to vermillion, no red / green pair)
         let colors: [Color] = DisplaySettings.colourBlind
-            ? [Color(red: 0.0, green: 0.45, blue: 0.70), Color(red: 0.34, green: 0.71, blue: 0.91), Color(red: 0.94, green: 0.89, blue: 0.26),
-               Color(red: 0.90, green: 0.62, blue: 0.0), Color(red: 0.84, green: 0.37, blue: 0.0)]
+            ? SpeedPalette.colourBlindHex.map { Color(hex: $0) }
             : [Color(red: 0.55, green: 0.85, blue: 0.55), .green, .yellow, .orange, .red]
         return colors[min(max(bucket, 0), colors.count - 1)]
     }
@@ -120,7 +130,7 @@ struct LiveRideView: View {
                     .font(.headline.monospacedDigit())
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .sunPanel(Capsule())
                     .accessibilityLabel(a.text)
             }
         }
@@ -133,7 +143,7 @@ struct LiveRideView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(.ultraThinMaterial, in: Capsule())
+        .sunPanel(Capsule())
     }
 
     private func banner(_ s: LiveScreenState, _ text: String) -> some View {
@@ -169,6 +179,9 @@ struct LiveRideView: View {
             guard let b = t.batteryPct else { return "\u{2013}" }
             return (t.batteryEstimated ? "~" : "") + "\(b)%"
         }()
+        let speedLabel = "Speed " + (t.speedKmh.map { "\($0) kilometres per hour" } ?? "unknown") + (t.slow ? ", too fast" : "")
+            + (t.speedLabel.map { ", " + $0 } ?? "")
+        let batteryLabel = "Battery " + (t.batteryPct.map { "\($0) percent" + (t.batteryEstimated ? ", estimated" : "") } ?? "unknown")
         return VStack(spacing: 12) {
             GlassCard(tint: t.slow ? Color.red : nil) {
                 HStack(alignment: .firstTextBaseline) {
@@ -183,7 +196,7 @@ struct LiveRideView: View {
                                 .font(.headline)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 2)
-                                .background(.thinMaterial, in: Capsule())
+                                .sunPanel(Capsule(), thin: true)
                         }
                         if let slow = t.slowText {
                             Text(slow)
@@ -195,6 +208,8 @@ struct LiveRideView: View {
                     }
                 }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(speedLabel)
             HStack(spacing: 12) {
                 GlassCard {
                     VStack(alignment: .leading, spacing: 0) {
@@ -205,12 +220,16 @@ struct LiveRideView: View {
                         }
                     }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(batteryLabel)
                 if s.showClock {
                     GlassCard {
                         Text(s.clockText)
                             .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
                             .frame(maxWidth: .infinity)
                     }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Ride time " + s.clockText)
                 }
             }
         }
@@ -225,7 +244,7 @@ struct LiveRideView: View {
                     .font(.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .sunPanel(Capsule())
                 Button("Close") { RecorderService.shared.closeReady() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
@@ -248,7 +267,7 @@ struct LiveRideView: View {
     private var holdButton: some View {
         VStack(spacing: 4) {
             ZStack {
-                Circle().fill(.ultraThinMaterial).frame(width: 84, height: 84)
+                Color.clear.frame(width: 84, height: 84).sunPanel(Circle())
                 Circle()
                     .trim(from: 0, to: holdProgress)
                     .stroke(Color.red, style: StrokeStyle(lineWidth: 6, lineCap: .round))
@@ -270,6 +289,9 @@ struct LiveRideView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Hold to end the ride")
+        .accessibilityHint("Press and hold for one second")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: "End the ride") { RecorderService.shared.press(.endHeld) }
     }
 
     private func tickHold() {

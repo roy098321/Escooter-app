@@ -102,7 +102,10 @@ struct SettingsView: View {
                 ForEach(DisplaySettings.Sunlight.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .onChange(of: sunlight) { _, v in
-                if loaded { DisplaySettings.setSunlight(db, v) }
+                if loaded {
+                    DisplaySettings.setSunlight(db, v)
+                    SunlightMonitor.shared.refresh()
+                }
             }
             LabeledContent("Units", value: "km \u{00B7} \u{00B0}C")
             Toggle("Colour-blind friendly speed colours", isOn: $colourBlind)

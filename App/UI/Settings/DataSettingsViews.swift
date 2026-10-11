@@ -11,6 +11,9 @@ private struct ShareFile: Identifiable {
 
 /// Export everything: one JSON file with every ride (all readings), places, routes, charges, calibration, maintenance and settings.
 struct ExportEverythingView: View {
+    /// ui-shot only: the empty state
+    var previewEmpty = false
+    @State private var rideCount: Int?
     @State private var working = false
     @State private var summary = ""
     @State private var share: ShareFile?
@@ -18,6 +21,12 @@ struct ExportEverythingView: View {
 
     var body: some View {
         List {
+            if previewEmpty || rideCount == 0 {
+                Section {
+                    Label("No rides yet. The file will hold your settings only; it fills up as you ride.", systemImage: "tray")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
             Section {
                 Text("One file with every ride and all its readings, your places and routes, charges, battery calibration, maintenance and settings. Simulated rides are left out. Restore reads it back and never doubles a ride.")
                     .font(.subheadline)
@@ -40,6 +49,10 @@ struct ExportEverythingView: View {
             }
         }
         .navigationTitle("Export everything")
+        .onAppear {
+            guard !previewEmpty, let db = AppModel.shared.displayDatabase else { return }
+            rideCount = (try? RideQueries(db).rides())?.count
+        }
         .sheet(item: $share) { item in ShareSheet(url: item.url).v1Label() }
         .alert("Could not export", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("OK") {}

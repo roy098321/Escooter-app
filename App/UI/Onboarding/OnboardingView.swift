@@ -52,7 +52,7 @@ struct OnboardingView: View {
     private var connectStep: some View {
         VStack(spacing: 16) {
             Image(systemName: flow.scooterFound ? "checkmark.circle.fill" : "scooter")
-                .font(.system(size: 64))
+                .font(.system(size: 64)).accessibilityHidden(true)
                 .foregroundStyle(flow.scooterFound ? Color.green : Color.accentColor)
             Text("Connect your scooter").font(.title.bold())
             if flow.scooterFound {
@@ -73,7 +73,7 @@ struct OnboardingView: View {
 
     private var locationStep: some View {
         VStack(spacing: 16) {
-            Image(systemName: "location.fill").font(.system(size: 64)).foregroundStyle(Color.accentColor)
+            Image(systemName: "location.fill").font(.system(size: 64)).accessibilityHidden(true).foregroundStyle(Color.accentColor)
             Text("Let rides start on their own").font(.title.bold()).multilineTextAlignment(.center)
             Text("Allow location (choose Always) and motion, so a ride is recorded with the phone locked in your pocket.")
                 .multilineTextAlignment(.center)
@@ -87,7 +87,7 @@ struct OnboardingView: View {
 
     private var notificationsStep: some View {
         VStack(spacing: 16) {
-            Image(systemName: "bell.badge.fill").font(.system(size: 64)).foregroundStyle(Color.accentColor)
+            Image(systemName: "bell.badge.fill").font(.system(size: 64)).accessibilityHidden(true).foregroundStyle(Color.accentColor)
             Text("Weekly summary and reminders").font(.title.bold()).multilineTextAlignment(.center)
             Text("Allow notifications with sound for the \"Going for a ride?\" chime and the weekly summary.")
                 .multilineTextAlignment(.center)

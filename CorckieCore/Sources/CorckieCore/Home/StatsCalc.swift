@@ -132,6 +132,20 @@ public enum StatsCalc {
         }
     }
 
+    /// S12 (C15): the first calendar week is partial: "First week \u{00B7} from Wed 30 Sep" (and no "vs last week").
+    /// nil when the first ride is not in this week, or it was on the week's first day.
+    public static func firstWeekNote(firstRideMs: Int64?, period p: StatsPeriod, span: StatsSpan, mode: StatsMode, utcOffsetMin: Int) -> String? {
+        guard span == .week, mode == .calendar, let first = firstRideMs, first >= p.startMs, first < p.endMs else { return nil }
+        let local = first + Int64(utcOffsetMin) * 60_000
+        let dayStart = (local / day) * day - Int64(utcOffsetMin) * 60_000
+        guard dayStart > p.startMs else { return nil }
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = TimeZone(secondsFromGMT: utcOffsetMin * 60)
+        df.dateFormat = "EEE d MMM"
+        return "First week \u{00B7} from " + df.string(from: Date(timeIntervalSince1970: Double(first) / 1000))
+    }
+
     /// Rides that started inside the period
     public static func rides(_ all: [StatsRide], in p: StatsPeriod) -> [StatsRide] {
         all.filter { $0.startAt >= p.startMs && $0.startAt < p.endMs }

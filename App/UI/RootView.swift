@@ -8,7 +8,7 @@ struct RootView: View {
 
     var body: some View {
         // v1 on every tab and pushed screen (owner, P4 D3); sheets add their own `.v1Label()`.
-        content.v1Label()
+        content.v1Label().sunlightRoot()
     }
 
     /// M1-12: read in the body, so the cover follows the recorder (observation)
@@ -21,6 +21,7 @@ struct RootView: View {
             DataUpdateFailedView(message: error)
         } else if let shot = UIShot.requested, shot != "home" {   // "home" = the real tab bar
             UIShot.screen(shot)
+                .dynamicTypeSize(UIShot.bigType ? DynamicTypeSize.accessibility3 : DynamicTypeSize.large)
         } else {
             tabs
                 .fullScreenCover(isPresented: .constant(liveCoverShown || summaryShown)) {
@@ -113,11 +114,37 @@ struct Banner: View {
 
 /// CI ui-shots: `-uiShot <screen>` opens one screen straight away (TESTING §7).
 enum UIShot {
-    static var requested: String? {
+    /// What was asked for, as typed: `sun-<screen>` = the sunlight style, `xxl-<screen>` = the largest accessibility text size (M6-03 / M6-04)
+    static var raw: String? {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-uiShot"), i + 1 < args.count else { return nil }
         return args[i + 1]
     }
+
+    static var requested: String? {
+        guard let r = raw else { return nil }
+        for p in ["sun-", "xxl-"] where r.hasPrefix(p) { return String(r.dropFirst(p.count)) }
+        return r
+    }
+
+    static var bigType: Bool { raw?.hasPrefix("xxl-") == true }
+
+    /// `sun-...` forces the sunlight style
+    static var sunlight: Bool { raw?.hasPrefix("sun-") == true }
+
+    /// Every screen name the ui-shots and the check u44 open (M6-05). New states are added here and to the ui-shots list in ci.yml.
+    static let allNames: [String] = [
+        "settings", "settings-full", "settings-data", "export", "restore", "developer", "checks", "results", "simulator", "outside", "scooter", "rides",
+        "ride-detail", "ride-nogps", "ride-gap", "ride-walk", "ride-detail-full", "ride-save-route", "ride-prompt", "ride-insights", "replay",
+        "ride-compare", "ride-merge", "ride-trim", "routes-empty", "routes-list", "routes-greyed", "route-card", "route-card-sparse", "places",
+        "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-empty", "week-card", "factors", "factors-sparse",
+        "scooter-tab", "scooter-tab-off", "scooter-tab-none", "battery-page", "battery-page-empty", "battery-page-calibrated",
+        "onboarding1", "onboarding2", "onboarding3",
+        "live-riding", "live-ready", "live-starting", "live-slow", "live-gps", "live-slowgps", "live-nogps", "live-offline", "live-banner",
+        "live-sameride", "live-arrival", "live-routegps", "live-return",
+        "home-first", "home-notconnected", "home-ready", "home-cantfind", "home-riding", "home-location", "home-crash", "home-whereto",
+        "ride-missing", "replay-missing", "data-failed", "home-simulated", "home-readonly", "stats-first-week", "export-empty"
+    ]
 
     @ViewBuilder static func screen(_ name: String) -> some View {
         NavigationStack {
@@ -165,7 +192,15 @@ enum UIShot {
                 TrimSheet(rideId: "x", previewSamples: RideToolsPreview.samples())
             case "past-weeks":
                 NavigationStack { PastWeeksView(weeks: WeekPreview.weeks()) }
-            case "stats-week", "stats-month", "stats-empty", "week-card":
+            case "ride-missing": RideDetailView(rideId: "missing-ride")
+            case "replay-missing": ReplayView(rideId: "missing-ride")
+            case "data-failed": DataUpdateFailedView(message: "Made-up message for the screenshot")
+            case "home-simulated":
+                VStack(spacing: 0) { Banner(text: "SIMULATED \u{00B7} fake scooter replay", tint: .purple); HomeView() }
+            case "home-readonly":
+                VStack(spacing: 0) { Banner(text: "Install the newest build \u{00B7} your data is from a newer version (read-only)"); HomeView() }
+            case "export-empty": ExportEverythingView(previewEmpty: true)
+            case "stats-week", "stats-month", "stats-empty", "week-card", "stats-first-week":
                 StatsView(preview: StatsPreview.model(name))
             case "factors", "factors-sparse":
                 NavigationStack { FactorsView(preview: FactorsPreview.rows(name)) }
