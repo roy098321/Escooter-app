@@ -18,7 +18,7 @@ final class RideLogImportTests: XCTestCase {
     }
 
     /// 2000-01-01 17:37:31.443 at +03:00
-    private let ride2Start = 946_684_800.0 + 14 * 3600 + 37 * 60 + 31.443
+    private let ride2Start: Double = 946_737_451.443
 
     // MARK: Recognising
 
@@ -47,7 +47,8 @@ final class RideLogImportTests: XCTestCase {
         XCTAssertEqual(logs.count, 1)
         let log = try XCTUnwrap(logs.first)
         XCTAssertEqual(log.source, "c8")
-        XCTAssertEqual(log.startEpoch, 946_684_800 + 8 * 3600 + 17 * 60 + 30.072, accuracy: 0.001)
+        let expected: Double = 946_714_650.072   // 2000-01-01 08:17:30.072 UTC
+        XCTAssertEqual(log.startEpoch, expected, accuracy: 0.001)
         XCTAssertEqual(log.utcOffsetMin, 180)
         XCTAssertEqual(log.stream.scooter.first?.t ?? 0, log.startEpoch, accuracy: 0.001)
         XCTAssertGreaterThan(log.stream.scooter.count, 1_000)
@@ -85,7 +86,8 @@ final class RideLogImportTests: XCTestCase {
         XCTAssertLessThanOrEqual(log.startEpoch, saved.timeIntervalSince1970 + 60)
         XCTAssertGreaterThan(log.startEpoch, saved.timeIntervalSince1970 - 86_400 - 60)
         let local = log.startEpoch + 3 * 3600
-        XCTAssertEqual(local.truncatingRemainder(dividingBy: 86_400), 17 * 3600 + 37 * 60 + 31.443, accuracy: 0.01, "time of day kept")
+        let timeOfDay: Double = 63_451.443   // 17:37:31.443
+        XCTAssertEqual(local.truncatingRemainder(dividingBy: 86_400), timeOfDay, accuracy: 0.01, "time of day kept")
         XCTAssertTrue(log.notes.joined().contains("day taken from"))
         XCTAssertTrue(log.stream.phone.isEmpty)
     }

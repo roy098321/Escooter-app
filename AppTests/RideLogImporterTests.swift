@@ -39,8 +39,10 @@ final class RideLogImporterTests: XCTestCase {
         XCTAssertEqual(ride.utcOffsetMin, 180)
         XCTAssertEqual(ride.energyWhRaw ?? 0, 437, accuracy: 437 * 0.03)
         XCTAssertEqual((ride.distanceM ?? 0) / 1000, 16.3, accuracy: 0.15)
-        XCTAssertLessThanOrEqual(ride.startAt, Int64(saved.timeIntervalSince1970 * 1000) + 60_000, "the ride's own day, not today")
-        XCTAssertGreaterThan(ride.startAt, Int64(saved.timeIntervalSince1970 * 1000) - 86_400_000 - 60_000)
+        let savedMs: Int64 = Int64(saved.timeIntervalSince1970 * 1000)
+        let dayMs: Int64 = 86_400_000
+        XCTAssertLessThanOrEqual(ride.startAt, savedMs + 60_000, "the ride's own day, not today")
+        XCTAssertGreaterThan(ride.startAt, savedMs - dayMs - 60_000)
         XCTAssertEqual(RideLogImporter.importedIds(db), [id], "marked as imported")
         XCTAssertTrue(try q.openRides().isEmpty)
         XCTAssertEqual(try q.rides(includeDiscarded: true).count, 1)
