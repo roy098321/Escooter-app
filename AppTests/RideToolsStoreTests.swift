@@ -1,3 +1,4 @@
+import CorckieCore
 import GRDB
 import XCTest
 
@@ -122,5 +123,21 @@ final class RideToolsStoreTests: XCTestCase {
         let distance = try other.writer.read { try Double.fetchOne($0, sql: "SELECT distanceM FROM ride WHERE id = 'A'") }
         let expected = try XCTUnwrap(q.ride(id: "A")?.distanceM)
         XCTAssertEqual(distance ?? 0, expected, accuracy: 0.001)
+    }
+
+    func testReplayDataFromAStoredRide() throws {
+        try RideToolsSeed.ride(db, id: "A", startAt: t0)
+        let r = try XCTUnwrap(ReplayDataLoader.load(db, rideId: "A"))
+        XCTAssertEqual(r.data.spd.count, 496)
+        XCTAssertEqual(r.data.x.count, 496)
+        XCTAssertNotNil(r.data.map)
+        XCTAssertEqual(r.data.s.start, "17:13")
+        XCTAssertEqual(r.data.s.bat0 ?? 0, 80, accuracy: 0.5)
+        XCTAssertEqual(r.data.s.dist ?? 0, 2.48, accuracy: 0.02)
+        XCTAssertTrue(r.fileName.hasPrefix("Ride Replay \u{2013} "))
+        XCTAssertTrue(r.fileName.hasSuffix("2026-09-21.html"))
+        let html = ReplayHTML.build(r.data) { _ in nil }
+        XCTAssertFalse(html.contains("https://"))
+        XCTAssertNil(ReplayDataLoader.load(db, rideId: "missing"))
     }
 }

@@ -318,6 +318,8 @@ actor Recorder {
                 try InsightRunner.afterRide(db, rideId: id, nowMs: ms(end.endT))
                 try InsightRunner.weekly(db, nowMs: ms(end.endT), utcOffsetMin: r.utcOffsetMin ?? RouteCardLoader.currentOffsetMin())
             } catch { note("insights \(id): \(error.localizedDescription)") }
+            // M5-07: raw packets older than the setting go (summaries and samples never)
+            _ = try? RetentionService.run(db, nowMs: ms(end.endT))
             closedRideIds.append(id)
             hooks.rideClosed(id, r.status)
             updateUsualPctPerKm(q)

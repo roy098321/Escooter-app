@@ -123,6 +123,10 @@ enum UIShot {
         NavigationStack {
             switch name {
             case "settings": SettingsView()
+            case "settings-full": SettingsView()
+            case "settings-data": SettingsView(startAt: "Data and backup")
+            case "export": ExportEverythingView()
+            case "restore": RestoreView()
             case "developer": DeveloperView()
             case "checks": ChecksView()
             case "results": ResultsView()
@@ -151,6 +155,8 @@ enum UIShot {
                                 top: Insight(type: .q4After, rideId: "p", routeId: "A", text: "1:10 min slower than usual: headwind (~1:00 min).", basedOnN: 8, createdAt: 1_790_000_000_000),
                                 more: [Insight(type: .q15After, rideId: "p", routeId: "A", text: "Headwind cost you ~1 min and ~1% battery today.", basedOnN: 9, createdAt: 1_790_000_000_000)],
                                 progress: [Insight(type: .q15After, rideId: "p", routeId: "A", text: "Rain on Seed commute: 1 of 3 wet rides", basedOnN: 1, isProgress: true, createdAt: 1_790_000_000_000)]))
+            case "replay":
+                ReplayView(rideId: nil, previewData: ReplayDataLoader.sample())
             case "ride-compare":
                 CompareSheet(rideId: "a", preview: RideToolsPreview.compare())
             case "ride-merge":

@@ -56,7 +56,7 @@ enum RideSeriesLoader {
         let stored = (try? ChargeQueries(db).all()) ?? []
         if stored.contains(where: { $0.afterRideId == rideId }) { return nil }
         let cal = CalibrationUpdater.current(db)
-        let hours = ChargeTime.hoursToFull(fromPct: endPct, packAh: cal.packAh)
+        let hours = ChargeTime.hoursToFull(fromPct: endPct, packAh: cal.packAh, chargerA: BatterySettings.chargerA(db))
         let offset = (try? RideQueries(db).ride(id: rideId))?.utcOffsetMin ?? 0
         let f = DateFormatter()
         f.dateFormat = "HH:mm"

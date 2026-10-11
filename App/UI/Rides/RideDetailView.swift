@@ -35,6 +35,9 @@ struct RideDetailView: View {
     @State private var showCompare = false
     @State private var showMerge = false
     @State private var showTrim = false
+    @State private var showReplay = false
+    @State private var replayDownload = false
+    @State private var exportFile: ExportedFile?
     @State private var mergeInfo: MergeInfo?
     @State private var isTrimmed = false
     @State private var canUndoMerge = false
@@ -43,6 +46,11 @@ struct RideDetailView: View {
     @State private var series: RideSeries?
     @State private var layer: MapLayer = .speed
     @Environment(\.dismiss) private var dismiss
+
+    struct ExportedFile: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
 
     struct MergeInfo {
         var previousId: String
@@ -79,6 +87,12 @@ struct RideDetailView: View {
                         if mergeInfo != nil {
                             Button { showMerge = true } label: { Label("Merge with previous ride", systemImage: "arrow.triangle.merge") }
                         }
+                        Button { replayDownload = false; showReplay = true } label: { Label("Ride Replay", systemImage: "play.circle") }
+                        Button { replayDownload = true; showReplay = true } label: { Label("Download Ride Replay", systemImage: "square.and.arrow.down") }
+                        Menu {
+                            Button("CSV (one line per reading)") { exportRide(.csv) }
+                            Button("GPX (Strava, Komoot)") { exportRide(.gpx) }
+                        } label: { Label("Export ride", systemImage: "square.and.arrow.up") }
                         Button { showTrim = true } label: { Label(isTrimmed ? "Trim again or reset" : "Trim start / end", systemImage: "scissors") }
                         if canUndoMerge {
                             Button { undoMerge() } label: { Label("Undo last merge", systemImage: "arrow.uturn.backward") }
@@ -120,6 +134,10 @@ struct RideDetailView: View {
         .sheet(isPresented: $showTrim) {
             if let id = activeId { TrimSheet(rideId: id, onChanged: { toast = "Trim saved."; load() }).v1Label() }
         }
+        .sheet(isPresented: $showReplay) {
+            if let id = activeId { NavigationStack { ReplayView(rideId: id, startDownload: replayDownload) }.v1Label() }
+        }
+        .sheet(item: $exportFile) { file in ShareSheet(url: file.url).v1Label() }
         .overlay(alignment: .bottom) { toastBar }
         .task(id: toast) {
             guard toast != nil else { return }
@@ -141,6 +159,15 @@ struct RideDetailView: View {
             .padding(14)
             .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .padding(16)
+        }
+    }
+
+    private func exportRide(_ format: RideExportService.Format) {
+        guard let id = activeId, let db = AppModel.shared.displayDatabase else { return }
+        do {
+            exportFile = ExportedFile(url: try RideExportService.write(db, rideId: id, format: format))
+        } catch {
+            errorText = error.localizedDescription
         }
     }
 
@@ -543,8 +570,8 @@ extension RideDetailView {
             Spacer()
             Menu {
                 Button("None") { setLoad(.none) }
-                Button("Light (5 kg)") { setLoad(.light) }
-                Button("Heavy (15 kg)") { setLoad(.heavy) }
+                Button("Light (\(Int((RiderSettings.kg(AppModel.shared.database, .light) ?? 5).rounded())) kg)") { setLoad(.light) }
+                Button("Heavy (\(Int((RiderSettings.kg(AppModel.shared.database, .heavy) ?? 15).rounded())) kg)") { setLoad(.heavy) }
                 Button("Exact kg…") { kgText = ""; showKgField = true }
             } label: {
                 HStack(spacing: 4) {

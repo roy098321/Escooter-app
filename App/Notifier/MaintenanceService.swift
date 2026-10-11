@@ -45,7 +45,7 @@ enum MaintenanceService {
 
     /// After a ride ends: remind about the items that are due (once, again after 3 days), within the message budget.
     static func checkAtRideEnd(_ db: AppDatabase?, rideActive: Bool = false) {
-        guard let db else { return }
+        guard let db, NotifyPrefs.isOn(db, .maintenance) else { return }
         let q = MaintenanceQueries(db)
         let now = nowMs()
         let offset = TimeZone.current.secondsFromGMT() / 60

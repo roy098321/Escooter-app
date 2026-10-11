@@ -56,7 +56,7 @@ enum SmartPromptService {
     /// An answer: applied to the ride, counted, the factors and insights run again
     static func answer(_ db: AppDatabase, rideId: String, _ answer: SmartAnswer, nowMs: Int64 = FactorUpdater.nowMs()) throws {
         let q = SmartPromptQueries(db)
-        if let level = answer.loadLevel, let kg = level.presetKg {
+        if let level = answer.loadLevel, let kg = RiderSettings.kg(db, level) {
             try q.setLoad(rideId: rideId, level: level.rawValue, kg: kg)
         }
         try q.setAnswer(rideId: rideId, answer: answer.rawValue, excluded: answer.excludesFromUsual)
@@ -84,7 +84,7 @@ enum SmartPromptService {
 
     /// The Loaded tag on a ride (None 0 / Light 5 / Heavy 15 kg, or an exact number); the load effect is worked out again
     static func setLoad(_ db: AppDatabase, rideId: String, level: LoadLevel, kg: Double? = nil, nowMs: Int64 = FactorUpdater.nowMs()) throws {
-        guard let value = kg ?? level.presetKg, value >= 0, value <= 100 else { return }
+        guard let value = kg ?? RiderSettings.kg(db, level), value >= 0, value <= 100 else { return }
         try SmartPromptQueries(db).setLoad(rideId: rideId, level: level.rawValue, kg: value)
         try rerun(db, rideId: rideId, nowMs: nowMs)
     }

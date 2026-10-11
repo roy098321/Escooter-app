@@ -64,6 +64,7 @@ final class AppModel {
         openDatabase()
         if let db = database, !db.isReadOnly { RecorderService.shared.attach(db) }
         OutsideDataService.shared.refresh(database: database, reason: "app open")
+        if let db = database { _ = try? RetentionService.run(db) }
         CrashCatcher.shared.start()
         ErrorLog.shared.trim()
         InstallChecks.run(database: database, error: databaseError)

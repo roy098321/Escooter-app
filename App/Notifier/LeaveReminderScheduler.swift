@@ -47,6 +47,11 @@ enum LeaveReminderScheduler {
     static func apply(routeId: String, destination: String, plan: ArriveByPlan, force: Bool, rideActive: Bool = RecorderService.shared.rideActive,
                       utcOffsetMin: Int = TimeZone.current.secondsFromGMT() / 60, done: @escaping (String) -> Void) {
         let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
+        if !NotifyPrefs.isOn(AppModel.shared.database, .arriveBy) {
+            cancel()
+            done("Arrive-by reminders are off in Settings")
+            return
+        }
         switch LeaveReminder.decide(leaveAtMs: plan.leaveAtMs, targetAtMs: plan.targetAtMs, nowMs: nowMs, utcOffsetMin: utcOffsetMin, rideActive: rideActive) {
         case .drop(let reason):
             cancel()

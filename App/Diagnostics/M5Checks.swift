@@ -77,3 +77,42 @@ enum RideToolsCheck {
                     "compare rows + same route first \(word(compareOk)) · merge offer 30 min / 200 m \(word(offerOk)) · trim minimum 1 min \(word(clampOk)) · \(detail) · this phone: \(phone)")
     }
 }
+
+/// u39 (M5-04): the replay page. Data rules in Core (1 Hz timeline, tile cap, no outside address in the download, the B01 chart fix,
+/// speeds 1/4x to 50x), then a real web view loads the page and runs its own 5-second test at 50x (no errors, the position moves 250 s).
+enum ReplayCheck {
+    @MainActor
+    static func run() async {
+        let results = CheckResults.shared
+        func word(_ b: Bool) -> String { b ? "ok" : "wrong" }
+        guard let data = ReplayDataLoader.sample(seconds: 300) else {
+            results.set("u39", .fail, "The sample replay data could not be made")
+            return
+        }
+        let standalone = ReplayHTML.build(data) { _ in "data:image/png;base64,iVBORw0KGgo=" }
+        let inApp = ReplayHTML.build(data) { ReplaySchemeHandler.href($0) }
+        let tiles = ReplayBuilder.tiles(for: data)
+        let tileOk: Bool = !tiles.isEmpty && tiles.count <= ReplayBuilder.maxTiles
+        let offlineOk: Bool = !standalone.contains("http://") && !standalone.contains("https://")
+        let ratesOk: Bool = standalone.contains("var RATES = [0.25, 0.5, 1, 2, 5, 10, 20, 50];")
+        let fixOk: Bool = standalone.contains("fix 2026-10-03") && inApp.contains("corckie-tile://t/")
+        let pointsOk: Bool = data.spd.count == 301 && data.x.count == 301
+
+        let json = await ReplayProbe().run(html: standalone)
+        var pageOk = false
+        var pageText = json
+        if let bytes = json.data(using: .utf8), let obj = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any] {
+            let ready = obj["ready"] as? Bool ?? false
+            let errors = (obj["errors"] as? [Any])?.count ?? 99
+            let test = obj["test"] as? [String: Any]
+            let pos = test?["pos"] as? Double ?? -1
+            let n = test?["n"] as? Double ?? 0
+            let rate = test?["rate"] as? Double ?? 0
+            pageOk = ready && errors == 0 && abs(pos - 250) < 1.5 && n == 301 && rate == 50
+            pageText = "ready \(ready), \(errors) errors, 5 s at \(Int(rate))x moved to \(Int(pos)) of \(Int(n)) s"
+        }
+        results.set("u39", tileOk && offlineOk && ratesOk && fixOk && pointsOk && pageOk ? .pass : .fail,
+                    "1 point per second \(word(pointsOk)) · \(tiles.count) tiles (max \(ReplayBuilder.maxTiles)) \(word(tileOk)) · no outside address in the file \(word(offlineOk)) · "
+                    + "1/4x to 50x \(word(ratesOk)) · chart fix + in-app tile address \(word(fixOk)) · in a web view: \(pageText) \(word(pageOk)) · tile cache on this phone: \(TileCache.shared.sizeText())")
+    }
+}

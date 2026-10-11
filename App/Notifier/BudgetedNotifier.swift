@@ -18,6 +18,10 @@ enum BudgetedNotifier {
     static func refreshWeekly(_ db: AppDatabase?) {
         guard let db, !db.isReadOnly else { return }
         let center = UNUserNotificationCenter.current()
+        guard NotifyPrefs.isOn(db, .weekly) else {
+            center.removePendingNotificationRequests(withIdentifiers: [weeklyId])
+            return
+        }
         NotificationPlanner.logDeliveredWeekly(db)
         let now = NotificationPlanner.nowMs()
         guard let plan = NotificationPlanner.weekly(db, nowMs: now) else {
@@ -45,6 +49,7 @@ enum BudgetedNotifier {
     @discardableResult
     static func windCheck(_ db: AppDatabase?, rideActive: Bool = RecorderService.shared.rideActive) -> String {
         guard let db, !db.isReadOnly else { return "no database" }
+        guard NotifyPrefs.isOn(db, .wind) else { return "off in Settings" }
         let now = NotificationPlanner.nowMs()
         let offset = NotificationPlanner.offsetMin()
         guard let wind = NotificationPlanner.wind(db, nowMs: now, utcOffsetMin: offset) else { return "nothing to say" }

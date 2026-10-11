@@ -135,7 +135,8 @@ struct BundleTable: Codable, Equatable {
                 let known = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM scooter WHERE id = ?", arguments: [id]) ?? 0
                 if known == 0 { values[si] = .null }
             }
-            try db.execute(sql: sql, arguments: StatementArguments(values))
+            let arguments: [DatabaseValueConvertible?] = values.map { $0 as DatabaseValueConvertible? }
+            try db.execute(sql: sql, arguments: StatementArguments(arguments))
             added += db.changesCount
         }
         return added

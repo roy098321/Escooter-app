@@ -91,7 +91,11 @@ struct LiveRideView: View {
     }
 
     static func color(_ bucket: Int) -> Color {
-        let colors: [Color] = [Color(red: 0.55, green: 0.85, blue: 0.55), .green, .yellow, .orange, .red]
+        // M5-06: the colour-blind friendly speed colours (blue to vermillion, no red / green pair)
+        let colors: [Color] = DisplaySettings.colourBlind
+            ? [Color(red: 0.0, green: 0.45, blue: 0.70), Color(red: 0.34, green: 0.71, blue: 0.91), Color(red: 0.94, green: 0.89, blue: 0.26),
+               Color(red: 0.90, green: 0.62, blue: 0.0), Color(red: 0.84, green: 0.37, blue: 0.0)]
+            : [Color(red: 0.55, green: 0.85, blue: 0.55), .green, .yellow, .orange, .red]
         return colors[min(max(bucket, 0), colors.count - 1)]
     }
 

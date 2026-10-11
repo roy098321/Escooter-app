@@ -38,7 +38,8 @@ struct BatteryOverview {
                       endPct: r.endRestPct ?? r.lastLivePct.map(Double.init))
         }
         let range = RealRangeCalc.compute(currentPct: currentPct, rides: rangeRides, calibration: cal, reservePct: reserve)
-        let hours = connected ? currentPct.map { ChargeTime.hoursToFull(fromPct: $0, packAh: cal.packAh) } : nil
+        let charger = BatterySettings.chargerA(db)
+        let hours = connected ? currentPct.map { ChargeTime.hoursToFull(fromPct: $0, packAh: cal.packAh, chargerA: charger) } : nil
         var since: (endPct: Double, fullAtMs: Int64)?
         if !connected,
            let last = rows.first(where: { !$0.isSimulated && $0.kind == "ride" && $0.endAt != nil }),

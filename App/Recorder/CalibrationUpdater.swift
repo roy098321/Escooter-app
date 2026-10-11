@@ -45,15 +45,18 @@ enum CalibrationUpdater {
     /// Re-computes, saves the row, rewrites the charge log (M30) and re-runs the rides' battery used.
     /// Returns the new calibration, its verdicts, how many rides changed and the charges found.
     @discardableResult
-    static func update(_ database: AppDatabase, nowMs: Int64, packAh: Double = T.t42DefaultPackAh)
+    static func update(_ database: AppDatabase, nowMs: Int64, packAh packAhOverride: Double? = nil)
         throws -> (calibration: BatteryCalibration, verdicts: [String: CalibrationVerdict], ridesChanged: Int, charges: [DetectedCharge]) {
         let q = CalibrationQueries(database)
+        // M5-06: the battery size from Settings (16 Ah unless changed) and "Recalibrate battery" (only rides since then teach the calibration)
+        let packAh = packAhOverride ?? BatterySettings.packAh(database)
+        let teachFrom = BatterySettings.recalibrateFromMs(database)
         let rows = try q.inputs()
         // M30: charges found between rides (rested % jumps); the sag rule uses the next start only when no charge is in between
         let charges = ChargeDetector.detect(rows.map(chargeRide(from:)))
         try ChargeQueries(database).replaceAll(charges.filter { !$0.isSimulated }.map(chargeRecord(from:)))
         let rides = BatteryCalibrator.linkNextStarts(rows.map(ride(from:)), chargedAfter: Set(charges.map { $0.afterRideId }))
-        let (cal, verdicts) = BatteryCalibrator.calibrate(rides, packAh: packAh)
+        let (cal, verdicts) = BatteryCalibrator.calibrate(rides.filter { $0.startAt >= teachFrom }, packAh: packAh)
 
         var record = try q.current() ?? CalibrationRecord(id: CalibrationQueries.mainId, startedAt: nowMs)
         record.status = cal.isCalibrated ? "active" : "learning"
