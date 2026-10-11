@@ -1,3 +1,4 @@
+import CorckieCore
 import Foundation
 import GRDB
 import XCTest
@@ -102,5 +103,81 @@ final class MigrationTests: XCTestCase {
         let db = try AppDatabase(url: url, build: "test-6")
         XCTAssertTrue(db.isReadOnly)
         XCTAssertThrowsError(try db.writer.write { try $0.execute(sql: "DELETE FROM ride") })
+    }
+
+    /// a9 / T-02: 0.4 fixture -> current build: the update check counts every table before and after, no table loses rows, v2 and v3 tables are new.
+    func test_T02_04Fixture_toCurrent_updateCheckPasses_withNewTables() throws {
+        let url = try frozenCopy("p4-foundation")
+        let db = try AppDatabase(url: url, build: "test-t02a")
+        let counts = try XCTUnwrap(db.updateCounts, "an existing database must have before / after counts")
+        let verdict = UpdateCheckRules.verdict(before: counts.before, after: counts.after)
+        XCTAssertTrue(verdict.passed, verdict.note)
+        XCTAssertEqual(verdict.newTables, ["feedback", "prediction", "ride_note", "shadow_result"])
+        XCTAssertEqual(counts.before["ride"], 3)
+        XCTAssertEqual(counts.after["ride"], 3)
+        XCTAssertEqual(Set(counts.after.keys), Set(Migration0001.tables).union(["ride_note", "feedback", "prediction", "shadow_result"]))
+    }
+
+    /// A fresh database has nothing to compare (no a9 result).
+    func test_T02_freshDatabase_hasNoUpdateCounts() throws {
+        let db = try AppDatabase(url: folder.appendingPathComponent("corckie.sqlite"), build: "test-t02b")
+        XCTAssertNil(db.updateCounts)
+    }
+
+    /// T-02: the frozen 1.0 database (schema v1 + v2 + v3, every table filled) opens in this build with no row lost and nothing to migrate.
+    func test_T02_frozen10Database_toCurrent_keepsEveryRow() throws {
+        let url = try frozenCopy("p5-1.0-frozen")
+        let before = try DatabaseQueue(path: url.path).read { try AppDatabase.allRowCounts($0) }
+        XCTAssertTrue(before.filter { $0.key != "sqlite_sequence" }.values.allSatisfy { $0 > 0 }, "the frozen 1.0 database should fill every table")
+        XCTAssertEqual(before["ride_note"], 1)
+        XCTAssertEqual(before["shadow_result"], 2)
+
+        let db = try AppDatabase(url: url, build: "test-t02c")
+        XCTAssertFalse(db.isReadOnly)
+        XCTAssertNil(db.preMigrationCopy, "nothing to migrate, so no copy")
+        XCTAssertEqual(db.migratedNow, [])
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3"])
+        let after = try db.allRowCounts()
+        for (table, count) in before {
+            XCTAssertGreaterThanOrEqual(after[table] ?? 0, count, "rows lost in \(table)")
+        }
+        XCTAssertEqual(db.meta?.installId, "00000000-0000-0000-0000-0000000F10D1")
+        XCTAssertEqual(db.meta?.createdBuild, "1.0-frozen")
+        XCTAssertEqual(db.meta?.launchCount, 6)
+        let counts = try XCTUnwrap(db.updateCounts)
+        XCTAssertTrue(UpdateCheckRules.verdict(before: counts.before, after: counts.after).passed)
+    }
+
+    /// T-02: a later migration on top of the frozen 1.0 database keeps every row, writes a copy first and adds only a new table.
+    func test_T02_frozen10Database_thenALaterMigration_keepsEveryRow() throws {
+        let url = try frozenCopy("p5-1.0-frozen")
+        let before = try DatabaseQueue(path: url.path).read { try AppDatabase.allRowCounts($0) }
+        var migrator = AppDatabase.makeMigrator()
+        migrator.registerMigration("v4-test") { db in
+            try db.execute(sql: "CREATE TABLE future_table (id INTEGER PRIMARY KEY)")
+            try db.execute(sql: "ALTER TABLE ride ADD COLUMN futureColumn TEXT")
+        }
+        let db = try AppDatabase(url: url, build: "test-t02d", migrator: migrator)
+        XCTAssertEqual(db.migratedNow, ["v4-test"])
+        XCTAssertNotNil(db.preMigrationCopy)
+        let counts = try XCTUnwrap(db.updateCounts)
+        XCTAssertEqual(counts.before, before)
+        let verdict = UpdateCheckRules.verdict(before: counts.before, after: counts.after)
+        XCTAssertTrue(verdict.passed, verdict.note)
+        XCTAssertEqual(verdict.newTables, ["future_table"])
+    }
+
+    /// The update check catches a migration that loses rows (the a9 fail path on real tables).
+    func test_T02_updateCheck_catchesLostRows() throws {
+        let url = try frozenCopy("p5-1.0-frozen")
+        var migrator = AppDatabase.makeMigrator()
+        migrator.registerMigration("v4-lossy") { db in
+            try db.execute(sql: "DELETE FROM stop")
+        }
+        let db = try AppDatabase(url: url, build: "test-t02e", migrator: migrator)
+        let counts = try XCTUnwrap(db.updateCounts)
+        let verdict = UpdateCheckRules.verdict(before: counts.before, after: counts.after)
+        XCTAssertFalse(verdict.passed)
+        XCTAssertEqual(verdict.lost, ["stop 3 -> 0"])
     }
 }

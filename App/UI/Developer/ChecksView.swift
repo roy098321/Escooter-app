@@ -23,6 +23,17 @@ struct ChecksView: View {
             }
             autoSection
             if showTodo {
+                if UpdateCheck.justUpdated {
+                    Section {
+                        ForEach(["a9", "a4"], id: \.self) { id in
+                            if let item = CheckList.item(id) { CheckRow(item: item) }
+                        }
+                    } header: {
+                        Text("Just updated")
+                    } footer: {
+                        Text("Test round after an update: Run all automatic first, then work down this To do list. This block goes away after Run all automatic.")
+                    }
+                }
                 let todo = results.todo()
                 if todo.isEmpty {
                     Section { Text("Nothing left to do. Send the export (Results).") }

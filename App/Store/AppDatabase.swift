@@ -39,6 +39,8 @@ final class AppDatabase {
     let migratedNow: [String]
     /// Install / update info after this launch was recorded
     private(set) var meta: Meta?
+    /// a9 (T-02): rows per table before and after this launch's migrations (nil = a new database or a read-only one)
+    private(set) var updateCounts: (before: [String: Int], after: [String: Int])?
 
     /// The real database in Application Support.
     static func openShared(build: String) throws -> AppDatabase {
@@ -84,6 +86,8 @@ final class AppDatabase {
             return
         }
 
+        var countsBefore: [String: Int]?
+        if !applied.isEmpty { countsBefore = try pool.read { try AppDatabase.allRowCounts($0) } }
         var copy: URL?
         if pending && !applied.isEmpty {
             // V3: back up existing data before touching it
@@ -106,6 +110,10 @@ final class AppDatabase {
         isReadOnly = false
         preMigrationCopy = copy
         migratedNow = Array(after.subtracting(applied)).sorted()
+        if let countsBefore {
+            let countsAfter = try pool.read { try AppDatabase.allRowCounts($0) }
+            updateCounts = (before: countsBefore, after: countsAfter)
+        }
         meta = try recordLaunch(build: build)
         removeOldPreMigrationCopies(keeping: copy)
     }
@@ -166,6 +174,20 @@ final class AppDatabase {
             }
             return counts
         }
+    }
+
+    /// Rows in every table of the database (all migrations, not only v1), for the update check a9.
+    static func allRowCounts(_ db: Database) throws -> [String: Int] {
+        var counts: [String: Int] = [:]
+        let names = try String.fetchAll(db, sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'grdb_migrations'")
+        for name in names {
+            counts[name] = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \"\(name)\"") ?? 0
+        }
+        return counts
+    }
+
+    func allRowCounts() throws -> [String: Int] {
+        try writer.read { try AppDatabase.allRowCounts($0) }
     }
 
     /// Applied migrations, oldest first.

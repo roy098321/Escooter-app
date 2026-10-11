@@ -80,6 +80,7 @@ enum BudgetedNotifier {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshTaskId, using: nil) { task in
             scheduleBackgroundRefresh()
             let work = Task {
+                await MainActor.run { IdleBatteryLog.recordIfIdle() }
                 guard let db = await MainActor.run(body: { AppModel.shared.database }) else { task.setTaskCompleted(success: false); return }
                 _ = await OutsideDataService.shared.runNow(database: db, reason: "background")
                 windCheck(db)

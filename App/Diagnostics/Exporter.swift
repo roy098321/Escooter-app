@@ -26,6 +26,8 @@ enum Exporter {
         // T-00 part 2: how far off every estimate was, and what the other threshold values would have decided
         try FieldKitService.accuracyText(model.database).write(to: folder.appendingPathComponent("accuracy.txt"), atomically: true, encoding: .utf8)
         try FieldKitService.shadowText(model.database).write(to: folder.appendingPathComponent("shadow.txt"), atomically: true, encoding: .utf8)
+        // T-02: the phone's battery % while no ride was active
+        try IdleBatteryLog.text().write(to: folder.appendingPathComponent("idle-battery.txt"), atomically: true, encoding: .utf8)
         try CheckResults.shared.report().write(to: folder.appendingPathComponent("results.txt"), atomically: true, encoding: .utf8)
         try CheckResults.shared.notesReport().write(to: folder.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
         try ErrorLog.shared.lines().joined(separator: "\n")

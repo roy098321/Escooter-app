@@ -34,6 +34,8 @@ final class AutoRunner {
         step = "App ID, database, fuel price setting"
         stepIndex = 2
         InstallChecks.run(database: model.database, error: model.databaseError)
+        UpdateCheck.run()
+        IdleBatteryCheck.run()
 
         step = "Error log"
         stepIndex = 3
@@ -121,6 +123,7 @@ final class AutoRunner {
         Log.info(source: "developer", "Run all automatic: \(passed)/\(Self.ids.count) passed")
         step = ""
         stepIndex = 0
+        UpdateCheck.justUpdated = false
         running = false
     }
 
@@ -142,6 +145,6 @@ final class AutoRunner {
 
 /// The IDs "Run all automatic" settles by itself (T-01: also what the check list calls Automatic).
 enum AutomaticChecks {
-    static let ids: [String] = ["h1", "a3", "a6", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "u10", "u11", "u12", "u13", "u14", "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u22", "u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32", "u33", "u34", "u35", "u36", "u37", "u38", "u39", "u40", "u41", "u42", "u43", "u44", "u45", "u46", "u47", "u48", "u49", "o1", "e1", "d6", "d9", "d1", "d7", "d8",
+    static let ids: [String] = ["h1", "a3", "a6", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "u10", "u11", "u12", "u13", "u14", "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u22", "u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32", "u33", "u34", "u35", "u36", "u37", "u38", "u39", "u40", "u41", "u42", "u43", "u44", "u45", "u46", "u47", "u48", "u49", "u50", "a9", "o1", "e1", "d6", "d9", "d1", "d7", "d8",
                       "e2", "e3", "e3b", "e4", "e5", "e6", "e6b", "e7"]
 }

@@ -22,12 +22,14 @@ final class PhoneBatteryWatch {
 
     /// A ride started (a cancelled start is simply overwritten by the next one).
     func rideStarted() {
+        IdleBatteryLog.record(.rideStart)
         startAt = Date()
         startPct = level()
     }
 
     /// The ride was closed: judge it when it lasted 15 min or more and the phone was not charging.
     func rideEnded() {
+        IdleBatteryLog.record(.rideEnd)
         guard let began = startAt else { return }
         let rideS = Date().timeIntervalSince(began)
         let a = startPct

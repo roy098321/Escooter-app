@@ -1,6 +1,7 @@
 """Builds the frozen test database of a milestone (DATA_MODEL V7, TESTING §1 layer 4).
 
-    python Tools/make_frozen_db.py
+    python Tools/make_frozen_db.py          # 0.4 foundation (made once, never regenerated)
+    python Tools/make_frozen_db.py --v10    # 1.0 freeze (schema v1 + v2 + v3, every table filled; made once)
 
 Reads the schema SQL straight out of App/Store/Migrations/Migration0001.swift (between the
 SQL-BEGIN / SQL-END markers), so it is the same SQL the app runs, marks migration "v1" as
@@ -12,11 +13,13 @@ proves every later build opens it with no row lost.
 """
 import re
 import sqlite3
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SWIFT = ROOT / "App/Store/Migrations/Migration0001.swift"
 OUT = ROOT / "AppTests/Fixtures/p4-foundation.sqlite"
+OUT_V10 = ROOT / "AppTests/Fixtures/p5-1.0-frozen.sqlite"
 T0 = 946_684_800_000  # 2000-01-01T00:00:00Z in ms
 
 
@@ -28,14 +31,29 @@ def schema_sql():
     return m.group(1)
 
 
-def main():
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    if OUT.exists():
-        OUT.unlink()
-    db = sqlite3.connect(OUT)
+def migration_sql(n):
+    """The SQL of Migration000<n>.swift (the `sql` string of the enum), as the app runs it."""
+    text = (ROOT / f"App/Store/Migrations/Migration000{n}.swift").read_text(encoding="utf-8")
+    m = re.search(r'static let sql = """' + chr(10) + r'(.*?)' + chr(10) + r'    """', text, re.S)
+    if not m:
+        raise SystemExit(f"sql of Migration000{n} not found")
+    return m.group(1)
+
+
+def main(v10=False):
+    label = "1.0-frozen" if v10 else "0.4-frozen"
+    out = OUT_V10 if v10 else OUT
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if out.exists():
+        out.unlink()
+    db = sqlite3.connect(out)
     db.executescript(schema_sql())
     db.execute("CREATE TABLE grdb_migrations (identifier TEXT NOT NULL PRIMARY KEY)")
     db.execute("INSERT INTO grdb_migrations VALUES ('v1')")
+    if v10:
+        for n in (2, 3):
+            db.executescript(migration_sql(n))
+            db.execute("INSERT INTO grdb_migrations VALUES (?)", (f"v{n}",))
 
     ins = db.execute
     ins("INSERT INTO scooter VALUES ('s1','G2','00000000-0000-0000-0000-000000000001',?,586.6,'BK-BLE-1.0','6.1.2','6.3.0','15,20,25',NULL)", (T0,))
@@ -45,9 +63,9 @@ def main():
         ins("""INSERT INTO ride (id, scooterId, kind, status, startAt, endAt, utcOffsetMin, endReason,
                distanceM, totalS, movingS, energyWhRaw, usedPct, odoStartKm, odoEndKm, tempStartC, tempPeakC,
                ignoredReadings, hasGps, calcVersion, decoderVersion, createdBuild)
-               VALUES (?,?,?,?,?,?,180,'scooterOff',?,?,?,?,?,?,?,26,92,0,1,1,1,'0.4-frozen')""",
+               VALUES (?,?,?,?,?,?,180,'scooterOff',?,?,?,?,?,?,?,26,92,0,1,1,1,?)""",
             (rid, "s1", "ride" if k < 2 else "shortHop", "ended", start, start + 1_800_000,
-             13_700 - k * 100, 1800, 1700, 322.0 - k, 41.0, 602.9, 616.6, ))
+             13_700 - k * 100, 1800, 1700, 322.0 - k, 41.0, 602.9, 616.6, label))
         for t in range(0, 60_000, 1000):
             ins("""INSERT INTO ride_sample (rideId, t, speedMps, lat, lon, hAccM, voltage, currentA, batteryPct,
                    tempC, gear, capKmh, brake, light, odometerKm, mode, moving, distanceM)
@@ -80,16 +98,25 @@ def main():
     ins("INSERT INTO holiday VALUES ('2000-01-01','holiday','Test holiday','hebcal')")
     ins("INSERT INTO setting VALUES ('units','\"metric\"')")
     ins("INSERT INTO setting VALUES ('packAh','16')")
-    ins("INSERT INTO error_log (at, level, source, message, build) VALUES (?, 'info', 'frozen', 'Frozen database for P4', '0.4-frozen')", (T0,))
-    ins("INSERT INTO app_meta VALUES (1,'00000000-0000-0000-0000-00000000F00D','0.4-frozen','0.4-frozen','v1',NULL,NULL,?,3)", (T0,))
+    ins("INSERT INTO error_log (at, level, source, message, build) VALUES (?, 'info', 'frozen', ?, ?)", (T0, "Frozen database for " + ("1.0" if v10 else "P4"), label))
+    if v10:
+        # the P5 tables (v2, v3): every one filled with synthetic rows
+        ins("INSERT INTO ride_note VALUES ('r0','Synthetic note for Claude',?)", (T0,))
+        ins("INSERT INTO feedback (kind, subjectId, subjectText, verdict, reason, note, at) VALUES ('end','r0',NULL,-1,'Ended too early','x',?)", (T0,))
+        ins("INSERT INTO prediction (kind, routeId, madeAt, predicted, aux, rideId, actual, settledAt) VALUES ('todayTime','rt1',?,1500,NULL,'r0',1620,?)", (T0, T0 + 1_800_000))
+        ins("INSERT INTO shadow_result VALUES ('r0','slow','45','1 warning',0,1)")
+        ins("INSERT INTO shadow_result VALUES ('r0','slow','48','0 warnings',1,0)")
+        ins("INSERT INTO app_meta VALUES (1,'00000000-0000-0000-0000-0000000F10D1',?,?,'v3',NULL,NULL,?,5)", (label, label, T0))
+    else:
+        ins("INSERT INTO app_meta VALUES (1,'00000000-0000-0000-0000-00000000F00D','0.4-frozen','0.4-frozen','v1',NULL,NULL,?,3)", (T0,))
     db.commit()
     counts = {t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
               for (t,) in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
     db.execute("PRAGMA journal_mode=DELETE")
     db.close()
     empty = [t for t, n in counts.items() if n == 0]
-    print(OUT, f"{OUT.stat().st_size // 1024} KB", "tables:", len(counts), "empty:", empty)
+    print(out, f"{out.stat().st_size // 1024} KB", "tables:", len(counts), "empty:", empty)
 
 
 if __name__ == "__main__":
-    main()
+    main(v10="--v10" in sys.argv)
