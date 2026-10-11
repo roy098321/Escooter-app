@@ -178,7 +178,7 @@ public enum ShadowCalc {
 
     public static func gates(timedRides: Int, batteryRides: Int, trips: Int) -> [ShadowDecision] {
         func gate(_ rule: String, have: Int, need: Int) -> [ShadowDecision] {
-            func decide(_ n: Int) -> String { have >= n ? "open (\(have) of \(n))" : "closed (\(have) of \(n))" }
+            func decide(_ n: Int) -> String { have >= n ? "open (\(have) rides so far)" : "closed (\(have) rides so far)" }
             let std = decide(need)
             return [need, need - 1, need + 1].enumerated().map { i, n in
                 let d = decide(n)

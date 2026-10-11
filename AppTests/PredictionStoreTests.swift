@@ -133,6 +133,22 @@ final class PredictionStoreTests: XCTestCase {
         XCTAssertFalse(ids.contains("p6load"))
     }
 
+    func test_shadow_onARoute_storesTheGateDecisions() throws {
+        let db = try openDB()
+        for (i, id) in ["A", "B", "C", "D"].enumerated() {
+            try RideToolsSeed.ride(db, id: id, startAt: start + Int64(i) * 86_400_000)
+            try db.writer.write { d in
+                try d.execute(sql: "UPDATE ride SET routeId = 'RT', totalS = 600, usedPct = 6, isSimulated = 0, kind = 'ride' WHERE id = ?", arguments: [id])
+            }
+        }
+        try FieldKitService.afterRide(db, rideId: "D")
+        let rows = try PredictionQueries(db).shadowRows()
+        // D is the fourth ride of the route: the battery gate (5) is closed, the 4-ride shadow gate would be open
+        let battery4 = rows.first { $0.rule == ShadowCalc.ruleGateBattery && $0.variant == "4 rides" }
+        XCTAssertEqual(battery4?.differs, true)
+        XCTAssertTrue(rows.contains { $0.rule == ShadowCalc.ruleDifferent })
+    }
+
     func test_marks_keepOnlyTheNewest200() throws {
         let db = try openDB()
         for i in 0..<250 { RideMarks.add(db, RideMarks.screenOn, at: start + Int64(i) * 120_000) }
