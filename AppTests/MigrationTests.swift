@@ -71,7 +71,7 @@ final class MigrationTests: XCTestCase {
         let db = try AppDatabase(url: url, build: "test-3", migrator: migrator)
         let copy = try XCTUnwrap(db.preMigrationCopy)
         XCTAssertTrue(FileManager.default.fileExists(atPath: copy.path))
-        XCTAssertEqual(db.migratedNow, ["v2", "v3", "v2-test"])
+        XCTAssertEqual(db.migratedNow, ["v2", "v2-test", "v3"])
         let copiedRides = try DatabaseQueue(path: copy.path).read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM ride") }
         XCTAssertEqual(copiedRides, 3)
 
