@@ -22,6 +22,13 @@ enum CheckTool: String {
     case none, scooter, sensors, simulator, backup, crash, outside, readability, results, permissions, insights
 }
 
+/// T-01: how a check gets its result (shown as a small tag on every check).
+enum CheckKind: String {
+    case automatic = "Automatic"
+    case manual = "Manual"
+    case onARide = "On a ride"
+}
+
 struct CheckItem: Identifiable {
     let id: String
     let group: String
@@ -234,7 +241,6 @@ enum CheckList {
 
     private static let simStart = "Developer → Simulated scooter → Run on the real screens → "
     private static let m1New: [CheckItem] = [
-        m("a8", simM, "Expiry reminder scheduled", "Nothing to do", "A reminder is pending for 1 day before the app expires", manual: true),
         m("w1", simM, "Speed warning turns on above 45", simStart + "Scenario SPD-46 · 5× · Start", "Tile red + SLOW within 1 s of passing 45 km/h", manual: true, tool: .simulator),
         m("w2", simM, "Warning clears below 43, no flicker", "Same run as w1 (46 → 44 → 46 → 42)", "Still red at 44, clears at 42; one on / off per crossing", manual: true, tool: .simulator),
         m("w3", simM, "Warning on GPS speed in phone mode", simStart + "Scenario SPD-46-GPS · 5× · Start", "Red + SLOW with the GPS label while disconnected", manual: true, tool: .simulator),
@@ -289,23 +295,23 @@ enum CheckList {
     private static let routeSim = "Developer → Simulated scooter → Run on the real screens → "
     /// M2_PLAN section 4. Entries are added as their task is built (the ID list there is the full list).
     private static let m2New: [CheckItem] = [
-        m("u17", phone, "Places, matching, Save as route (M2-01)", "Nothing to do · Run all automatic marks it",
+        m("u17", routesM, "Places, matching, Save as route (M2-01)", "Nothing to do · Run all automatic marks it",
           "Tolerance 100 m to 1 km; the 2nd trip suggests a route; parked 120 m away still matches; a loop, a ride with no GPS and a dismissed trip never make a suggestion"),
-        m("u18", phone, "Variants and street names (M2-02)", "Nothing to do · Run all automatic marks it",
+        m("u18", routesM, "Variants and street names (M2-02)", "Nothing to do · Run all automatic marks it",
           "A detour is a new variant; a street name from the phone replaces Variant 2, an owner name stays; the way back is its own route"),
-        m("u19", phone, "Usual ranges and Today estimate (M2-03)", "Nothing to do · Run all automatic marks it",
+        m("u19", routesM, "Usual ranges and Today estimate (M2-03)", "Nothing to do · Run all automatic marks it",
           "Middle 80% of the last 20 rides in 90 days; under 5 rides min to max; gates 3 / 5 rides; noticeably different at 1 min or 2%; Today shown honest, the needed battery carries the 10% margin"),
-        m("u20", phone, "Route card and Routes list (M2-04)", "Nothing to do · Run all automatic marks it",
+        m("u20", routesM, "Route card and Routes list (M2-04)", "Nothing to do · Run all automatic marks it",
           "Title, six ranges, Today strip, variants + map, elevation both ways, rides list and the Routes list are built right from stored rides"),
-        m("u21", phone, "Greying with the safety margin (M2-05)", "Nothing to do · Run all automatic marks it",
+        m("u21", routesM, "Greying with the safety margin (M2-05)", "Nothing to do · Run all automatic marks it",
           "Exactly at the limit fits; 0.1% under is greyed; One way only, Tight and fits at the 10% spare edge; no data = no chip; last seen shows its age; I can charge here lifts the way back"),
-        m("u22", phone, "Where to? and arrival time (M2-06)", "Nothing to do · Run all automatic marks it",
+        m("u22", routesM, "Where to? and arrival time (M2-06)", "Nothing to do · Run all automatic marks it",
           "The chip appears only once a route is saved; arrival time on pace, running late (blended by km done), off the route (distance / typical speed); the display changes at most every 30 s or at a 1 min jump"),
-        m("u23", phone, "Arrive by and the leave reminder (M2-07)", "Nothing to do · Run all automatic marks it",
+        m("u23", routesM, "Arrive by and the leave reminder (M2-07)", "Nothing to do · Run all automatic marks it",
           "Leave = target - today - margin (upper edge minus median), settled in at most 3 steps across the rush-hour boundary; under 3 rides says so; the reminder is held to 07:00 or dropped in quiet hours and replaced only when 2 min or more earlier"),
-        m("u24", phone, "Dot follows the route without GPS (M2-08)", "Nothing to do · Run all automatic marks it",
+        m("u24", routesM, "Dot follows the route without GPS (M2-08)", "Nothing to do · Run all automatic marks it",
           "GPS lost on a known route: the hollow dot moves by wheel distance and is within 30 m after 2 km; off the route it stays frozen and grey"),
-        m("u25", phone, "There and back and the ride-start warning (M2-09)", "Nothing to do · Run all automatic marks it",
+        m("u25", routesM, "There and back and the ride-start warning (M2-09)", "Nothing to do · Run all automatic marks it",
           "Round trip with a 10% margin and a 5% reserve: fits at 10% spare, tight below, not for the way back, not even there; I can charge here lifts the way back; the warning at ride start comes once and only when it does not fit"),
         m("d12", routesM, "Simulated routes never touch real routes (M2-01)", "Checked after every simulator run", "Real place, route and variant counts unchanged", tool: .simulator),
         m("q2", routesM, "Route processing is quick (M2-01)", "Nothing to do · it measures every ride", "Milliseconds for matching one ride are in the note (a ride close must stay fast)"),
@@ -441,9 +447,9 @@ enum CheckList {
           "Nothing is cut off or overlaps at the largest size (tiles go one per row); the live view keeps its big numbers; VoiceOver reads every button, tile and chart (\"Speed 27 kilometres per hour\", \"Settings\", \"Earlier\"); the live prompt is spoken when it appears; Hold to end can be held with VoiceOver on (touch it directly); the map does not move with animation when Reduce Motion is on", manual: true),
         m("u45", fastM, "Edge cases: phone battery, storage, expiry reminder, clock change (M6-06)", "Nothing to do · Run all automatic marks it",
           "Phone battery 25% normal, 19% GPS less often, 9% GPS off with the banner Phone battery low · map paused (tiles untouched), charging keeps full GPS, Low Power Mode = less often; storage levels (1 GB: thin early, 300 MB: Home card); the expiry reminder is planned 1 day before the 7-day signature ends; a phone clock set an hour forward does not move a ride; a temporary database loses its old raw chunk early but keeps energy chunks, recent data and the ride; the line ends with this phone's free space and signature"),
-        m("u46", fastM, "Field kit: ride notes, thumbs, last 15 minutes of logs in the export (T-00)", "Nothing to do · Run all automatic marks it",
+        m("u46", p6M, "Field kit: ride notes, thumbs, last 15 minutes of logs in the export (T-00)", "Nothing to do · Run all automatic marks it",
           "On a temporary database a ride gets a note, the note is edited, an End thumbs-down with a reason is stored; the export texts contain the edited note (without ride ids), the thumbs line with its reason, and the last 15 minutes of logs"),
-        m("mk1", fastM, "Field kit on a real ride: note, thumbs, Report a problem (T-00)", "After a real ride: write a note on the summary, tap the thumbs, Settings → Report a problem → Prepare report",
+        m("mk1", p6M, "Field kit on a real ride: note, thumbs, Report a problem (T-00)", "After a real ride: write a note on the summary, tap the thumbs, Settings → Report a problem → Prepare report",
           "The summary has Right? Start / End / Distance with thumbs, a thumbs on each insight card and a Note for Claude box; a thumbs-down asks what was wrong; the note is still there when you open the ride from Rides; the report zip holds ride-notes.txt, feedback.txt and last-15-min.txt", manual: true),
         m("mx1", fastM, "Airplane mode ride and a low-battery ride (M6-06)", "Airplane mode on for a whole real ride; another ride with the phone below 20%, then below 10% (or use Developer → Simulated scooter → SC-13)",
           "Airplane mode: the ride records, the map shows Offline map, weather lines say they arrive later, nothing crashes; phone below 20%: the path has fewer points; below 10%: banner Phone battery low · map paused, speed and battery tiles keep working, GPS comes back when charging; Low Power Mode on: the ride still records with the phone locked; location turned off in iPhone Settings mid-ride: No GPS · location is off for CorckieApp; the app signature reminder arrives 1 day before expiry (needs notifications on)", manual: true),
@@ -482,6 +488,19 @@ enum CheckList {
           "Ticks itself when a real ride of 5 minutes or more never had the CorckieApp screen on")
     ]
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }
+
+    /// T-01: how a check gets its result. Automatic = "Run all automatic" settles it; On a ride = needs a real ride (most tick by
+    /// themselves when the ride closes); Manual = you judge it (Pass / Fail) or do a scooter / phone step.
+    static func kind(_ item: CheckItem) -> CheckKind {
+        if CheckGuide.of(item.id).place == .ride { return .onARide }
+        if AutomaticChecks.ids.contains(item.id) { return .automatic }
+        return .manual
+    }
+
+    static func kindCounts() -> (total: Int, automatic: Int, manual: Int, onARide: Int) {
+        let kinds = all.map(kind)
+        return (kinds.count, kinds.filter { $0 == .automatic }.count, kinds.filter { $0 == .manual }.count, kinds.filter { $0 == .onARide }.count)
+    }
 }
 
 /// Check results, kept in UserDefaults (developer data, survives a broken database).

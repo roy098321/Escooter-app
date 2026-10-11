@@ -18,7 +18,8 @@ struct ChecksView: View {
                 }
                 .pickerStyle(.segmented)
             } footer: {
-                Text("✅ passed · ❌ failed · ⏳ not done yet · ℹ️ recorded for Claude. Tap ⓘ for the steps of a check.")
+                let k = CheckList.kindCounts()
+                Text("✅ passed · ❌ failed · ⏳ not done yet · ℹ️ recorded for Claude. Tap ⓘ for the steps of a check.\n\(k.total) checks: \(k.automatic) automatic · \(k.manual) manual · \(k.onARide) on a ride (most of those tick themselves).")
             }
             autoSection
             if showTodo {
@@ -158,6 +159,7 @@ struct CheckRow: View {
                 .buttonStyle(.borderless)
                 .accessibilityLabel("How to do this check")
             }
+            kindTag
             let note = results.note(item.id)
             Text(note.isEmpty ? item.how : note)
                 .font(.footnote)
@@ -199,6 +201,24 @@ struct CheckRow: View {
         .sheet(isPresented: $editingNote) {
             CheckNoteSheet(item: item)
                 .v1Label()
+        }
+    }
+}
+
+extension CheckRow {
+    /// T-01: Automatic (Run all automatic settles it) · Manual (you judge it) · On a ride (needs a real ride, most tick themselves)
+    @ViewBuilder var kindTag: some View {
+        let kind = CheckList.kind(item)
+        switch kind {
+        case .onARide:
+            Label("On a ride", systemImage: "figure.outdoor.cycle")
+                .font(.caption.weight(.semibold)).foregroundStyle(.blue)
+        case .automatic:
+            Label("Automatic", systemImage: "gearshape")
+                .font(.caption).foregroundStyle(.secondary)
+        case .manual:
+            Label("Manual", systemImage: "hand.tap")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 }
