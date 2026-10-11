@@ -48,6 +48,10 @@ enum RouteCardLoader {
         guard let input = cardInput(routeId: routeId, database: database, battery: battery) else { return nil }
         var model = RouteCardBuilder.build(input)
         if model.saved { model.fastest = FastestService.card(database, routeId: routeId) }     // M6-01 (Q23)
+        // T-00 part 2: what the card shows is written down for the prediction log (Q-C, Q-D, there-and-back)
+        FieldKitService.logToday(database, routeId: routeId, rides: input.rides, nowMs: input.nowMs, utcOffsetMin: input.utcOffsetMin)
+        FieldKitService.logThereBack(database, routeId: routeId, rides: input.rides, battery: input.battery, shown: model.thereAndBack,
+                                     nowMs: input.nowMs, utcOffsetMin: input.utcOffsetMin)
         return model
     }
 

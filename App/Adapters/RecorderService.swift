@@ -30,6 +30,10 @@ final class RecorderService {
     @ObservationIgnored private var driver = LiveScreenDriver()
     @ObservationIgnored private var lastLiveMode: LiveMode = .ready
     @ObservationIgnored private var followChecked = false
+    /// T-00 part 2: how many ETA marks of the followed ride are already in the prediction log
+    @ObservationIgnored private var etaLogged = 0
+    /// T-00 part 2: when a "screen on" / "Low Power Mode" mark was last written (a mark a minute at most)
+    @ObservationIgnored private var markedAt: [String: Int64] = [:]
 
     /// M1-15: the simulator drives the screens; the real Recorder's live output is ignored meanwhile
     private(set) var simActive = false
@@ -154,6 +158,14 @@ final class RecorderService {
         let rideOn = input.phase == .starting || input.phase == .riding
         if rideOn, !followChecked, input.scooterBatteryPct != nil || input.phase == .riding {
             followChecked = true
+            etaLogged = 0
+            if !fromSimulator, let real = AppModel.shared.database {
+                // T-00 part 2: the real range and the calibration the ride starts with go in the prediction log
+                let nowMs = FieldKitService.nowMs()
+                RideMarks.noteTrackingStarted(real, at: nowMs - 60_000)
+                FieldKitService.logRideStart(real, currentPct: input.scooterBatteryPct ?? BatteryNowSource.current(database: real)?.pct,
+                                             connected: AppModel.shared.scooter.connected, nowMs: nowMs)
+            }
             if let db = AppModel.shared.displayDatabase {
                 let battery = input.scooterBatteryPct.map { BatteryNow(pct: $0) } ?? BatteryNowSource.current(database: db)
                 // M4-03: the ride-start insights (Q9 folded in, Q1 destination guess, Q2 tight battery, Q15 headwind) are stored as
@@ -179,7 +191,23 @@ final class RecorderService {
             RouteFollowSelection.shared.combination = false
         }
         EngineClock.shared.check(rideActive: rideOn)                    // M6-06: a changed phone clock
+        if rideOn, !fromSimulator, let real = AppModel.shared.database {
+            // T-00 part 2: what the scenario list needs to know about the ride: was the screen on (pocket ride), Low Power Mode
+            let nowMs = FieldKitService.nowMs()
+            func mark(_ key: String) {
+                guard nowMs - (markedAt[key] ?? 0) >= 60_000 else { return }
+                markedAt[key] = nowMs
+                RideMarks.add(real, key, at: nowMs)
+            }
+            if UIApplication.shared.applicationState == .active { mark(RideMarks.screenOn) }
+            if ProcessInfo.processInfo.isLowPowerModeEnabled { mark(RideMarks.lowPower) }
+        }
         let screen = driver.update(input, at: time ?? Self.now())
+        if !fromSimulator, driver.etaMarks.count > etaLogged, let real = AppModel.shared.database {
+            // T-00 part 2: the arrival time shown at 25 / 50 / 75% of the followed route (Q-E)
+            FieldKitService.logEta(real, routeId: RouteFollowSelection.shared.routeId, marks: Array(driver.etaMarks.dropFirst(etaLogged)))
+            etaLogged = driver.etaMarks.count
+        }
         if screen.mode != .ready, lastLiveMode == .ready { livePath.reset() }
         lastLiveMode = screen.mode
         if screen.mode != .ready { readyRequested = false }
@@ -234,6 +262,7 @@ final class RecorderService {
         driver = LiveScreenDriver()
         lastLiveMode = .ready
         followChecked = false
+        etaLogged = 0
     }
 
     /// M1-13: the rider closed the summary (Done) or it could not load

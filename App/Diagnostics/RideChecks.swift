@@ -28,6 +28,7 @@ enum RideChecks {
             }
         }
         RouteCheck.timing(database: database)
+        ScenarioChecks.run(database: database)          // T-00 part 2: the P6 scenario list ticks itself
     }
 
     /// rides.txt in the export: one line per ride, no coordinates and no ride ids.

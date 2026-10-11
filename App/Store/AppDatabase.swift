@@ -55,7 +55,10 @@ final class AppDatabase {
         migrator.registerMigration(Migration0002.identifier) { db in
             try db.execute(sql: Migration0002.sql)
         }
-        // Next: Migration0003 (append only, DATA_MODEL V2)
+        migrator.registerMigration(Migration0003.identifier) { db in
+            try db.execute(sql: Migration0003.sql)
+        }
+        // Next: Migration0004 (append only, DATA_MODEL V2)
         return migrator
     }
 

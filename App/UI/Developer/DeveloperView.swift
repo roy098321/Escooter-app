@@ -33,6 +33,7 @@ struct DeveloperView: View {
                 tool("Outside data", "cloud.sun", ["e1", "e2", "e3", "e3b", "e4", "e5", "e6", "e6b", "e7", "e8"]) { OutsideDataView() }
                 tool("Readability", "sun.max", ["f2", "f3"]) { ReadabilityView() }
                 tool("Insights (simulated windy week)", "text.bubble", ["u32", "mi1"]) { InsightsView() }
+                tool("Accuracy (estimate errors)", "scope", ["u47", "u48", "u49"]) { AccuracyView() }
             }
         }
         .navigationTitle("Developer")

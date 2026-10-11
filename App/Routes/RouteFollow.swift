@@ -40,6 +40,11 @@ enum RouteFollowLoader {
             inputs.append(WhereToInput(routeId: route.id, title: RouteService.title(routeId: route.id, database: database), toName: to,
                                        rides: RouteCardLoader.stats((try? store.routeRides(routeId: route.id)) ?? [])))
         }
+        // T-00 part 2: the "today ~N min · uses about N%" shown on each chip is written down for the prediction log
+        for i in inputs where !i.rides.isEmpty {
+            FieldKitService.logToday(database, routeId: i.routeId, rides: i.rides, nowMs: nowMs, utcOffsetMin: utcOffsetMin,
+                                     departureMinute: DayClock.minuteOfDay(startAtMs: nowMs, utcOffsetMin: utcOffsetMin))
+        }
         return WhereTo.chips(inputs, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
     }
 

@@ -161,6 +161,7 @@ actor Recorder {
             do { try FactorUpdater.update(q.database, rideId: r.id) } catch { note("factors \(r.id): \(error.localizedDescription)") }
             do { try FastestService.update(q.database, rideId: r.id) } catch { note("choice points \(r.id): \(error.localizedDescription)") }
             do { try InsightRunner.afterRide(q.database, rideId: r.id) } catch { note("insights \(r.id): \(error.localizedDescription)") }
+            do { try FieldKitService.afterRide(q.database, rideId: r.id) } catch { note("field kit \(r.id): \(error.localizedDescription)") }
             hooks.rideClosed(r.id, r.status)
         } catch {
             note("orphan ride \(ride.id): \(error.localizedDescription)")
@@ -321,6 +322,8 @@ actor Recorder {
                 try InsightRunner.afterRide(db, rideId: id, nowMs: ms(end.endT))
                 try InsightRunner.weekly(db, nowMs: ms(end.endT), utcOffsetMin: r.utcOffsetMin ?? RouteCardLoader.currentOffsetMin())
             } catch { note("insights \(id): \(error.localizedDescription)") }
+            // T-00 part 2: the ride's predictions get their actual numbers, shadow thresholds are worked out (a failure never stops the close)
+            do { try FieldKitService.afterRide(db, rideId: id, nowMs: ms(end.endT)) } catch { note("field kit \(id): \(error.localizedDescription)") }
             // M5-07: raw packets older than the setting go (summaries and samples never)
             _ = try? RetentionService.run(db, nowMs: ms(end.endT))
             closedRideIds.append(id)

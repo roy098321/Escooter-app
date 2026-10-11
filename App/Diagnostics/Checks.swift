@@ -59,7 +59,10 @@ enum CheckList {
     /// M6: fastest way + polish (M6_PLAN section 3)
     static let fastM = "M6 · fastest way + polish"
 
-    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, batteryM, insightsM, toolsM, fastM, send]
+    /// T-00 part 2: the P6 field kit and the scenario list
+    static let p6M = "P6 · field kit and scenarios"
+
+    static let groups = [install, scooter, background, phone, outside, ride, simM, homeM, ridesM, routesM, batteryM, insightsM, toolsM, fastM, p6M, send]
 
     /// The P4 list, kept as it was: every P4 result stays readable under the same ID.
     static let p4: [CheckItem] = [
@@ -218,6 +221,7 @@ enum CheckList {
         list.insert(contentsOf: m4New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         list.insert(contentsOf: m5New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         list.insert(contentsOf: m6New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
+        list.insert(contentsOf: p6New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         return list
     }()
 
@@ -453,6 +457,30 @@ enum CheckList {
           "About 15 s before a place where the fastest mix takes another way the banner says which way (\"Keep right · Way via Park Ave · saves ~1:40\" or \"Stay on the usual way · saves ~40 s\") and goes away after the place; readable at speed; taking the other way gives no message; with the phone in the pocket nothing is seen, by design", manual: true)
     ]
 
+
+    /// T-00 part 2 (P6_PLAN section 2): the prediction log, shadow thresholds and the scenario list that ticks itself.
+    private static let p6New: [CheckItem] = [
+        m("u47", p6M, "Prediction log and accuracy: shown estimates get their real outcome (T-00)", "Nothing to do · Run all automatic marks it",
+          "On a temporary database a ride gets its Today time, Today battery, real range and arrival-time predictions filled in with the real numbers; the same estimate shown twice is stored once; another route's prediction waits; Accuracy and accuracy.txt show the Q-C and Q-F lines with the median error"),
+        m("u48", p6M, "Shadow thresholds: what other values would have decided (T-00)", "Nothing to do · Run all automatic marks it",
+          "On a temporary database one ride with a 45.4 km/h sample is judged: SLOW at 45 gives 1 warning, at 48 gives 0 and is marked as different; the ride-end and autostart rules are stored too; shadow.txt says in how many rides each value decided differently"),
+        m("u49", p6M, "Scenario list ticks itself (T-00)", "Nothing to do · Run all automatic marks it",
+          "One made-up night, rain, low-battery, heavy-load, GPS-loss, scooter-left-on, Low-Power-Mode, charged-after and screen-off ride ticks all ten scenario checks; a screen-on mark during the ride takes the pocket tick away again"),
+        m("mk2", p6M, "Accuracy screen after real rides (T-00)", "After a few rides on a saved route: Settings → Developer → Accuracy",
+          "Q-C Today's time estimate and Q-D Today's battery estimate show \"Based on N rides\" with a median and p90 error and the target; after a followed ride Q-E has arrival-time lines; Q-F and Q-G fill after the first rides; the export has accuracy.txt and shadow.txt", manual: true),
+        m("p6lb", p6M, "Scenario: a ride that started below 20% battery", "Ride when the battery is under 20% (ticks by itself)",
+          "Ticks itself when a real ride started below 20%"),
+        m("p6rain", p6M, "Scenario: a ride in rain", "Ride in the rain (ticks by itself once the weather arrives)", "Ticks itself when the ride's weather says rain"),
+        m("p6night", p6M, "Scenario: a ride at night", "Ride after 20:00 or before 06:00 (ticks by itself)", "Ticks itself when a real ride starts or ends at night"),
+        m("p6gps", p6M, "Scenario: GPS lost for 20 s or more", "Ride through a tunnel or underpass (ticks by itself)", "Ticks itself when a real ride lost GPS for 20 s or more"),
+        m("p6load", p6M, "Scenario: a heavy load", "Ride with a heavy bag (answer the load question with Heavy; ticks by itself)", "Ticks itself when a real ride has a load of 15 kg or more"),
+        m("p6route", p6M, "Scenario: a new route", "Ride somewhere you have not ridden before (ticks by itself)", "Ticks itself when a real ride of 1 km or more has no earlier ride on its route"),
+        m("p6lpm", p6M, "Scenario: phone in Low Power Mode", "Turn Low Power Mode on and ride (ticks by itself)", "Ticks itself when Low Power Mode was on during a real ride"),
+        m("p6left", p6M, "Scenario: scooter left on", "Stop and leave the scooter on for 10 minutes (ticks by itself)", "Ticks itself when a real ride ended by standing still for 10 minutes"),
+        m("p6chg", p6M, "Scenario: charge between rides", "Charge the scooter between two rides (ticks by itself)", "Ticks itself when a charge was found after a real ride"),
+        m("p6pocket", p6M, "Scenario: pocket ride (screen off the whole ride)", "Put the phone in your pocket with the screen off and ride 5 minutes or more (ticks by itself)",
+          "Ticks itself when a real ride of 5 minutes or more never had the CorckieApp screen on")
+    ]
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }
 }
 

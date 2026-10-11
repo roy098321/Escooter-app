@@ -56,6 +56,20 @@ public enum LiveScreenLogic {
     }
 }
 
+/// The arrival time (epoch seconds) the screen showed when 25 / 50 / 75% of the followed route was done.
+public struct EtaMark: Equatable, Sendable {
+    public static let percents = [25, 50, 75]
+    public var percent: Int
+    public var arrivalS: Double
+    public var atS: Double
+
+    public init(percent: Int, arrivalS: Double, atS: Double) {
+        self.percent = percent
+        self.arrivalS = arrivalS
+        self.atS = atS
+    }
+}
+
 /// Keeps the speed-warning hysteresis and the banner queue between updates (about once a second).
 public struct LiveScreenDriver: Sendable {
     private var builder = LiveStateBuilder()
@@ -72,6 +86,8 @@ public struct LiveScreenDriver: Sendable {
     /// Choice-point prompts shown in the ride that just ended (or the running one)
     public private(set) var choicePromptsShown = 0
     public private(set) var choiceReplans = 0
+    /// T-00 (prediction log, Q-E): the arrival time shown when the rider passed 25 / 50 / 75% of the followed route
+    public private(set) var etaMarks: [EtaMark] = []
 
     public init() {}
 
@@ -84,6 +100,7 @@ public struct LiveScreenDriver: Sendable {
         promptText = nil
         choicePromptsShown = 0
         choiceReplans = 0
+        etaMarks = []
         if returnWarning != nil, Self.active(lastPhase) { banners.raise(.returnCheck, at: 0) }
         follower = route
         self.utcOffsetMin = utcOffsetMin
@@ -189,6 +206,12 @@ public struct LiveScreenDriver: Sendable {
             arrival = ArrivalStrip(text: ArrivalStrip.text(destination: f.destinationName, arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin),
                                    offRoute: step.offPath, deadReckoned: step.deadReckoned)
             if step.deadReckoned, let d = step.dot { dotOverride = LivePath.Coord(lat: d.lat, lon: d.lon) }
+            if !step.offPath {
+                let done = f.totalM > 0 ? step.alongM / f.totalM * 100 : 0
+                for p in EtaMark.percents where done >= Double(p) && !etaMarks.contains(where: { $0.percent == p }) {
+                    etaMarks.append(EtaMark(percent: p, arrivalS: shown, atS: t))
+                }
+            }
         }
         var state = LiveScreenState(mode: mode, tiles: tiles, banner: shown, bannerText: text,
                                bannerIsSameRide: shown?.banner == .sameRide,
