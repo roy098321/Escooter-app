@@ -1,4 +1,7 @@
-"""Draws the CorckieApp icon: a flat white kick-scooter on a blue gradient.
+"""Draws the CorckieApp icon: option C1 "stem decal" (owner pick, 11 Oct 2026).
+
+Rider X Race Mini colours: beige main, dark grey band (the stem), orange
+stencil C with paint splatter (the "RIDER X" decal).
 
 Usage (on the PC):  python Tools/make_icon.py [extra-copy.png ...]
 Writes App/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
@@ -6,88 +9,102 @@ Writes App/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
 Drawn at 4x and scaled down for smooth edges.
 """
 import math
+import random
 import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-S = 4                      # supersampling factor
+BEIGE = (207, 184, 148)
+BEIGE_LT = (224, 205, 172)
+GREY = (79, 82, 81)
+GREY_DK = (46, 49, 49)
+ORANGE = (242, 138, 85)
+ORANGE_DK = (214, 112, 64)
+
+S = 4
 N = 1024 * S
-TOP = (72, 210, 255)       # light sky blue
-BOTTOM = (10, 92, 214)     # deep system blue
-WHITE = (255, 255, 255)
 
 
 def p(v):
     return int(round(v * S))
 
 
-def gradient():
-    n = 256  # small gradient, scaled up smoothly
-    img = Image.new("RGB", (n, n))
-    px = img.load()
-    for y in range(n):
-        for x in range(n):
-            t = min(1.0, max(0.0, (0.75 * y + 0.25 * x) / n))
-            px[x, y] = tuple(int(TOP[i] + (BOTTOM[i] - TOP[i]) * t) for i in range(3))
-    return img.resize((N, N), Image.BILINEAR)
+def grad(c1, c2):
+    g = Image.new("RGB", (256, 256))
+    px = g.load()
+    for y in range(256):
+        for x in range(256):
+            t = (0.7 * y + 0.3 * x) / 256
+            px[x, y] = tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
+    img = g.resize((N, N), Image.BILINEAR)
+    return img, ImageDraw.Draw(img)
 
 
-def line(d, a, b, w, fill=WHITE):
-    d.line([(p(a[0]), p(a[1])), (p(b[0]), p(b[1]))], fill=fill, width=p(w))
-    r = w / 2
-    for (x, y) in (a, b):  # round caps
-        d.ellipse([p(x - r), p(y - r), p(x + r), p(y + r)], fill=fill)
+def band(d, col, half=310, angle=-45):
+    """Diagonal band through the centre, `half` = half-width in px."""
+    a = math.radians(angle)
+    ux, uy = math.cos(a), math.sin(a)          # along the band
+    nx, ny = -uy, ux                           # across
+    L = 1000
+    pts = [(512 + ux * L + nx * half, 512 + uy * L + ny * half),
+           (512 - ux * L + nx * half, 512 - uy * L + ny * half),
+           (512 - ux * L - nx * half, 512 - uy * L - ny * half),
+           (512 + ux * L - nx * half, 512 + uy * L - ny * half)]
+    d.polygon([(p(x), p(y)) for x, y in pts], fill=col)
+    return (ux, uy), (nx, ny)
 
 
-def ring(d, c, r, w, bg_sample):
-    x, y = c
-    d.ellipse([p(x - r), p(y - r), p(x + r), p(y + r)], fill=WHITE)
-    ri = r - w
-    d.ellipse([p(x - ri), p(y - ri), p(x + ri), p(y + ri)], fill=bg_sample(x, y))
-    hub = 20
-    d.ellipse([p(x - hub), p(y - hub), p(x + hub), p(y + hub)], fill=WHITE)
+def stencil_c(d, col, c=(512, 512), r=205, w=92, gaps=((40, 120), (128, 232), (240, 320))):
+    box = [p(c[0] - r), p(c[1] - r), p(c[0] + r), p(c[1] + r)]
+    for a0, a1 in gaps:
+        d.arc(box, a0, a1, fill=col, width=p(w))
+
+
+def dot(d, x, y, r, col):
+    d.ellipse([p(x - r), p(y - r), p(x + r), p(y + r)], fill=col)
+
+
+def splat(d, col, rnd, centre, n, rmin, rmax, inside):
+    """Paint splatter: blobs with small satellites, only where inside(x, y)."""
+    for _ in range(n):
+        ang = rnd.uniform(0, 2 * math.pi)
+        dist = rnd.uniform(rmin, rmax)
+        x, y = centre[0] + math.cos(ang) * dist, centre[1] + math.sin(ang) * dist
+        if not inside(x, y):
+            continue
+        r = rnd.uniform(4, 14)
+        dot(d, x, y, r, col)
+        for _ in range(rnd.randint(0, 3)):
+            dot(d, x + rnd.uniform(-3, 3) * r, y + rnd.uniform(-3, 3) * r, r * rnd.uniform(0.25, 0.5), col)
+
+
+def on_band(half):
+    return lambda x, y: abs((x - 512) + (y - 512)) / math.sqrt(2) < half - 18
+
+
+def c1():
+    """C1 Refined: narrower band, cleaner C, fewer organic splatters + 2 drips."""
+    img, d = grad(BEIGE_LT, BEIGE)
+    band(d, GREY_DK, half=280)
+    stencil_c(d, ORANGE, r=200, w=96, gaps=((35, 125), (133, 227), (235, 325)))
+    rnd = random.Random(11)
+    splat(d, ORANGE, rnd, (512, 512), 34, 255, 400, on_band(280))
+    for x, y, L in ((612, 700, 70), (430, 330, 45)):        # drips
+        d.rounded_rectangle([p(x - 7), p(y), p(x + 7), p(y + L)], radius=p(7), fill=ORANGE)
+        dot(d, x, y + L, 11, ORANGE)
+    return img
+
 
 
 def main():
-    img = gradient()
-    d = ImageDraw.Draw(img)
-    base = img.copy().load()
-
-    def bg(x, y):
-        return base[p(x), p(y)]
-
-    rear, front, wr = (300, 712), (742, 712), 102
-    # Deck, low between the wheels
-    d.rounded_rectangle([p(268), p(650), p(668), p(698)], radius=p(24), fill=WHITE)
-    # Rear fender over the back wheel
-    fr, fw = wr + 34, 26
-    d.arc([p(rear[0] - fr), p(rear[1] - fr), p(rear[0] + fr), p(rear[1] + fr)],
-          start=200, end=285, fill=WHITE, width=p(fw))
-    for ang in (200, 285):  # round fender ends
-        a = math.radians(ang)
-        cx, cy = rear[0] + (fr - fw / 2) * math.cos(a), rear[1] + (fr - fw / 2) * math.sin(a)
-        d.ellipse([p(cx - fw / 2), p(cy - fw / 2), p(cx + fw / 2), p(cy + fw / 2)], fill=WHITE)
-    # Neck from the deck up to the stem
-    line(d, (640, 674), (717, 600), 46)
-    # Stem leaning back toward the rider, from the front axle to the handlebar
-    top = (640, 262)
-    line(d, front, top, 50)
-    # Handlebar (T-bar) with grips
-    line(d, (556, 262), (724, 262), 50)
-    # Wheels last so they sit on top
-    ring(d, rear, wr, 36, bg)
-    ring(d, front, wr, 36, bg)
-
-    out = img.resize((1024, 1024), Image.LANCZOS).convert("RGB")
-    repo = Path(__file__).resolve().parent.parent
-    target = repo / "App/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
-    target.parent.mkdir(parents=True, exist_ok=True)
-    out.save(target, optimize=True)
+    root = Path(__file__).resolve().parent.parent
+    out = root / "App/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
+    img = c1().resize((1024, 1024), Image.LANCZOS)
+    img.save(out)
     for extra in sys.argv[1:]:
-        Path(extra).parent.mkdir(parents=True, exist_ok=True)
-        out.save(extra, optimize=True)
-    print(target, out.size, out.mode)
+        img.save(extra)
+    print("wrote", out)
 
 
 if __name__ == "__main__":
