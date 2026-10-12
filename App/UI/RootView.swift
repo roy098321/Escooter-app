@@ -105,6 +105,10 @@ struct DataUpdateFailedView: View {
             }
             .buttonStyle(.borderedProminent)
         }
+        .glassCard(radius: DS.Radius.hero, padding: 16)
+        .padding(DS.Space.gutter)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background { MapBackdrop().ignoresSafeArea() }
     }
 }
 
