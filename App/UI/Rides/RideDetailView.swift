@@ -73,44 +73,7 @@ struct RideDetailView: View {
                 ProgressView()
             }
         }
-        .navigationTitle((preview ?? model)?.title ?? "Ride")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let onDone {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Done", action: onDone).fontWeight(.semibold)
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    if preview == nil, activeId != nil {
-                        Button { showCompare = true } label: { Label("Compare with another ride", systemImage: "arrow.left.arrow.right") }
-                        if mergeInfo != nil {
-                            Button { showMerge = true } label: { Label("Merge with previous ride", systemImage: "arrow.triangle.merge") }
-                        }
-                        // S11 (C15): a ride without GPS has no map to replay: greyed, with the reason
-                        let needsGps = (preview ?? model)?.noGps == true
-                        Button { replayDownload = false; showReplay = true } label: { Label(needsGps ? "Ride Replay \u{00B7} needs GPS" : "Ride Replay", systemImage: "play.circle") }
-                            .disabled(needsGps)
-                        Button { replayDownload = true; showReplay = true } label: { Label("Download Ride Replay", systemImage: "square.and.arrow.down") }
-                            .disabled(needsGps)
-                        Menu {
-                            Button("CSV (one line per reading)") { exportRide(.csv) }
-                            Button("GPX (Strava, Komoot)") { exportRide(.gpx) }
-                        } label: { Label("Export ride", systemImage: "square.and.arrow.up") }
-                        Button { showTrim = true } label: { Label(isTrimmed ? "Trim again or reset" : "Trim start / end", systemImage: "scissors") }
-                        if canUndoMerge {
-                            Button { undoMerge() } label: { Label("Undo last merge", systemImage: "arrow.uturn.backward") }
-                        }
-                        Divider()
-                    }
-                    Button(role: .destructive) { confirmDelete = true } label: { Label("Delete ride", systemImage: "trash") }
-                } label: {
-                    GlassIcon(symbol: "ellipsis")
-                }
-                .accessibilityLabel("More")
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .confirmationDialog("Delete this ride?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete ride", role: .destructive) { delete() }
             Button("Keep it", role: .cancel) {}
@@ -201,63 +164,136 @@ struct RideDetailView: View {
 
     // MARK: Layout
 
+    /// Sheet opens at half; the made-up shots that show more of the sheet open it full
+    private var startDetent: SheetDetent {
+        previewSeries != nil || previewPrompt != nil || previewInsights != nil || previewOffer != nil ? .full : .half
+    }
+
     private func content(_ m: RideSummaryModel) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if !m.subtitle.isEmpty {
-                    Text(m.subtitle).font(.subheadline).foregroundStyle(.secondary)
-                }
-                if m.noGps {
-                    noGpsCard
-                } else {
-                    mapCard(m.path)
-                }
-                if let s = previewSeries ?? series { RideSeriesPanels(series: s) }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: DS.Space.row)], spacing: DS.Space.row) {
-                    ForEach(Array(m.mainStats.enumerated()), id: \.offset) { _, s in tile(s) }
-                }
-                VStack(spacing: 0) {
-                    ForEach(Array(m.scooterStats.enumerated()), id: \.offset) { i, s in
-                        if i > 0 { Divider() }
-                        HStack {
-                            Text(s.label)
-                            Spacer()
-                            Text(s.value).foregroundStyle(.secondary).monospacedDigit()
-                        }
-                        .padding(.vertical, 10)
+        MapSheet(initial: startDetent) {
+            mapLayer(m)
+        } topBar: {
+            topBar(m)
+        } side: {
+            if !m.noGps, previewSeries != nil || series != nil {
+                GlassLayerControl(options: MapLayer.allCases.map { ($0, $0.rawValue) }, selection: $layer)
+            }
+        } sheet: {
+            sheetContent(m)
+        }
+    }
+
+    private func topBar(_ m: RideSummaryModel) -> some View {
+        GlassTopBar(title: m.title, subtitle: m.subtitle) {
+            GlassIconButton(symbol: onDone != nil ? "xmark" : "chevron.left", label: onDone != nil ? "Done" : "Back") {
+                if let onDone { onDone() } else { dismiss() }
+            }
+        } trailing: {
+            if preview != nil || activeId != nil {
+                Menu { shareItems } label: { GlassIcon(symbol: "square.and.arrow.up") }
+                    .accessibilityLabel("Share")
+            }
+            Menu { moreItems } label: { GlassIcon(symbol: "ellipsis") }
+                .accessibilityLabel("More")
+        }
+    }
+
+    /// Share = the existing export and replay actions only
+    @ViewBuilder private var shareItems: some View {
+        let needsGps = (preview ?? model)?.noGps == true
+        Button { replayDownload = false; showReplay = true } label: { Label(needsGps ? "Ride Replay \u{00B7} needs GPS" : "Ride Replay", systemImage: "play.circle") }
+            .disabled(needsGps)
+        Button { replayDownload = true; showReplay = true } label: { Label("Download Ride Replay", systemImage: "square.and.arrow.down") }
+            .disabled(needsGps)
+        Button { exportRide(.csv) } label: { Label("Export CSV (one line per reading)", systemImage: "tablecells") }
+        Button { exportRide(.gpx) } label: { Label("Export GPX (Strava, Komoot)", systemImage: "map") }
+    }
+
+    @ViewBuilder private var moreItems: some View {
+        if preview == nil, activeId != nil {
+            Button { showCompare = true } label: { Label("Compare with another ride", systemImage: "arrow.left.arrow.right") }
+            if mergeInfo != nil {
+                Button { showMerge = true } label: { Label("Merge with previous ride", systemImage: "arrow.triangle.merge") }
+            }
+            Button { showTrim = true } label: { Label(isTrimmed ? "Trim again or reset" : "Trim start / end", systemImage: "scissors") }
+            if canUndoMerge {
+                Button { undoMerge() } label: { Label("Undo last merge", systemImage: "arrow.uturn.backward") }
+            }
+            Divider()
+        }
+        Button(role: .destructive) { confirmDelete = true } label: { Label("Delete ride", systemImage: "trash") }
+    }
+
+    @ViewBuilder private func mapLayer(_ m: RideSummaryModel) -> some View {
+        if m.noGps {
+            ZStack {
+                MapBackdrop()
+                VStack { noGpsCard.padding(.horizontal, 40).padding(.top, 120); Spacer() }
+            }
+        } else {
+            mapView(m.path)
+        }
+    }
+
+    private func sheetContent(_ m: RideSummaryModel) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: DS.Space.row)], spacing: DS.Space.row) {
+                ForEach(Array(m.mainStats.enumerated()), id: \.offset) { _, s in tile(s) }
+            }
+            VStack(spacing: 0) {
+                ForEach(Array(m.scooterStats.enumerated()), id: \.offset) { i, s in
+                    if i > 0 { Divider() }
+                    HStack {
+                        Text(s.label)
+                        Spacer()
+                        Text(s.value).foregroundStyle(.secondary).monospacedDigit()
                     }
+                    .padding(.vertical, 10)
+                }
+            }
+            .padding(.horizontal, 16)
+            .glassCard(padding: 0)
+            if let s = previewSeries ?? series { RideSeriesPanels(series: s) }
+            if let r = previewInsights ?? ranked { insightCards(r) }
+            if preview == nil, activeId != nil {
+                Button { showCompare = true } label: {
+                    HStack {
+                        Image(systemName: "arrow.left.arrow.right").foregroundStyle(.tint)
+                        Text("Compare with another ride")
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
+                    }
+                    .padding(14)
+                    .glassCard(padding: 0)
+                }
+                .buttonStyle(.plain)
+            }
+            if let id = activeId, preview == nil {
+                VStack(spacing: 0) {
+                    ThumbsRow(kind: "start", subjectId: id, label: "Right? Start")
+                    ThumbsRow(kind: "end", subjectId: id, label: "Right? End")
+                    ThumbsRow(kind: "distance", subjectId: id, label: "Right? Distance")
                 }
                 .padding(.horizontal, 16)
                 .glassCard(padding: 0)
-                if let id = activeId, preview == nil {
-                    VStack(spacing: 0) {
-                        ThumbsRow(kind: "start", subjectId: id, label: "Right? Start")
-                        ThumbsRow(kind: "end", subjectId: id, label: "Right? End")
-                        ThumbsRow(kind: "distance", subjectId: id, label: "Right? Distance")
-                    }
-                    .padding(.horizontal, 16)
-                    .glassCard(padding: 0)
-                }
-                if let r = previewInsights ?? ranked { insightCards(r) }
-                ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in note(n) }
-                if previewPrompt == nil, prompt == nil, let o = previewOffer ?? offer { offerCard(o) }
-                if let p = previewPrompt ?? prompt { promptCard(p) }
-                if (activeId != nil && preview == nil) || previewPrompt != nil { loadedRow }
-                if let id = activeId, preview == nil { RideNoteCard(rideId: id) }
-                if !m.infoLines.isEmpty {
-                    DisclosureGroup("More info") {
-                        VStack(alignment: .leading, spacing: 6) {
-                            ForEach(m.infoLines, id: \.self) { Text($0).font(.footnote).foregroundStyle(.secondary) }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 6)
-                    }
-                    .padding(.horizontal, 4)
-                }
             }
-            .padding(16)
+            ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in note(n) }
+            if previewPrompt == nil, prompt == nil, let o = previewOffer ?? offer { offerCard(o) }
+            if let p = previewPrompt ?? prompt { promptCard(p) }
+            if (activeId != nil && preview == nil) || previewPrompt != nil { loadedRow }
+            if let id = activeId, preview == nil { RideNoteCard(rideId: id) }
+            if !m.infoLines.isEmpty {
+                DisclosureGroup("More info") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(m.infoLines, id: \.self) { Text($0).font(.footnote).foregroundStyle(.secondary) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 6)
+                }
+                .padding(.horizontal, 4)
+            }
         }
-        .background { MapBackdrop().ignoresSafeArea() }
+        .padding(.top, 2)
     }
 
     private func tile(_ s: SummaryStat) -> some View {
@@ -332,43 +368,32 @@ struct RideDetailView: View {
         .glassCard(padding: 0)
     }
 
-    private func mapCard(_ path: RidePathModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if previewSeries != nil || series != nil {
-                Picker("Layer", selection: $layer) {
-                    ForEach(MapLayer.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
+    private func mapView(_ path: RidePathModel) -> some View {
+        Map(initialPosition: Self.position(path, sheet: true), interactionModes: [.pan, .zoom]) {
+            ForEach(Array(layerSegments.enumerated()), id: \.offset) { _, seg in
+                MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                    .stroke(MapLayer.color(level: seg.level), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             }
-            Map(initialPosition: Self.position(path), interactionModes: [.pan, .zoom]) {
-                ForEach(Array(layerSegments.enumerated()), id: \.offset) { _, seg in
-                    MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
-                        .stroke(MapLayer.color(level: seg.level), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-                }
-                ForEach(Array((layer == .speed ? path.segments : []).enumerated()), id: \.offset) { _, seg in
-                    MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
-                        .stroke(LiveRideView.color(seg.bucket),
-                                style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round, dash: seg.dashed ? [2, 9] : []))
-                }
-                ForEach(Array(path.walks.enumerated()), id: \.offset) { _, run in
-                    MapPolyline(coordinates: run.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
-                        .stroke(Color.gray, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-                    if let mid = run.dropFirst(run.count / 2).first {
-                        Annotation("", coordinate: CLLocationCoordinate2D(latitude: mid.lat, longitude: mid.lon)) {
-                            Image(systemName: "figure.walk")
-                                .font(.caption.weight(.bold))
-                                .padding(6)
-                                .background(Circle().fill(.thinMaterial))
-                        }
+            ForEach(Array((layer == .speed ? path.segments : []).enumerated()), id: \.offset) { _, seg in
+                MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                    .stroke(LiveRideView.color(seg.bucket),
+                            style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round, dash: seg.dashed ? [2, 9] : []))
+            }
+            ForEach(Array(path.walks.enumerated()), id: \.offset) { _, run in
+                MapPolyline(coordinates: run.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                    .stroke(Color.gray, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                if let mid = run.dropFirst(run.count / 2).first {
+                    Annotation("", coordinate: CLLocationCoordinate2D(latitude: mid.lat, longitude: mid.lon)) {
+                        Image(systemName: "figure.walk")
+                            .font(.caption.weight(.bold))
+                            .padding(6)
+                            .background(Circle().fill(.thinMaterial))
                     }
                 }
             }
-            .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
-            .frame(height: 280)
-            .accessibilityLabel("Map of the ride")
-            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
-            Text(layerLegend(path)).font(.caption).foregroundStyle(.secondary)
         }
+        .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+        .accessibilityLabel("Map of the ride. \(layerLegend(path))")
     }
 
     /// Hills / Wind stretches for the chosen layer (empty for Speed)
@@ -380,10 +405,14 @@ struct RideDetailView: View {
         return layer.legend
     }
 
-    static func position(_ path: RidePathModel) -> MapCameraPosition {
+    /// `sheet`: the bottom half is under the sheet, so the path is framed in the upper part (centre moved south, wider span)
+    static func position(_ path: RidePathModel, sheet: Bool = false) -> MapCameraPosition {
         guard let b = path.bounds else { return .automatic }
-        return .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: b.centerLat, longitude: b.centerLon),
-                                          span: MKCoordinateSpan(latitudeDelta: b.latSpan, longitudeDelta: b.lonSpan)))
+        let lat = sheet ? max(b.latSpan * 2.2, 0.004) : b.latSpan
+        let lon = sheet ? max(b.lonSpan * 1.5, 0.004) : b.lonSpan
+        let centerLat = sheet ? b.centerLat - lat * 0.2 : b.centerLat
+        return .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: centerLat, longitude: b.centerLon),
+                                          span: MKCoordinateSpan(latitudeDelta: lat, longitudeDelta: lon)))
     }
 
     static func legend(_ path: RidePathModel) -> String {
