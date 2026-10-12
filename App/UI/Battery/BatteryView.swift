@@ -51,7 +51,7 @@ struct BatteryView: View {
     /// the tile shows the percentage only; the words ("Baseline forming") stay in the Cycles and health card
     static func healthTile(_ h: BatteryHealth.State) -> String {
         let t = BatteryText.healthTitle(h)
-        return t.count <= 6 ? t : "{2013}"
+        return t.count <= 6 ? t : "\u{2013}"
     }
 
     /// One glass card with a small header and a footer line
