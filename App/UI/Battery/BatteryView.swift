@@ -17,75 +17,101 @@ struct BatteryView: View {
     private var overview: BatteryOverview? { preview?.overview ?? loaded }
 
     var body: some View {
-        List {
-            if let o = overview {
-                nowSection(o)
-                chargingSection(o)
-                calibrationSection(o.calibration)
-                chargeLogSection(o)
-                healthSection(o)
-            } else {
-                Section { Text("Battery data is not available yet.").foregroundStyle(.secondary) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.Space.block) {
+                if let o = overview {
+                    tiles(o)
+                    nowSection(o)
+                    chargingSection(o)
+                    calibrationSection(o.calibration)
+                    chargeLogSection(o)
+                    healthSection(o)
+                } else {
+                    Text("Battery data is not available yet.").foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity).padding(DS.Space.cardPad).glassCard(padding: 0)
+                }
             }
+            .padding(DS.Space.gutter)
         }
+        .background { MapBackdrop().ignoresSafeArea() }
         .navigationTitle("Battery")
         .onAppear(perform: reload)
         .screen("Battery")
     }
 
+    /// Prototype order: three tiles first (health, cycles, to full), then the range card
+    private func tiles(_ o: BatteryOverview) -> some View {
+        StatTileGrid {
+            StatTile(value: BatteryText.healthTitle(o.health), label: "Health")
+            StatTile(value: BatteryText.cyclesText(o.cycles), label: "Charge cycles")
+            StatTile(value: o.chargeHours.map { ChargeTime.text(hours: $0) } ?? "\u{2013}", label: "To full")
+        }
+    }
+
+    /// One glass card with a small header and a footer line
+    private func card<Content: View>(_ title: String, footer: String? = nil, @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title)
+            VStack(alignment: .leading, spacing: 10) { content() }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(DS.Space.cardPad)
+                .glassCard(padding: 0)
+            if let footer {
+                Text(footer).font(.footnote).foregroundStyle(.secondary).padding(.horizontal, 4).padding(.top, 6)
+            }
+        }
+    }
+
+    private func line(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+            Spacer(minLength: 12)
+            Text(value).foregroundStyle(.secondary).monospacedDigit().multilineTextAlignment(.trailing)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     // MARK: Sections
 
     @ViewBuilder private func nowSection(_ o: BatteryOverview) -> some View {
-        Section {
-            LabeledContent("Battery", value: Self.batteryText(o.currentPct, live: o.connected))
+        card("Range", footer: "The range above is the honest number. The safety margin line is what the app uses when it decides something for you.") {
+            line("Battery", Self.batteryText(o.currentPct, live: o.connected))
             if let r = o.range {
                 Text(r.text).font(.subheadline)
-                LabeledContent("Reserve kept", value: "\(Int(o.reservePct.rounded()))%")
-                LabeledContent("With the 10% safety margin", value: (r.lowBattery ? "~" : "") + RealRangeCalc.kmText(r.decisionRangeKm))
+                line("Reserve kept", "\(Int(o.reservePct.rounded()))%")
+                line("With the 10% safety margin", (r.lowBattery ? "~" : "") + RealRangeCalc.kmText(r.decisionRangeKm))
             } else if o.currentPct == nil {
                 Text("The range appears once the scooter has been seen.").foregroundStyle(.secondary)
             } else {
                 Text("The range appears after your first ride (it uses how much battery a kilometre costs you).").foregroundStyle(.secondary)
             }
-        } header: {
-            Text("Range")
-        } footer: {
-            Text("The range above is the honest number. The safety margin line is what the app uses when it decides something for you.")
         }
     }
 
     @ViewBuilder private func chargingSection(_ o: BatteryOverview) -> some View {
-        Section {
+        card("Charging", footer: "About 2 A: steady up to 85%, then about an hour for the rest.") {
             if let h = o.chargeHours {
-                LabeledContent("Full from now", value: ChargeTime.text(hours: h))
+                line("Full from now", ChargeTime.text(hours: h))
             } else if let s = o.sinceLastRide {
-                LabeledContent("Full if charged from the last ride (\(Int(s.endPct.rounded()))%)", value: Self.timeText(s.fullAtMs))
+                line("Full if charged from the last ride (\(Int(s.endPct.rounded()))%)", Self.timeText(s.fullAtMs))
             } else {
                 Text("Shown while the scooter is connected. It switches off while it charges.").foregroundStyle(.secondary)
             }
-        } header: {
-            Text("Charging")
-        } footer: {
-            Text("About 2 A: steady up to 85%, then about an hour for the rest.")
         }
     }
 
     @ViewBuilder private func calibrationSection(_ cal: BatteryCalibration) -> some View {
-        Section {
-            LabeledContent("Status", value: BatteryText.calibrationStatus(cal))
-            LabeledContent("Energy", value: BatteryText.calibrationValue(cal))
+        card("Calibration", footer: "Learned from your own rides: the energy the scooter reports divided by how much the battery % dropped. It starts from the 16 Ah pack and is calibrated after 5 good rides.") {
+            line("Status", BatteryText.calibrationStatus(cal))
+            line("Energy", BatteryText.calibrationValue(cal))
             if cal.checkSuggested {
                 Label("Check battery calibration", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
             }
-        } header: {
-            Text("Calibration")
-        } footer: {
-            Text("Learned from your own rides: the energy the scooter reports divided by how much the battery % dropped. It starts from the 16 Ah pack and is calibrated after 5 good rides.")
         }
     }
 
     @ViewBuilder private func chargeLogSection(_ o: BatteryOverview) -> some View {
-        Section {
+        card("Charge log", footer: "The scooter switches off while charging, so a charge is found when the battery % is higher at the next ride than where the last ride ended.") {
             if o.charges.isEmpty {
                 Text("No charge seen yet. A charge shows here after the first ride that follows it.").foregroundStyle(.secondary)
             }
@@ -94,20 +120,14 @@ struct BatteryView: View {
                                             start: Self.dayText(c.windowStartAt), end: Self.dayText(c.windowEndAt)))
                     .font(.subheadline)
             }
-        } header: {
-            Text("Charge log")
-        } footer: {
-            Text("The scooter switches off while charging, so a charge is found when the battery % is higher at the next ride than where the last ride ended.")
         }
     }
 
     @ViewBuilder private func healthSection(_ o: BatteryOverview) -> some View {
-        Section {
-            LabeledContent("Charge cycles", value: BatteryText.cyclesText(o.cycles))
-            LabeledContent("Health", value: BatteryText.healthTitle(o.health))
+        card("Cycles and health") {
+            line("Charge cycles", BatteryText.cyclesText(o.cycles))
+            line("Health", BatteryText.healthTitle(o.health))
             Text(BatteryText.healthDetail(o.health)).font(.footnote).foregroundStyle(.secondary)
-        } header: {
-            Text("Cycles and health")
         }
     }
 

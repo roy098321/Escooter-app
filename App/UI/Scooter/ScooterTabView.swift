@@ -1,3 +1,4 @@
+import CorckieCore
 import SwiftUI
 
 /// M3-05: the Scooter tab. Status, info, links, and "Forget scooter" (clears the pairing only, never ride data).
@@ -14,6 +15,7 @@ struct ScooterTabView: View {
     var preview: Preview?
     @State private var record: ScooterRecord?
     @State private var odometerKm: Double?
+    @State private var rows: [MaintenanceService.Row] = []
     @State private var confirmForget = false
     private let link = AppModel.shared.scooter
 
@@ -22,16 +24,26 @@ struct ScooterTabView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if paired {
-                    pairedSections
-                } else {
-                    Section {
-                        Text("No scooter paired. It is found again by itself next time it is on and near.")
-                            .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: DS.Space.block) {
+                    if paired {
+                        pairedCards
+                    } else {
+                        VStack(spacing: 8) {
+                            Image(systemName: "scooter").font(.largeTitle).foregroundStyle(.secondary)
+                            Text("No scooter paired").font(.headline)
+                            Text("It is found again by itself next time it is on and near.")
+                                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(24)
+                        .glassCard(radius: DS.Radius.hero, padding: 0)
+                        .opacity(0.75)
                     }
                 }
+                .padding(DS.Space.gutter)
             }
+            .background { MapBackdrop().ignoresSafeArea() }
             .navigationTitle("Scooter")
             .onAppear(perform: reload)
             .confirmationDialog("Forget this scooter?", isPresented: $confirmForget, titleVisibility: .visible) {
@@ -44,33 +56,96 @@ struct ScooterTabView: View {
         }
     }
 
-    @ViewBuilder private var pairedSections: some View {
+    @ViewBuilder private var pairedCards: some View {
         let rec = preview != nil ? preview?.record : record
         let seenMs: Int64? = preview != nil ? preview?.lastSeenMs : LastSeen.load().ms
         let seenPct: Int? = preview != nil ? preview?.batteryPct : LastSeen.load().pct
         let odo = preview != nil ? preview?.odometerKm : odometerKm
         let livePct: Int? = preview != nil ? preview?.batteryPct : link.frame?.batteryPct
-        Section("Status") {
-            LabeledContent("Connection", value: connected ? "Connected" : "Not connected")
-            if !connected {
-                LabeledContent("Last seen", value: Self.lastSeenText(seenMs))
+        let pct = connected ? (livePct ?? seenPct) : seenPct
+        // hero card: name, connection line, battery
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(rec?.name ?? "Scooter").font(.title3.weight(.semibold))
+                HStack(spacing: 6) {
+                    Circle().fill(connected ? Color.green : Color.orange).frame(width: 8, height: 8)
+                    Text(connected ? "Connected" : "Not connected").font(.subheadline)
+                }
+                if !connected {
+                    Text("Last seen \(Self.lastSeenText(seenMs))").font(.footnote).foregroundStyle(.secondary)
+                }
             }
-            LabeledContent("Battery", value: Self.batteryText(connected ? (livePct ?? seenPct) : seenPct, live: connected))
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(pct.map { "\($0)%" } ?? "\u{2013}").scaledFont(36, weight: .semibold, mono: true, relativeTo: .largeTitle)
+                    .minimumScaleFactor(0.6)
+                Text(connected ? "battery" : "when last seen").font(.caption).foregroundStyle(.secondary)
+            }
         }
-        Section("Info") {
-            LabeledContent("Model", value: rec?.name ?? "Unknown")
-            LabeledContent("Firmware", value: rec?.fingerprint ?? "Read at the next connection")
-            LabeledContent("Odometer", value: odo.map { String(format: "%.1f km", $0) } ?? "After the first ride")
+        .padding(DS.Space.cardPad)
+        .glassCard(radius: DS.Radius.hero, padding: 0)
+        .opacity(connected ? 1 : 0.8)
+        .accessibilityElement(children: .combine)
+        if !connected {
+            Button {
+                if preview == nil { link.start() }
+            } label: {
+                Label("Connect", systemImage: "antenna.radiowaves.left.and.right")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: DS.hit)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
         }
-        Section {
-            NavigationLink("Maintenance") { MaintenanceView() }
-            NavigationLink("Battery") { BatteryView() }
+        StatTileGrid {
+            StatTile(value: odo.map { String(format: "%.1f", $0) } ?? "\u{2013}", label: odo == nil ? "km total (after the first ride)" : "km total")
+            StatTile(value: rec?.fingerprint ?? "\u{2013}", label: "Firmware")
         }
-        Section {
-            Button("Forget scooter", role: .destructive) { confirmForget = true }
-        } footer: {
-            Text("Removes the pairing only. Rides and routes are never deleted.")
+        SectionHeader("Maintenance")
+        VStack(spacing: 0) {
+            if rows.isEmpty {
+                Text("Tyres, brakes and bolts, counted in scooter kilometres.").font(.subheadline).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
+            }
+            ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
+                if i > 0 { Divider() }
+                HStack {
+                    Text(row.item.name)
+                    Spacer()
+                    if row.status.isDue {
+                        Pill(text: Maintenance.statusText(row.status), tint: .orange)
+                    } else {
+                        Text(Maintenance.statusText(row.status)).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 12)
+            }
+            Divider()
+            NavigationLink { MaintenanceView() } label: {
+                HStack { Text("Open maintenance"); Spacer(); Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary) }
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, DS.Space.cardPad)
+        .glassCard(padding: 0)
+        NavigationLink { BatteryView() } label: {
+            HStack {
+                Label("Battery", systemImage: "battery.75percent")
+                Spacer()
+                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
+            }
+            .padding(DS.Space.cardPad)
+            .glassCard(padding: 0)
+        }
+        .buttonStyle(.plain)
+        Button(role: .destructive) { confirmForget = true } label: {
+            Text("Forget scooter").frame(maxWidth: .infinity, minHeight: DS.hit)
+        }
+        .buttonStyle(.bordered)
+        .padding(.top, 8)
+        Text("Removes the pairing only. Rides and routes are never deleted.")
+            .font(.footnote).foregroundStyle(.secondary)
     }
 
     static func lastSeenText(_ ms: Int64?) -> String {
@@ -90,6 +165,7 @@ struct ScooterTabView: View {
         guard preview == nil, let db = AppModel.shared.database else { return }
         record = ScooterRecord.latest(in: db)
         odometerKm = (try? MaintenanceQueries(db).odometerKm()) ?? nil
+        rows = MaintenanceService.rows(db)
     }
 
     private func forget() {
