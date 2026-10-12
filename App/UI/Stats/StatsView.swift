@@ -52,7 +52,8 @@ struct StatsView: View {
                 GlassSegmented(options: StatsMode.allCases.map { ($0.rawValue, $0.title) }, selection: $modeRaw)
                     .accessibilityLabel("Mode")
             } else {
-                Text("\(m.span.title) · \(m.mode.title)").font(.footnote).foregroundStyle(.secondary)
+                GlassSegmented(options: StatsSpan.allCases.map { ($0.rawValue, $0.title) }, selection: .constant(m.span.rawValue))
+                GlassSegmented(options: StatsMode.allCases.map { ($0.rawValue, $0.title) }, selection: .constant(m.mode.rawValue))
             }
             periodHeader(m)
             if m.totals.isEmpty {

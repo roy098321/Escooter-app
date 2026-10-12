@@ -12,6 +12,7 @@ struct RoutesListView: View {
     @State private var placeCount = 0
     @State private var errorText: String?
     @State private var selected: RouteRef?
+    @State private var showPlaces = false
 
     struct RouteRef: Hashable, Identifiable {
         let id: String
@@ -36,6 +37,7 @@ struct RoutesListView: View {
                     }
                 }
                 .navigationDestination(item: $selected) { RouteCardView(routeId: $0.id) }
+                .navigationDestination(isPresented: $showPlaces) { PlacesView() }
         }
         .onAppear(perform: reload)
         .onChange(of: ScreenSimulator.shared.active) { _, _ in reload() }
@@ -78,9 +80,7 @@ struct RoutesListView: View {
                 }
                 if placeCount > 0 || preview != nil {
                     header("Places")
-                    NavigationLink {
-                        PlacesView()
-                    } label: {
+                    Button { showPlaces = true } label: {
                         HStack {
                             Image(systemName: "mappin.and.ellipse").foregroundStyle(.tint).frame(width: 28)
                             Text("Places").font(.body.weight(.semibold))
