@@ -43,23 +43,36 @@ struct RootView: View {
         }
     }
 
+    /// Tapping the tab you are on rebuilds it, which brings it back to its first screen.
+    @State private var rootTokens = [0, 0, 0, 0, 0]
+
     private var tabs: some View {
+        // The system tab bar is hidden: the floating glass bar below replaces it (owner Q1 S). TabView stays
+        // underneath, so every tab keeps its own stack and its on-appear refresh.
         TabView(selection: $tab) {
             RoutesListView()
-                .tabItem { Label("Routes", systemImage: "point.topleft.down.to.point.bottomright.curvepath") }
+                .id(rootTokens[0])
+                .toolbar(.hidden, for: .tabBar)
                 .tag(0)
             RidesListView()
-                .tabItem { Label("Rides", systemImage: "list.bullet") }
+                .id(rootTokens[1])
+                .toolbar(.hidden, for: .tabBar)
                 .tag(1)
             HomeView()
-                .tabItem { Label("Home", systemImage: "house") }
+                .id(rootTokens[2])
+                .toolbar(.hidden, for: .tabBar)
                 .tag(2)
             StatsView()
-                .tabItem { Label("Stats", systemImage: "chart.bar") }
+                .id(rootTokens[3])
+                .toolbar(.hidden, for: .tabBar)
                 .tag(3)
             ScooterTabView()
-                .tabItem { Label("Scooter", systemImage: "scooter") }
+                .id(rootTokens[4])
+                .toolbar(.hidden, for: .tabBar)
                 .tag(4)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            FloatingTabBar(selection: $tab, onReselect: { rootTokens[$0] += 1 })
         }
         .onChange(of: model.requestedTab) { _, v in
             if let v { tab = v; model.requestedTab = nil }
@@ -219,7 +232,10 @@ enum UIShot {
                 if let live = LivePreview.make(name) {
                     LiveRideView(preview: live)
                 } else if let input = HomePreview.input(name) {
-                    HomeView(preview: input, previewChips: HomePreview.chips(name), previewSelected: name == "home-whereto" ? "a" : nil)
+                    // the shots show the floating tab bar too (as in the real app)
+                    HomeView(preview: input, previewChips: HomePreview.chips(name),
+                             previewSelected: name.hasPrefix("home-whereto") ? "a" : nil, previewSheet: name == "home-whereto-sheet")
+                        .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(2)) }
                 } else {
                     HomeView()
                 }

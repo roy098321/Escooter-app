@@ -5,17 +5,21 @@ import SwiftUI
 /// "Connect your scooter" (never Start ride); connected shows the status card + Start ride; a failed connect
 /// says "Can't find the scooter" after 30 s with Try again; a ride in progress says so. The rules live in
 /// `HomeLogic` (CorckieCore, unit tested); this view only shows the model.
+/// UI overhaul (UI_PLAN 3.1): glass cards over the map backdrop, the 170 pt round Start / Connect disc, a Where to? sheet.
 struct HomeView: View {
     /// ui-shots: a made-up input instead of the real app state
     var preview: HomeInput?
     /// ui-shots: made-up Where to? chips and the chosen one
     var previewChips: [WhereToChip]?
     var previewSelected: String?
+    /// ui-shots: open the Where to? sheet straight away
+    var previewSheet = false
 
     @State private var chips: [WhereToChip] = []
     @State private var now = Date()
     @State private var connectingSince: Date?
     @State private var showOnboarding = false
+    @State private var showWhereTo = false
     @State private var crashDismissed = false
     @State private var lastRide: RideListItem?
     @State private var oldestRideMs: Int64?
@@ -43,18 +47,24 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             content(HomeLogic.model(input))
+                .background { MapBackdrop().ignoresSafeArea() }
                 .navigationTitle("Home")
                 .screen("Home")
                 .toolbar {
-                    NavigationLink {
-                        SettingsView()
-                    } label: {
-                        Image(systemName: "gearshape")
+                    ToolbarItem(placement: .topBarTrailing) {
+                        NavigationLink {
+                            SettingsView()
+                        } label: {
+                            GlassIcon(symbol: "gearshape")
+                        }
+                        .accessibilityLabel("Settings")
                     }
-                    .accessibilityLabel("Settings")
                 }
         }
-        .onAppear(perform: reloadLastRide)
+        .onAppear {
+            reloadLastRide()
+            if previewSheet { showWhereTo = true }
+        }
         .onChange(of: ScreenSimulator.shared.active) { _, _ in lastRide = nil; reloadLastRide() }
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reloadLastRide() }
         .onReceive(tick) { now = $0 }
@@ -68,11 +78,16 @@ struct HomeView: View {
             })
             .v1Label()
         }
+        .sheet(isPresented: $showWhereTo) {
+            WhereToSheet(chips: shownChips, selected: selectedRoute, onPick: pickRoute)
+                .glassPresentation(detents: [.medium])
+                .v1Label()
+        }
     }
 
     private func content(_ m: HomeModel) -> some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: DS.Space.block) {
                 if m.showCrashBanner { crashCard }
                 if backupBannerShown { backupCard }
                 if let n = EdgeWatch.shared.expiryNotice { noticeCard(n, symbol: "clock.badge.exclamationmark") }
@@ -82,103 +97,148 @@ struct HomeView: View {
                 } else {
                     statusCard(m)
                 }
-                primaryButton(m)
                 if m.state != .riding { whereTo }
                 if m.showLocationCard { locationCard }
+                startDisc(m)
                 if let text = newestInsight, m.state != .riding {
-                    HStack(alignment: .top) {
+                    HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "text.bubble").foregroundStyle(.secondary)
                         Text(text).font(.subheadline)
-                        Spacer()
+                        Spacer(minLength: 0)
                     }
-                    .padding()
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                    .glassCard()
                 }
                 if let text = m.lastRideText {
-                    HStack {
+                    HStack(spacing: 10) {
                         Image(systemName: "clock.arrow.circlepath").foregroundStyle(.secondary)
                         Text(text).font(.subheadline)
-                        Spacer()
+                        Spacer(minLength: 0)
                     }
-                    .padding()
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                    .glassCard()
                 }
             }
-            .padding()
+            .padding(.horizontal, DS.Space.gutter)
+            .padding(.bottom, DS.Space.block)
         }
     }
 
     private func statusCard(_ m: HomeModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Image(systemName: m.state == .ready || m.state == .riding ? "scooter" : "wifi.slash")
-                Text(m.title).font(.headline)
-                Spacer()
-                if let battery = m.batteryText {
-                    Text(battery).font(.title2.bold().monospacedDigit())
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Image(systemName: m.state == .ready || m.state == .riding ? "scooter" : "wifi.slash")
+                    Text(m.title).font(.headline)
                 }
+                Text(m.detail).font(.subheadline).foregroundStyle(.secondary)
             }
-            Text(m.detail).font(.subheadline).foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            if let battery = m.batteryText {
+                Text(battery)
+                    .scaledFont(40, weight: .bold, mono: true, relativeTo: .largeTitle)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+            }
         }
-        .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-        .opacity(m.greyed ? 0.65 : 1)
+        .glassCard(radius: DS.Radius.hero, padding: 18)
+        .opacity(m.greyed ? 0.7 : 1)
         .accessibilityElement(children: .combine)
     }
 
-    private func primaryButton(_ m: HomeModel) -> some View {
-        Button {
-            primaryTapped(m.primary)
-        } label: {
-            Text(m.primaryTitle)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
+    /// The 170 pt round Start / Connect disc (amber for Connect and Try again, as before). The tap goes through `primaryTapped`, unchanged.
+    private func startDisc(_ m: HomeModel) -> some View {
+        let amber = m.primary == .connect || m.primary == .tryAgain
+        let tint: Color = amber ? .orange : .accentColor
+        return VStack(spacing: 14) {
+            Button {
+                primaryTapped(m.primary)
+            } label: {
+                ZStack {
+                    Circle().fill(tint.opacity(0.2)).frame(width: 194, height: 194)
+                    VStack(spacing: 8) {
+                        if m.state == .connecting {
+                            ProgressView().controlSize(.large).tint(.white)
+                        } else {
+                            Image(systemName: discSymbol(m.primary)).font(.system(size: 40, weight: .semibold))
+                        }
+                        Text(m.primaryTitle)
+                            .font(.title3.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(3)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(20)
+                    .frame(width: 170, height: 170)
+                    .background(tint, in: Circle())
+                    .shadow(color: tint.opacity(0.35), radius: 14, y: 6)
+                }
+                .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!m.primaryEnabled)
+            .opacity(m.primaryEnabled ? 1 : 0.6)
+            .accessibilityLabel(m.primaryTitle)
+            if m.state == .ready {
+                Text("Rides also start on their own as soon as the wheel turns.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .tint(m.primary == .connect || m.primary == .tryAgain ? .orange : .accentColor)
-        .disabled(!m.primaryEnabled)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
     }
 
-    // MARK: Where to? (M2-06): one chip per saved route; hidden until a route exists (S2)
+    private func discSymbol(_ p: HomePrimary) -> String {
+        switch p {
+        case .startRide: return "play.fill"
+        case .connect: return "dot.radiowaves.left.and.right"
+        case .tryAgain: return "arrow.clockwise"
+        case .openRide: return "scooter"
+        }
+    }
+
+    // MARK: Where to? (M2-06): a row that opens a sheet with one choice per saved route; hidden until a route exists (S2)
 
     private var shownChips: [WhereToChip] { previewChips ?? chips }
     private var selectedRoute: String? { preview != nil ? previewSelected : RouteFollowSelection.shared.routeId }
 
+    private func pickRoute(_ id: String?) {
+        guard preview == nil else { return }
+        if let id {
+            if selectedRoute != id { RouteFollowSelection.shared.toggle(id) }
+        } else {
+            RouteFollowSelection.shared.routeId = nil
+        }
+    }
+
     @ViewBuilder private var whereTo: some View {
         let list = shownChips
         if !list.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Where to?").font(.headline)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(list, id: \.routeId) { c in
-                            let on = selectedRoute == c.routeId
-                            Button {
-                                if preview == nil { RouteFollowSelection.shared.toggle(c.routeId) }
-                            } label: {
-                                Text(c.label)
-                                    .font(.subheadline.weight(.semibold))
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 8)
-                                    .background(on ? Color.accentColor : Color(.tertiarySystemBackground), in: Capsule())
-                                    .foregroundStyle(on ? Color.white : Color.primary)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityAddTraits(on ? .isSelected : [])
-                        }
-                    }
+            let chosen = list.first(where: { $0.routeId == selectedRoute })
+            Button { showWhereTo = true } label: {
+                HStack {
+                    Text("Where to?").font(.body)
+                    Spacer(minLength: 8)
+                    Text(chosen?.label ?? "No destination").foregroundStyle(.secondary)
+                    Image(systemName: "chevron.up.chevron.down").font(.footnote).foregroundStyle(.secondary)
                 }
-                if let sel = list.first(where: { $0.routeId == selectedRoute }) {
-                    Text(sel.detail).font(.subheadline).foregroundStyle(.secondary)
-                    Text("The arrival time shows on the ride screen.").font(.footnote).foregroundStyle(.secondary)
-                }
+                .frame(minHeight: 28)
+                .glassCard()
+                .contentShape(Rectangle())
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Where to?")
+            .accessibilityValue(chosen?.label ?? "No destination")
+            .accessibilityAddTraits(.isButton)
+            if let chosen {
+                Text(chosen.detail)
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 6)
+            }
         }
     }
 
@@ -191,9 +251,8 @@ struct HomeView: View {
             Button("Open iPhone Settings") { PermissionsCheck.openSettings() }
                 .font(.footnote.weight(.semibold))
         }
-        .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+        .glassCard(tint: .orange)
     }
 
     /// M1-16 (C13 S3): 14 days without a backup
@@ -210,18 +269,16 @@ struct HomeView: View {
             NavigationLink("Backup folder") { BackupView() }
                 .font(.footnote.weight(.semibold))
         }
-        .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+        .glassCard(tint: .orange)
     }
 
     /// M6-06 (C28): the 7-day expiry and phone storage
     private func noticeCard(_ text: String, symbol: String) -> some View {
         Label(text, systemImage: symbol)
             .font(.subheadline.weight(.semibold))
-            .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+            .glassCard(tint: .orange)
     }
 
     private var crashCard: some View {
@@ -235,9 +292,8 @@ struct HomeView: View {
             }
             .font(.footnote.weight(.semibold))
         }
-        .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+        .glassCard(tint: .red)
     }
 
     private func primaryTapped(_ p: HomePrimary) {
@@ -273,11 +329,62 @@ struct HomeView: View {
     }
 }
 
+/// The Where to? sheet: "No destination" or one of the saved routes; picking one closes it. UI only, the selection is `RouteFollowSelection`.
+private struct WhereToSheet: View {
+    let chips: [WhereToChip]
+    let selected: String?
+    let onPick: (String?) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.Space.row) {
+                Text("Where to?")
+                    .font(.title2.weight(.semibold))
+                    .padding(.top, 20)
+                    .padding(.bottom, 4)
+                row("No destination", detail: nil, on: selected == nil) { onPick(nil) }
+                ForEach(chips, id: \.routeId) { c in
+                    row(c.label, detail: c.routeId == selected ? c.detail : nil, on: c.routeId == selected) { onPick(c.routeId) }
+                }
+                if selected != nil {
+                    Text("The arrival time shows on the ride screen.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                }
+            }
+            .padding(.horizontal, DS.Space.gutter)
+            .padding(.bottom, 24)
+        }
+    }
+
+    private func row(_ title: String, detail: String?, on: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            dismiss()
+        } label: {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.body.weight(on ? .semibold : .regular))
+                    if let detail { Text(detail).font(.footnote).foregroundStyle(.secondary) }
+                }
+                Spacer(minLength: 8)
+                if on { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+            }
+            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            .glassCard()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
 /// Made-up Home states for the CI ui-shots (`-uiShot home-first` and so on).
 enum HomePreview {
     /// M2-06: made-up chips (no real place names)
     static func chips(_ name: String) -> [WhereToChip]? {
-        guard name == "home-whereto" else { return nil }
+        guard name == "home-whereto" || name == "home-whereto-sheet" else { return nil }
         return [WhereToChip(routeId: "a", label: "Work", detail: "Work \u{00B7} today ~13 min \u{00B7} leave now, arrive ~8:56 \u{00B7} uses about 11%"),
                 WhereToChip(routeId: "b", label: "Home", detail: "Home \u{00B7} today ~14 min")]
     }
@@ -291,7 +398,7 @@ enum HomePreview {
             return HomeInput(paired: false, connected: false, nowS: now)
         case "home-notconnected":
             return HomeInput(paired: true, connected: false, nowS: now, lastSeenMs: seen, lastSeenPct: 58, lastRide: ride)
-        case "home-ready", "home-whereto":
+        case "home-ready", "home-whereto", "home-whereto-sheet":
             return HomeInput(paired: true, connected: true, nowS: now, batteryPct: 91, lastRide: ride)
         case "home-cantfind":
             return HomeInput(paired: true, connected: false, connectingSinceS: now - 40, nowS: now, lastSeenMs: seen, lastSeenPct: 58)
