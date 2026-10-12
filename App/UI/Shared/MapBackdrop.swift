@@ -15,7 +15,7 @@ struct MapBackdrop: View {
             Canvas { ctx, size in
                 Self.draw(ctx, size: size, dark: dark)
             }
-            .overlay(Color(.systemBackground).opacity(dark ? 0.45 : 0.55))
+            .overlay(Color(.systemBackground).opacity(dark ? 0.5 : 0.66))
             .accessibilityHidden(true)
         }
     }

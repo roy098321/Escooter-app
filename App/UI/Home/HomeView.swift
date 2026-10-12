@@ -15,6 +15,8 @@ struct HomeView: View {
     /// ui-shots: open the Where to? sheet straight away
     var previewSheet = false
 
+    /// the disc is 170 pt at normal text size and grows with Dynamic Type (capped at 270 pt)
+    @ScaledMetric(relativeTo: .title3) private var discSize: CGFloat = 170
     @State private var chips: [WhereToChip] = []
     @State private var now = Date()
     @State private var connectingSince: Date?
@@ -63,7 +65,7 @@ struct HomeView: View {
         }
         .onAppear {
             reloadLastRide()
-            if previewSheet { showWhereTo = true }
+            if previewSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showWhereTo = true } }
         }
         .onChange(of: ScreenSimulator.shared.active) { _, _ in lastRide = nil; reloadLastRide() }
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reloadLastRide() }
@@ -140,8 +142,8 @@ struct HomeView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard(radius: DS.Radius.hero, padding: 18)
         .opacity(m.greyed ? 0.7 : 1)
+        .glassCard(radius: DS.Radius.hero, padding: 18)
         .accessibilityElement(children: .combine)
     }
 
@@ -154,7 +156,7 @@ struct HomeView: View {
                 primaryTapped(m.primary)
             } label: {
                 ZStack {
-                    Circle().fill(tint.opacity(0.2)).frame(width: 194, height: 194)
+                    Circle().fill(tint.opacity(0.2)).frame(width: min(discSize, 270) + 24, height: min(discSize, 270) + 24)
                     VStack(spacing: 8) {
                         if m.state == .connecting {
                             ProgressView().controlSize(.large).tint(.white)
@@ -169,7 +171,7 @@ struct HomeView: View {
                     }
                     .foregroundStyle(.white)
                     .padding(20)
-                    .frame(width: 170, height: 170)
+                    .frame(width: min(discSize, 270), height: min(discSize, 270))
                     .background(tint, in: Circle())
                     .shadow(color: tint.opacity(0.35), radius: 14, y: 6)
                 }
