@@ -54,7 +54,7 @@ struct MapSheet<MapContent: View, TopBar: View, Side: View, Sheet: View>: View {
                         .padding(.top, 4)
                     HStack {
                         Spacer(minLength: 0)
-                        side
+                        if detent != .full { side }
                     }
                     .padding(.horizontal, DS.Space.gutter)
                     .padding(.top, 10)
@@ -94,7 +94,7 @@ struct MapSheet<MapContent: View, TopBar: View, Side: View, Sheet: View>: View {
             ScrollView {
                 sheet
                     .padding(.horizontal, DS.Space.gutter)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 110)
             }
             .scrollDisabled(detent != .full)
             .scrollBounceBehavior(.basedOnSize)
@@ -116,6 +116,7 @@ struct MapSheet<MapContent: View, TopBar: View, Side: View, Sheet: View>: View {
         }
         .clipShape(shape)
         .shadow(color: .black.opacity(sunlight ? 0 : 0.12), radius: 12, y: -2)
+        .ignoresSafeArea(edges: .bottom)
     }
 
     private func handle(total: CGFloat) -> some View {
