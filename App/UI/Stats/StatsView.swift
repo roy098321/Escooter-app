@@ -171,6 +171,7 @@ struct CostSettingsView: View {
             } footer: {
                 Text("Used for \"Electricity\" on Stats: full charges used x battery size x this price. Default 0.64.")
             }
+            .glassRows()
             Section {
                 TextField("7", text: $fuelUse).keyboardType(.decimalPad)
             } header: {
@@ -178,7 +179,9 @@ struct CostSettingsView: View {
             } footer: {
                 Text("\"Fuel saved\" = the same distance by car at this use and the fuel price (Settings \u{2192} Costs) minus the electricity of the ride. Default 7.")
             }
+            .glassRows()
         }
+        .glassList()
         .navigationTitle("Prices")
         .onAppear {
             guard let db = AppModel.shared.displayDatabase else { return }

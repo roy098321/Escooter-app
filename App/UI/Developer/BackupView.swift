@@ -15,24 +15,29 @@ struct BackupView: View {
                 row("d2")
                 row("d3")
             }
+                .glassRows()
             Section {
                 LabeledContent("Folder", value: backup.folderName ?? "not picked")
                 Button("Pick folder") { picking = true }
                 Button("Write test file") { backup.writeTestFile() }
                     .disabled(!backup.hasFolder)
             }
+                .glassRows()
             Section {
                 row("d9")
                 Button("Test backup + restore") { BackupRestoreTest.run() }
             } footer: {
                 Text("Writes a backup of the database, restores it into a scratch copy and compares every table. Your data is only read.")
             }
+                .glassRows()
             Section("Log") {
                 ForEach(Array(backup.log.enumerated().reversed()), id: \.offset) { _, line in
                     Text(line).font(.footnote.monospaced())
                 }
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Backup folder")
         .screen("Backup folder")
         .fileImporter(isPresented: $picking, allowedContentTypes: [.folder]) { result in

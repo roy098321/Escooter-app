@@ -15,6 +15,7 @@ struct ReportProblemView: View {
                                   label: "\(m.type) · \(Date(timeIntervalSince1970: Double(m.sentAt) / 1000).formatted(date: .abbreviated, time: .shortened))")
                     }
                 }
+                    .glassRows()
             }
             Section {
                 if let exportURL {
@@ -35,7 +36,9 @@ struct ReportProblemView: View {
             } footer: {
                 Text("One .zip with the last 15 minutes of logs, the error log, Bluetooth events, check results, your ride notes and thumbs. It stays on your phone until you share it.")
             }
+                .glassRows()
         }
+            .glassList()
         .onAppear {
             if let db = AppModel.shared.displayDatabase { messages = (try? FieldKitQueries(db).recentSentMessages()) ?? [] }
         }

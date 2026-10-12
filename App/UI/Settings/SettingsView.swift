@@ -41,6 +41,7 @@ struct SettingsView: View {
                 developerSection
                 aboutSection
             }
+            .glassList()
             .onAppear {
                 loadValues()
                 if let startAt { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { proxy.scrollTo(startAt, anchor: .top) } }
@@ -54,9 +55,7 @@ struct SettingsView: View {
 
     private var batterySection: some View {
         Section {
-            Picker("Battery size", selection: $packAh) {
-                ForEach(SettingsCatalog.packChoices, id: \.self) { Text(SettingsCatalog.ah($0)).tag($0) }
-            }
+            SegmentedRow(title: "Battery size", options: SettingsCatalog.packChoices.map { ($0, SettingsCatalog.ah($0)) }, selection: $packAh)
             .onChange(of: packAh) { _, v in
                 guard loaded, let db else { return }
                 BatterySettings.setPackAh(db, v)
@@ -84,6 +83,7 @@ struct SettingsView: View {
         } footer: {
             footer("Battery and charging")
         }
+        .glassRows()
     }
 
     private var scooterSection: some View {
@@ -94,13 +94,12 @@ struct SettingsView: View {
                 Label("Maintenance", systemImage: "wrench.and.screwdriver")
             }
         }
+        .glassRows()
     }
 
     private var displaySection: some View {
         Section {
-            Picker("Sunlight mode", selection: $sunlight) {
-                ForEach(DisplaySettings.Sunlight.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }
+            SegmentedRow(title: "Sunlight mode", options: DisplaySettings.Sunlight.allCases.map { ($0, $0.rawValue) }, selection: $sunlight)
             .onChange(of: sunlight) { _, v in
                 if loaded {
                     DisplaySettings.setSunlight(db, v)
@@ -117,6 +116,7 @@ struct SettingsView: View {
         } footer: {
             footer("Units and display")
         }
+        .glassRows()
     }
 
     private var costsSection: some View {
@@ -132,6 +132,7 @@ struct SettingsView: View {
                 Text("Electricity and fuel use")
             }
         }
+        .glassRows()
     }
 
     private var riderSection: some View {
@@ -171,6 +172,7 @@ struct SettingsView: View {
         } footer: {
             Text("Optional. Light and Heavy are what the Loaded tag means in kg (defaults 5 and 15).")
         }
+        .glassRows()
     }
 
     private var notifySection: some View {
@@ -189,6 +191,7 @@ struct SettingsView: View {
         } footer: {
             footer("Voice and notifications")
         }
+        .glassRows()
     }
 
     private var placesSection: some View {
@@ -199,6 +202,7 @@ struct SettingsView: View {
                 Label("Places", systemImage: "mappin.and.ellipse")
             }
         }
+        .glassRows()
     }
 
     private var dataSection: some View {
@@ -220,6 +224,7 @@ struct SettingsView: View {
         } footer: {
             footer("Data and backup")
         }
+        .glassRows()
     }
 
     private var helpSection: some View {
@@ -230,6 +235,7 @@ struct SettingsView: View {
                 Label("Report a problem", systemImage: "exclamationmark.bubble")
             }
         }
+        .glassRows()
     }
 
     private var developerSection: some View {
@@ -242,6 +248,7 @@ struct SettingsView: View {
         } footer: {
             Text("Checks, results and the test tools of this build.")
         }
+        .glassRows()
     }
 
     private var aboutSection: some View {
@@ -249,6 +256,7 @@ struct SettingsView: View {
             LabeledContent("Version", value: AppInfo.versionLine)
             LabeledContent("App ID", value: AppInfo.bundleID)
         }
+        .glassRows()
     }
 
     // MARK: Values

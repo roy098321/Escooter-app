@@ -213,3 +213,47 @@ struct GlassSegmented<T: Hashable>: View {
         .background(Color.primary.opacity(0.08), in: Capsule())
     }
 }
+
+// MARK: Glass list (Settings, Developer and the other list screens)
+
+private struct GlassRowBackground: View {
+    @Environment(\.sunlight) private var sunlight
+
+    var body: some View {
+        if sunlight {
+            Color(.systemBackground)
+        } else {
+            Rectangle().fill(.ultraThinMaterial)
+        }
+    }
+}
+
+extension View {
+    /// A standard `List` / `Form` on the map backdrop: no grey page, sentence-case section headers.
+    func glassList() -> some View {
+        self
+            .scrollContentBackground(.hidden)
+            .background { MapBackdrop().ignoresSafeArea() }
+            .textCase(nil)
+    }
+
+    /// Frosted rows for the content it is put on (a `Section`, or a few rows).
+    func glassRows() -> some View {
+        listRowBackground(GlassRowBackground())
+    }
+}
+
+/// A list row with a title above a glass segmented control (2 to 4 options).
+struct SegmentedRow<T: Hashable>: View {
+    let title: String
+    let options: [(T, String)]
+    @Binding var selection: T
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+            GlassSegmented(options: options, selection: $selection)
+        }
+        .padding(.vertical, 4)
+    }
+}

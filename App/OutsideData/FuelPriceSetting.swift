@@ -96,7 +96,9 @@ struct FuelPriceView: View {
             } footer: {
                 Text("95 octane, self-service. Used only for \"fuel money saved\". The automatic price comes back in v2 if a stable source is found.")
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Fuel price")
         .screen("Fuel price")
         .onAppear(perform: load)

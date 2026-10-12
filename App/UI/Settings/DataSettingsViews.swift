@@ -27,6 +27,7 @@ struct ExportEverythingView: View {
                     Label("No rides yet. The file will hold your settings only; it fills up as you ride.", systemImage: "tray")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
+                    .glassRows()
             }
             Section {
                 Text("One file with every ride and all its readings, your places and routes, charges, battery calibration, maintenance and settings. Simulated rides are left out. Restore reads it back and never doubles a ride.")
@@ -44,11 +45,14 @@ struct ExportEverythingView: View {
             } footer: {
                 if !summary.isEmpty { Text(summary) }
             }
+                .glassRows()
             Section {
                 Text("Everything stays on this phone unless you share the file yourself (Files, AirDrop, mail). A ride can also be exported on its own from its ... menu (CSV, GPX, Ride Replay).")
                     .font(.footnote).foregroundStyle(.secondary)
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Export everything")
         .onAppear {
             guard !previewEmpty, let db = AppModel.shared.displayDatabase else { return }
@@ -102,13 +106,17 @@ struct RestoreView: View {
             } footer: {
                 Text("Pick an export file, a ride file or a full backup (full-....corckie). Rides already on this phone are skipped, so restoring twice changes nothing and nothing here is overwritten.")
             }
+                .glassRows()
             if working {
                 Section { HStack { Text("Restoring\u{2026}"); Spacer(); ProgressView() } }
+                    .glassRows()
             }
             if !result.isEmpty {
                 Section("Result") { Text(result) }
+                    .glassRows()
             }
         }
+            .glassList()
         .navigationTitle("Restore")
         .fileImporter(isPresented: $picking, allowedContentTypes: [.json, .data, .item], allowsMultipleSelection: true) { outcome in
             if case .success(let urls) = outcome { Task { await restore(urls) } }
@@ -174,13 +182,17 @@ struct ImportRideLogsView: View {
             } footer: {
                 Text("Pick the files of one or more rides together (.csv or .txt). They are recognised by their first line, so the names do not matter: the 0.4 set c8-scooter-packets.csv with c8-location.csv and c8-barometer.csv, or an nRF Connect log export with the Sensor Logger Location.csv and Barometer.csv of the same ride. Each ride is replayed through the recorder and stored as a normal ride with its real date; rides already on this phone are skipped.")
             }
+                .glassRows()
             if working {
                 Section { HStack { Text("Importing\u{2026}"); Spacer(); ProgressView() } }
+                    .glassRows()
             }
             if !result.isEmpty {
                 Section("Result") { Text(result) }
+                    .glassRows()
             }
         }
+            .glassList()
         .navigationTitle("Import ride logs")
         .fileImporter(isPresented: $picking, allowedContentTypes: [.commaSeparatedText, .plainText, .text], allowsMultipleSelection: true) { outcome in
             if case .success(let urls) = outcome { Task { await run(urls) } }
@@ -227,9 +239,7 @@ struct DataSettingsRows: View {
 
     var body: some View {
         Group {
-            Picker("Keep raw data", selection: $retention) {
-                ForEach(RawRetention.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }
+            SegmentedRow(title: "Keep raw data", options: RawRetention.allCases.map { ($0, $0.rawValue) }, selection: $retention)
             .onChange(of: retention) { _, v in
                 guard let db = AppModel.shared.database else { return }
                 RetentionService.set(db, v)
