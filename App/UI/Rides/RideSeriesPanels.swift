@@ -50,7 +50,7 @@ struct RideSeriesPanels: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
     // MARK: Speed and battery
@@ -88,7 +88,7 @@ struct RideSeriesPanels: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 }
 

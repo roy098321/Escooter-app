@@ -6,7 +6,7 @@ import SwiftUI
 /// All numbers, labels and notes are made in CorckieCore (`RideSummaryBuilder`, unit tested); this view draws them.
 /// No records, badges or comparisons (CONCEPT P-3): only this ride's own numbers.
 struct RideDetailView: View {
-    @ScaledMetric(relativeTo: .body) private var tileMin: CGFloat = 150
+    @ScaledMetric(relativeTo: .body) private var tileMin: CGFloat = 100
     var rideId: String?
     var preview: RideSummaryModel?
     /// Summary after a ride: a Done button closes it. Nil = pushed from the Rides list (back button).
@@ -106,7 +106,7 @@ struct RideDetailView: View {
                     }
                     Button(role: .destructive) { confirmDelete = true } label: { Label("Delete ride", systemImage: "trash") }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    GlassIcon(symbol: "ellipsis")
                 }
                 .accessibilityLabel("More")
             }
@@ -213,7 +213,7 @@ struct RideDetailView: View {
                     mapCard(m.path)
                 }
                 if let s = previewSeries ?? series { RideSeriesPanels(series: s) }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: 12)], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: DS.Space.row)], spacing: DS.Space.row) {
                     ForEach(Array(m.mainStats.enumerated()), id: \.offset) { _, s in tile(s) }
                 }
                 VStack(spacing: 0) {
@@ -228,7 +228,7 @@ struct RideDetailView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .glassCard(padding: 0)
                 if let id = activeId, preview == nil {
                     VStack(spacing: 0) {
                         ThumbsRow(kind: "start", subjectId: id, label: "Right? Start")
@@ -236,7 +236,7 @@ struct RideDetailView: View {
                         ThumbsRow(kind: "distance", subjectId: id, label: "Right? Distance")
                     }
                     .padding(.horizontal, 16)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassCard(padding: 0)
                 }
                 if let r = previewInsights ?? ranked { insightCards(r) }
                 ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in note(n) }
@@ -257,20 +257,11 @@ struct RideDetailView: View {
             }
             .padding(16)
         }
+        .background { MapBackdrop().ignoresSafeArea() }
     }
 
     private func tile(_ s: SummaryStat) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(s.label).font(.footnote).foregroundStyle(.secondary)
-            Text(s.value)
-                .scaledFont(24, weight: .semibold, mono: true)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityElement(children: .combine)
+        StatTile(value: s.value, label: s.label)
     }
 
     private func note(_ n: SummaryNote) -> some View {
@@ -291,7 +282,7 @@ struct RideDetailView: View {
             Spacer(minLength: 0)
         }
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
     /// M2-01: "Save as route?" after the same trip twice, or the ride's route once saved
@@ -311,7 +302,7 @@ struct RideDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
     private func routeAction(_ routeId: String, save: Bool) {
@@ -338,7 +329,7 @@ struct RideDetailView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(20)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
     private func mapCard(_ path: RidePathModel) -> some View {
@@ -375,7 +366,7 @@ struct RideDetailView: View {
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
             .frame(height: 280)
             .accessibilityLabel("Map of the ride")
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
             Text(layerLegend(path)).font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -578,7 +569,7 @@ extension RideDetailView {
                 .foregroundStyle(.secondary)
         }
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
     fileprivate var loadedRow: some View {
@@ -599,7 +590,7 @@ extension RideDetailView {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
         .alert("Exact load (kg)", isPresented: $showKgField) {
             TextField("kg", text: $kgText).keyboardType(.decimalPad)
             Button("Save") {
@@ -657,7 +648,7 @@ extension RideDetailView {
                 }
             }
             .padding(16)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .glassCard(padding: 0)
         }
         ForEach(Array(r.progress.enumerated()), id: \.offset) { item in
             HStack(spacing: 6) {

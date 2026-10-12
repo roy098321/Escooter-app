@@ -16,7 +16,7 @@ struct RideNoteCard: View {
             Text("Saved with this ride and included in every export.").font(.caption).foregroundStyle(.secondary)
         }
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
         .onAppear {
             guard !loaded, let db = AppModel.shared.displayDatabase else { return }
             text = (try? FieldKitQueries(db).note(rideId: rideId)) ?? ""
