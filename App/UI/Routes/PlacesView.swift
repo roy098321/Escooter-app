@@ -45,11 +45,18 @@ struct PlacesView: View {
                                 }
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(DS.Space.cardPad)
+                        .glassCard(padding: 0)
+                        .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
+        .background { MapBackdrop().ignoresSafeArea() }
         .navigationTitle("Places")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Rename place", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {

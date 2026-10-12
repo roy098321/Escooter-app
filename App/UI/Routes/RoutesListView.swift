@@ -11,14 +11,31 @@ struct RoutesListView: View {
     @State private var model = RouteListModel(saved: [], suggested: [])
     @State private var placeCount = 0
     @State private var errorText: String?
+    @State private var selected: RouteRef?
+
+    struct RouteRef: Hashable, Identifiable {
+        let id: String
+    }
 
     private var shown: RouteListModel { preview ?? model }
 
     var body: some View {
         NavigationStack {
             content
+                .background { MapBackdrop().ignoresSafeArea() }
                 .navigationTitle("Routes")
                 .screen("Routes")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        NavigationLink {
+                            SettingsView()
+                        } label: {
+                            GlassIcon(symbol: "gearshape")
+                        }
+                        .accessibilityLabel("Settings")
+                    }
+                }
+                .navigationDestination(item: $selected) { RouteCardView(routeId: $0.id) }
         }
         .onAppear(perform: reload)
         .onChange(of: ScreenSimulator.shared.active) { _, _ in reload() }
@@ -33,57 +50,107 @@ struct RoutesListView: View {
     @ViewBuilder private var content: some View {
         let m = shown
         if m.isEmpty {
-            ContentUnavailableView("No routes yet", systemImage: "point.topleft.down.to.point.bottomright.curvepath",
-                                   description: Text("Ride the same trip twice and you'll be asked to save it."))
+            VStack(spacing: 8) {
+                Image(systemName: "point.topleft.down.to.point.bottomright.curvepath").font(.largeTitle).foregroundStyle(.secondary)
+                Text("No routes yet").font(.headline)
+                Text("Ride the same trip twice and you'll be asked to save it.")
+                    .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(24)
+            .glassCard(radius: DS.Radius.hero, padding: 0)
+            .padding(.horizontal, DS.Space.gutter)
+            .padding(.top, 24)
+            .frame(maxHeight: .infinity, alignment: .top)
         } else {
             List {
                 if !m.saved.isEmpty {
-                    Section {
-                        ForEach(m.saved, id: \.routeId) { row($0) }
-                    } header: {
-                        Text("Routes")
-                    } footer: {
-                        if m.saved.contains(where: { $0.fit.status != .noData }) {
-                            Text("Greyed routes need more battery than you have, with a safety margin. They can still be opened.")
-                        }
+                    header("Routes")
+                    ForEach(m.saved, id: \.routeId) { row($0) }
+                    if m.saved.contains(where: { $0.fit.status != .noData }) {
+                        footer("Greyed routes need more battery than you have, with a safety margin. They can still be opened.")
                     }
                 }
                 if !m.suggested.isEmpty {
-                    Section {
-                        ForEach(m.suggested, id: \.routeId) { row($0) }
-                    } header: {
-                        Text("Suggested routes")
-                    } footer: {
-                        Text("Trips you rode more than once. Swipe right to save one, left for Not a route, or open it first.")
-                    }
+                    header("Suggested routes")
+                    ForEach(m.suggested, id: \.routeId) { row($0) }
+                    footer("Trips you rode more than once. Save one with the pill or a swipe right, or open it first.")
                 }
                 if placeCount > 0 || preview != nil {
-                    Section {
-                        NavigationLink {
-                            PlacesView()
-                        } label: {
-                            Label("Places", systemImage: "mappin.and.ellipse")
+                    header("Places")
+                    NavigationLink {
+                        PlacesView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "mappin.and.ellipse").foregroundStyle(.tint).frame(width: 28)
+                            Text("Places").font(.body.weight(.semibold))
+                            Spacer()
+                            if placeCount > 0 { Text("\(placeCount)").foregroundStyle(.secondary).monospacedDigit() }
                         }
+                        .padding(DS.Space.cardPad)
+                        .glassCard(padding: 0)
                     }
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
     }
 
+    private func header(_ title: String) -> some View {
+        SectionHeader(title)
+            .padding(.horizontal, 4)
+            .listRowInsets(EdgeInsets(top: 0, leading: DS.Space.gutter, bottom: 0, trailing: DS.Space.gutter))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+    }
+
+    private func footer(_ text: String) -> some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter + 4, bottom: 8, trailing: DS.Space.gutter))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+    }
+
     private func row(_ r: RouteListRow) -> some View {
-        NavigationLink {
-            RouteCardView(routeId: r.routeId)
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(r.title).font(.body)
-                    if let chip = r.fit.chip { chipView(chip, greyed: r.fit.greyed) }
+        Button { selected = RouteRef(id: r.routeId) } label: {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(r.title).font(.body.weight(.semibold))
+                        if let chip = r.fit.chip { chipView(chip, greyed: r.fit.greyed) }
+                    }
+                    Text(r.summary).font(.footnote).foregroundStyle(.secondary)
+                    if let detail = r.fit.detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
                 }
-                Text(r.summary).font(.footnote).foregroundStyle(.secondary)
-                if let detail = r.fit.detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
+                Spacer(minLength: 8)
+                if r.state == .suggested {
+                    Button("Save") { decide(r.routeId, save: true) }
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: DS.hit)
+                        .foregroundStyle(Color.accentColor)
+                        .background(Color.accentColor.opacity(0.15), in: Capsule())
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Save \(r.title)")
+                }
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
             }
             .opacity(r.fit.greyed ? 0.55 : 1)
+            .padding(DS.Space.cardPad)
+            .glassCard(padding: 0)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
         .swipeActions(edge: .leading) {
             if r.state == .suggested {
                 Button("Save") { decide(r.routeId, save: true) }.tint(.green)
@@ -97,12 +164,7 @@ struct RoutesListView: View {
     }
 
     private func chipView(_ text: String, greyed: Bool) -> some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .foregroundStyle(greyed ? Color.secondary : Color.orange)
-            .background((greyed ? Color.gray : Color.orange).opacity(0.18), in: Capsule())
+        Pill(text: text, tint: greyed ? .secondary : .orange)
     }
 
     private func decide(_ routeId: String, save: Bool) {

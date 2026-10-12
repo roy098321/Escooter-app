@@ -33,19 +33,7 @@ struct RouteCardView: View {
                 ProgressView()
             }
         }
-        .navigationTitle((preview ?? model)?.title ?? "Route")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button { nameDraft = (preview ?? model)?.title ?? ""; showRename = true } label: { Label("Rename route", systemImage: "pencil") }
-                    Button(role: .destructive) { confirmRemove = true } label: { Label("Remove route", systemImage: "trash") }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-                .accessibilityLabel("More")
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .alert("Rename route", isPresented: $showRename) {
             TextField("Name", text: $nameDraft)
             Button("Save") { rename() }
@@ -71,23 +59,41 @@ struct RouteCardView: View {
     // MARK: Layout
 
     private func content(_ m: RouteCardModel) -> some View {
-        ScrollView {
+        MapSheet(initial: m.saved ? .half : .full) {
+            if m.map.isEmpty {
+                MapBackdrop()
+            } else {
+                mapView(m.map, highlight: followingCombination ? m.fastest?.path : nil)
+            }
+        } topBar: {
+            GlassTopBar(title: m.title, subtitle: m.subtitle) {
+                GlassIconButton(symbol: "chevron.left", label: "Back") { dismiss() }
+            } trailing: {
+                Menu {
+                    Button { nameDraft = (preview ?? model)?.title ?? ""; showRename = true } label: { Label("Rename route", systemImage: "pencil") }
+                    Button(role: .destructive) { confirmRemove = true } label: { Label("Remove route", systemImage: "trash") }
+                } label: {
+                    GlassIcon(symbol: "ellipsis")
+                }
+                .accessibilityLabel("More")
+            }
+        } side: {
+            if m.map.count > 1 { Pill(text: "\(m.map.count) variants", tint: .orange) }
+        } sheet: {
             VStack(alignment: .leading, spacing: 16) {
-                Text(m.subtitle).font(.subheadline).foregroundStyle(.secondary)
                 if !m.saved { suggestionCard }
-                if !m.map.isEmpty { mapCard(m.map, highlight: followingCombination ? m.fastest?.path : nil) }
+                StatTileGrid {
+                    ForEach(Array(m.stats.enumerated()), id: \.offset) { _, s in tile(s) }
+                }
                 todayCard(m.today)
                 if m.saved { arriveBy(m) }
                 if let t = m.thereAndBack { thereAndBackCard(t) }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: 12)], spacing: 12) {
-                    ForEach(Array(m.stats.enumerated()), id: \.offset) { _, s in tile(s) }
-                }
                 if !m.variants.isEmpty { variantsCard(m.variants) }
                 if let f = m.fastest { fastestCard(f) }
                 if let e = m.elevation { elevationCard(e) }
                 ridesCard(m)
             }
-            .padding(16)
+            .padding(.top, 2)
         }
     }
 
@@ -106,7 +112,7 @@ struct RouteCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
         .accessibilityElement(children: .combine)
     }
 
@@ -122,11 +128,11 @@ struct RouteCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
-    private func mapCard(_ lines: [RouteMapLine], highlight: [GeoPoint]? = nil) -> some View {
-        Map(initialPosition: Self.position(lines), interactionModes: [.pan, .zoom]) {
+    private func mapView(_ lines: [RouteMapLine], highlight: [GeoPoint]? = nil) -> some View {
+        Map(initialPosition: Self.position(lines, sheet: true), interactionModes: [.pan, .zoom]) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, l in
                 MapPolyline(coordinates: l.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(l.dashed ? Color.orange : Color.blue,
@@ -139,18 +145,7 @@ struct RouteCardView: View {
             }
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
-        .frame(height: 240)
         .accessibilityLabel("Map of the route")
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(alignment: .topTrailing) {
-            if lines.count > 1 {
-                Text("\(lines.count) variants")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(.thinMaterial, in: Capsule())
-                    .padding(8)
-            }
-        }
     }
 
     private func todayCard(_ t: RouteTodayStrip) -> some View {
@@ -159,25 +154,25 @@ struct RouteCardView: View {
             Text(t.detail).font(.footnote).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(DS.Space.cardPad)
+        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 
     private func tile(_ s: RouteStatRow) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(s.label).font(.footnote).foregroundStyle(.secondary)
+        VStack(spacing: 2) {
             Text(s.value)
                 .scaledFont(s.filling ? 17 : 22, weight: .semibold, mono: true)
                 .foregroundStyle(s.filling ? Color.secondary : Color.primary)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
                 .lineLimit(1)
+            Text(s.label).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
             if let note = s.note {
-                Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .frame(maxWidth: .infinity, minHeight: 72)
+        .glassCard(radius: DS.Radius.tile, padding: 10)
         .accessibilityElement(children: .combine)
     }
 
@@ -202,7 +197,7 @@ struct RouteCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
     /// M6-01 (Q23): the next ride follows the combination of this route (Home's Where to? shows the route selected)
@@ -241,7 +236,7 @@ struct RouteCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
         .accessibilityElement(children: .contain)
     }
 
@@ -254,7 +249,7 @@ struct RouteCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
     private func ridesCard(_ m: RouteCardModel) -> some View {
@@ -290,10 +285,10 @@ struct RouteCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
-    static func position(_ lines: [RouteMapLine]) -> MapCameraPosition {
+    static func position(_ lines: [RouteMapLine], sheet: Bool = false) -> MapCameraPosition {
         var minLat = 90.0, maxLat = -90.0, minLon = 180.0, maxLon = -180.0
         for l in lines {
             for p in l.points {
@@ -302,8 +297,11 @@ struct RouteCardView: View {
             }
         }
         guard minLat <= maxLat else { return .automatic }
-        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
-        let span = MKCoordinateSpan(latitudeDelta: max(0.004, (maxLat - minLat) * 1.3), longitudeDelta: max(0.004, (maxLon - minLon) * 1.3))
+        // with the sheet over the lower half, frame the route in the upper part (wider span, centre moved south)
+        let latSpan = max(0.004, (maxLat - minLat) * (sheet ? 2.2 : 1.3))
+        let lonSpan = max(0.004, (maxLon - minLon) * (sheet ? 1.5 : 1.3))
+        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2 - (sheet ? latSpan * 0.2 : 0), longitude: (minLon + maxLon) / 2)
+        let span = MKCoordinateSpan(latitudeDelta: latSpan, longitudeDelta: lonSpan)
         return .region(MKCoordinateRegion(center: center, span: span))
     }
 
