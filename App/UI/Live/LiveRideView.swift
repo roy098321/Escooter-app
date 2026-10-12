@@ -121,7 +121,7 @@ struct LiveRideView: View {
                     chip("starting\u{2026}", dot: .orange)
                 }
                 ForEach(Array(s.chips.enumerated()), id: \.offset) { _, c in
-                    chip(c == .noGps ? "No GPS" : "Offline map", dot: nil)
+                    chip(c == .noGps ? "No GPS" : "Offline map", dot: nil, symbol: c == .noGps ? "location.slash" : "map")
                 }
             }
             if let a = s.arrival {
@@ -136,9 +136,10 @@ struct LiveRideView: View {
         }
     }
 
-    private func chip(_ text: String, dot: Color?) -> some View {
+    private func chip(_ text: String, dot: Color?, symbol: String? = nil) -> some View {
         HStack(spacing: 6) {
             if let dot { Circle().fill(dot).frame(width: 10, height: 10) }
+            if let symbol { Image(systemName: symbol).font(.subheadline.weight(.semibold)).accessibilityHidden(true) }
             Text(text).font(.subheadline.weight(.semibold))
         }
         .padding(.horizontal, 12)
@@ -152,6 +153,7 @@ struct LiveRideView: View {
         let tint: Color? = hot ? Color.red : (s.bannerIsSameRide ? nil : Color.orange)
         return GlassCard(tint: tint) {
             HStack(spacing: 12) {
+                if hot { Image(systemName: "thermometer.medium").font(.title3.weight(.semibold)).accessibilityHidden(true) }
                 Text(text)
                     .font(.title3.weight(.semibold))
                     .multilineTextAlignment(.leading)
