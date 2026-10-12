@@ -26,10 +26,11 @@ struct StatsView: View {
                     ProgressView().padding(.top, 40)
                 }
             }
+            .background { MapBackdrop().ignoresSafeArea() }
             .navigationTitle("Stats")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { CostSettingsView() } label: { Image(systemName: "slider.horizontal.3") }
+                    NavigationLink { CostSettingsView() } label: { GlassIcon(symbol: "slider.horizontal.3") }
                         .accessibilityLabel("Prices")
                 }
             }
@@ -46,28 +47,30 @@ struct StatsView: View {
             recentCard(m)
             weekCards(m)
             if preview == nil {
-                Picker("Span", selection: $spanRaw) {
-                    ForEach(StatsSpan.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
-                }
-                .pickerStyle(.segmented)
-                Picker("Mode", selection: $modeRaw) {
-                    ForEach(StatsMode.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
-                }
-                .pickerStyle(.segmented)
+                GlassSegmented(options: StatsSpan.allCases.map { ($0.rawValue, $0.title) }, selection: $spanRaw)
+                    .accessibilityLabel("Span")
+                GlassSegmented(options: StatsMode.allCases.map { ($0.rawValue, $0.title) }, selection: $modeRaw)
+                    .accessibilityLabel("Mode")
             } else {
                 Text("\(m.span.title) · \(m.mode.title)").font(.footnote).foregroundStyle(.secondary)
             }
             periodHeader(m)
             if m.totals.isEmpty {
-                ContentUnavailableView("No rides in this period", systemImage: "chart.bar",
-                                       description: Text("Totals, charges and costs appear after your first ride."))
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 8) {
+                    Image(systemName: "chart.bar").font(.largeTitle).foregroundStyle(.secondary)
+                    Text("No rides in this period").font(.headline)
+                    Text("Totals, charges and costs appear after your first ride.")
+                        .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(24)
+                .glassCard(radius: DS.Radius.hero, padding: 0)
             } else {
                 if let text = StatsLoader.comparisonText(m) {
                     Text(text).font(.subheadline).foregroundStyle(.secondary)
                 }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: 12)], spacing: 12) {
-                    ForEach(Array(StatsLoader.tiles(m).enumerated()), id: \.offset) { _, t in tile(t.label, t.value, t.note) }
+                StatTileGrid {
+                    ForEach(Array(StatsLoader.tiles(m).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label, note: t.note) }
                 }
                 bars(m)
             }
@@ -79,7 +82,7 @@ struct StatsView: View {
                         Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
                     }
                     .padding(16)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassCard(padding: 0)
                 }
                 .buttonStyle(.plain)
             }
@@ -109,34 +112,26 @@ struct StatsView: View {
 
     private func recentCard(_ m: StatsModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Recent insights").font(.headline)
+            Text("Recent insights").font(.headline).padding(.horizontal, 4)
             if m.recent.isEmpty {
-                Text("Nothing yet. Insights appear after rides on the same route.").font(.subheadline).foregroundStyle(.secondary)
+                Text("Nothing yet. Insights appear after rides on the same route.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(DS.Space.cardPad)
+                    .glassCard(padding: 0)
             } else {
                 ForEach(Array(m.recent.enumerated()), id: \.offset) { item in
-                    if item.offset > 0 { Divider() }
-                    Text(item.element.text).font(.subheadline)
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
+                        Text(item.element.text).font(.subheadline)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(DS.Space.cardPad)
+                    .glassCard(padding: 0)
+                    .accessibilityElement(children: .combine)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private func tile(_ label: String, _ value: String, _ note: String?) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.footnote).foregroundStyle(.secondary)
-            Text(value)
-                .scaledFont(24, weight: .semibold, mono: true)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-            if let note { Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2) }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityElement(children: .combine)
     }
 
     private func bars(_ m: StatsModel) -> some View {
@@ -145,13 +140,14 @@ struct StatsView: View {
             Chart(Array(m.totals.barsKm.enumerated()), id: \.offset) { item in
                 BarMark(x: .value("Day", item.offset + 1), y: .value("km", item.element))
                     .foregroundStyle(.tint)
+                    .cornerRadius(4)
             }
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 7)) }
             .frame(height: 140)
             .accessibilityLabel("Distance per day, bar chart")
         }
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassCard(padding: 0)
     }
 
     private func load() {
@@ -257,7 +253,7 @@ extension StatsView {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .glassCard(padding: 0)
             }
             if !m.pastWeeks.isEmpty {
                 NavigationLink { PastWeeksView(weeks: m.pastWeeks) } label: {
@@ -268,7 +264,7 @@ extension StatsView {
                         Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
                     }
                     .padding(16)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassCard(padding: 0)
                 }
                 .buttonStyle(.plain)
             }
@@ -281,20 +277,31 @@ struct PastWeeksView: View {
     var weeks: [InsightRunner.PastWeek]
 
     var body: some View {
-        List {
-            if weeks.isEmpty {
-                Text("No past weeks yet. A week needs rides on 2 different days.").foregroundStyle(.secondary)
-            }
-            ForEach(weeks) { w in
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(w.lines.enumerated()), id: \.offset) { item in
-                        Text(item.element).font(item.offset == 0 ? .subheadline.weight(.semibold) : .footnote)
-                            .foregroundStyle(item.offset == 0 ? .primary : .secondary)
-                    }
+        ScrollView {
+            VStack(spacing: DS.Space.row) {
+                if weeks.isEmpty {
+                    Text("No past weeks yet. A week needs rides on 2 different days.")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(DS.Space.cardPad)
+                        .glassCard(padding: 0)
                 }
-                .padding(.vertical, 2)
+                ForEach(weeks) { w in
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(Array(w.lines.enumerated()), id: \.offset) { item in
+                            Text(item.element).font(item.offset == 0 ? .subheadline.weight(.semibold) : .footnote)
+                                .foregroundStyle(item.offset == 0 ? .primary : .secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(DS.Space.cardPad)
+                    .glassCard(padding: 0)
+                    .accessibilityElement(children: .combine)
+                }
             }
+            .padding(DS.Space.gutter)
         }
+        .background { MapBackdrop().ignoresSafeArea() }
         .navigationTitle("Past weeks")
         .navigationBarTitleDisplayMode(.inline)
         .screen("Past weeks")

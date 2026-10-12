@@ -72,6 +72,7 @@ struct StatTile: View {
     let value: String
     let label: String
     var tint: Color?
+    var note: String?
 
     var body: some View {
         VStack(spacing: 2) {
@@ -83,11 +84,14 @@ struct StatTile: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            if let note {
+                Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 72)
         .glassCard(radius: DS.Radius.tile, tint: tint, padding: 10)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label), \(value)")
+        .accessibilityLabel(note.map { "\(label), \(value), \($0)" } ?? "\(label), \(value)")
     }
 }
 
