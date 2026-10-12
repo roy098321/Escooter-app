@@ -23,7 +23,7 @@ struct DeveloperView: View {
                 Text("Build \(AppInfo.versionLine) · \(AppInfo.bundleID)")
             }
                 .glassRows()
-            Section("Tools") {
+            GlassSection("Tools") {
                 ShowOnboardingRow()
                 tool("Permissions", "lock.shield", ["h1"]) { PermissionsView() }
                 tool("Scooter", "scooter", ["b1", "b2", "b3", "b4", "b5", "b8", "b9"]) { ScooterCheckView() }

@@ -13,12 +13,12 @@ struct CrashView: View {
                 row("d4")
                 Button("Crash the app now", role: .destructive) { catcher.crashForTest() }
             } header: {
-                Text("Our own catcher")
+                Text("Our own catcher").textCase(nil)
             } footer: {
                 Text("Then open the app again: d4 should pass. iOS delivers its own report (d5) up to a day later.")
             }
                 .glassRows()
-            Section("iOS crash reports (MetricKit)") {
+            GlassSection("iOS crash reports (MetricKit)") {
                 row("d5")
                 if catcher.metricKitReports.isEmpty {
                     Text("None received yet.").foregroundStyle(.secondary)
@@ -26,7 +26,7 @@ struct CrashView: View {
                 ForEach(catcher.metricKitReports, id: \.self) { Text($0).font(.footnote.monospaced()) }
             }
                 .glassRows()
-            Section("Error log") {
+            GlassSection("Error log") {
                 row("d6")
                 Button("Write a test entry") { writeTestEntry() }
                 ForEach(Array(lines.suffix(100).reversed().enumerated()), id: \.offset) { _, line in

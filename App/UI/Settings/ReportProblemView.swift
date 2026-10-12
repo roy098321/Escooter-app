@@ -9,7 +9,7 @@ struct ReportProblemView: View {
     var body: some View {
         List {
             if !messages.isEmpty {
-                Section("Were these messages right?") {
+                GlassSection("Were these messages right?") {
                     ForEach(messages, id: \.id) { m in
                         ThumbsRow(kind: "message", subjectId: String(m.id), subjectText: m.type,
                                   label: "\(m.type) · \(Date(timeIntervalSince1970: Double(m.sentAt) / 1000).formatted(date: .abbreviated, time: .shortened))")

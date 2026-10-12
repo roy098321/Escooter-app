@@ -257,3 +257,21 @@ struct SegmentedRow<T: Hashable>: View {
         .padding(.vertical, 4)
     }
 }
+
+/// A `Section` with a sentence-case header (the system list upper-cases plain titles).
+struct GlassSection<Content: View>: View {
+    let title: String
+    private let content: Content
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        Section {
+            content
+        } header: {
+            Text(title).textCase(nil)
+        }
+    }
+}

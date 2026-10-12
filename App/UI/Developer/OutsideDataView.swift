@@ -51,12 +51,12 @@ struct OutsideDataView: View {
                 }
                 .disabled(refreshing)
             } header: {
-                Text("Cache (M4-01)")
+                Text("Cache (M4-01)").textCase(nil)
             } footer: {
                 Text("Filled by itself at app open and after every ride: holidays, the forecast for your ~1 km cell, weather history for past rides, map elevation. Offline it uses what is cached.")
             }
                 .glassRows()
-            Section("Sources") {
+            GlassSection("Sources") {
                 ForEach(CheckList.all.filter { $0.group == CheckList.outside }) { item in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(alignment: .firstTextBaseline) {
@@ -70,7 +70,7 @@ struct OutsideDataView: View {
                 }
             }
                 .glassRows()
-            Section("Attribution") {
+            GlassSection("Attribution") {
                 Text("Weather: Open-Meteo.com (CC BY 4.0) and MET Norway (CC BY 4.0) · Holidays: Hebcal (CC BY 4.0) · Fuel price: Israel Ministry of Energy · Map tiles: © OpenStreetMap contributors © CARTO")
                     .font(.footnote)
             }

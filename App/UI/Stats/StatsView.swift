@@ -167,7 +167,7 @@ struct CostSettingsView: View {
             Section {
                 TextField("0.64", text: $electricity).keyboardType(.decimalPad)
             } header: {
-                Text("Electricity price (\u{20AA} per kWh)")
+                Text("Electricity price (\u{20AA} per kWh)").textCase(nil)
             } footer: {
                 Text("Used for \"Electricity\" on Stats: full charges used x battery size x this price. Default 0.64.")
             }
@@ -175,7 +175,7 @@ struct CostSettingsView: View {
             Section {
                 TextField("7", text: $fuelUse).keyboardType(.decimalPad)
             } header: {
-                Text("Car fuel use (L per 100 km)")
+                Text("Car fuel use (L per 100 km)").textCase(nil)
             } footer: {
                 Text("\"Fuel saved\" = the same distance by car at this use and the fuel price (Settings \u{2192} Costs) minus the electricity of the ride. Default 7.")
             }

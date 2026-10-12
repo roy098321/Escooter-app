@@ -79,7 +79,7 @@ struct SettingsView: View {
                 }
             if recalibrated { Text("Started. It learns from your next rides.").font(.footnote).foregroundStyle(.secondary) }
         } header: {
-            Text("Battery and charging").id("Battery and charging")
+            Text("Battery and charging").id("Battery and charging").textCase(nil)
         } footer: {
             footer("Battery and charging")
         }
@@ -87,7 +87,7 @@ struct SettingsView: View {
     }
 
     private var scooterSection: some View {
-        Section("Scooter") {
+        GlassSection("Scooter") {
             NavigationLink {
                 MaintenanceView()
             } label: {
@@ -112,7 +112,7 @@ struct SettingsView: View {
                     if loaded { DisplaySettings.setColourBlind(db, on) }
                 }
         } header: {
-            Text("Units and display").id("Units and display")
+            Text("Units and display").id("Units and display").textCase(nil)
         } footer: {
             footer("Units and display")
         }
@@ -120,7 +120,7 @@ struct SettingsView: View {
     }
 
     private var costsSection: some View {
-        Section("Costs") {
+        GlassSection("Costs") {
             NavigationLink {
                 FuelPriceView()
             } label: {
@@ -168,7 +168,7 @@ struct SettingsView: View {
                 Text("kg").foregroundStyle(.secondary)
             }
         } header: {
-            Text("Rider").id("Rider")
+            Text("Rider").id("Rider").textCase(nil)
         } footer: {
             Text("Optional. Light and Heavy are what the Loaded tag means in kg (defaults 5 and 15).")
         }
@@ -187,7 +187,7 @@ struct SettingsView: View {
                     }))
             }
         } header: {
-            Text("Voice and notifications").id("Voice and notifications")
+            Text("Voice and notifications").id("Voice and notifications").textCase(nil)
         } footer: {
             footer("Voice and notifications")
         }
@@ -195,7 +195,7 @@ struct SettingsView: View {
     }
 
     private var placesSection: some View {
-        Section("Places") {
+        GlassSection("Places") {
             NavigationLink {
                 PlacesView()
             } label: {
@@ -220,7 +220,7 @@ struct SettingsView: View {
                 Text("Last backup failed: \(error)").font(.footnote).foregroundStyle(.red)
             }
         } header: {
-            Text("Data and backup").id("Data and backup")
+            Text("Data and backup").id("Data and backup").textCase(nil)
         } footer: {
             footer("Data and backup")
         }
@@ -228,7 +228,7 @@ struct SettingsView: View {
     }
 
     private var helpSection: some View {
-        Section("Help") {
+        GlassSection("Help") {
             NavigationLink {
                 ReportProblemView()
             } label: {
@@ -252,7 +252,7 @@ struct SettingsView: View {
     }
 
     private var aboutSection: some View {
-        Section("About") {
+        GlassSection("About") {
             LabeledContent("Version", value: AppInfo.versionLine)
             LabeledContent("App ID", value: AppInfo.bundleID)
         }

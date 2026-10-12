@@ -30,7 +30,7 @@ struct BackupView: View {
                 Text("Writes a backup of the database, restores it into a scratch copy and compares every table. Your data is only read.")
             }
                 .glassRows()
-            Section("Log") {
+            GlassSection("Log") {
                 ForEach(Array(backup.log.enumerated().reversed()), id: \.offset) { _, line in
                     Text(line).font(.footnote.monospaced())
                 }

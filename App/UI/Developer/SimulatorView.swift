@@ -19,7 +19,7 @@ struct SimulatorView: View {
                 checkLine("d11", "Run on the real screens → watch Home, live view, summary")
             }
                 .glassRows()
-            Section("Replay") {
+            GlassSection("Replay") {
                 Picker("Ride", selection: $sim.fixtureID) {
                     ForEach(SimFixture.all) { fixture in
                         Text(fixture.title).tag(fixture.id)
@@ -50,7 +50,7 @@ struct SimulatorView: View {
                 }
             }
                 .glassRows()
-            Section("Run on the real screens") {
+            GlassSection("Run on the real screens") {
                 Picker("Scenario", selection: $screens.sourceID) {
                     ForEach(ScreenSimulator.sources) { s in
                         Text(s.id == "F2" || s.id == "F5" || s.id == "F3" ? s.title : "\(s.id) · \(s.title)").tag(s.id)
@@ -82,7 +82,7 @@ struct SimulatorView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
                 .glassRows()
-            Section("Simulated scooter (decoded)") {
+            GlassSection("Simulated scooter (decoded)") {
                 let f = sim.pipeline.frame
                 if let gps = sim.gpsSpeedKmh {
                     LabeledContent("Speed") {

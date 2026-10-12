@@ -191,11 +191,12 @@ struct PermissionsView: View {
                 step(5, "Bluetooth (the scooter)", done: CBManager.authorization == .allowedAlways, action: "Allow") { check.askBluetooth() }
                 step(6, "Notification sounds on (for the chime)", done: check.soundsOn, action: "Settings") { PermissionsCheck.openSettings() }
             } header: {
-                Text("Set up, in order")
+                Text("Set up, in order").textCase(nil)
             } footer: {
                 Text("Do the steps top to bottom. If iOS doesn't show a prompt, the button opens iPhone Settings → CorckieApp.")
             }
-            Section("Now") {
+            .glassRows()
+            GlassSection("Now") {
                 ForEach(check.items) { item in
                     LabeledContent(item.name) {
                         Text("\(item.ok ? "✅" : "❌") \(item.state)").multilineTextAlignment(.trailing)
@@ -203,7 +204,9 @@ struct PermissionsView: View {
                 }
                 Button("Open iPhone Settings for CorckieApp") { PermissionsCheck.openSettings() }
             }
+            .glassRows()
         }
+        .glassList()
         .navigationTitle("Permissions")
         .screen("Permissions")
         .onAppear { check.refresh() }

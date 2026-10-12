@@ -85,7 +85,7 @@ struct WhatWasWrongSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("What was wrong?") {
+                GlassSection("What was wrong?") {
                     ForEach(FieldKitQueries.reasons(for: kind), id: \.self) { r in
                         Button { reason = r } label: {
                             HStack { Text(r); Spacer(); if reason == r { Image(systemName: "checkmark") } }
@@ -94,7 +94,7 @@ struct WhatWasWrongSheet: View {
                     }
                 }
                     .glassRows()
-                Section("Optional note") {
+                GlassSection("Optional note") {
                     TextField("Anything else (the keyboard mic works)", text: $note, axis: .vertical).lineLimit(2...5)
                 }
                     .glassRows()

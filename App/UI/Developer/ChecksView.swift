@@ -30,7 +30,7 @@ struct ChecksView: View {
                             if let item = CheckList.item(id) { CheckRow(item: item) }
                         }
                     } header: {
-                        Text("Just updated")
+                        Text("Just updated").textCase(nil)
                     } footer: {
                         Text("Test round after an update: Run all automatic first, then work down this To do list. This block goes away after Run all automatic.")
                     }
@@ -252,11 +252,11 @@ struct CheckGuideSheet: View {
         let guide = CheckGuide.of(item.id)
         NavigationStack {
             List {
-                Section("What it proves") {
+                GlassSection("What it proves") {
                     Text(guide.proves)
                 }
                     .glassRows()
-                Section("Steps") {
+                GlassSection("Steps") {
                     ForEach(Array(guide.steps.enumerated()), id: \.offset) { index, step in
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             Text("\(index + 1).").monospacedDigit().foregroundStyle(.secondary)
@@ -265,7 +265,7 @@ struct CheckGuideSheet: View {
                     }
                 }
                     .glassRows()
-                Section("Expected") {
+                GlassSection("Expected") {
                     Text(item.expected)
                 }
                     .glassRows()

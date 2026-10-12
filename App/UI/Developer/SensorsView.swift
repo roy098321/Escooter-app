@@ -10,14 +10,14 @@ struct SensorsView: View {
 
     var body: some View {
         List {
-            Section("Before you lock the phone") {
+            GlassSection("Before you lock the phone") {
                 Text("1. Open Developer → Scooter once with the scooter on, so the app knows it. Allow location \"Always\".")
                 Text("2. Switch the scooter off. Go to the Home Screen (don't swipe CorckieApp away) and lock the phone.")
                 Text("3. Switch the scooter on with the phone locked. Wait 30 s, then walk ~2 min.")
             }
                 .glassRows()
             .font(.footnote)
-            Section("Checks") {
+            GlassSection("Checks") {
                 line("c1")
                 line("c2")
                 line("c3")
@@ -28,7 +28,7 @@ struct SensorsView: View {
                 line("c8")
             }
                 .glassRows()
-            Section("Recording") {
+            GlassSection("Recording") {
                 LabeledContent("Location permission", value: sensors.permission)
                 LabeledContent("Fixes", value: "\(sensors.fixes) (\(sensors.fixesInBackground) while locked)")
                 LabeledContent("Last fix", value: sensors.lastFix)
@@ -55,7 +55,7 @@ struct SensorsView: View {
                 }
             }
                 .glassRows()
-            Section("Elevation (arch bridge, f1)") {
+            GlassSection("Elevation (arch bridge, f1)") {
                 if sensors.altitude.count > 1 {
                     Chart(sensors.altitude) { sample in
                         LineMark(x: .value("Time", sample.time), y: .value("Metres", sample.meters))

@@ -34,12 +34,12 @@ struct CompareSheet: View {
                     if let me {
                         let suggested = RideCompareBuilder.suggestions(for: me, among: all)
                         if !suggested.isEmpty {
-                            Section("Same trip") { ForEach(suggested, id: \.id) { pickRow($0) } }
+                            GlassSection("Same trip") { ForEach(suggested, id: \.id) { pickRow($0) } }
                                 .glassRows()
                         }
                         let rest = others(me, excluding: suggested)
                         if !rest.isEmpty {
-                            Section("Other rides") { ForEach(rest, id: \.id) { pickRow($0) } }
+                            GlassSection("Other rides") { ForEach(rest, id: \.id) { pickRow($0) } }
                                 .glassRows()
                         }
                         if suggested.isEmpty && rest.isEmpty {
@@ -132,7 +132,7 @@ struct MergeSheet: View {
         NavigationStack {
             List {
                 if let a = preview?.0 ?? first, let b = preview?.1 ?? second {
-                    Section("Earlier ride") { rideLine(a) }
+                    GlassSection("Earlier ride") { rideLine(a) }
                         .glassRows()
                     Section {
                         HStack(spacing: 10) {
@@ -140,10 +140,10 @@ struct MergeSheet: View {
                             Text(offer.text).font(.subheadline)
                         }
                     } header: {
-                        Text("The stop between")
+                        Text("The stop between").textCase(nil)
                     }
                         .glassRows()
-                    Section("This ride") { rideLine(b) }
+                    GlassSection("This ride") { rideLine(b) }
                         .glassRows()
                 }
                 Section {
@@ -239,10 +239,10 @@ struct TrimSheet: View {
                             Slider(value: Binding(get: { endS }, set: { setEnd($0) }), in: min(RideTrim.minLengthS, lastS)...max(lastS, RideTrim.minLengthS), step: 1)
                         }
                     } header: {
-                        Text("Drag the start and the end along the ride")
+                        Text("Drag the start and the end along the ride").textCase(nil)
                     }
                         .glassRows()
-                    Section("Numbers after trimming") {
+                    GlassSection("Numbers after trimming") {
                         let m = trimmed
                         numbers("Time", before: original.map { RideSummaryBuilder.duration($0.totalS) }, after: RideSummaryBuilder.duration(m.totalS))
                         numbers("Distance", before: original.map { RideSummaryBuilder.distance($0.distanceM) }, after: RideSummaryBuilder.distance(m.distanceM))

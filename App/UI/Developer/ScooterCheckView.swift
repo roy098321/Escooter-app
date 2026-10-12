@@ -18,7 +18,7 @@ struct ScooterCheckView: View {
             }
             stabilitySection
             rangeSection
-            Section("Bluetooth events") {
+            GlassSection("Bluetooth events") {
                 ForEach(model.scooter.events.suffix(15).reversed(), id: \.self) { line in
                     Text(line).font(.caption.monospaced())
                 }
@@ -55,7 +55,7 @@ struct ScooterCheckView: View {
         let mode: String = frame?.gear.map { "\($0) (cap \(frame?.capKmh ?? 0) km/h)" } ?? "—"
         let light: String = (frame?.headlight ?? false) ? "on" : "off"
         let brake: String = (frame?.brake ?? false) ? "on" : "off"
-        return Section("Live (decoded)") {
+        return GlassSection("Live (decoded)") {
             HStack {
                 big(speed, "km/h")
                 big(battery, "battery")
@@ -74,7 +74,7 @@ struct ScooterCheckView: View {
     }
 
     private var scooterSection: some View {
-        Section("Scooter") {
+        GlassSection("Scooter") {
             LabeledContent("Fingerprint", value: model.scooter.deviceInfo.fingerprint)
             LabeledContent("Untouched services", value: model.scooter.deniedSeen.isEmpty ? "none offered" : "\(model.scooter.deniedSeen.count)")
             ForEach(model.scooter.deniedSeen, id: \.self) { uuid in
@@ -86,7 +86,7 @@ struct ScooterCheckView: View {
 
     private var stabilitySection: some View {
         let field = FieldChecks.shared
-        return Section("Stable for 4 min (b8)") {
+        return GlassSection("Stable for 4 min (b8)") {
             checkLine("b8")
             if field.stabilityRunning {
                 ProgressView(value: Double(field.stabilityElapsed), total: Double(FieldChecks.stabilitySeconds))
@@ -106,7 +106,7 @@ struct ScooterCheckView: View {
 
     private var rangeSection: some View {
         let field = FieldChecks.shared
-        return Section("Out of range and back (b9)") {
+        return GlassSection("Out of range and back (b9)") {
             checkLine("b9")
             Text("Arm, lock the phone, walk away until the scooter drops, then come back without opening the app.")
                 .font(.footnote).foregroundStyle(.secondary)

@@ -102,7 +102,7 @@ struct RestoreView: View {
                     Button("Restore from the backup folder") { Task { await fromFolder() } }.disabled(working)
                 }
             } header: {
-                Text("Restore")
+                Text("Restore").textCase(nil)
             } footer: {
                 Text("Pick an export file, a ride file or a full backup (full-....corckie). Rides already on this phone are skipped, so restoring twice changes nothing and nothing here is overwritten.")
             }
@@ -112,7 +112,7 @@ struct RestoreView: View {
                     .glassRows()
             }
             if !result.isEmpty {
-                Section("Result") { Text(result) }
+                GlassSection("Result") { Text(result) }
                     .glassRows()
             }
         }
@@ -178,7 +178,7 @@ struct ImportRideLogsView: View {
             Section {
                 Button("Pick log files\u{2026}") { picking = true }.disabled(working)
             } header: {
-                Text("Import ride logs")
+                Text("Import ride logs").textCase(nil)
             } footer: {
                 Text("Pick the files of one or more rides together (.csv or .txt). They are recognised by their first line, so the names do not matter: the 0.4 set c8-scooter-packets.csv with c8-location.csv and c8-barometer.csv, or an nRF Connect log export with the Sensor Logger Location.csv and Barometer.csv of the same ride. Each ride is replayed through the recorder and stored as a normal ride with its real date; rides already on this phone are skipped.")
             }
@@ -188,7 +188,7 @@ struct ImportRideLogsView: View {
                     .glassRows()
             }
             if !result.isEmpty {
-                Section("Result") { Text(result) }
+                GlassSection("Result") { Text(result) }
                     .glassRows()
             }
         }

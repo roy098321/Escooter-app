@@ -38,7 +38,7 @@ struct InsightsView: View {
                 }
                     .glassRows()
             }
-            Section("This phone · Recent insights") {
+            GlassSection("This phone · Recent insights") {
                 if recent.isEmpty {
                     Text("No insights yet").foregroundStyle(.secondary)
                 }

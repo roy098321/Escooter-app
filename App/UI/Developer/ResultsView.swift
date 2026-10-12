@@ -32,7 +32,7 @@ struct ResultsView: View {
                 Text("One .zip with the check results, error log, Bluetooth events, raw scooter packets, sensors and outside-data results. Send it to Claude.")
             }
                 .glassRows()
-            Section("Summary") {
+            GlassSection("Summary") {
                 Text(results.report())
                     .font(.caption.monospaced())
                     .textSelection(.enabled)
