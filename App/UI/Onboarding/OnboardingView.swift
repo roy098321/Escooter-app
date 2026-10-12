@@ -20,24 +20,28 @@ struct OnboardingView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            Text(flow.stepText)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.top, 24)
-            Spacer()
-            switch flow.step {
-            case .connect: connectStep
-            case .location: locationStep
-            case .notifications: notificationsStep
-            case .done: ProgressView()
+        VStack(spacing: 0) {
+            Spacer(minLength: 24)
+            heroIcon
+            Spacer(minLength: 24)
+            VStack(spacing: 14) {
+                Text(flow.step == .done ? "Done" : "Step \(flow.stepText)")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                switch flow.step {
+                case .connect: connectStep
+                case .location: locationStep
+                case .notifications: notificationsStep
+                case .done: ProgressView()
+                }
             }
-            Spacer()
+            .frame(maxWidth: .infinity)
+            .glassCard(radius: DS.Radius.hero, padding: 20)
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, DS.Space.gutter)
         .padding(.bottom, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background { MapBackdrop().ignoresSafeArea() }
         .onAppear {
             guard !previewFound else { return }
             AppModel.shared.scooter.start()
@@ -49,12 +53,29 @@ struct OnboardingView: View {
 
     // MARK: Steps
 
+    /// the big round icon above the card
+    private var heroIcon: some View {
+        let symbol: String
+        var tint = Color.accentColor
+        switch flow.step {
+        case .connect:
+            symbol = flow.scooterFound ? "checkmark" : "scooter"
+            if flow.scooterFound { tint = .green }
+        case .location: symbol = "location.fill"
+        case .notifications: symbol = "bell.badge.fill"
+        case .done: symbol = "checkmark"
+        }
+        return Image(systemName: symbol)
+            .font(.system(size: 56, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: 140, height: 140)
+            .glassCard(radius: 70, padding: 0)
+            .accessibilityHidden(true)
+    }
+
     private var connectStep: some View {
-        VStack(spacing: 16) {
-            Image(systemName: flow.scooterFound ? "checkmark.circle.fill" : "scooter")
-                .font(.system(size: 64)).accessibilityHidden(true)
-                .foregroundStyle(flow.scooterFound ? Color.green : Color.accentColor)
-            Text("Connect your scooter").font(.title.bold())
+        VStack(spacing: 14) {
+            Text("Connect your scooter").font(.title2.bold()).multilineTextAlignment(.center)
             if flow.scooterFound {
                 Text("Found your scooter (\(ScooterGatt.advertisedName)).").foregroundStyle(.secondary)
             } else {
@@ -67,34 +88,35 @@ struct OnboardingView: View {
             }
             bigButton("Connect", enabled: flow.canConnect) { _ = flow.press(.connect) }
             Button("Set up later") { skip() }
-                .font(.footnote)
+                .font(.subheadline)
+                .frame(minHeight: DS.hit)
         }
     }
 
     private var locationStep: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "location.fill").font(.system(size: 64)).accessibilityHidden(true).foregroundStyle(Color.accentColor)
-            Text("Let rides start on their own").font(.title.bold()).multilineTextAlignment(.center)
+        VStack(spacing: 14) {
+            Text("Let rides start on their own").font(.title2.bold()).multilineTextAlignment(.center)
             Text("Allow location (choose Always) and motion, so a ride is recorded with the phone locked in your pocket.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             bigButton(busy ? "Asking\u{2026}" : "Allow", enabled: !busy) { allowLocation() }
             Button("Not now") { finish(.notNow) }
-                .font(.footnote)
+                .font(.subheadline)
+                .frame(minHeight: DS.hit)
                 .disabled(busy)
         }
     }
 
     private var notificationsStep: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "bell.badge.fill").font(.system(size: 64)).accessibilityHidden(true).foregroundStyle(Color.accentColor)
-            Text("Weekly summary and reminders").font(.title.bold()).multilineTextAlignment(.center)
-            Text("Allow notifications with sound for the \"Going for a ride?\" chime and the weekly summary.")
+        VStack(spacing: 14) {
+            Text("Weekly summary and reminders").font(.title2.bold()).multilineTextAlignment(.center)
+            Text("At most 2 notifications a day, never during a ride. Allow them with sound for the \"Going for a ride?\" chime and the weekly summary.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             bigButton("Allow", enabled: !busy) { allowNotifications() }
             Button("Not now") { finish(.notNow) }
-                .font(.footnote)
+                .font(.subheadline)
+                .frame(minHeight: DS.hit)
                 .disabled(busy)
         }
     }
