@@ -42,10 +42,16 @@ struct BatteryView: View {
     /// Prototype order: three tiles first (health, cycles, to full), then the range card
     private func tiles(_ o: BatteryOverview) -> some View {
         StatTileGrid {
-            StatTile(value: BatteryText.healthTitle(o.health), label: "Health")
+            StatTile(value: Self.healthTile(o.health), label: "Health")
             StatTile(value: BatteryText.cyclesText(o.cycles), label: "Charge cycles")
             StatTile(value: o.chargeHours.map { ChargeTime.text(hours: $0) } ?? "\u{2013}", label: "To full")
         }
+    }
+
+    /// the tile shows the percentage only; the words ("Baseline forming") stay in the Cycles and health card
+    static func healthTile(_ h: BatteryHealth.State) -> String {
+        let t = BatteryText.healthTitle(h)
+        return t.count <= 6 ? t : "{2013}"
     }
 
     /// One glass card with a small header and a footer line

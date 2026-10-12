@@ -97,11 +97,12 @@ struct StatTile: View {
 
 /// Adaptive grid of tiles: 3 columns at normal size, fewer at large Dynamic Type.
 struct StatTileGrid<Content: View>: View {
+    @ScaledMetric(relativeTo: .body) private var minTile: CGFloat = 100
     private let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: DS.Space.row)], spacing: DS.Space.row) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: minTile), spacing: DS.Space.row)], spacing: DS.Space.row) {
             content
         }
     }

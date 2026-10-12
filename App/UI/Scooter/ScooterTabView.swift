@@ -99,7 +99,6 @@ struct ScooterTabView: View {
         }
         StatTileGrid {
             StatTile(value: odo.map { String(format: "%.1f", $0) } ?? "\u{2013}", label: odo == nil ? "km total (after the first ride)" : "km total")
-            StatTile(value: rec?.fingerprint ?? "\u{2013}", label: "Firmware")
         }
         SectionHeader("Maintenance")
         VStack(spacing: 0) {
