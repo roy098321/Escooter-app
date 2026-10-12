@@ -194,6 +194,11 @@ struct RidesListView: View {
         .listRowSeparator(.hidden)
     }
 
+    @ViewBuilder private func ridePills(latest: Bool, showDay: Bool, ride: RideListItem) -> some View {
+        if latest { Pill(text: "Latest") }
+        if ride.kind == "shortHop" && !showDay { Pill(text: "Short hop", tint: .secondary) }
+    }
+
     private func row(_ ride: RideListItem, showDay: Bool = false, latest: Bool = false) -> some View {
         let offset = ride.utcOffsetMin ?? TimeZone.current.secondsFromGMT() / 60
         let date = Date(timeIntervalSince1970: Double(ride.startAt) / 1000)
@@ -201,10 +206,10 @@ struct RidesListView: View {
         return Button { selected = RideRoute(id: ride.id) } label: {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 8) {
-                        Text(Self.timeText(date, offsetMin: offset, withDay: showDay)).font(.body.weight(.semibold))
-                        if latest { Pill(text: "Latest") }
-                        if ride.kind == "shortHop" && !showDay { Pill(text: "Short hop", tint: .secondary) }
+                    let time = Text(Self.timeText(date, offsetMin: offset, withDay: showDay)).font(.body.weight(.semibold))
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) { time.lineLimit(1).fixedSize(); ridePills(latest: latest, showDay: showDay, ride: ride) }
+                        VStack(alignment: .leading, spacing: 4) { time.lineLimit(1).fixedSize(); HStack(spacing: 8) { ridePills(latest: latest, showDay: showDay, ride: ride) } }
                     }
                     Text(minutes).font(.footnote).foregroundStyle(.secondary)
                 }

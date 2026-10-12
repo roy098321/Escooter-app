@@ -95,19 +95,21 @@ struct DataUpdateFailedView: View {
     let message: String
 
     var body: some View {
-        ContentUnavailableView {
-            Label("Data update failed", systemImage: "exclamationmark.triangle")
-        } description: {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(.secondary)
+            Text("Data update failed").font(.title2.weight(.bold)).multilineTextAlignment(.center)
             Text("Your rides are safe: a copy was made before the update. Send the report to Claude.\n\n\(message)")
-        } actions: {
+                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
             ShareLink(item: "CorckieApp \(AppInfo.versionLine) · data update failed\n\(message)") {
                 Label("Send report", systemImage: "square.and.arrow.up")
             }
             .buttonStyle(.borderedProminent)
         }
+        .frame(maxWidth: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
         .glassCard(radius: DS.Radius.hero, padding: 16)
         .padding(DS.Space.gutter)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .background { MapBackdrop().ignoresSafeArea() }
     }
 }
