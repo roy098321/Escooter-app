@@ -147,7 +147,7 @@ enum UIShot {
 
     /// Every screen name the ui-shots and the check u44 open (M6-05). New states are added here and to the ui-shots list in ci.yml.
     static let allNames: [String] = [
-        "settings", "settings-full", "settings-data", "export", "restore", "developer", "checks", "results", "simulator", "outside", "scooter", "rides",
+        "settings", "settings-full", "settings-data", "export", "restore", "developer", "checks", "results", "simulator", "outside", "scooter", "rides", "rides-list",
         "ride-detail", "ride-nogps", "ride-gap", "ride-walk", "ride-detail-full", "ride-save-route", "ride-prompt", "ride-insights", "replay",
         "ride-compare", "ride-merge", "ride-trim", "routes-empty", "routes-list", "routes-greyed", "route-card", "route-card-sparse", "places",
         "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-empty", "week-card", "factors", "factors-sparse",
@@ -172,6 +172,7 @@ enum UIShot {
             case "results": ResultsView()
             case "simulator": SimulatorView()
             case "rides": RidesListView()
+            case "rides-list": RidesListView(preview: RidesPreview.list())
             case "ride-detail", "ride-nogps", "ride-gap", "ride-walk":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model(name))
             case "routes-empty", "routes-list", "routes-greyed":

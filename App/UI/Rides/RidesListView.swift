@@ -4,12 +4,23 @@ import SwiftUI
 /// M1-14 Rides list (IA: Rides tab). Newest ride on top under "Latest", the other rides grouped by day,
 /// short hops collapsed in their own section, a date filter, delete with a confirmation.
 /// Empty: pattern E "No rides yet"; filter matches nothing: S10 "No rides match - Clear filters".
+/// UI overhaul (UI_PLAN 3.4): glass rows over the map backdrop, a Date pill, a Compare pill. Only data the app already has
+/// (time, km, minutes, short hop); route names and battery per row are V2 backlog.
 struct RidesListView: View {
+    /// ui-shots: made-up rides instead of the stored ones
+    var preview: [RideListItem]?
+
     @State private var items: [RideListItem] = []
     @State private var filter: RideDateFilter = .allTime
     @State private var hopsOpen = false
     @State private var pendingDelete: RideListItem?
     @State private var errorText: String?
+    @State private var selected: RideRoute?
+    @State private var showCompare = false
+
+    struct RideRoute: Hashable, Identifiable {
+        let id: String
+    }
 
     private var model: RideListModel {
         RideListLogic.build(items, filter: filter, nowMs: Int64(Date().timeIntervalSince1970 * 1000),
@@ -19,21 +30,43 @@ struct RidesListView: View {
     var body: some View {
         NavigationStack {
             content
+                .background { MapBackdrop().ignoresSafeArea() }
                 .onAppear(perform: reload)
                 .navigationTitle("Rides")
                 .screen("Rides")
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Picker("Show", selection: $filter) {
-                            ForEach(RideDateFilter.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if model.shownCount >= 2 {
+                            Button { showCompare = true } label: {
+                                Text("Compare")
+                                    .font(.subheadline.weight(.semibold))
+                                    .padding(.horizontal, 14)
+                                    .frame(minHeight: 40)
+                                    .sunPanel(Capsule(), thin: true)
+                                    .frame(minHeight: DS.hit)
+                                    .contentShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Compare your latest ride with another one")
                         }
-                        .pickerStyle(.menu)
+                        NavigationLink {
+                            SettingsView()
+                        } label: {
+                            GlassIcon(symbol: "gearshape")
+                        }
+                        .accessibilityLabel("Settings")
                     }
                 }
+                .navigationDestination(item: $selected) { RideDetailView(rideId: $0.id) }
         }
         .onAppear(perform: reload)
         .onChange(of: ScreenSimulator.shared.active) { _, _ in reload() }
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reload() }
+        .sheet(isPresented: $showCompare) {
+            if let id = model.latest?.id ?? model.days.first?.rides.first?.id {
+                CompareSheet(rideId: id).v1Label()
+            }
+        }
         .confirmationDialog("Delete this ride?",
                             isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
                             titleVisibility: .visible, presenting: pendingDelete) { ride in
@@ -52,50 +85,147 @@ struct RidesListView: View {
     @ViewBuilder private var content: some View {
         let m = model
         if m.isEmpty {
-            ContentUnavailableView("No rides yet", systemImage: "list.bullet",
-                                   description: Text("Your rides appear here after you ride."))
+            emptyCard(symbol: "list.bullet", title: "No rides yet", text: "Rides appear here by themselves after you ride.")
         } else if m.noMatch {
-            ContentUnavailableView {
-                Label("No rides match", systemImage: "line.3.horizontal.decrease.circle")
-            } description: {
-                Text("Nothing in \(filter.rawValue.lowercased()).")
-            } actions: {
-                Button("Clear filters") { filter = .allTime }
+            VStack(spacing: 12) {
+                filterPill
+                emptyCard(symbol: "line.3.horizontal.decrease.circle", title: "No rides match",
+                          text: "Nothing in \(filter.rawValue.lowercased()).", action: ("Clear filters", { filter = .allTime }))
             }
+            .padding(.horizontal, DS.Space.gutter)
+            Spacer(minLength: 0)
         } else {
             List {
+                filterPill
+                    .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 if let latest = m.latest {
-                    Section("Latest") { row(latest) }
+                    header("Latest")
+                    row(latest, latest: true)
                 }
                 ForEach(m.days, id: \.day) { group in
-                    Section(Self.dayTitle(group.day)) {
-                        ForEach(group.rides, id: \.id) { row($0) }
-                    }
+                    header(Self.dayTitle(group.day))
+                    ForEach(group.rides, id: \.id) { row($0) }
                 }
                 if !m.shortHops.isEmpty {
-                    Section {
-                        DisclosureGroup("Short hops (\(m.shortHops.count))", isExpanded: $hopsOpen) {
-                            ForEach(m.shortHops, id: \.id) { row($0, showDay: true) }
-                        }
-                    } footer: {
-                        Text("0.5 to 2 km. Kept apart so they do not clutter your stats.")
+                    shortHopsHeader(m.shortHops.count)
+                    if hopsOpen {
+                        ForEach(m.shortHops, id: \.id) { row($0, showDay: true) }
                     }
+                    Text("0.5 to 2 km. Kept apart so they do not clutter your stats.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter + 4, bottom: 24, trailing: DS.Space.gutter))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
     }
 
-    private func row(_ ride: RideListItem, showDay: Bool = false) -> some View {
-        let offset = ride.utcOffsetMin ?? TimeZone.current.secondsFromGMT() / 60
-        let date = Date(timeIntervalSince1970: Double(ride.startAt) / 1000)
-        return NavigationLink {
-            RideDetailView(rideId: ride.id)
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(Self.timeText(date, offsetMin: offset, withDay: showDay)).font(.body)
-                Text(Self.detail(ride)).font(.footnote).foregroundStyle(.secondary)
+    private func emptyCard(symbol: String, title: String, text: String, action: (String, () -> Void)? = nil) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.largeTitle).foregroundStyle(.secondary)
+            Text(title).font(.headline)
+            Text(text).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            if let action {
+                Button(action.0, action: action.1).buttonStyle(.borderedProminent).padding(.top, 4)
             }
         }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .glassCard(radius: DS.Radius.hero, padding: 0)
+        .padding(.horizontal, DS.Space.gutter)
+        .padding(.top, 24)
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    /// The Date pill: opens the same four choices the old toolbar menu had
+    private var filterPill: some View {
+        HStack {
+            Menu {
+                Picker("Show", selection: $filter) {
+                    ForEach(RideDateFilter.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar")
+                    Text(filter.rawValue)
+                    Image(systemName: "chevron.down").font(.caption2)
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 14)
+                .frame(minHeight: 40)
+                .sunPanel(Capsule(), thin: true)
+                .frame(minHeight: DS.hit)
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Date: \(filter.rawValue)")
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func header(_ title: String) -> some View {
+        SectionHeader(title)
+            .padding(.horizontal, 4)
+            .listRowInsets(EdgeInsets(top: 0, leading: DS.Space.gutter, bottom: 0, trailing: DS.Space.gutter))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+    }
+
+    private func shortHopsHeader(_ count: Int) -> some View {
+        Button { withAnimation { hopsOpen.toggle() } } label: {
+            HStack {
+                Text("Short hops (\(count))").font(.subheadline.weight(.semibold))
+                Spacer()
+                Image(systemName: hopsOpen ? "chevron.up" : "chevron.down").font(.footnote).foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .glassCard(padding: 0)
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(hopsOpen ? "Open" : "Closed")
+        .listRowInsets(EdgeInsets(top: 12, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
+
+    private func row(_ ride: RideListItem, showDay: Bool = false, latest: Bool = false) -> some View {
+        let offset = ride.utcOffsetMin ?? TimeZone.current.secondsFromGMT() / 60
+        let date = Date(timeIntervalSince1970: Double(ride.startAt) / 1000)
+        let (km, minutes) = Self.numbers(ride)
+        return Button { selected = RideRoute(id: ride.id) } label: {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text(Self.timeText(date, offsetMin: offset, withDay: showDay)).font(.body.weight(.semibold))
+                        if latest { Pill(text: "Latest") }
+                        if ride.kind == "shortHop" && !showDay { Pill(text: "Short hop", tint: .secondary) }
+                    }
+                    Text(minutes).font(.footnote).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text(km).font(.body.weight(.semibold)).monospacedDigit()
+                    Text("km").font(.footnote).foregroundStyle(.secondary)
+                }
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+            }
+            .padding(DS.Space.cardPad)
+            .glassCard(padding: 0)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(Self.timeText(date, offsetMin: offset, withDay: showDay)), \(Self.detail(ride))")
+        .accessibilityAddTraits(.isButton)
+        .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
         .swipeActions {
             Button(role: .destructive) { pendingDelete = ride } label: { Label("Delete", systemImage: "trash") }
         }
@@ -105,6 +235,7 @@ struct RidesListView: View {
     }
 
     private func reload() {
+        if let preview { items = preview; return }
         guard let db = AppModel.shared.displayDatabase else { items = []; return }
         let rows = (try? RideQueries(db).rides()) ?? []
         items = rows.map {
@@ -114,13 +245,20 @@ struct RidesListView: View {
     }
 
     private func delete(_ ride: RideListItem) {
-        guard let db = AppModel.shared.displayDatabase else { return }
+        guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
         do {
             try RideQueries(db).delete(rideId: ride.id)
             reload()
         } catch {
             errorText = error.localizedDescription
         }
+    }
+
+    /// The two figures of a row: "8.4" and "25 min" ("-" when the ride has no numbers yet)
+    static func numbers(_ ride: RideListItem) -> (km: String, minutes: String) {
+        let km = ride.distanceM.map { String(format: "%.1f", $0 / 1000) } ?? "\u{2013}"
+        let minutes = ride.totalS.map { "\(Int(($0 / 60).rounded())) min" } ?? "No numbers yet"
+        return (km, minutes)
     }
 
     static func detail(_ ride: RideListItem) -> String {
@@ -148,5 +286,23 @@ struct RidesListView: View {
         f.dateFormat = "EEE d MMM"
         f.timeZone = TimeZone(secondsFromGMT: 0)
         return f.string(from: d)
+    }
+}
+
+/// Made-up rides for the CI ui-shot `rides-list` (not real places or days)
+enum RidesPreview {
+    static func list() -> [RideListItem] {
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let h: Int64 = 3_600_000
+        let offset = TimeZone.current.secondsFromGMT() / 60
+        return [
+            RideListItem(id: "p1", startAt: now - 2 * h, utcOffsetMin: offset, kind: "ride", distanceM: 8_400, totalS: 1_500),
+            RideListItem(id: "p2", startAt: now - 9 * h, utcOffsetMin: offset, kind: "ride", distanceM: 5_400, totalS: 980),
+            RideListItem(id: "p3", startAt: now - 28 * h, utcOffsetMin: offset, kind: "ride", distanceM: 12_100, totalS: 2_160),
+            RideListItem(id: "p4", startAt: now - 33 * h, utcOffsetMin: offset, kind: "ride", distanceM: 7_900, totalS: 1_320),
+            RideListItem(id: "p5", startAt: now - 52 * h, utcOffsetMin: offset, kind: "ride", distanceM: 6_300, totalS: 1_140),
+            RideListItem(id: "p6", startAt: now - 54 * h, utcOffsetMin: offset, kind: "shortHop", distanceM: 1_200, totalS: 300),
+            RideListItem(id: "p7", startAt: now - 77 * h, utcOffsetMin: offset, kind: "ride", distanceM: 9_800, totalS: 1_740)
+        ]
     }
 }
