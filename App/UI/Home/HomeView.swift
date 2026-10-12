@@ -181,8 +181,8 @@ struct HomeView: View {
             .disabled(!m.primaryEnabled)
             .opacity(m.primaryEnabled ? 1 : 0.6)
             .accessibilityLabel(m.primaryTitle)
-            if m.state == .ready {
-                Text("Rides also start on their own as soon as the wheel turns.")
+            if m.state == .ready || m.state == .notConnected || m.state == .cantFind {
+                Text(m.state == .ready ? "Rides also start on their own as soon as the wheel turns." : "Rides start only once the scooter is connected.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
