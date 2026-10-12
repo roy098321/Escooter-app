@@ -28,16 +28,19 @@ struct CompareSheet: View {
                     } footer: {
                         Text("The last column is this ride minus the other one.")
                     }
+                        .glassRows()
                 }
                 if preview == nil {
                     if let me {
                         let suggested = RideCompareBuilder.suggestions(for: me, among: all)
                         if !suggested.isEmpty {
                             Section("Same trip") { ForEach(suggested, id: \.id) { pickRow($0) } }
+                                .glassRows()
                         }
                         let rest = others(me, excluding: suggested)
                         if !rest.isEmpty {
                             Section("Other rides") { ForEach(rest, id: \.id) { pickRow($0) } }
+                                .glassRows()
                         }
                         if suggested.isEmpty && rest.isEmpty {
                             Text("There is no other ride to compare with yet.").foregroundStyle(.secondary)
@@ -45,6 +48,7 @@ struct CompareSheet: View {
                     }
                 }
             }
+                .glassList()
             .navigationTitle("Compare")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
@@ -129,6 +133,7 @@ struct MergeSheet: View {
             List {
                 if let a = preview?.0 ?? first, let b = preview?.1 ?? second {
                     Section("Earlier ride") { rideLine(a) }
+                        .glassRows()
                     Section {
                         HStack(spacing: 10) {
                             Image(systemName: "pause.circle").foregroundStyle(.secondary)
@@ -137,7 +142,9 @@ struct MergeSheet: View {
                     } header: {
                         Text("The stop between")
                     }
+                        .glassRows()
                     Section("This ride") { rideLine(b) }
+                        .glassRows()
                 }
                 Section {
                     Button("Merge into one ride") { merge() }
@@ -146,7 +153,9 @@ struct MergeSheet: View {
                 } footer: {
                     Text("The two rides become one. The stop counts as a stop, not as missing data. You can undo it right after, and later from the ... menu until the next merge.")
                 }
+                    .glassRows()
             }
+                .glassList()
             .navigationTitle("Merge rides")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } } }
@@ -232,6 +241,7 @@ struct TrimSheet: View {
                     } header: {
                         Text("Drag the start and the end along the ride")
                     }
+                        .glassRows()
                     Section("Numbers after trimming") {
                         let m = trimmed
                         numbers("Time", before: original.map { RideSummaryBuilder.duration($0.totalS) }, after: RideSummaryBuilder.duration(m.totalS))
@@ -240,6 +250,7 @@ struct TrimSheet: View {
                                 after: m.usedPct.map { String(format: "%.0f%%", $0) } ?? "\u{2013}")
                         numbers("Top speed", before: original.map { RideSummaryBuilder.speed($0.topSpeedKmh) }, after: RideSummaryBuilder.speed(m.topSpeedKmh))
                     }
+                        .glassRows()
                     Section {
                         Button("Save trim") { save() }.fontWeight(.semibold).disabled(previewSamples != nil)
                         if isTrimmed {
@@ -248,10 +259,12 @@ struct TrimSheet: View {
                     } footer: {
                         Text("Nothing is deleted. The ride keeps all its readings; only the numbers use the part you keep. At least one minute stays. Reset trim brings the original numbers back.")
                     }
+                        .glassRows()
                 } else {
                     Text("This ride is too short to trim.").foregroundStyle(.secondary)
                 }
             }
+                .glassList()
             .navigationTitle("Trim ride")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } } }

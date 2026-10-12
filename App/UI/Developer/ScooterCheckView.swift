@@ -23,7 +23,9 @@ struct ScooterCheckView: View {
                     Text(line).font(.caption.monospaced())
                 }
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Scooter")
         .screen("Scooter")
     }
@@ -39,6 +41,7 @@ struct ScooterCheckView: View {
             checkLine("b3")
             checkLine("b4")
         }
+            .glassRows()
     }
 
     private var liveSection: some View {
@@ -67,6 +70,7 @@ struct ScooterCheckView: View {
             LabeledContent("Readings ignored (G1b)", value: "\(model.live.plausibility.ignoredReadings)")
             Text(model.scooter.lastHex.isEmpty ? "—" : model.scooter.lastHex).font(.caption.monospaced())
         }
+            .glassRows()
     }
 
     private var scooterSection: some View {
@@ -77,6 +81,7 @@ struct ScooterCheckView: View {
                 Text(uuid).font(.caption.monospaced())
             }
         }
+            .glassRows()
     }
 
     private var stabilitySection: some View {
@@ -96,6 +101,7 @@ struct ScooterCheckView: View {
                 Text(line).font(.caption.monospaced())
             }
         }
+            .glassRows()
     }
 
     private var rangeSection: some View {
@@ -110,6 +116,7 @@ struct ScooterCheckView: View {
                 Text(line).font(.caption.monospaced())
             }
         }
+            .glassRows()
     }
 
     private func checkLine(_ id: String) -> some View {
@@ -137,6 +144,7 @@ struct ScooterCheckView: View {
             }
             extra()
         }
+            .glassRows()
     }
 
     private func begin(_ id: String) {

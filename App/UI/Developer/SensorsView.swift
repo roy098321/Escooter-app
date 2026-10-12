@@ -15,6 +15,7 @@ struct SensorsView: View {
                 Text("2. Switch the scooter off. Go to the Home Screen (don't swipe CorckieApp away) and lock the phone.")
                 Text("3. Switch the scooter on with the phone locked. Wait 30 s, then walk ~2 min.")
             }
+                .glassRows()
             .font(.footnote)
             Section("Checks") {
                 line("c1")
@@ -26,6 +27,7 @@ struct SensorsView: View {
                 line("c7")
                 line("c8")
             }
+                .glassRows()
             Section("Recording") {
                 LabeledContent("Location permission", value: sensors.permission)
                 LabeledContent("Fixes", value: "\(sensors.fixes) (\(sensors.fixesInBackground) while locked)")
@@ -52,6 +54,7 @@ struct SensorsView: View {
                     Button("Start recording now") { sensors.start() }
                 }
             }
+                .glassRows()
             Section("Elevation (arch bridge, f1)") {
                 if sensors.altitude.count > 1 {
                     Chart(sensors.altitude) { sample in
@@ -66,7 +69,9 @@ struct SensorsView: View {
                 Text("Does the bridge show as a clear bump?").font(.footnote)
                 ManualResult(id: "f1")
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Sensors")
         .screen("Sensors")
     }

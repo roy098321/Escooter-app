@@ -44,12 +44,14 @@ struct ReplayView: View {
         .navigationTitle("Ride Replay")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) { Button("Close") { dismiss() } }
+            ToolbarItem(placement: .topBarLeading) { GlassIconButton(symbol: "xmark", label: "Close") { dismiss() } }
             ToolbarItem(placement: .topBarTrailing) {
                 if building {
                     ProgressView()
                 } else {
-                    Button { Task { await download() } } label: { Label("Download", systemImage: "square.and.arrow.down") }
+                    Button { Task { await download() } } label: { GlassIcon(symbol: "square.and.arrow.down") }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Download")
                         .disabled(ride == nil && previewData == nil)
                 }
             }
@@ -57,7 +59,8 @@ struct ReplayView: View {
         .safeAreaInset(edge: .bottom) {
             if building || !buildText.isEmpty {
                 Text(building ? "Getting the map\u{2026} \(buildText)" : buildText)
-                    .font(.footnote).padding(8).frame(maxWidth: .infinity).background(.thinMaterial)
+                    .font(.footnote).frame(maxWidth: .infinity).glassCard(radius: DS.Radius.card, padding: 10)
+                    .padding(.horizontal, DS.Space.gutter)
             }
         }
         .sheet(item: $shareItem) { item in

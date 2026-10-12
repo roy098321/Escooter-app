@@ -87,7 +87,7 @@ struct RideDetailView: View {
         }
         .onAppear(perform: load)
         .sheet(isPresented: $showCompare) {
-            if let id = activeId { CompareSheet(rideId: id).v1Label() }
+            if let id = activeId { CompareSheet(rideId: id).v1Label().glassPresentation() }
         }
         .sheet(isPresented: $showMerge) {
             if let id = activeId, let info = mergeInfo {
@@ -97,13 +97,14 @@ struct RideDetailView: View {
                     load()
                 })
                 .v1Label()
+                .glassPresentation()
             }
         }
         .sheet(isPresented: $showTrim) {
-            if let id = activeId { TrimSheet(rideId: id, onChanged: { toast = "Trim saved."; load() }).v1Label() }
+            if let id = activeId { TrimSheet(rideId: id, onChanged: { toast = "Trim saved."; load() }).v1Label().glassPresentation() }
         }
         .sheet(isPresented: $showReplay) {
-            if let id = activeId { NavigationStack { ReplayView(rideId: id, startDownload: replayDownload) }.v1Label() }
+            if let id = activeId { NavigationStack { ReplayView(rideId: id, startDownload: replayDownload) }.v1Label().glassPresentation(detents: [.large]) }
         }
         .sheet(item: $exportFile) { file in ShareSheet(url: file.url).v1Label() }
         .overlay(alignment: .bottom) { toastBar }

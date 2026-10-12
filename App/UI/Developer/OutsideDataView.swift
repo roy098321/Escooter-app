@@ -27,6 +27,7 @@ struct OutsideDataView: View {
             } footer: {
                 Text("Needs internet. Only a location rounded to ~1 km is sent; with no location yet, a fixed point in the ocean is used. A failure shows the fallback the app will use.")
             }
+                .glassRows()
             Section {
                 Text(cache)
                 Text(lastRun).font(.footnote).foregroundStyle(.secondary)
@@ -54,6 +55,7 @@ struct OutsideDataView: View {
             } footer: {
                 Text("Filled by itself at app open and after every ride: holidays, the forecast for your ~1 km cell, weather history for past rides, map elevation. Offline it uses what is cached.")
             }
+                .glassRows()
             Section("Sources") {
                 ForEach(CheckList.all.filter { $0.group == CheckList.outside }) { item in
                     VStack(alignment: .leading, spacing: 4) {
@@ -67,11 +69,14 @@ struct OutsideDataView: View {
                     }
                 }
             }
+                .glassRows()
             Section("Attribution") {
                 Text("Weather: Open-Meteo.com (CC BY 4.0) and MET Norway (CC BY 4.0) · Holidays: Hebcal (CC BY 4.0) · Fuel price: Israel Ministry of Energy · Map tiles: © OpenStreetMap contributors © CARTO")
                     .font(.footnote)
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Outside data")
         .screen("Outside data")
     }

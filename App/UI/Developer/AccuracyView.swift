@@ -28,7 +28,9 @@ struct AccuracyView: View {
             } footer: {
                 Text("\(settled) estimates compared with their ride, \(waiting) waiting for a ride. Numbers are the ones the app showed (no safety margin). Included in every export as accuracy.txt.")
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Accuracy")
         .screen("Accuracy")
         .onAppear(perform: load)

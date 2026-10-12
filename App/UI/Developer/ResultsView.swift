@@ -11,6 +11,7 @@ struct ResultsView: View {
             Section {
                 CountsRow()
             }
+                .glassRows()
             Section {
                 if let exportURL {
                     ShareLink(item: exportURL) {
@@ -30,12 +31,15 @@ struct ResultsView: View {
             } footer: {
                 Text("One .zip with the check results, error log, Bluetooth events, raw scooter packets, sensors and outside-data results. Send it to Claude.")
             }
+                .glassRows()
             Section("Summary") {
                 Text(results.report())
                     .font(.caption.monospaced())
                     .textSelection(.enabled)
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Results")
         .screen("Results")
     }

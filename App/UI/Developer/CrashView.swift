@@ -17,6 +17,7 @@ struct CrashView: View {
             } footer: {
                 Text("Then open the app again: d4 should pass. iOS delivers its own report (d5) up to a day later.")
             }
+                .glassRows()
             Section("iOS crash reports (MetricKit)") {
                 row("d5")
                 if catcher.metricKitReports.isEmpty {
@@ -24,6 +25,7 @@ struct CrashView: View {
                 }
                 ForEach(catcher.metricKitReports, id: \.self) { Text($0).font(.footnote.monospaced()) }
             }
+                .glassRows()
             Section("Error log") {
                 row("d6")
                 Button("Write a test entry") { writeTestEntry() }
@@ -31,7 +33,9 @@ struct CrashView: View {
                     Text(line).font(.caption.monospaced())
                 }
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Crash catcher")
         .screen("Crash catcher")
         .onAppear { lines = ErrorLog.shared.lines() }

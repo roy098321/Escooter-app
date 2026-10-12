@@ -26,6 +26,7 @@ struct InsightsView: View {
             } footer: {
                 Text("Made-up rides in the ocean in a temporary database, deleted right after. Your real rides are not touched.")
             }
+                .glassRows()
             if !lines.isEmpty {
                 Section(title) {
                     ForEach(lines) { l in
@@ -35,6 +36,7 @@ struct InsightsView: View {
                         }
                     }
                 }
+                    .glassRows()
             }
             Section("This phone · Recent insights") {
                 if recent.isEmpty {
@@ -47,7 +49,9 @@ struct InsightsView: View {
                     }
                 }
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Insights")
         .screen("Insights")
     }

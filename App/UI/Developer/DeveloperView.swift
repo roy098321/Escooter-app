@@ -22,6 +22,7 @@ struct DeveloperView: View {
             } footer: {
                 Text("Build \(AppInfo.versionLine) · \(AppInfo.bundleID)")
             }
+                .glassRows()
             Section("Tools") {
                 ShowOnboardingRow()
                 tool("Permissions", "lock.shield", ["h1"]) { PermissionsView() }
@@ -35,7 +36,9 @@ struct DeveloperView: View {
                 tool("Insights (simulated windy week)", "text.bubble", ["u32", "mi1"]) { InsightsView() }
                 tool("Accuracy (estimate errors)", "scope", ["u47", "u48", "u49"]) { AccuracyView() }
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Developer")
         .screen("Developer")
     }

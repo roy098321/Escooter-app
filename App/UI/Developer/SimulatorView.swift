@@ -18,6 +18,7 @@ struct SimulatorView: View {
                 checkLine("d8", "Checked after every run")
                 checkLine("d11", "Run on the real screens → watch Home, live view, summary")
             }
+                .glassRows()
             Section("Replay") {
                 Picker("Ride", selection: $sim.fixtureID) {
                     ForEach(SimFixture.all) { fixture in
@@ -48,6 +49,7 @@ struct SimulatorView: View {
                     Text(message).font(.footnote)
                 }
             }
+                .glassRows()
             Section("Run on the real screens") {
                 Picker("Scenario", selection: $screens.sourceID) {
                     ForEach(ScreenSimulator.sources) { s in
@@ -79,6 +81,7 @@ struct SimulatorView: View {
                 Text("Runs the real Home, live view and ride summary on the fake scooter. Simulated rides live in a temporary database and show only while the purple SIMULATED banner is on.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
+                .glassRows()
             Section("Simulated scooter (decoded)") {
                 let f = sim.pipeline.frame
                 if let gps = sim.gpsSpeedKmh {
@@ -97,11 +100,14 @@ struct SimulatorView: View {
                                ? "changed · \(sim.pipeline.plausibility.formatChangeReason ?? "")" : "OK")
                 LabeledContent("Link", value: sim.pipeline.connected ? "connected" : "disconnected")
             }
+                .glassRows()
             Section {
                 Text("Simulated rides never touch your real data. The simulator refuses to run while the real scooter is connected and stops if it connects.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("Simulated scooter")
         .screen("Simulated scooter")
     }

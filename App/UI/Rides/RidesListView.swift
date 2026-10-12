@@ -64,7 +64,7 @@ struct RidesListView: View {
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reload() }
         .sheet(isPresented: $showCompare) {
             if let id = model.latest?.id ?? model.days.first?.rides.first?.id {
-                CompareSheet(rideId: id).v1Label()
+                CompareSheet(rideId: id).v1Label().glassPresentation()
             }
         }
         .confirmationDialog("Delete this ride?",

@@ -38,6 +38,7 @@ struct FactorsView: View {
                 } footer: {
                     Text(perTrip ? "What each factor costs on this route, per trip." : "What each factor costs on every route together, per km of riding.")
                 }
+                    .glassRows()
             }
             Section {
                 let shown = preview ?? rows
@@ -46,7 +47,9 @@ struct FactorsView: View {
                 }
                 ForEach(shown) { row in rowView(row) }
             }
+                .glassRows()
         }
+            .glassList()
         .navigationTitle("What affects my rides")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: load)

@@ -42,9 +42,9 @@ struct ThumbsRow: View {
         HStack(spacing: 4) {
             if let label { Text(label).font(.subheadline) }
             Spacer(minLength: 0)
-            Button { answer(1) } label: { Text(verdict == 1 ? "\u{1F44D}" : "\u{1F44D}\u{FE0E}").opacity(verdict == 1 ? 1 : 0.5).frame(minWidth: 44, minHeight: 44) }
+            Button { answer(1) } label: { Text(verdict == 1 ? "\u{1F44D}" : "\u{1F44D}\u{FE0E}").opacity(verdict == 1 ? 1 : 0.5).frame(minWidth: 44, minHeight: 44).background(verdict == 1 ? Color.green.opacity(0.18) : Color.primary.opacity(0.08), in: Capsule()) }
                 .accessibilityLabel("\(label ?? kind): right")
-            Button { asking = true } label: { Text(verdict == -1 ? "\u{1F44E}" : "\u{1F44E}\u{FE0E}").opacity(verdict == -1 ? 1 : 0.5).frame(minWidth: 44, minHeight: 44) }
+            Button { asking = true } label: { Text(verdict == -1 ? "\u{1F44E}" : "\u{1F44E}\u{FE0E}").opacity(verdict == -1 ? 1 : 0.5).frame(minWidth: 44, minHeight: 44).background(verdict == -1 ? Color.red.opacity(0.18) : Color.primary.opacity(0.08), in: Capsule()) }
                 .accessibilityLabel("\(label ?? kind): wrong")
         }
         .buttonStyle(.plain)
@@ -58,6 +58,7 @@ struct ThumbsRow: View {
                 save(-1, reason: reason, note: note)
             }
             .v1Label()
+            .glassPresentation()
         }
     }
 
@@ -92,10 +93,13 @@ struct WhatWasWrongSheet: View {
                         .foregroundStyle(.primary)
                     }
                 }
+                    .glassRows()
                 Section("Optional note") {
                     TextField("Anything else (the keyboard mic works)", text: $note, axis: .vertical).lineLimit(2...5)
                 }
+                    .glassRows()
             }
+                .glassList()
             .navigationTitle("Not right")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

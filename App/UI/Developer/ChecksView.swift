@@ -21,6 +21,7 @@ struct ChecksView: View {
                 let k = CheckList.kindCounts()
                 Text("✅ passed · ❌ failed · ⏳ not done yet · ℹ️ recorded for Claude. Tap ⓘ for the steps of a check.\n\(k.total) checks: \(k.automatic) automatic · \(k.manual) manual · \(k.onARide) on a ride (most of those tick themselves).")
             }
+                .glassRows()
             autoSection
             if showTodo {
                 if UpdateCheck.justUpdated {
@@ -33,10 +34,12 @@ struct ChecksView: View {
                     } footer: {
                         Text("Test round after an update: Run all automatic first, then work down this To do list. This block goes away after Run all automatic.")
                     }
+                        .glassRows()
                 }
                 let todo = results.todo()
                 if todo.isEmpty {
                     Section { Text("Nothing left to do. Send the export (Results).") }
+                        .glassRows()
                 }
                 ForEach(todo) { group in
                     Section(group.place.rawValue) {
@@ -44,6 +47,7 @@ struct ChecksView: View {
                             CheckRow(item: item)
                         }
                     }
+                        .glassRows()
                 }
             } else {
                 ForEach(CheckList.groups, id: \.self) { group in
@@ -52,9 +56,11 @@ struct ChecksView: View {
                             CheckRow(item: item)
                         }
                     }
+                        .glassRows()
                 }
             }
         }
+            .glassList()
         .navigationTitle("Checks")
         .screen("Checks")
     }
@@ -86,6 +92,7 @@ struct ChecksView: View {
         } footer: {
             Text("Runs every check the phone can do by itself: permissions, settings, error log, backup + restore, the simulator ones (scooter off) and outside data. About a minute.")
         }
+            .glassRows()
     }
 }
 
@@ -208,10 +215,12 @@ struct CheckRow: View {
         .sheet(isPresented: $showGuide) {
             CheckGuideSheet(item: item)
                 .v1Label()
+                .glassPresentation()
         }
         .sheet(isPresented: $editingNote) {
             CheckNoteSheet(item: item)
                 .v1Label()
+                .glassPresentation()
         }
     }
 }
@@ -246,6 +255,7 @@ struct CheckGuideSheet: View {
                 Section("What it proves") {
                     Text(guide.proves)
                 }
+                    .glassRows()
                 Section("Steps") {
                     ForEach(Array(guide.steps.enumerated()), id: \.offset) { index, step in
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -254,14 +264,18 @@ struct CheckGuideSheet: View {
                         }
                     }
                 }
+                    .glassRows()
                 Section("Expected") {
                     Text(item.expected)
                 }
+                    .glassRows()
                 Section {
                     LabeledContent("Where", value: guide.place.rawValue)
                     LabeledContent("Result", value: CheckResults.shared.status(item.id).icon)
                 }
+                    .glassRows()
             }
+                .glassList()
             .navigationTitle("\(item.id.uppercased()) · \(item.title)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -288,7 +302,9 @@ struct CheckNoteSheet: View {
                 } footer: {
                     Text("Why it passed or failed, or anything for next time. Goes into the export (results.txt and notes.txt).")
                 }
+                    .glassRows()
             }
+                .glassList()
             .navigationTitle("Note · \(item.id.uppercased())")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
