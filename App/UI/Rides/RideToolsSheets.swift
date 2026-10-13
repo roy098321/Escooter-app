@@ -16,11 +16,25 @@ struct CompareSheet: View {
     @State private var me: CompareRide?
     @State private var all: [CompareRide] = []
     @State private var other: CompareRide?
+    /// F-05: both rides' stored paths for the shared map
+    @State private var paths: (ComparePath, ComparePath)?
 
     var body: some View {
         NavigationStack {
             List {
                 if let a = preview?.0 ?? me, let b = preview?.1 ?? other {
+                    if let p = shownPaths, !p.0.isEmpty, !p.1.isEmpty {
+                        Section {
+                            CompareMapView(pathA: p.0, pathB: p.1, titleA: a.title, titleB: b.title,
+                                           initialTime: preview != nil ? 40 : nil, initialTap: preview != nil ? CompareMapPreview.tapPoint : nil)
+                                .id("\(a.id)-\(b.id)")
+                        } header: {
+                            Text("Both rides on one map").textCase(nil)
+                        } footer: {
+                            Text("Shows where time is won or lost on the road. It compares the two rides; it does not rank them.")
+                        }
+                            .glassRows()
+                    }
                     Section {
                         Text(RideCompareBuilder.relation(a, b)).font(.subheadline).foregroundStyle(.secondary)
                         header(a, b)
@@ -53,9 +67,12 @@ struct CompareSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
             .onAppear(perform: load)
+            .onChange(of: other?.id) { _, _ in loadPaths() }
             .screen("Compare rides")
         }
     }
+
+    private var shownPaths: (ComparePath, ComparePath)? { preview != nil ? CompareMapPreview.paths() : paths }
 
     private func others(_ me: CompareRide, excluding suggested: [CompareRide]) -> [CompareRide] {
         let skip = Set(suggested.map(\.id))
@@ -110,6 +127,12 @@ struct CompareSheet: View {
         if let me {
             other = RideCompareBuilder.suggestions(for: me, among: all, limit: 1).first
         }
+        loadPaths()
+    }
+
+    private func loadPaths() {
+        guard preview == nil, let db = AppModel.shared.displayDatabase, let a = me, let b = other else { paths = nil; return }
+        paths = (CompareMapLoader.path(db, rideId: a.id), CompareMapLoader.path(db, rideId: b.id))
     }
 }
 
