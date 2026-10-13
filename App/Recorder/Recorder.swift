@@ -220,6 +220,8 @@ actor Recorder {
                 r.createdBuild = build
                 r.utcOffsetMin = utcOffsetMin ?? TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: startT + epochOffset)) / 60
                 try q.save(r)
+                // F-02: the Load chosen on Home goes onto this ride, then resets (a simulated ride does not use it up)
+                if !simulated, let a = PendingLoad.attach(db, rideId: id) { hooks.log("Load \(Int(a.kg.rounded())) kg attached to ride \(seq)") }
                 trimIds()
             case let .rideCancelled(seq):
                 if let id = rideIds[seq] { try q.delete(rideId: id) }

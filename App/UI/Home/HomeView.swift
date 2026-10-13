@@ -26,8 +26,10 @@ struct HomeView: View {
     @State private var crashDismissed = false
     @State private var lastRide: RideListItem?
     @State private var oldestRideMs: Int64?
-    /// M4-10: the newest insight (a line under the last ride)
-    @State private var newestInsight: String?
+    /// F-02: the Load for the next ride (None / Light / Heavy / Exact), kept until the next ride starts
+    @State private var loadLevelRaw = LoadLevel.none.rawValue
+    @State private var exactKg = ""
+    @State private var loadReady = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var input: HomeInput {
@@ -65,11 +67,13 @@ struct HomeView: View {
                 }
         }
         .onAppear {
+            loadSelectorFromStore()
             reloadLastRide()
             if previewSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showWhereTo = true } }
         }
         .onChange(of: ScreenSimulator.shared.active) { _, _ in lastRide = nil; reloadLastRide() }
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reloadLastRide() }
+        .onChange(of: RecorderService.shared.rideActive) { _, active in if !active { loadReady = false; loadSelectorFromStore() } }
         .onReceive(tick) { now = $0 }
         .onChange(of: AppModel.shared.scooter.connected) { _, connected in
             if connected { connectingSince = nil }
@@ -103,26 +107,53 @@ struct HomeView: View {
                 if m.state != .riding { whereTo }
                 if m.showLocationCard { locationCard }
                 startDisc(m)
-                if let text = newestInsight, m.state != .riding {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "text.bubble").foregroundStyle(.secondary)
-                        Text(text).font(.subheadline)
-                        Spacer(minLength: 0)
-                    }
-                    .glassCard()
-                }
-                if let text = m.lastRideText {
-                    HStack(spacing: 10) {
-                        Image(systemName: "clock.arrow.circlepath").foregroundStyle(.secondary)
-                        Text(text).font(.subheadline)
-                        Spacer(minLength: 0)
-                    }
-                    .glassCard()
-                }
+                if m.state != .riding { loadSelector }
             }
             .padding(.horizontal, DS.Space.gutter)
             .padding(.bottom, DS.Space.block)
         }
+    }
+
+    // MARK: Load for the next ride (F-02)
+
+    private var lightKg: Int { Int((RiderSettings.kg(AppModel.shared.database, .light) ?? 5).rounded()) }
+    private var heavyKg: Int { Int((RiderSettings.kg(AppModel.shared.database, .heavy) ?? 15).rounded()) }
+
+    private var loadSelector: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Load for the next ride").font(.subheadline.weight(.semibold))
+            GlassSegmented(options: [(LoadLevel.none.rawValue, "None"), (LoadLevel.light.rawValue, "Light \(lightKg) kg"),
+                                     (LoadLevel.heavy.rawValue, "Heavy \(heavyKg) kg"), (LoadLevel.custom.rawValue, "Exact")],
+                           selection: $loadLevelRaw)
+                .accessibilityLabel("Load for the next ride")
+            if loadLevelRaw == LoadLevel.custom.rawValue {
+                TextField("kg", text: $exactKg)
+                    .keyboardType(.decimalPad)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityLabel("Exact load in kilograms")
+            }
+            Text("Goes onto the next ride when it starts, then resets to None. You can change it on the ride summary.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+        .onChange(of: loadLevelRaw) { _, _ in saveLoad() }
+        .onChange(of: exactKg) { _, _ in saveLoad() }
+    }
+
+    private func loadSelectorFromStore() {
+        guard preview == nil else { return }
+        let c = PendingLoad.get(AppModel.shared.database)
+        loadLevelRaw = c.level.rawValue
+        exactKg = c.level == .custom ? String(c.customKg) : ""
+        DispatchQueue.main.async { loadReady = true }
+    }
+
+    private func saveLoad() {
+        guard preview == nil, loadReady else { return }
+        let level = LoadLevel(rawValue: loadLevelRaw) ?? .none
+        let kg = Double(exactKg.replacingOccurrences(of: ",", with: ".")) ?? 0
+        PendingLoad.set(AppModel.shared.database, LoadChoice(level: level, customKg: min(max(kg, 0), LoadChoice.maxKg)))
     }
 
     private func statusCard(_ m: HomeModel) -> some View {
@@ -325,7 +356,6 @@ struct HomeView: View {
         chips = RouteFollowLoader.chips(database: db)
         if let id = RouteFollowSelection.shared.routeId, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.routeId = nil }
         oldestRideMs = try? RideQueries(db).rides().last?.startAt
-        newestInsight = ((try? InsightQueries(db).recent(limit: 1)) ?? []).first?.text
         BackupWriter.shared.runIfDue()
         EdgeWatch.shared.refresh(database: db)
         guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
