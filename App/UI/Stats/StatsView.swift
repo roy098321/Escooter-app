@@ -219,7 +219,7 @@ struct OverallSection: View {
                 ForEach(Array(OverallLoader.tiles(stats).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label, note: t.note) }
             }
             if stats.kmBefore > 0 {
-                Text("Before CorckieApp: \(OverallCalc.km(stats.kmBefore)), \(OverallCalc.beforeLabel).")
+                Text("\(OverallCalc.km(stats.kmBefore)) ridden \(OverallCalc.beforeLabel).")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             if stats.usesUnverifiedPrice {

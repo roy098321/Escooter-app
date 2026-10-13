@@ -51,7 +51,7 @@ enum OverallLoader {
         var out: [(label: String, value: String, note: String?)] = [
             ("Total distance", OverallCalc.km(s.totalKm), "scooter odometer"),
             ("With CorckieApp", OverallCalc.km(s.kmWithApp), "logged rides"),
-            ("Before CorckieApp", OverallCalc.km(s.kmBefore), OverallCalc.beforeLabel),
+            ("Before the app", OverallCalc.km(s.kmBefore), "estimate, from the purchase date"),
             ("A car would have burnt", OverallCalc.litres(s.carLitres), "of petrol"),
         ]
         if s.hasFuelPrice {
