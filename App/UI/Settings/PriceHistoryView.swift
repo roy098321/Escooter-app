@@ -1,3 +1,4 @@
+import CorckieCore
 import SwiftUI
 
 /// F-01: Settings → Costs → Price history. Fuel price and electricity rate as value + "valid from" date. A new price only applies from its

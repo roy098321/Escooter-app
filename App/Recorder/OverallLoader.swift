@@ -33,10 +33,10 @@ enum OverallLoader {
 
     static func input(_ db: AppDatabase, nowMs: Int64, utcOffsetMin: Int) -> OverallInput {
         let q = StatsQueries(db)
-        let data = (try? q.overallRows()) ?? ([], nil, nil)
-        let rides = data.rides.map { OverallRide(day: localDay($0.startAt, offsetMin: $0.offsetMin), km: $0.km, usedPct: $0.usedPct) }
+        let data = try? q.overallRows()
+        let rides = (data?.rides ?? []).map { OverallRide(day: localDay($0.startAt, offsetMin: $0.offsetMin), km: $0.km, usedPct: $0.usedPct) }
         return OverallInput(purchaseDay: OverallSettings.purchaseDay(db), odometerAtPurchaseKm: OverallSettings.odometerAtPurchase(db),
-                            latestOdometerKm: data.latestOdoKm, odometerAtFirstRideKm: data.firstOdoKm, rides: rides,
+                            latestOdometerKm: data?.latestOdoKm, odometerAtFirstRideKm: data?.firstOdoKm, rides: rides,
                             carLPer100km: q.number(StatsQueries.fuelUseKey) ?? StatsPrices.defaultFuelLPer100km,
                             whPerPct: CalibrationUpdater.current(db).whPerPct, fuel: fuelHistory(db), electricity: electricityHistory(db),
                             todayDay: localDay(nowMs, offsetMin: utcOffsetMin))
