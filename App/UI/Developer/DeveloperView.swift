@@ -12,7 +12,7 @@ struct DeveloperView: View {
                 NavigationLink {
                     ChecksView()
                 } label: {
-                    Label("Checks", systemImage: "checklist").font(.headline).squircle(.green)
+                    Label("Checks", systemImage: "checklist").squircle(.green).font(.headline)
                 }
                 NavigationLink {
                     ResultsView()

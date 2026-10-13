@@ -15,7 +15,7 @@ enum GradientPath {
     }
 
     /// The stretches of a layer as map lines (MapKit equivalent of a gradient polyline)
-    @MapContentBuilder
+    @MainActor @MapContentBuilder
     static func lines(_ stretches: [ValueStretch], layer: MapLayer, width: CGFloat = 5) -> some MapContent {
         let ramp = LayerRamps.ramp(layer, colourBlind: DisplaySettings.colourBlind)
         ForEach(Array(stretches.enumerated()), id: \.offset) { _, s in
