@@ -28,6 +28,7 @@ main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;display:grid;gap:
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px}
 #mapcard{position:relative;height:38vh;min-height:220px;overflow:hidden;background:var(--map)}
 #map{width:100%;height:100%;display:block;touch-action:none}
+#leg{position:absolute;left:8px;bottom:8px;width:130px;padding:5px 7px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;justify-content:space-between}#leg i{display:block;width:100%;height:7px;border-radius:4px;margin-bottom:2px}
 #nomap{display:none;padding:22px;text-align:center;color:var(--mut)}
 .mapbtns{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px}
 .mapbtns button{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:18px;line-height:1}
@@ -120,6 +121,7 @@ var hasMap = !!D.map && D.x.length === N;
 var RATES = [0.25, 0.5, 1, 2, 5, 10, 20, 50];
 var RATE_LABELS = ['¼×', '½×', '1×', '2×', '5×', '10×', '20×', '50×'];
 var HEX = ['#7fd37f', '#22b24c', '#f2d21b', '#f28c1b', '#e53935'];
+var RAMP = ['#22b24c', '#f2d21b', '#f28c1b', '#e53935'];
 var st = { pos: 0, playing: false, rate: 1, follow: true, zoom: 1, change: false, tab: 'spd', last: 0, lastI: -1, dragging: false };
 
 function lerp(a, b, f) { if (a === null || a === undefined) { return b; } if (b === null || b === undefined) { return a; } return a + (b - a) * f; }
@@ -137,22 +139,31 @@ var cum = [0];
 var MW = 0, MH = 0;
 var haloEl = null, dotEl = null;
 
-function bucket(v) { return v < 10 ? 0 : (v < 18 ? 1 : (v < 25 ? 2 : (v < 32 ? 3 : 4))); }
+function hexRgb(h) { return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)]; }
+function rampColour(v) {
+  var t = clamp(v / 50, 0, 1) * (RAMP.length - 1), i = Math.min(RAMP.length - 2, Math.floor(t)), f = t - i;
+  var a = hexRgb(RAMP[i]), b = hexRgb(RAMP[i + 1]);
+  return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * f) + ',' + Math.round(a[1] + (b[1] - a[1]) * f) + ',' + Math.round(a[2] + (b[2] - a[2]) * f) + ')';
+}
+function smoothSpeed() {
+  var out = [], r = 5, i, j, sum, n;
+  for (i = 0; i < N; i++) { sum = 0; n = 0; for (j = Math.max(0, i - r); j <= Math.min(N - 1, i + r); j++) { sum += D.spd[j]; n++; } out.push(sum / n); }
+  return out;
+}
 
 function buildMap() {
   if (!hasMap) { map.style.display = 'none'; $('nomap').style.display = 'block'; $('mapcard').style.height = 'auto'; return; }
   MW = D.map.w; MH = D.map.h;
   var i, d = 0;
   for (i = 1; i < N; i++) { var dx = D.x[i] - D.x[i - 1], dy = D.y[i] - D.y[i - 1]; d += Math.sqrt(dx * dx + dy * dy); cum.push(d); }
-  var html = '', cur = -1, pts = [];
-  function flush() { if (pts.length > 1) { html += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + HEX[cur] + '" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'; } }
-  for (i = 0; i < N; i++) {
-    var b = bucket(D.spd[i]);
-    var p = D.x[i] + ',' + D.y[i];
-    if (b !== cur) { var prev = pts.length ? pts[pts.length - 1] : null; flush(); pts = prev ? [prev] : []; cur = b; }
-    pts.push(p);
+  var html = '', sm = smoothSpeed();
+  for (i = 1; i < N; i++) {
+    html += '<line x1="' + D.x[i - 1] + '" y1="' + D.y[i - 1] + '" x2="' + D.x[i] + '" y2="' + D.y[i] + '" stroke="' + rampColour((sm[i - 1] + sm[i]) / 2) + '" stroke-width="4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
   }
-  flush();
+  var leg = document.createElement('div');
+  leg.id = 'leg';
+  leg.innerHTML = '<i style="background:linear-gradient(90deg,' + RAMP.join(',') + ')"></i><span>0</span><span>50 km/h</span>';
+  $('mapcard').appendChild(leg);
   $('route').innerHTML = html;
   var dd = 'M' + D.x[0] + ' ' + D.y[0];
   for (i = 1; i < N; i++) { dd += 'L' + D.x[i] + ' ' + D.y[i]; }

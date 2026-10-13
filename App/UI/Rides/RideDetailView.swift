@@ -30,6 +30,7 @@ struct RideDetailView: View {
     @State private var showKgField = false
     @State private var kgText = ""
     @State private var confirmDelete = false
+    @State private var saveTap = 0
     @State private var errorText: String?
     // M5-01 / M5-02: compare, merge, trim
     @State private var switched: String?
@@ -177,7 +178,10 @@ struct RideDetailView: View {
             topBar(m)
         } side: {
             if !m.noGps, previewSeries != nil || series != nil {
-                GlassLayerControl(options: MapLayer.allCases.map { ($0, $0.rawValue) }, selection: $layer)
+                VStack(alignment: .trailing, spacing: 8) {
+                    GlassLayerControl(options: MapLayer.allCases.map { ($0, $0.rawValue) }, selection: $layer)
+                    GradientLegend(layer: layer)
+                }
             }
         } sheet: {
             sheetContent(m)
@@ -332,7 +336,8 @@ struct RideDetailView: View {
             Text(o.detail).font(.subheadline).foregroundStyle(.secondary)
             if !o.saved {
                 HStack(spacing: 12) {
-                    Button("Save route") { routeAction(o.routeId, save: true) }.buttonStyle(.borderedProminent)
+                    Button("Save route") { saveTap += 1; routeAction(o.routeId, save: true) }.buttonStyle(.borderedProminent)
+                        .sensoryFeedback(.success, trigger: saveTap)
                     Button("Not a route") { routeAction(o.routeId, save: false) }.buttonStyle(.bordered)
                 }
             }
@@ -370,12 +375,14 @@ struct RideDetailView: View {
     }
 
     private func mapView(_ path: RidePathModel) -> some View {
-        Map(initialPosition: Self.position(path, sheet: true), interactionModes: [.pan, .zoom]) {
-            ForEach(Array(layerSegments.enumerated()), id: \.offset) { _, seg in
+        let gradient = (previewSeries ?? series)?.values(layer) ?? []   // F-04: continuous gradient when the readings are there
+        return Map(initialPosition: Self.position(path, sheet: true), interactionModes: [.pan, .zoom]) {
+            GradientPath.lines(gradient, layer: layer)
+            ForEach(Array((gradient.isEmpty ? layerSegments : []).enumerated()), id: \.offset) { _, seg in
                 MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(MapLayer.color(level: seg.level), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             }
-            ForEach(Array((layer == .speed ? path.segments : []).enumerated()), id: \.offset) { _, seg in
+            ForEach(Array((layer == .speed && gradient.isEmpty ? path.segments : []).enumerated()), id: \.offset) { _, seg in
                 MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(LiveRideView.color(seg.bucket),
                             style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round, dash: seg.dashed ? [2, 9] : []))
@@ -448,6 +455,7 @@ struct RideDetailView: View {
         guard preview == nil, let id = activeId, let db = AppModel.shared.database else { return }
         do {
             try RideQueries(db).delete(rideId: id)
+            Haptics.warning()
             if let onDone { onDone() } else { dismiss() }
         } catch {
             errorText = error.localizedDescription
@@ -535,6 +543,8 @@ extension RideDetailPreview {
         series.points = points
         series.hasAltitude = true
         series.hills = RideLayers.hills(points)
+        series.speedValues = RideLayers.smoothedStretches(RideLayers.speedStretches(points))
+        series.hillValues = RideLayers.smoothedStretches(RideLayers.hillStretches(points))
         let elevation = RideLayers.elevation(points)
         series.profile = elevation.profile
         series.climbs = elevation.climbs
@@ -544,6 +554,7 @@ extension RideDetailPreview {
         let rows = [WeatherRow(cellKey: "preview", hourAt: hour, source: "preview", kind: .history, windKmh: 22, windFromDeg: 250, fetchedAt: 0),
                     WeatherRow(cellKey: "preview", hourAt: hour + 3_600_000, source: "preview", kind: .history, windKmh: 22, windFromDeg: 250, fetchedAt: 0)]
         series.wind = RideLayers.wind(points, rideStartMs: start, rows: rows)
+        series.windValues = RideLayers.windStretches(points, rideStartMs: start, rows: rows).map { RideLayers.smoothedStretches($0) }
         return series
     }
 }

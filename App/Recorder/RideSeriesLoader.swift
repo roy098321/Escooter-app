@@ -11,6 +11,18 @@ struct RideSeries {
     var climbs: [ClimbSpan] = []
     var chart: [SeriesPoint] = []
     var hasAltitude = false
+    /// F-04: continuous values per stretch (smoothed ~10 s) for the gradient paths
+    var speedValues: [ValueStretch] = []
+    var hillValues: [ValueStretch] = []
+    var windValues: [ValueStretch]?
+
+    func values(_ layer: MapLayer) -> [ValueStretch] {
+        switch layer {
+        case .speed: return speedValues
+        case .hills: return hillValues
+        case .wind: return windValues ?? []
+        }
+    }
 
     func segments(_ layer: MapLayer) -> [LayerSegment] {
         switch layer {
@@ -36,6 +48,8 @@ enum RideSeriesLoader {
         series.points = points
         series.hasAltitude = points.contains { $0.altM != nil }
         series.hills = RideLayers.hills(points)
+        series.speedValues = RideLayers.smoothedStretches(RideLayers.speedStretches(points))
+        series.hillValues = RideLayers.smoothedStretches(RideLayers.hillStretches(points))
         let elevation = RideLayers.elevation(points)
         series.profile = elevation.profile
         series.climbs = elevation.climbs
@@ -44,6 +58,7 @@ enum RideSeriesLoader {
             let end = ride.endAt ?? (ride.startAt + Int64((points.last?.t ?? 0) * 1000))
             let weather = FactorUpdater.weatherRows(OutsideQueries(db), cell: GeoCell.key(lat: lat, lon: lon), startMs: ride.startAt, endMs: end)
             series.wind = RideLayers.wind(points, rideStartMs: ride.startAt, rows: weather)
+            series.windValues = RideLayers.windStretches(points, rideStartMs: ride.startAt, rows: weather).map { RideLayers.smoothedStretches($0) }
         }
         return series
     }

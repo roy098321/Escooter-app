@@ -18,6 +18,8 @@ struct LiveRideView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var hold = HoldToEnd()
+    @State private var answerTap = 0
+    @State private var holdActive = false
     @State private var holdProgress = 0.0
     @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
     private let ticker = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
@@ -69,10 +71,10 @@ struct LiveRideView: View {
 
     private func mapView(_ s: LiveScreenState) -> some View {
         Map(position: $camera, interactionModes: []) {
-            ForEach(Array(path.segments.enumerated()), id: \.offset) { _, seg in
-                MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
-                    .stroke(Self.color(seg.bucket),
-                            style: StrokeStyle(lineWidth: sunlight ? 9 : 6, lineCap: .round, lineJoin: .round, dash: seg.dashed ? [2, 10] : []))
+            ForEach(Array(LiveGradient.stretches(path).enumerated()), id: \.offset) { _, st in
+                MapPolyline(coordinates: st.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                    .stroke(GradientPath.color(.speed, st.value),
+                            style: StrokeStyle(lineWidth: sunlight ? 9 : 6, lineCap: .round, lineJoin: .round, dash: st.dashed ? [2, 10] : []))
             }
             if let p = position {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon)) {
@@ -159,15 +161,16 @@ struct LiveRideView: View {
                     .multilineTextAlignment(.leading)
                 if s.bannerIsSameRide && tappable {
                     Spacer(minLength: 8)
-                    Button("Yes") { RecorderService.shared.answerSameRide(true) }
+                    Button("Yes") { answerTap += 1; RecorderService.shared.answerSameRide(true) }
                         .buttonStyle(.borderedProminent)
-                    Button("No") { RecorderService.shared.answerSameRide(false) }
+                    Button("No") { answerTap += 1; RecorderService.shared.answerSameRide(false) }
                         .buttonStyle(.bordered)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .contentShape(Rectangle())
+        .sensoryFeedback(.impact(weight: .medium), trigger: answerTap)
         .onTapGesture {
             if tappable && !s.bannerIsSameRide { RecorderService.shared.tapBanner() }
         }
@@ -254,7 +257,8 @@ struct LiveRideView: View {
         } else {
             HStack(spacing: 24) {
                 if s.showNotRiding {
-                    Button("Not riding") { RecorderService.shared.press(.notRidingPressed) }
+                    Button("Not riding") { answerTap += 1; RecorderService.shared.press(.notRidingPressed) }
+                        .sensoryFeedback(.impact(weight: .medium), trigger: answerTap)
                         .buttonStyle(.bordered)
                         .controlSize(.large)
                 }
@@ -280,16 +284,18 @@ struct LiveRideView: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
-                        if hold.startedAt == nil { hold.begin(at: Date().timeIntervalSince1970) }
+                        if hold.startedAt == nil { hold.begin(at: Date().timeIntervalSince1970); holdActive = true }
                     }
                     .onEnded { _ in
                         hold.cancel()
+                        holdActive = false
                         holdProgress = 0
                     }
             )
             Text("Hold to end").font(.footnote.weight(.semibold))
         }
         .accessibilityElement(children: .combine)
+        .sensoryFeedback(trigger: holdActive) { _, new in new ? .impact(weight: .light) : nil }
         .accessibilityLabel("Hold to end the ride")
         .accessibilityHint("Press and hold for one second")
         .accessibilityAddTraits([.isButton, .allowsDirectInteraction])      // VoiceOver: the hold works by touching it directly
@@ -302,6 +308,8 @@ struct LiveRideView: View {
         if hold.completed(at: now) {
             hold.cancel()
             holdProgress = 0
+            holdActive = false
+            Haptics.success()
             RecorderService.shared.press(.endHeld)
         }
     }

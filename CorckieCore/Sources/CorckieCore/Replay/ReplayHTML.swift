@@ -10,6 +10,8 @@ public enum ReplayHTML {
         if colourBlind {
             let list = SpeedPalette.colourBlindHex.map { "'" + $0.lowercased() + "'" }.joined(separator: ", ")
             html = html.replacingOccurrences(of: "var HEX = ['#7fd37f', '#22b24c', '#f2d21b', '#f28c1b', '#e53935'];", with: "var HEX = [" + list + "];")
+            let ramp = LayerRamps.speed(colourBlind: true).hex.map { "'" + $0.lowercased() + "'" }.joined(separator: ", ")
+            html = html.replacingOccurrences(of: "var RAMP = ['#22b24c', '#f2d21b', '#f28c1b', '#e53935'];", with: "var RAMP = [" + ramp + "];")
         }
         if highContrast {
             let css = ":root{--bg:#ffffff;--card:#ffffff;--ink:#000000;--mut:#202020;--line:#000000;--map:#ffffff}body{font-weight:600}"
