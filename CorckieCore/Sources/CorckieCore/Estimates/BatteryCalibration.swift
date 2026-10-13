@@ -235,6 +235,30 @@ public enum BatteryCalibrator {
         return (nil, nil, nil)
     }
 
+    /// Where the shown "battery used" of a ride came from (Battery per km fix, 13 Oct)
+    public enum ShownSource: String, Sendable {
+        /// 1. the rested drop (or the calibrated energy value once calibrated: what the ride row says)
+        case rested
+        /// 2. the next ride's rested start, when M30 found no charge in between
+        case nextStart
+        /// 3. energy ÷ calibrated Wh per 1 %, shown with "~"
+        case energy
+    }
+
+    /// The battery used a ride **shows** (Battery per km, ride summary). Fallback order: (1) the ride's own value (rested drop /
+    /// calibrated energy, exactly `usedForRide`), (2) rested start - the next ride's rested start when no charge came in between
+    /// (`linkNextStarts` leaves it nil after an M30 charge; a rise above the live % + sag is also refused), (3) raw energy ÷ Wh per 1 %.
+    /// Only for display: predictions keep reading the stored used % (`usedForRide`), so none of them change.
+    public static func shownUsed(_ r: CalibrationRide, _ cal: BatteryCalibration) -> (value: Double?, source: ShownSource?) {
+        if let own = usedForRide(r, cal).usedPct { return (own, .rested) }
+        if let a = r.startRestPct, let next = r.nextStartRestPct {
+            let charged = r.lastLivePct.map { next > $0 + T.t41SagRecoveryPct } ?? false
+            if !charged, a >= next { return (a - next, .nextStart) }
+        }
+        if let e = r.energyWhRaw, e > 0 { return (cal.usedPct(energyWhRaw: e), .energy) }
+        return (nil, nil)
+    }
+
     static func median(_ values: [Double]) -> Double? {
         guard !values.isEmpty else { return nil }
         let s = values.sorted()

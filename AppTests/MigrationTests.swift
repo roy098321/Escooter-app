@@ -31,7 +31,7 @@ final class MigrationTests: XCTestCase {
         let db = try AppDatabase(url: folder.appendingPathComponent("corckie.sqlite"), build: "test-1")
         XCTAssertFalse(db.isReadOnly)
         XCTAssertNil(db.preMigrationCopy, "nothing to back up on a fresh install")
-        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3"])
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3", "v4"])
         let counts = try db.rowCounts()
         XCTAssertEqual(Set(counts.keys), Set(Migration0001.tables))
         XCTAssertEqual(counts["app_meta"], 1)
@@ -72,7 +72,7 @@ final class MigrationTests: XCTestCase {
         let db = try AppDatabase(url: url, build: "test-3", migrator: migrator)
         let copy = try XCTUnwrap(db.preMigrationCopy)
         XCTAssertTrue(FileManager.default.fileExists(atPath: copy.path))
-        XCTAssertEqual(db.migratedNow, ["v2", "v2-test", "v3"])
+        XCTAssertEqual(db.migratedNow, ["v2", "v2-test", "v3", "v4"])
         let copiedRides = try DatabaseQueue(path: copy.path).read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM ride") }
         XCTAssertEqual(copiedRides, 3)
 
@@ -112,10 +112,11 @@ final class MigrationTests: XCTestCase {
         let counts = try XCTUnwrap(db.updateCounts, "an existing database must have before / after counts")
         let verdict = UpdateCheckRules.verdict(before: counts.before, after: counts.after)
         XCTAssertTrue(verdict.passed, verdict.note)
-        XCTAssertEqual(verdict.newTables, ["feedback", "prediction", "ride_note", "shadow_result"])
+        XCTAssertEqual(verdict.newTables, ["feedback", "prediction", "price_history", "ride_note", "shadow_result"])
         XCTAssertEqual(counts.before["ride"], 3)
         XCTAssertEqual(counts.after["ride"], 3)
-        XCTAssertEqual(Set(counts.after.keys), Set(Migration0001.tables).union(["ride_note", "feedback", "prediction", "shadow_result"]))
+        try assertV4(db, ridesBefore: 3)
+        XCTAssertEqual(Set(counts.after.keys), Set(Migration0001.tables).union(["ride_note", "feedback", "prediction", "shadow_result", "price_history"]))
     }
 
     /// A fresh database has nothing to compare (no a9 result).
@@ -134,9 +135,9 @@ final class MigrationTests: XCTestCase {
 
         let db = try AppDatabase(url: url, build: "test-t02c")
         XCTAssertFalse(db.isReadOnly)
-        XCTAssertNil(db.preMigrationCopy, "nothing to migrate, so no copy")
-        XCTAssertEqual(db.migratedNow, [])
-        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3"])
+        XCTAssertNotNil(db.preMigrationCopy, "v4 migrates existing data, so a copy is written first")
+        XCTAssertEqual(db.migratedNow, ["v4"])
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3", "v4"])
         let after = try db.allRowCounts()
         for (table, count) in before {
             XCTAssertGreaterThanOrEqual(after[table] ?? 0, count, "rows lost in \(table)")
@@ -145,7 +146,10 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(db.meta?.createdBuild, "1.0-frozen")
         XCTAssertEqual(db.meta?.launchCount, 6)
         let counts = try XCTUnwrap(db.updateCounts)
-        XCTAssertTrue(UpdateCheckRules.verdict(before: counts.before, after: counts.after).passed)
+        let verdict = UpdateCheckRules.verdict(before: counts.before, after: counts.after)
+        XCTAssertTrue(verdict.passed, verdict.note)
+        XCTAssertEqual(verdict.newTables, ["price_history"])
+        try assertV4(db, ridesBefore: before["ride"] ?? 0)
     }
 
     /// T-02: a later migration on top of the frozen 1.0 database keeps every row, writes a copy first and adds only a new table.
@@ -153,25 +157,25 @@ final class MigrationTests: XCTestCase {
         let url = try frozenCopy("p5-1.0-frozen")
         let before = try DatabaseQueue(path: url.path).read { try AppDatabase.allRowCounts($0) }
         var migrator = AppDatabase.makeMigrator()
-        migrator.registerMigration("v4-test") { db in
+        migrator.registerMigration("v5-test") { db in
             try db.execute(sql: "CREATE TABLE future_table (id INTEGER PRIMARY KEY)")
             try db.execute(sql: "ALTER TABLE ride ADD COLUMN futureColumn TEXT")
         }
         let db = try AppDatabase(url: url, build: "test-t02d", migrator: migrator)
-        XCTAssertEqual(db.migratedNow, ["v4-test"])
+        XCTAssertEqual(db.migratedNow, ["v4", "v5-test"])
         XCTAssertNotNil(db.preMigrationCopy)
         let counts = try XCTUnwrap(db.updateCounts)
         XCTAssertEqual(counts.before, before)
         let verdict = UpdateCheckRules.verdict(before: counts.before, after: counts.after)
         XCTAssertTrue(verdict.passed, verdict.note)
-        XCTAssertEqual(verdict.newTables, ["future_table"])
+        XCTAssertEqual(verdict.newTables, ["future_table", "price_history"])
     }
 
     /// The update check catches a migration that loses rows (the a9 fail path on real tables).
     func test_T02_updateCheck_catchesLostRows() throws {
         let url = try frozenCopy("p5-1.0-frozen")
         var migrator = AppDatabase.makeMigrator()
-        migrator.registerMigration("v4-lossy") { db in
+        migrator.registerMigration("v5-lossy") { db in
             try db.execute(sql: "DELETE FROM stop")
         }
         let db = try AppDatabase(url: url, build: "test-t02e", migrator: migrator)
@@ -179,5 +183,18 @@ final class MigrationTests: XCTestCase {
         let verdict = UpdateCheckRules.verdict(before: counts.before, after: counts.after)
         XCTAssertFalse(verdict.passed)
         XCTAssertEqual(verdict.lost, ["stop 3 -> 0"])
+    }
+
+    /// v4 (price history + shown battery used): additive, every ride kept, the stored fuel prices and a custom electricity rate copied into the history.
+    private func assertV4(_ db: AppDatabase, ridesBefore: Int) throws {
+        try db.writer.read { d in
+            XCTAssertEqual(try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM ride"), ridesBefore)
+            XCTAssertEqual(try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM ride WHERE usedPctShown IS NOT NULL"), 0, "the new column starts empty")
+            let fuelRows = try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM fuel_price WHERE priceIls > 0 AND length(month) = 7") ?? 0
+            XCTAssertEqual(try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM price_history WHERE kind = 'fuel'"), fuelRows, "each stored month price is copied")
+            let custom = try Double.fetchOne(d, sql: "SELECT CAST(json AS REAL) FROM setting WHERE key = 'stats.electricityIlsPerKwh'")
+            let copied = try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM price_history WHERE kind = 'electricity'") ?? 0
+            XCTAssertEqual(copied, (custom ?? 0) > 0 ? 1 : 0)
+        }
     }
 }

@@ -150,4 +150,57 @@ final class BatteryCalibrationTests: XCTestCase {
         XCTAssertTrue(cal.checkSuggested)
         XCTAssertEqual(cal.whPerPct, 8.4, accuracy: 1e-9)
     }
+
+    // MARK: Battery per km fallback (13 Oct): rested drop, then the next ride's rested start, then energy
+
+    func test_shownUsed_restedDropFirst() {
+        let r = ride("a", day: 0, wh: 300, from: 99, to: 53)
+        let shown = BatteryCalibrator.shownUsed(r, .prior())
+        XCTAssertEqual(shown.value ?? 0, 46, accuracy: 1e-9)
+        XCTAssertEqual(shown.source, .rested)
+    }
+
+    func test_shownUsed_noRestedEnd_usesTheNextRidesRestedStart() {
+        // the 12 Oct ride: switched off right after, no rested end; the next ride starts rested at 51 %
+        let r = ride("a", day: 0, wh: 300, from: 99, to: nil, live: 53, next: 51)
+        let shown = BatteryCalibrator.shownUsed(r, .prior())
+        XCTAssertEqual(shown.value ?? 0, 48, accuracy: 1e-9)
+        XCTAssertEqual(shown.source, .nextStart)
+        // the predictions' value is untouched: usedForRide still has nothing for this ride
+        XCTAssertNil(BatteryCalibrator.usedForRide(r, .prior()).usedPct)
+    }
+
+    func test_shownUsed_chargeBetween_skipsTheNextStart_andUsesEnergy() {
+        // M30 found a charge after "a": linkNextStarts leaves nextStartRestPct nil
+        let a = ride("a", day: 0, wh: 407, from: 99, to: nil, live: 53)
+        let b = ride("b", day: 1, wh: 100, from: 95, to: 80)
+        let linked = BatteryCalibrator.linkNextStarts([a, b], chargedAfter: ["a"]).first { $0.id == "a" }!
+        XCTAssertNil(linked.nextStartRestPct)
+        let cal = BatteryCalibration.prior()
+        let shown = BatteryCalibrator.shownUsed(linked, cal)
+        XCTAssertEqual(shown.source, .energy)
+        XCTAssertEqual(shown.value ?? 0, 407 / cal.whPerPct, accuracy: 1e-9)
+        // a rise above live % + sag is a charge too, even if nothing linked it
+        let sneaky = ride("c", day: 0, wh: 407, from: 99, to: nil, live: 53, next: 90)
+        XCTAssertEqual(BatteryCalibrator.shownUsed(sneaky, cal).source, .energy)
+    }
+
+    func test_shownUsed_energyFallback_neverBlankWhileEnergyExists() {
+        let cal = BatteryCalibration.prior()
+        let r = ride("a", day: 0, wh: 81.408, from: nil, to: nil)
+        let shown = BatteryCalibrator.shownUsed(r, cal)
+        XCTAssertEqual(shown.value ?? 0, 10, accuracy: 1e-9)       // 81.408 Wh at 8.1408 Wh per 1 %
+        XCTAssertEqual(shown.source, .energy)
+        XCTAssertNil(BatteryCalibrator.shownUsed(ride("b", day: 0, wh: nil, from: nil, to: nil), cal).value)
+    }
+
+    func test_shownUsed_feedsTheBatteryPerKmText() {
+        // 19 km, 99 -> next start 51: shown after 1 km, with "~"
+        let cal = BatteryCalibration.prior()
+        let r = ride("a", day: 0, wh: 300, from: 99, to: nil, live: 53, next: 51)
+        let shown = BatteryCalibrator.shownUsed(r, cal)
+        let input = RideDetailInput(startAt: 0, distanceM: 19_000, usedPct: shown.value)
+        let stat = RideSummaryBuilder.build(input, gaps: [], points: []).mainStats.first { $0.label == "Battery per km" }
+        XCTAssertEqual(stat?.value, "~2.5 %/km")
+    }
 }

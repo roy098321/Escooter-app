@@ -37,7 +37,7 @@ final class PredictionStoreTests: XCTestCase {
         try FileManager.default.copyItem(at: source, to: url)
         let rides = try DatabaseQueue(path: url.path).read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM ride") }
         let db = try AppDatabase(url: url, build: "pred-test")
-        XCTAssertEqual(db.migratedNow, ["v2", "v3"])
+        XCTAssertEqual(db.migratedNow, ["v2", "v3", "v4"])
         XCTAssertEqual(try db.writer.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM ride") }, rides)
         for table in Migration0003.tables {
             XCTAssertEqual(try db.writer.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM \(table)") }, 0)

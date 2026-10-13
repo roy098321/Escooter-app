@@ -42,6 +42,19 @@ enum CalibrationUpdater {
                      inferredWhileAway: c.inferredWhileAway, startedByShutdownFlag: c.startedByShutdownFlag)
     }
 
+    /// App open: re-computes the rides' shown battery used (and everything else `update` re-runs) off the main thread.
+    static func refreshAtOpen(_ database: AppDatabase?) {
+        guard let database, !database.isReadOnly else { return }
+        DispatchQueue.global(qos: .utility).async {
+            _ = try? update(database, nowMs: Int64(Date().timeIntervalSince1970 * 1000))
+        }
+    }
+
+    /// The battery used a ride shows: the stored shown value, else the ride's own used %.
+    static func shownUsed(_ database: AppDatabase, rideId: String, usedPct: Double?) -> Double? {
+        CalibrationQueries(database).shown(rideId: rideId) ?? usedPct
+    }
+
     /// Re-computes, saves the row, rewrites the charge log (M30) and re-runs the rides' battery used.
     /// Returns the new calibration, its verdicts, how many rides changed and the charges found.
     @discardableResult
@@ -78,6 +91,16 @@ enum CalibrationUpdater {
             }
         }
         let changed = try q.setUsed(changes)
+
+        // Battery per km fix: the value the ride shows (rested drop, else the next ride's rested start, else energy); predictions
+        // keep reading usedPct above, so none of them change. Runs at every ride close and at app open.
+        var shown: [(id: String, value: Double?)] = []
+        for r in rides {
+            guard let old = byId[r.id] else { continue }
+            let value = BatteryCalibrator.shownUsed(r, cal).value
+            if !same(old.usedPctShown, value) { shown.append((r.id, value)) }
+        }
+        try q.setShown(shown)
         return (cal, verdicts, changed, charges)
     }
 

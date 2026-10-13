@@ -39,6 +39,8 @@ struct CalibrationInputRow: Equatable {
     var usedPct: Double?
     var usedPctMethod: String?
     var energyWhCal: Double?
+    /// v4: the battery used the ride shows (Battery per km fix)
+    var usedPctShown: Double?
 }
 
 struct CalibrationQueries {
@@ -68,7 +70,7 @@ struct CalibrationQueries {
         try database.writer.read { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT r.id, r.startAt, r.endAt, r.kind, r.isSimulated, r.energyWhRaw, r.startRestPct, r.endRestPct, r.distanceM,
-                       r.gapScooterS, r.usedPct, r.usedPctMethod, r.energyWhCal, r.endReason,
+                       r.gapScooterS, r.usedPct, r.usedPctMethod, r.energyWhCal, r.usedPctShown, r.endReason,
                        (SELECT MAX(COALESCE(g.endT, g.startT) - g.startT) FROM gap g WHERE g.rideId = r.id AND g.kind = 'scooter') AS longestGapMs,
                        (SELECT s.batteryPct FROM ride_sample s WHERE s.rideId = r.id AND s.batteryPct IS NOT NULL ORDER BY s.t DESC LIMIT 1) AS lastLivePct
                 FROM ride r WHERE r.kind != 'discarded' AND r.status != 'recording'
@@ -79,7 +81,8 @@ struct CalibrationQueries {
                                     isSimulated: row["isSimulated"], energyWhRaw: row["energyWhRaw"], startRestPct: row["startRestPct"],
                                     endRestPct: row["endRestPct"], distanceM: row["distanceM"], gapScooterS: row["gapScooterS"],
                                     longestGapMs: row["longestGapMs"], lastLivePct: row["lastLivePct"], endReason: row["endReason"], usedPct: row["usedPct"],
-                                    usedPctMethod: row["usedPctMethod"], energyWhCal: row["energyWhCal"])
+                                    usedPctMethod: row["usedPctMethod"], energyWhCal: row["energyWhCal"],
+                                    usedPctShown: row["usedPctShown"])
             }
         }
     }
@@ -93,6 +96,26 @@ struct CalibrationQueries {
             for c in changes {
                 try db.execute(sql: "UPDATE ride SET usedPct = ?, usedPctMethod = ?, energyWhCal = ? WHERE id = ?",
                                arguments: [c.usedPct, c.method, c.energyWhCal, c.id])
+            }
+            return changes.count
+        }
+    }
+
+    /// v4: the battery used a ride shows; nil = not computed (the screen falls back to `usedPct`)
+    func shown(rideId: String) -> Double? {
+        (try? database.writer.read { db in
+            try Double.fetchOne(db, sql: "SELECT usedPctShown FROM ride WHERE id = ?", arguments: [rideId])
+        }) ?? nil
+    }
+
+    /// Writes the shown battery used for the rides whose value changed; returns how many rows changed.
+    @discardableResult
+    func setShown(_ changes: [(id: String, value: Double?)]) throws -> Int {
+        if database.isReadOnly { throw RideQueries.StoreError.readOnly }
+        guard !changes.isEmpty else { return 0 }
+        return try database.writer.write { db in
+            for c in changes {
+                try db.execute(sql: "UPDATE ride SET usedPctShown = ? WHERE id = ?", arguments: [c.value, c.id])
             }
             return changes.count
         }

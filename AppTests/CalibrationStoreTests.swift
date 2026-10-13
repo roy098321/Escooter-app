@@ -108,4 +108,39 @@ final class CalibrationStoreTests: XCTestCase {
         XCTAssertEqual(out.verdicts["a"], .used(whPerPct: 8.4, dropPct: 40, endFromNextStart: true))
         XCTAssertEqual(out.calibration.ridesUsed, 1)
     }
+
+    // MARK: Battery per km fix: the shown value (v4 column), predictions keep usedPct
+
+    func test_shownUsed_noRestedEnd_takesTheNextRidesRestedStart_andKeepsUsedPct() throws {
+        let db = try open()
+        let q = RideQueries(db)
+        try add(q, "12oct", 0, wh: 407, from: 99, to: nil, lastLive: 53)
+        try add(q, "13oct", 1, wh: 100, from: 51, to: 40)
+        try CalibrationUpdater.update(db, nowMs: t0 + 2 * day)
+        XCTAssertEqual(CalibrationQueries(db).shown(rideId: "12oct") ?? -1, 48, accuracy: 1e-9)
+        XCTAssertNil(try q.ride(id: "12oct")?.usedPct, "predictions still read the stored used %, which is unchanged")
+        XCTAssertEqual(CalibrationUpdater.shownUsed(db, rideId: "13oct", usedPct: 11) , 11)
+        // idempotent: a second run changes nothing
+        try CalibrationUpdater.update(db, nowMs: t0 + 3 * day)
+        XCTAssertEqual(CalibrationQueries(db).shown(rideId: "12oct") ?? -1, 48, accuracy: 1e-9)
+    }
+
+    func test_shownUsed_chargeBetween_fallsBackToEnergy() throws {
+        let db = try open()
+        let q = RideQueries(db)
+        try add(q, "12oct", 0, wh: 407, from: 99, to: nil, lastLive: 53)
+        try add(q, "13oct", 1, wh: 100, from: 97, to: 90)           // charged overnight
+        try CalibrationUpdater.update(db, nowMs: t0 + 2 * day)
+        let shown = try XCTUnwrap(CalibrationQueries(db).shown(rideId: "12oct"))
+        XCTAssertEqual(shown, 407 / BatteryCalibration.prior().whPerPct, accuracy: 1e-6)
+    }
+
+    func test_shownUsed_lastRideWithoutRestedEnd_usesEnergy_neverBlank() throws {
+        let db = try open()
+        let q = RideQueries(db)
+        try add(q, "12oct", 0, wh: 407, from: 99, to: nil, lastLive: 53)
+        try CalibrationUpdater.update(db, nowMs: t0 + day)
+        XCTAssertNotNil(CalibrationQueries(db).shown(rideId: "12oct"))
+        XCTAssertEqual(CalibrationUpdater.shownUsed(db, rideId: "nope", usedPct: 7), 7, "no stored value: the ride's own used %")
+    }
 }

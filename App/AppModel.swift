@@ -196,6 +196,7 @@ enum InstallChecks {
             results.set("a3", .fail, id)
         }
         FuelPriceSetting.ensureDefault(database: database)
+        CalibrationUpdater.refreshAtOpen(database)
 
         // u2 (M1-01): version 1.0 and the decided thresholds
         let thresholdsOk = T.t99SlowKmh == 45 && T.t99ClearKmh == 43 && T.t101SafetyMarginShare == 0.10

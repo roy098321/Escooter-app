@@ -474,7 +474,8 @@ enum RideDetailLoader {
         let input = RideDetailInput(
             startAt: r.startAt, utcOffsetMin: r.utcOffsetMin, kind: r.kind, status: r.status, endReason: r.endReason,
             distanceM: r.distanceM, totalS: r.totalS, movingS: r.movingS, avgMovingMps: r.avgMovingMps,
-            topSpeedMps: r.topSpeedMps, stops: r.stops, energyWhRaw: r.energyWhRaw, usedPct: r.usedPct,
+            topSpeedMps: r.topSpeedMps, stops: r.stops, energyWhRaw: r.energyWhRaw,
+            usedPct: CalibrationUpdater.shownUsed(db, rideId: id, usedPct: r.usedPct),
             startRestPct: r.startRestPct, endRestPct: r.endRestPct, odoStartKm: r.odoStartKm, odoEndKm: r.odoEndKm,
             elevGainM: r.elevGainM, elevLossM: r.elevLossM, tempPeakC: r.tempPeakC, tempRiseC: r.tempRiseC,
             ignoredReadings: r.ignoredReadings, hasGps: r.hasGps, isSimulated: r.isSimulated)
