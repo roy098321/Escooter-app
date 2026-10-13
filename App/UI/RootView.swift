@@ -158,7 +158,7 @@ enum UIShot {
     /// Every screen name the ui-shots and the check u44 open (M6-05). New states are added here and to the ui-shots list in ci.yml.
     static let allNames: [String] = [
         "settings", "settings-full", "settings-data", "export", "restore", "developer", "checks", "results", "simulator", "outside", "scooter", "rides", "rides-list",
-        "ride-detail", "ride-nogps", "ride-gap", "ride-walk", "ride-detail-full", "ride-save-route", "ride-prompt", "ride-insights", "replay",
+        "ride-detail", "ride-nogps", "ride-gap", "ride-walk", "ride-detail-full", "ride-layer-speed", "ride-layer-hills", "ride-layer-wind", "ride-save-route", "ride-prompt", "ride-insights", "replay",
         "ride-compare", "ride-merge", "ride-trim", "routes-empty", "routes-list", "routes-greyed", "route-card", "route-card-sparse", "places",
         "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-empty", "week-card", "factors", "factors-sparse",
         "scooter-tab", "scooter-tab-off", "scooter-tab-none", "battery-page", "battery-page-empty", "battery-page-calibrated",
@@ -193,6 +193,10 @@ enum UIShot {
                     .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(0)) }
             case "places":
                 PlacesView(preview: RoutesPreview.places())
+            case "ride-layer-speed", "ride-layer-hills", "ride-layer-wind":
+                RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"), previewSeries: RideDetailPreview.series(),
+                               previewLayer: name == "ride-layer-hills" ? .hills : (name == "ride-layer-wind" ? .wind : .speed))
+                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }
             case "ride-detail-full":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"), previewSeries: RideDetailPreview.series())
                     .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }

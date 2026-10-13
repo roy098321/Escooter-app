@@ -19,6 +19,8 @@ struct RideDetailView: View {
     var previewInsights: RankedInsights?
     /// ui-shot only: made-up layers, elevation and charts
     var previewSeries: RideSeries?
+    /// ui-shot only: open the sheet at half with this map layer on
+    var previewLayer: MapLayer?
 
     @State private var model: RideSummaryModel?
     @State private var offer: RouteOfferModel?
@@ -75,6 +77,7 @@ struct RideDetailView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .onAppear { if let l = previewLayer { layer = l } }
         .confirmationDialog("Delete this ride?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete ride", role: .destructive) { delete() }
             Button("Keep it", role: .cancel) {}
@@ -168,7 +171,7 @@ struct RideDetailView: View {
 
     /// Sheet opens at half; the made-up shots that show more of the sheet open it full
     private var startDetent: SheetDetent {
-        previewSeries != nil || previewPrompt != nil || previewInsights != nil || previewOffer != nil ? .full : .half
+        previewLayer != nil ? .half : (previewSeries != nil || previewPrompt != nil || previewInsights != nil || previewOffer != nil ? .full : .half)
     }
 
     private func content(_ m: RideSummaryModel) -> some View {
@@ -531,12 +534,12 @@ extension RideDetailPreview {
     /// Made-up layers, a climb and charts for `-uiShot ride-detail-full` (not a real place)
     static func series() -> RideSeries {
         var points: [SeriesPoint] = []
-        for i in 0..<120 {
+        for i in 0..<60 {
             let x = Double(i)
             let lat: Double = 40.0 + x * 0.000_18
             let lon: Double = -75.0 + x * 0.000_22 + 0.0006 * sin(x / 6)
             let speed: Double = 12 + 22 * abs(sin(x / 9))
-            let alt: Double = i < 40 ? 20 : (i < 80 ? 20 + Double(i - 40) * 0.8 : 52 - Double(i - 80) * 0.6)
+            let alt: Double = i < 20 ? 20 : (i < 40 ? 20 + Double(i - 20) * 1.6 : 52 - Double(i - 40) * 1.2)
             points.append(SeriesPoint(t: x * 5, lat: lat, lon: lon, hAccM: 6, speedKmh: speed, batteryPct: 81 - i / 10, altM: alt))
         }
         var series = RideSeries()
