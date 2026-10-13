@@ -10,10 +10,7 @@ enum SheetDetent: Int, CaseIterable {
 }
 
 struct MapSheet<MapContent: View, TopBar: View, Side: View, Sheet: View>: View {
-    @Environment(\.sunlight) private var sunlight
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var detent: SheetDetent
-    @State private var drag: CGFloat = 0
     private let map: MapContent
     private let topBar: TopBar
     private let side: Side
@@ -31,20 +28,10 @@ struct MapSheet<MapContent: View, TopBar: View, Side: View, Sheet: View>: View {
         self.sheet = sheet()
     }
 
-    private func height(_ d: SheetDetent, _ total: CGFloat) -> CGFloat {
-        switch d {
-        case .peek: return 132
-        case .half: return max(220, total * 0.5)
-        case .full: return max(260, total - 96)
-        }
-    }
-
     var body: some View {
+        // B18: the layout runs under the home indicator and the floating tab bar, so the sheet reaches the very bottom.
+        // B11: the drag state lives in `SheetLayer`; this body (with the map) is not re-evaluated while a finger moves.
         GeometryReader { geo in
-            let total = geo.size.height
-            let minH = height(.peek, total)
-            let maxH = height(.full, total)
-            let current = min(max(height(detent, total) - drag, minH), maxH)
             ZStack(alignment: .bottom) {
                 map
                     .ignoresSafeArea()
@@ -61,57 +48,94 @@ struct MapSheet<MapContent: View, TopBar: View, Side: View, Sheet: View>: View {
                     Spacer(minLength: 0)
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
-                sheetView(total: total, height: current)
+                SheetLayer(detent: $detent, total: geo.size.height, bottomInset: geo.safeAreaInsets.bottom) { sheet }
             }
+        }
+        .ignoresSafeArea(.container, edges: .bottom)
+    }
+}
+
+/// The sheet itself. It is laid out once at its full height and only moved (offset) while it is dragged or settles, so the
+/// content is not re-laid out every frame; the drag lives in a `GestureState` that resets by itself.
+private struct SheetLayer<Content: View>: View {
+    @Environment(\.sunlight) private var sunlight
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Binding var detent: SheetDetent
+    let total: CGFloat
+    let bottomInset: CGFloat
+    @GestureState private var drag: CGFloat = 0
+    private let content: Content
+
+    init(detent: Binding<SheetDetent>, total: CGFloat, bottomInset: CGFloat, @ViewBuilder content: () -> Content) {
+        _detent = detent
+        self.total = total
+        self.bottomInset = bottomInset
+        self.content = content()
+    }
+
+    /// What the tab bar takes at the bottom (bar 64 + 8 + 24 for the disc), or the home indicator alone without a bar.
+    private var cover: CGFloat { max(bottomInset, 34) }
+
+    private func height(_ d: SheetDetent) -> CGFloat {
+        switch d {
+        case .peek: return max(120, cover + 50)
+        case .half: return max(height(.peek) + 90, total * 0.5)
+        case .full: return max(260, total - 96)
         }
     }
 
-    private func settle(_ translation: CGFloat, predicted: CGFloat, total: CGFloat) {
-        let start = height(detent, total)
-        let target = start - predicted
+    private var spring: Animation? { reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.86) }
+
+    var body: some View {
+        let maxH = height(.full)
+        let current = min(max(height(detent) - drag, height(.peek)), maxH)
+        sheetView(maxHeight: maxH)
+            .offset(y: maxH - current)
+            .animation(spring, value: detent)
+    }
+
+    private func settle(predicted: CGFloat) {
+        let target = height(detent) - predicted
         var best = detent
         var bestDistance = CGFloat.greatestFiniteMagnitude
         for d in SheetDetent.allCases {
-            let dist = abs(height(d, total) - target)
+            let dist = abs(height(d) - target)
             if dist < bestDistance { bestDistance = dist; best = d }
         }
-        withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.86)) {
-            detent = best
-            drag = 0
-        }
+        detent = best
     }
 
-    private func dragGesture(total: CGFloat) -> some Gesture {
+    private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 8)
-            .onChanged { drag = $0.translation.height }
-            .onEnded { settle($0.translation.height, predicted: $0.predictedEndTranslation.height, total: total) }
+            .updating($drag) { value, state, _ in state = value.translation.height }
+            .onEnded { settle(predicted: $0.predictedEndTranslation.height) }
     }
 
-    private func sheetView(total: CGFloat, height h: CGFloat) -> some View {
+    private func sheetView(maxHeight: CGFloat) -> some View {
         let shape = UnevenRoundedRectangle(topLeadingRadius: DS.Radius.hero, topTrailingRadius: DS.Radius.hero, style: .continuous)
         return VStack(spacing: 0) {
-            handle(total: total)
+            handle
             ScrollView {
-                sheet
+                content
                     .padding(.horizontal, DS.Space.gutter)
-                    .padding(.bottom, 110)
+                    .padding(.bottom, cover + 90)
             }
             .scrollDisabled(detent != .full)
             .scrollBounceBehavior(.basedOnSize)
             // while the sheet is not full, a drag anywhere on it moves the sheet
-            .gesture(dragGesture(total: total), including: detent == .full ? .subviews : .all)
+            .gesture(dragGesture, including: detent == .full ? .subviews : .all)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: h, alignment: .top)
+        .frame(height: maxHeight, alignment: .top)
         .background {
             if sunlight {
                 shape.fill(Color(.systemBackground))
             } else {
-                shape.fill(.regularMaterial)
+                shape.fill(.thinMaterial)
             }
         }
         .overlay(alignment: .top) {
-            shape.strokeBorder(sunlight ? Color.primary : Color.white.opacity(0.35), lineWidth: sunlight ? 2 : 1)
+            shape.strokeBorder(sunlight ? Color(.separator) : Color.white.opacity(0.35), lineWidth: sunlight ? 0.5 : 1)
                 .allowsHitTesting(false)
         }
         .clipShape(shape)
@@ -119,17 +143,15 @@ struct MapSheet<MapContent: View, TopBar: View, Side: View, Sheet: View>: View {
         .ignoresSafeArea(edges: .bottom)
     }
 
-    private func handle(total: CGFloat) -> some View {
+    private var handle: some View {
         Capsule()
             .fill(Color.secondary.opacity(0.5))
             .frame(width: 40, height: 5)
-            .frame(maxWidth: .infinity, minHeight: 28)
+            .frame(maxWidth: .infinity, minHeight: 22)
             .contentShape(Rectangle())
-            .gesture(dragGesture(total: total))
+            .gesture(dragGesture)
             .onTapGesture {
-                withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.86)) {
-                    detent = detent == .full ? .half : (detent == .half ? .full : .half)
-                }
+                detent = detent == .full ? .half : (detent == .half ? .full : .half)
             }
             .accessibilityElement()
             .accessibilityLabel("Sheet")

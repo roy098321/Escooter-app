@@ -27,14 +27,11 @@ struct FloatingTabBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(Self.items) { item in cell(item) }
+            ForEach(Self.items) { item in cell(item).zIndex(item.id == 2 ? 1 : 0) }
         }
         .padding(.horizontal, 6)
         .frame(height: Self.barHeight)
-        .sunPanel(Capsule())
-        .overlay {
-            if !sunlight { Capsule().strokeBorder(.white.opacity(0.35), lineWidth: 1) }
-        }
+        .sunPanel(Capsule(), edge: true)
         .padding(.horizontal, DS.Space.gutter)
         .padding(.top, 24)      // room for the raised disc, so it stays inside the tappable area
         .padding(.bottom, 8)

@@ -57,25 +57,30 @@ private struct SunlightRoot: ViewModifier {
     }
 }
 
-/// A solid panel with a black edge in sunlight, the system material otherwise.
+/// A solid panel (hairline system separator, no black outline) in sunlight, the system material otherwise.
+/// `edge` draws the thin white glass edge inside the background, so content (the Home disc) stays in front of it.
 struct SunPanel<S: InsettableShape>: ViewModifier {
     @Environment(\.sunlight) private var sunlight
     let shape: S
     var thin = false
+    var edge = false
 
     func body(content: Content) -> some View {
         content
             .background {
-                if sunlight {
-                    shape.fill(Color(.systemBackground))
-                } else if thin {
-                    shape.fill(.thinMaterial)
-                } else {
-                    shape.fill(.ultraThinMaterial)
+                ZStack {
+                    if sunlight {
+                        shape.fill(Color(.systemBackground))
+                        shape.strokeBorder(Color(.separator), lineWidth: 0.5)
+                    } else {
+                        if thin {
+                            shape.fill(.thinMaterial)
+                        } else {
+                            shape.fill(.ultraThinMaterial)
+                        }
+                        if edge { shape.strokeBorder(.white.opacity(0.35), lineWidth: 1) }
+                    }
                 }
-            }
-            .overlay {
-                if sunlight { shape.strokeBorder(Color.primary, lineWidth: 2) }
             }
     }
 }
@@ -84,8 +89,8 @@ extension View {
     /// Applies the sunlight style to the whole app (once, at the root).
     func sunlightRoot() -> some View { modifier(SunlightRoot()) }
 
-    func sunPanel<S: InsettableShape>(_ shape: S, thin: Bool = false) -> some View {
-        modifier(SunPanel(shape: shape, thin: thin))
+    func sunPanel<S: InsettableShape>(_ shape: S, thin: Bool = false, edge: Bool = false) -> some View {
+        modifier(SunPanel(shape: shape, thin: thin, edge: edge))
     }
 }
 
