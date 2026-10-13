@@ -75,6 +75,7 @@ struct StatsView: View {
                 }
                 bars(m)
             }
+            if let overall = m.overall { OverallSection(stats: overall) }
             if preview == nil {
                 NavigationLink { FactorsView() } label: {
                     HStack {
@@ -197,12 +198,51 @@ struct CostSettingsView: View {
     private func save(_ key: String, _ text: String, range: ClosedRange<Double>) {
         guard let db = AppModel.shared.database, !db.isReadOnly,
               let v = Double(text.replacingOccurrences(of: ",", with: ".")), range.contains(v) else { return }
+        if key == StatsQueries.electricityKey {
+            // F-01: the new rate applies from today on; the rate that applied until now is kept for the past
+            let old = StatsQueries(db).number(key) ?? StatsPrices.defaultElectricityIlsPerKwh
+            let today = OverallLoader.localDay(FactorUpdater.nowMs(), offsetMin: RouteCardLoader.currentOffsetMin())
+            try? PriceHistoryQueries(db).setElectricity(v, from: today, currentDefault: old)
+        }
         try? StatsQueries(db).setNumber(key, v)
+    }
+}
+
+/// F-01: the Overall section of Stats, from the scooter's lifetime odometer. Pre-app km are labelled as an estimate.
+struct OverallSection: View {
+    let stats: OverallStats
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Overall").font(.headline).padding(.horizontal, 4)
+            StatTileGrid {
+                ForEach(Array(OverallLoader.tiles(stats).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label, note: t.note) }
+            }
+            if stats.kmBefore > 0 {
+                Text("Before CorckieApp: \(OverallCalc.km(stats.kmBefore)), \(OverallCalc.beforeLabel).")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            if stats.usesUnverifiedPrice {
+                Text("The September fuel price is unverified. Please check it in Settings, Costs, Price history.")
+                    .font(.footnote).foregroundStyle(.orange)
+            }
+            Text("Money is counted month by month at the price valid then. A later price never changes past months.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .contain)
     }
 }
 
 /// Made-up numbers for the CI ui-shots (`-uiShot stats-week`, `stats-month`, `stats-empty`).
 enum StatsPreview {
+    static func overall() -> OverallStats {
+        let fuel = PriceHistory([PricePoint(validFrom: "2026-09-01", value: 8.25), PricePoint(validFrom: "2026-10-01", value: 8.27)])
+        let elec = PriceHistory([PricePoint(validFrom: "2000-01-01", value: 0.64)])
+        let rides = [OverallRide(day: "2026-10-05", km: 19, usedPct: 48), OverallRide(day: "2026-10-08", km: 11, usedPct: 22)]
+        return OverallCalc.compute(OverallInput(purchaseDay: "2026-09-02", latestOdometerKm: 722.1, odometerAtFirstRideKm: 692.1, rides: rides,
+                                                whPerPct: 8.1, fuel: fuel, electricity: elec, todayDay: "2026-10-13"))
+    }
+
     static func model(_ name: String) -> StatsModel {
         let month = name == "stats-month"
         let empty = name == "stats-empty"
@@ -237,6 +277,7 @@ enum StatsPreview {
         var model = StatsModel(span: month ? .month : .week, mode: .calendar, period: period, totals: t, comparisonPct: empty || firstWeek ? nil : 12,
                                holidayTagged: false, recent: insights, electricityIlsPerKwh: 0.64, fuelLPer100km: 7, fuelPriceIls: 8.27, packWh: 800,
                                lastWeek: week, pastWeeks: name == "week-card" ? WeekPreview.weeks() : [])
+        model.overall = empty ? nil : overall()
         if firstWeek { model.firstWeekNote = "First week \u{00B7} from Wed 7 Oct" }
         return model
     }

@@ -33,6 +33,31 @@ struct StatsQueries {
         }
     }
 
+    /// F-01: every real ended ride and short hop with its km and battery used (the shown value when there is one), plus the odometer
+    /// at the first ride's start and the newest odometer reading.
+    func overallRows() throws -> (rides: [(startAt: Int64, offsetMin: Int, km: Double, usedPct: Double?)], firstOdoKm: Double?, latestOdoKm: Double?) {
+        try database.writer.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT startAt, utcOffsetMin, distanceM, COALESCE(usedPctShown, usedPct) AS used, odoStartKm, odoEndKm FROM ride
+                WHERE endAt IS NOT NULL AND kind IN ('ride', 'shortHop') AND isSimulated = 0 ORDER BY startAt
+                """)
+            var rides: [(startAt: Int64, offsetMin: Int, km: Double, usedPct: Double?)] = []
+            var firstOdo: Double?
+            var latest: Double?
+            for r in rows {
+                let offset: Int? = r["utcOffsetMin"]
+                let distance: Double? = r["distanceM"]
+                let used: Double? = r["used"]
+                rides.append((r["startAt"], offset ?? 0, (distance ?? 0) / 1000, used))
+                let start: Double? = r["odoStartKm"]
+                let end: Double? = r["odoEndKm"]
+                if firstOdo == nil { firstOdo = start }
+                if let end { latest = max(latest ?? end, end) }
+            }
+            return (rides, firstOdo, latest)
+        }
+    }
+
     /// Local dates ("yyyy-MM-dd") of the holidays that count as a day off
     func dayOffDates() throws -> Set<String> {
         let years = try database.writer.read { db in try Row.fetchAll(db, sql: "SELECT date, kind, name FROM holiday") }

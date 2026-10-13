@@ -95,6 +95,40 @@ enum NotificationPlanner {
         _ = try? MessageLogQueries(db).add(type: kind.logType, channel: "notification", at: nowMs, droppedReason: nil)
     }
 
+    // MARK: Fuel price reminder (F-01): the 1st of the month, 10:00
+
+    private static let fuelKey = "fuelReminder.scheduledFor"
+    private static let fuelLoggedKey = "fuelReminder.loggedFor"
+
+    static func scheduledFuelReminderMs(_ db: AppDatabase) -> Int64? {
+        guard let v = int(db, fuelKey), v > 0 else { return nil }
+        return v
+    }
+
+    static func markFuelReminderScheduled(_ db: AppDatabase, fireMs: Int64) {
+        try? RideQueries(db).setSetting(key: fuelKey, json: String(fireMs))
+    }
+
+    /// App open: a reminder whose time has passed is logged as sent once (iOS delivered it; the budget counts it)
+    static func logDeliveredFuelReminder(_ db: AppDatabase, nowMs: Int64 = nowMs()) {
+        guard let fire = scheduledFuelReminderMs(db), fire <= nowMs, int(db, fuelLoggedKey) != fire else { return }
+        _ = try? MessageLogQueries(db).add(type: BudgetedMessage.fuelPriceReminder.logType, channel: "notification", at: fire, droppedReason: nil)
+        try? RideQueries(db).setSetting(key: fuelLoggedKey, json: String(fire))
+        try? RideQueries(db).setSetting(key: fuelKey, json: "0")
+    }
+
+    /// The next reminder, or nil when the budget would drop it (quiet hours / daily limit that day)
+    static func fuelReminderDue(_ db: AppDatabase, nowMs: Int64 = nowMs(), utcOffsetMin: Int = offsetMin()) -> Int64? {
+        let fire = NotificationBudget.nextFuelReminderMs(nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+        let decision = NotificationBudget.decide(.fuelPriceReminder, nowMs: fire, utcOffsetMin: utcOffsetMin, rideActive: false, sentToday: 0,
+                                                 weeklyDueToday: false)
+        if case .drop(let reason) = decision {
+            logDropped(db, .fuelPriceReminder, reason: reason, nowMs: nowMs)
+            return nil
+        }
+        return fire
+    }
+
     // MARK: Wind picking up (Q15-notify)
 
     /// A usual route (saved, rides on this weekday around now) whose forecast headwind is up: the text, or nil.

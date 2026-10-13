@@ -11,6 +11,8 @@ public enum BudgetedMessage: String, CaseIterable, Sendable {
     case maintenance
     case weeklySummary = "weekly_summary"
     case windPickingUp = "wind_picking_up"
+    /// F-01: on the 1st of the month, update the fuel price (Israel sets it monthly)
+    case fuelPriceReminder = "fuel_price_reminder"
 
     /// The `message_log` type
     public var logType: String { rawValue }
@@ -77,6 +79,30 @@ public enum NotificationBudget {
             if m >= nowMinute && m <= nowMinute + 120 { n += 1 }
         }
         return n >= 3
+    }
+
+    public static let fuelReminderHour = 10
+    public static let fuelReminderTitle = "New month, new fuel price"
+    public static let fuelReminderBody = "Check the 95-octane price and add it in Settings, Costs, so Fuel saved uses it from today on."
+
+    /// The next 1st of a month at 10:00 local time after `nowMs`.
+    public static func nextFuelReminderMs(nowMs: Int64, utcOffsetMin: Int) -> Int64 {
+        let off = Int64(utcOffsetMin) * 60_000
+        let day = RideListLogic.localDay(startAt: nowMs, utcOffsetMin: utcOffsetMin)
+        let key = RideListLogic.dayKey(day)                       // yyyy-MM-dd
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        var year = parts[0], month = parts[1]
+        func firstFire(_ y: Int, _ m: Int) -> Int64 {
+            let d = Int64(OverallCalc.dayNumber(String(format: "%04d-%02d-01", y, m)) ?? 0)
+            return d * OutsideTime.dayMs + Int64(fuelReminderHour) * 3_600_000 - off
+        }
+        var fire = firstFire(year, month)
+        if fire <= nowMs {
+            month += 1
+            if month > 12 { month = 1; year += 1 }
+            fire = firstFire(year, month)
+        }
+        return fire
     }
 
     public static let weeklyTitle = "Your week"

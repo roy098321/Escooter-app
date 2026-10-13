@@ -43,6 +43,35 @@ enum BudgetedNotifier {
         }
     }
 
+    // MARK: Fuel price reminder (F-01)
+
+    static let fuelId = "fuel_price_reminder"
+
+    /// Schedule (or replace) the reminder for the next 1st of the month at 10:00 (rebuilt at every app open, so it always exists once).
+    static func refreshFuelReminder(_ db: AppDatabase?) {
+        guard let db, !db.isReadOnly else { return }
+        let center = UNUserNotificationCenter.current()
+        NotificationPlanner.logDeliveredFuelReminder(db)
+        let now = NotificationPlanner.nowMs()
+        guard let fire = NotificationPlanner.fuelReminderDue(db, nowMs: now) else {
+            center.removePendingNotificationRequests(withIdentifiers: [fuelId])
+            return
+        }
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
+            let content = UNMutableNotificationContent()
+            content.title = NotificationBudget.fuelReminderTitle
+            content.body = NotificationBudget.fuelReminderBody
+            content.sound = .default
+            content.userInfo = ["open": "settings"]
+            let seconds = max(1, Double(fire - now) / 1000)
+            center.add(UNNotificationRequest(identifier: fuelId, content: content,
+                                             trigger: UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false))) { error in
+                if error == nil { NotificationPlanner.markFuelReminderScheduled(db, fireMs: fire) }
+            }
+        }
+    }
+
     // MARK: Wind picking up
 
     /// One check: a usual ride is likely soon and the forecast headwind is up. Returns a short line for the log.

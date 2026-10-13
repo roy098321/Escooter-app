@@ -57,12 +57,19 @@ public struct StatsPrices: Equatable, Sendable {
     public var fuelFallbackIls: Double?
     /// L per 100 km of the car / petrol scooter the km replace (setting)
     public var fuelLPer100km: Double
+    /// F-01: price histories (value + valid-from day). When present, each ride is priced at the price valid on its day, so a later
+    /// price never rewrites past numbers. Nil = the single values above (older behaviour).
+    public var fuelHistory: PriceHistory?
+    public var electricityHistory: PriceHistory?
 
     public static let defaultElectricityIlsPerKwh = 0.64
     public static let defaultFuelLPer100km = 7.0
 
     public init(packWh: Double, electricityIlsPerKwh: Double = StatsPrices.defaultElectricityIlsPerKwh, fuelIlsByMonth: [String: Double] = [:],
-                fuelFallbackIls: Double? = nil, fuelLPer100km: Double = StatsPrices.defaultFuelLPer100km) {
+                fuelFallbackIls: Double? = nil, fuelLPer100km: Double = StatsPrices.defaultFuelLPer100km,
+                fuelHistory: PriceHistory? = nil, electricityHistory: PriceHistory? = nil) {
+        self.fuelHistory = fuelHistory
+        self.electricityHistory = electricityHistory
         self.packWh = packWh
         self.electricityIlsPerKwh = electricityIlsPerKwh
         self.fuelIlsByMonth = fuelIlsByMonth
@@ -156,6 +163,7 @@ public enum StatsCalc {
         var bars = [Double](repeating: 0, count: max(1, p.dayCount))
         var fuel = 0.0
         var anyFuel = false
+        var elec = 0.0
         let kwhPerPct = prices.packWh / 100 / 1000
         for r in rides(all, in: p) {
             let km = r.distanceM / 1000
@@ -170,15 +178,19 @@ public enum StatsCalc {
                 if bars.indices.contains(index) { bars[index] += km }
             }
             let used = r.usedPct ?? 0
+            let dayKey = RideListLogic.dayKey(RideListLogic.localDay(startAt: r.startAt, utcOffsetMin: r.utcOffsetMin))
+            let rate = prices.electricityHistory?.value(on: dayKey) ?? prices.electricityIlsPerKwh
+            elec += used * kwhPerPct * rate
             t.charges += used / 100
             // M35b: rides over 2 km, the same distance by car minus what the ride cost in electricity
-            if r.kind == "ride", km > 2, let price = fuelPrice(forStart: r.startAt, offsetMin: r.utcOffsetMin, prices: prices) {
-                fuel += km * prices.fuelLPer100km / 100 * price - used * kwhPerPct * prices.electricityIlsPerKwh
+            if r.kind == "ride", km > 2,
+               let price = prices.fuelHistory?.value(on: dayKey) ?? fuelPrice(forStart: r.startAt, offsetMin: r.utcOffsetMin, prices: prices) {
+                fuel += km * prices.fuelLPer100km / 100 * price - used * kwhPerPct * rate
                 anyFuel = true
             }
         }
-        t.electricityIls = t.charges * prices.packWh / 1000 * prices.electricityIlsPerKwh
-        t.fuelSavedIls = anyFuel ? fuel : (prices.fuelFallbackIls != nil || !prices.fuelIlsByMonth.isEmpty ? 0 : nil)
+        t.electricityIls = prices.electricityHistory != nil ? elec : t.charges * prices.packWh / 1000 * prices.electricityIlsPerKwh
+        t.fuelSavedIls = anyFuel ? fuel : (prices.fuelFallbackIls != nil || !prices.fuelIlsByMonth.isEmpty || !(prices.fuelHistory?.isEmpty ?? true) ? 0 : nil)
         t.barsKm = bars
         return t
     }

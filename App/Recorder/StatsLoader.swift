@@ -23,6 +23,8 @@ struct StatsModel {
     var pastWeeks: [InsightRunner.PastWeek] = []
     /// S12: "First week \u{00B7} from Wed 30 Sep" while the shown week is the partial first one
     var firstWeekNote: String?
+    /// F-01: lifetime numbers (odometer based)
+    var overall: OverallStats?
 }
 
 enum StatsLoader {
@@ -35,7 +37,8 @@ enum StatsLoader {
         return StatsPrices(packWh: CalibrationUpdater.current(db).usableWh,
                            electricityIlsPerKwh: q.number(StatsQueries.electricityKey) ?? StatsPrices.defaultElectricityIlsPerKwh,
                            fuelIlsByMonth: (try? q.fuelPricesByMonth()) ?? [:], fuelFallbackIls: manual,
-                           fuelLPer100km: q.number(StatsQueries.fuelUseKey) ?? StatsPrices.defaultFuelLPer100km)
+                           fuelLPer100km: q.number(StatsQueries.fuelUseKey) ?? StatsPrices.defaultFuelLPer100km,
+                           fuelHistory: OverallLoader.fuelHistory(db), electricityHistory: OverallLoader.electricityHistory(db))
     }
 
     static func load(_ db: AppDatabase, span: StatsSpan, mode: StatsMode, back: Int = 0, nowMs: Int64 = FactorUpdater.nowMs(),
@@ -61,6 +64,7 @@ enum StatsLoader {
                           recent: (try? InsightQueries(db).recent()) ?? [], electricityIlsPerKwh: prices.electricityIlsPerKwh,
                           fuelLPer100km: prices.fuelLPer100km, fuelPriceIls: prices.fuelFallbackIls, packWh: prices.packWh,
                           lastWeek: week.last, thisWeek: week.now, pastWeeks: week.past)
+        model.overall = OverallLoader.load(db, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
         model.firstWeekNote = StatsCalc.firstWeekNote(firstRideMs: q.firstRideMs(), period: p, span: span, mode: mode, utcOffsetMin: utcOffsetMin)
         return model
     }

@@ -131,6 +131,16 @@ struct SettingsView: View {
             } label: {
                 Text("Electricity and fuel use")
             }
+            NavigationLink {
+                PriceHistoryView()
+            } label: {
+                Text("Price history")
+            }
+            NavigationLink {
+                PurchaseSettingsView()
+            } label: {
+                Text("Purchase date and odometer")
+            }
         }
         .glassRows()
     }

@@ -166,7 +166,7 @@ enum UIShot {
         "live-riding", "live-ready", "live-starting", "live-slow", "live-gps", "live-slowgps", "live-nogps", "live-offline", "live-banner",
         "live-sameride", "live-arrival", "live-routegps", "live-return",
         "home-first", "home-notconnected", "home-ready", "home-cantfind", "home-riding", "home-location", "home-crash", "home-whereto",
-        "ride-missing", "replay-missing", "data-failed", "home-simulated", "home-readonly", "stats-first-week", "export-empty"
+        "ride-missing", "replay-missing", "data-failed", "home-simulated", "home-readonly", "stats-first-week", "export-empty", "stats-overall"
     ]
 
     @ViewBuilder static func screen(_ name: String) -> some View {
@@ -233,6 +233,9 @@ enum UIShot {
             case "export-empty": ExportEverythingView(previewEmpty: true)
             case "stats-week", "stats-month", "stats-empty", "week-card", "stats-first-week":
                 StatsView(preview: StatsPreview.model(name))
+            case "stats-overall":
+                ScrollView { OverallSection(stats: StatsPreview.overall()).padding(16) }
+                    .background { MapBackdrop().ignoresSafeArea() }
             case "factors", "factors-sparse":
                 NavigationStack { FactorsView(preview: FactorsPreview.rows(name)) }
             case "route-arriveby":

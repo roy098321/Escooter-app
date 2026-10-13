@@ -84,4 +84,17 @@ final class NotificationBudgetTests: XCTestCase {
         let evening = [ms(2026, 9, 29, 18, 0), ms(2026, 9, 22, 18, 0), ms(2026, 9, 15, 18, 0)]
         XCTAssertFalse(NotificationBudget.likelyRideSoon(startsAtMs: evening, utcOffsetsMin: [off, off, off], nowMs: now, utcOffsetMin: off))
     }
+
+    func testFuelReminder_isOnThe1stAt10_andRespectsTheBudget() {
+        // 13 Oct -> 1 Nov 10:00 local; on the 1st at 09:00 -> the same day 10:00; on the 1st at 11:00 -> next month
+        XCTAssertEqual(NotificationBudget.nextFuelReminderMs(nowMs: ms(2026, 10, 13, 12), utcOffsetMin: off), ms(2026, 11, 1, 10))
+        XCTAssertEqual(NotificationBudget.nextFuelReminderMs(nowMs: ms(2026, 11, 1, 9), utcOffsetMin: off), ms(2026, 11, 1, 10))
+        XCTAssertEqual(NotificationBudget.nextFuelReminderMs(nowMs: ms(2026, 11, 1, 11), utcOffsetMin: off), ms(2026, 12, 1, 10))
+        XCTAssertEqual(NotificationBudget.nextFuelReminderMs(nowMs: ms(2026, 12, 20, 11), utcOffsetMin: off), ms(2027, 1, 1, 10))
+        // it counts in the daily budget and is dropped in quiet hours or at the limit
+        XCTAssertEqual(NotificationBudget.decide(.fuelPriceReminder, nowMs: ms(2026, 11, 1, 10), utcOffsetMin: off, rideActive: false, sentToday: 0), .send)
+        XCTAssertEqual(NotificationBudget.decide(.fuelPriceReminder, nowMs: ms(2026, 11, 1, 10), utcOffsetMin: off, rideActive: false, sentToday: NotificationBudget.perDay),
+                       .drop(reason: "daily limit"))
+        XCTAssertEqual(NotificationBudget.decide(.fuelPriceReminder, nowMs: ms(2026, 11, 1, 23), utcOffsetMin: off, rideActive: false, sentToday: 0), .drop(reason: "quiet hours"))
+    }
 }

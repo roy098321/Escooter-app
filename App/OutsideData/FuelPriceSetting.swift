@@ -31,12 +31,16 @@ enum FuelPriceSetting {
             try d.execute(sql: "INSERT OR REPLACE INTO setting (key, json) VALUES (?, ?)", arguments: [key, json])
             try d.execute(sql: "INSERT OR REPLACE INTO fuel_price (month, priceIls, source, fetchedAt) VALUES (?, ?, 'manual', ?)",
                           arguments: [value.month, value.priceIls, now])
+            // F-01: the same price in the history, valid from the 1st of its month
+            try d.execute(sql: "INSERT OR REPLACE INTO price_history (kind, validFrom, value, source, unverified) VALUES ('fuel', ?, ?, 'manual', 0)",
+                          arguments: [value.month + "-01", value.priceIls])
         }
         markCheck(value)
     }
 
     /// First launch: the owner's default. Every launch: check e1 passes by itself.
     static func ensureDefault(database: AppDatabase?) {
+        if let database { PriceHistoryQueries(database).ensureDefaults() }
         if let value = load(database) {
             markCheck(value)
         } else if database != nil {
