@@ -39,6 +39,8 @@ final class PhoneSensors: NSObject {
     private(set) var gpsMode: PhoneGps = .normal
     /// M6-06: the rider turned location off for the app
     var locationDenied: Bool { manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted }
+    /// B14: the last location iOS already has. Reading it asks for nothing and starts no updates.
+    var lastKnown: CLLocation? { manager.location }
     private(set) var fixes = 0
     private(set) var fixesInBackground = 0
     private(set) var lastFix = "—"

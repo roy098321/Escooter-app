@@ -1,22 +1,35 @@
 import SwiftUI
 
 /// UI_PLAN 1.6: a static, made-up street map behind the tab screens (land, blocks, park, water, roads, a veil).
-/// Drawn with `Canvas`: no MapKit, no network, no location, the same picture in every CI shot. It is a generic
+/// B14: on the phone a real Apple map snapshot (`MapSnapshotStore`) replaces it. This drawn one stays for the CI shots and previews:
+/// no MapKit, no network, no location, the same picture in every CI shot. It is a generic
 /// pattern, not a real area. In sunlight mode it is plain (a solid page), like the glass cards.
 struct MapBackdrop: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.sunlight) private var sunlight
+    private let store = MapSnapshotStore.shared
 
     var body: some View {
         if sunlight {
             Color(.systemBackground)
         } else {
             let dark = scheme == .dark
-            Canvas { ctx, size in
-                Self.draw(ctx, size: size, dark: dark)
+            if let image = store.image(dark: dark) {
+                // B14: the real map as a picture, blurred under the glass; same veil as the drawn one
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .blur(radius: 6)
+                    .overlay(Color(.systemBackground).opacity(dark ? 0.45 : 0.55))
+                    .clipped()
+                    .accessibilityHidden(true)
+            } else {
+                Canvas { ctx, size in
+                    Self.draw(ctx, size: size, dark: dark)
+                }
+                .overlay(Color(.systemBackground).opacity(dark ? 0.5 : 0.66))
+                .accessibilityHidden(true)
             }
-            .overlay(Color(.systemBackground).opacity(dark ? 0.5 : 0.66))
-            .accessibilityHidden(true)
         }
     }
 

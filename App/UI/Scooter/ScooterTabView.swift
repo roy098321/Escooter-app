@@ -17,6 +17,7 @@ struct ScooterTabView: View {
     @State private var odometerKm: Double?
     @State private var rows: [MaintenanceService.Row] = []
     @State private var confirmForget = false
+    @State private var connectTap = 0
     private let link = AppModel.shared.scooter
 
     private var connected: Bool { preview?.connected ?? link.connected }
@@ -88,6 +89,7 @@ struct ScooterTabView: View {
         .accessibilityElement(children: .combine)
         if !connected {
             Button {
+                connectTap += 1
                 if preview == nil { link.start() }
             } label: {
                 Label("Connect", systemImage: "antenna.radiowaves.left.and.right")
@@ -96,6 +98,7 @@ struct ScooterTabView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(.orange)
+            .sensoryFeedback(.impact(weight: .medium), trigger: connectTap)
         }
         StatTileGrid {
             StatTile(value: odo.map { String(format: "%.1f", $0) } ?? "\u{2013}", label: odo == nil ? "km total (after the first ride)" : "km total")

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// UI overhaul (UI_PLAN section 1): the shared tokens and small components every screen is built from.
 /// Colours stay the system colours (C29); the glass is the material fallback (`sunPanel`), so sunlight mode
@@ -218,28 +219,49 @@ struct GlassSegmented<T: Hashable>: View {
 
 // MARK: Glass list (Settings, Developer and the other list screens)
 
+/// Row background of the list screens. Light mode and sunlight = Apple's own inset-grouped look (white rows on the
+/// grouped grey page); dark mode keeps the frosted rows over the map backdrop.
 private struct GlassRowBackground: View {
-    @Environment(\.sunlight) private var sunlight
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        if sunlight {
-            Color(.systemBackground)
+        if scheme == .light {
+            Color(.secondarySystemGroupedBackground)
         } else {
             Rectangle().fill(.ultraThinMaterial)
         }
     }
 }
 
+private struct GlassListLook: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.sunlight) private var sunlight
+
+    func body(content: Content) -> some View {
+        if scheme == .light {
+            // B13 / B16: the grouped grey page; sunlight is the same with heavier text (bold legibility is set at the root)
+            content
+                .scrollContentBackground(.hidden)
+                .background(Color(.systemGroupedBackground).ignoresSafeArea())
+                .navigationBarTitleDisplayMode(.large)
+                .scrollBounceBehavior(.basedOnSize)
+        } else {
+            content
+                .scrollContentBackground(.hidden)
+                .background { MapBackdrop().ignoresSafeArea() }
+                .textCase(nil)
+                .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+}
+
 extension View {
-    /// A standard `List` / `Form` on the map backdrop: no grey page, sentence-case section headers.
+    /// A standard `List` / `Form` of a list screen: native inset-grouped in light mode, glass over the backdrop in dark.
     func glassList() -> some View {
-        self
-            .scrollContentBackground(.hidden)
-            .background { MapBackdrop().ignoresSafeArea() }
-            .textCase(nil)
+        modifier(GlassListLook())
     }
 
-    /// Frosted rows for the content it is put on (a `Section`, or a few rows).
+    /// Row background for the content it is put on (a `Section`, or a few rows).
     func glassRows() -> some View {
         listRowBackground(GlassRowBackground())
     }
@@ -260,8 +282,9 @@ struct SegmentedRow<T: Hashable>: View {
     }
 }
 
-/// A `Section` with a sentence-case header (the system list upper-cases plain titles).
+/// A `Section` with a sentence-case header in dark mode; same text case in both looks.
 struct GlassSection<Content: View>: View {
+    @Environment(\.colorScheme) private var scheme
     let title: String
     private let content: Content
     init(_ title: String, @ViewBuilder content: () -> Content) {
@@ -276,4 +299,38 @@ struct GlassSection<Content: View>: View {
             Text(title).textCase(nil)
         }
     }
+}
+
+// MARK: Coloured icon squircle (the Apple Settings row icon)
+
+struct SquircleLabelStyle: LabelStyle {
+    let tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 12) {
+            configuration.icon
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 29, height: 29)
+                .background(tint, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .accessibilityHidden(true)
+            configuration.title
+        }
+    }
+}
+
+extension Label where Title == Text, Icon == Image {
+    /// A Settings-style row label: white symbol on a coloured squircle
+    func squircle(_ tint: Color) -> some View {
+        labelStyle(SquircleLabelStyle(tint: tint))
+    }
+}
+
+// MARK: Haptics (F-03)
+
+/// Standard iOS feedback for the few significant buttons. Where the view disappears with the action (end of ride, delete)
+/// the UIKit generator is used, which follows the same system "System Haptics" setting.
+enum Haptics {
+    @MainActor static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+    @MainActor static func warning() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
 }

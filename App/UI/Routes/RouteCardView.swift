@@ -17,6 +17,7 @@ struct RouteCardView: View {
     @State private var showRename = false
     @State private var nameDraft = ""
     @State private var confirmRemove = false
+    @State private var saveTap = 0
     @State private var errorText: String?
     @State private var arriveInfo: (rides: [RouteRideStats], destination: String)?
     @State private var previewFollow = false
@@ -122,7 +123,8 @@ struct RouteCardView: View {
             Text("You have ridden this same trip more than once. Save it to keep your usual time and today's estimate in the Routes list.")
                 .font(.subheadline).foregroundStyle(.secondary)
             HStack(spacing: 12) {
-                Button("Save route") { setSaved(true) }.buttonStyle(.borderedProminent)
+                Button("Save route") { saveTap += 1; setSaved(true) }.buttonStyle(.borderedProminent)
+                    .sensoryFeedback(.success, trigger: saveTap)
                 Button("Not a route") { setSaved(false) }.buttonStyle(.bordered)
             }
         }

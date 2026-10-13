@@ -4,11 +4,15 @@ import SwiftUI
 /// Tab bar per IA.md (Routes · Rides · Home · Stats · Scooter); screens arrive in P5.
 struct RootView: View {
     @State private var tab = 2
+    @Environment(\.scenePhase) private var scenePhase
     private let model = AppModel.shared
 
     var body: some View {
         // v1 on every tab and pushed screen (owner, P4 D3); sheets add their own `.v1Label()`.
-        content.v1Label().sunlightRoot()
+        content.v1Label().sunlightRoot().scrollBounceBehavior(.basedOnSize)
+            .onAppear { MapSnapshotStore.shared.refresh() }
+            .onChange(of: scenePhase) { _, p in if p == .active { MapSnapshotStore.shared.refresh() } }
+            .onChange(of: PhoneSensors.shared.roundedLocation.map { "\($0.lat),\($0.lon)" }) { _, _ in MapSnapshotStore.shared.refresh() }
     }
 
     /// M1-12: read in the body, so the cover follows the recorder (observation)

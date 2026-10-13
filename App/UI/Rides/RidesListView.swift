@@ -253,6 +253,7 @@ struct RidesListView: View {
         guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
         do {
             try RideQueries(db).delete(rideId: ride.id)
+            Haptics.warning()
             reload()
         } catch {
             errorText = error.localizedDescription

@@ -91,7 +91,7 @@ struct SettingsView: View {
             NavigationLink {
                 MaintenanceView()
             } label: {
-                Label("Maintenance", systemImage: "wrench.and.screwdriver")
+                Label("Maintenance", systemImage: "wrench.and.screwdriver").squircle(.orange)
             }
         }
         .glassRows()
@@ -199,7 +199,7 @@ struct SettingsView: View {
             NavigationLink {
                 PlacesView()
             } label: {
-                Label("Places", systemImage: "mappin.and.ellipse")
+                Label("Places", systemImage: "mappin.and.ellipse").squircle(.red)
             }
         }
         .glassRows()
@@ -232,7 +232,7 @@ struct SettingsView: View {
             NavigationLink {
                 ReportProblemView()
             } label: {
-                Label("Report a problem", systemImage: "exclamationmark.bubble")
+                Label("Report a problem", systemImage: "exclamationmark.bubble").squircle(.pink)
             }
         }
         .glassRows()
@@ -243,7 +243,7 @@ struct SettingsView: View {
             NavigationLink {
                 DeveloperView()
             } label: {
-                Label("Developer", systemImage: "hammer")
+                Label("Developer", systemImage: "hammer").squircle(.gray)
             }
         } footer: {
             Text("Checks, results and the test tools of this build.")

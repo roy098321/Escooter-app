@@ -20,6 +20,7 @@ struct HomeView: View {
     @State private var chips: [WhereToChip] = []
     @State private var now = Date()
     @State private var connectingSince: Date?
+    @State private var discTap = 0
     @State private var showOnboarding = false
     @State private var showWhereTo = false
     @State private var crashDismissed = false
@@ -153,6 +154,7 @@ struct HomeView: View {
         let tint: Color = amber ? .orange : .accentColor
         return VStack(spacing: 14) {
             Button {
+                discTap += 1
                 primaryTapped(m.primary)
             } label: {
                 ZStack {
@@ -179,6 +181,7 @@ struct HomeView: View {
             }
             .buttonStyle(.plain)
             .disabled(!m.primaryEnabled)
+            .sensoryFeedback(.impact(weight: .heavy), trigger: discTap)
             .opacity(m.primaryEnabled ? 1 : 0.6)
             .accessibilityLabel(m.primaryTitle)
             if m.state == .ready || m.state == .notConnected || m.state == .cantFind {
