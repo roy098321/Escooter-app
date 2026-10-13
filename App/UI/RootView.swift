@@ -181,14 +181,17 @@ enum UIShot {
             case "rides-list": RidesListView(preview: RidesPreview.list())
             case "ride-detail", "ride-nogps", "ride-gap", "ride-walk":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model(name))
+                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }
             case "routes-empty", "routes-list", "routes-greyed":
                 RoutesListView(preview: RoutesPreview.list(name))
             case "route-card", "route-card-sparse":
                 RouteCardView(preview: RoutesPreview.card(name))
+                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(0)) }
             case "places":
                 PlacesView(preview: RoutesPreview.places())
             case "ride-detail-full":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"), previewSeries: RideDetailPreview.series())
+                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }
             case "ride-save-route":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
                                previewOffer: RouteOfferModel.make(routeId: "preview", state: .suggested, title: "Route 1", ridesOnRoute: 2))
