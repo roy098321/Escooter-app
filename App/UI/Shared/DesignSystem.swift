@@ -244,6 +244,7 @@ private struct GlassListLook: ViewModifier {
                 .scrollContentBackground(.hidden)
                 .background(Color(.systemGroupedBackground).ignoresSafeArea())
                 .navigationBarTitleDisplayMode(.large)
+                .fontWeight(sunlight ? .semibold : nil)
                 .scrollBounceBehavior(.basedOnSize)
         } else {
             content
