@@ -11,6 +11,8 @@ public struct PlaceRowModel: Equatable, Sendable {
     /// nil = automatic (5% of the trip, T60)
     public var radiusM: Double?
     public var hasName: Bool
+    /// F-08: id of the place colour (`PlaceColours`)
+    public var colourId: String = "orange"
 }
 
 public enum PlaceListBuilder {
@@ -22,12 +24,13 @@ public enum PlaceListBuilder {
         return "Circle: \(Int(r.rounded())) m"
     }
 
-    public static func row(id: String, name: String?, radiusM: Double?, canCharge: Bool, routeCount: Int) -> PlaceRowModel {
+    public static func row(id: String, name: String?, radiusM: Double?, canCharge: Bool, routeCount: Int,
+                           colourId: String = "orange") -> PlaceRowModel {
         let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         var parts = [radiusText(radiusM)]
         if canCharge { parts.append("you can charge here") }
         parts.append("\(routeCount) \(routeCount == 1 ? "route" : "routes")")
         return PlaceRowModel(id: id, title: trimmed.isEmpty ? RouteLabels.place(nil) : trimmed,
-                             subtitle: parts.joined(separator: " \u{00B7} "), canCharge: canCharge, radiusM: radiusM, hasName: !trimmed.isEmpty)
+                             subtitle: parts.joined(separator: " \u{00B7} "), canCharge: canCharge, radiusM: radiusM, hasName: !trimmed.isEmpty, colourId: colourId)
     }
 }

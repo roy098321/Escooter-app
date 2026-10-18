@@ -11,15 +11,18 @@ public struct RideListItem: Equatable, Sendable {
     public var kind: String            // ride / shortHop / discarded
     public var distanceM: Double?
     public var totalS: Double?
+    /// F-08: the saved place the ride ended at (its colour strip in the Rides list)
+    public var endPlaceId: String?
 
     public init(id: String, startAt: Int64, utcOffsetMin: Int? = nil, kind: String = "ride",
-                distanceM: Double? = nil, totalS: Double? = nil) {
+                distanceM: Double? = nil, totalS: Double? = nil, endPlaceId: String? = nil) {
         self.id = id
         self.startAt = startAt
         self.utcOffsetMin = utcOffsetMin
         self.kind = kind
         self.distanceM = distanceM
         self.totalS = totalS
+        self.endPlaceId = endPlaceId
     }
 }
 

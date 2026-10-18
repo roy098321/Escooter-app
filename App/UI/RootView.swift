@@ -169,7 +169,7 @@ enum UIShot {
     static let allNames: [String] = [
         "settings", "settings-full", "settings-data", "export", "restore", "developer", "checks", "results", "simulator", "outside", "scooter", "rides", "rides-list", "rides-long", "home-bottom",
         "ride-detail", "ride-nogps", "ride-gap", "ride-walk", "ride-detail-full", "ride-layer-speed", "ride-layer-hills", "ride-layer-wind", "ride-save-route", "ride-prompt", "ride-insights", "replay",
-        "ride-compare", "ride-merge", "ride-trim", "routes-empty", "routes-list", "routes-greyed", "route-card", "route-card-sparse", "places",
+        "ride-compare", "ride-merge", "ride-trim", "routes-empty", "routes-list", "routes-greyed", "route-card", "route-card-sparse", "places", "places-map", "place-detail", "place-add", "rides-colours",
         "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-empty", "week-card", "factors", "factors-sparse",
         "scooter-tab", "scooter-tab-off", "scooter-tab-none", "battery-page", "battery-page-empty", "battery-page-calibrated",
         "onboarding1", "onboarding2", "onboarding3",
@@ -209,8 +209,14 @@ enum UIShot {
             case "route-card", "route-card-sparse":
                 RouteCardView(preview: RoutesPreview.card(name))
                     .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(0)) }
-            case "places":
+            case "places", "places-map":
                 PlacesView(preview: RoutesPreview.places())
+            case "place-detail":
+                PlaceMapView(placeId: nil, preview: RoutesPreview.places()[0])
+            case "place-add":
+                PlaceAddView(preview: true)
+            case "rides-colours":
+                RidesListView(preview: RidesPreview.coloured(), previewColours: RidesPreview.placeColours)
             case "ride-layer-speed", "ride-layer-hills", "ride-layer-wind":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"), previewSeries: RideDetailPreview.series(),
                                previewLayer: name == "ride-layer-hills" ? .hills : (name == "ride-layer-wind" ? .wind : .speed))

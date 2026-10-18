@@ -1,52 +1,30 @@
 import CorckieCore
 import SwiftUI
 
-/// M2-05: Places (IA: Routes → Places, and Settings → Places). Every place the app learned: rename it, pick the size of its circle
-/// (automatic = 5% of the trip, T60) and say "I can charge here" (M27: a route to a place you can charge at only has to fit one way).
-/// All text comes from CorckieCore (`PlaceListBuilder`); this view only draws it and writes the change.
+/// M2-05 / F-06: Places (IA: Routes → Places, and Settings → Places). Every place the app learned, on a small map with its circle in
+/// its colour; tap one for the full map with the street name, Rename, the circle size, the colour and "I can charge here". The "+" adds a
+/// place by hand (F-13). All text comes from CorckieCore (`PlaceListBuilder`); this view only draws it.
 struct PlacesView: View {
-    var preview: [PlaceRowModel]?
+    var preview: [PlaceMapItem]?
 
-    @State private var rows: [PlaceRowModel] = []
-    @State private var renaming: PlaceRowModel?
-    @State private var nameDraft = ""
-    @State private var errorText: String?
+    @State private var items: [PlaceMapItem] = []
 
-    private var shown: [PlaceRowModel] { preview ?? rows }
+    private var shown: [PlaceMapItem] { preview ?? items }
 
     var body: some View {
         Group {
             if shown.isEmpty {
                 ContentUnavailableView("No places yet", systemImage: "mappin.slash",
-                                       description: Text("Places appear when you ride the same trip twice."))
+                                       description: Text("Places appear when you ride the same trip twice, or add one with the + above."))
             } else {
                 List {
                     ForEach(shown, id: \.id) { place in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(place.title).font(.body).foregroundStyle(place.hasName ? Color.primary : Color.secondary)
-                                    Text(place.subtitle).font(.footnote).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button("Rename") {
-                                    nameDraft = place.hasName ? place.title : ""
-                                    renaming = place
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                            }
-                            Toggle("I can charge here", isOn: Binding(get: { place.canCharge },
-                                                                      set: { setCharge(place, $0) }))
-                            Picker("Circle", selection: Binding(get: { place.radiusM ?? 0 }, set: { setRadius(place, $0) })) {
-                                Text("Automatic").tag(0.0)
-                                ForEach(PlaceListBuilder.radiusChoices, id: \.self) { r in
-                                    Text("\(Int(r)) m").tag(r)
-                                }
-                            }
+                        NavigationLink {
+                            PlaceMapView(placeId: place.id, preview: preview != nil ? place : nil)
+                        } label: {
+                            row(place)
                         }
-                        .padding(DS.Space.cardPad)
-                        .glassCard(padding: 0)
+                        .buttonStyle(.plain)
                         .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -59,53 +37,41 @@ struct PlacesView: View {
         .background { MapBackdrop().ignoresSafeArea() }
         .navigationTitle("Places")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Rename place", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-            TextField("Name", text: $nameDraft)
-            Button("Save") { saveName() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Leave it empty to remove the name.")
-        }
-        .alert("Could not change the place", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
-            Button("OK") {}
-        } message: {
-            Text(errorText ?? "")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink { PlaceAddView() } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Add a place")
+            }
         }
         .onAppear(perform: reload)
         .screen("Places")
     }
 
+    private func row(_ place: PlaceMapItem) -> some View {
+        HStack(spacing: 12) {
+            PlaceThumb(item: place)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Circle().fill(PlaceColourStore.color(place.colourId)).frame(width: 10, height: 10).accessibilityHidden(true)
+                    Text(place.row.title).font(.body).foregroundStyle(place.row.hasName ? Color.primary : Color.secondary)
+                }
+                Text(place.row.subtitle).font(.footnote).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+        }
+        .padding(DS.Space.cardPad)
+        .glassCard(padding: 0)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
     private func reload() {
         guard preview == nil else { return }
         guard let db = AppModel.shared.displayDatabase else {
-            rows = []
+            items = []
             return
         }
-        rows = RouteCardLoader.places(database: db)
-    }
-
-    private func change(_ action: (AppDatabase) throws -> Void) {
-        guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
-        do {
-            try action(db)
-            reload()
-        } catch {
-            errorText = error.localizedDescription
-        }
-    }
-
-    private func saveName() {
-        guard let place = renaming else { return }
-        let draft = nameDraft
-        renaming = nil
-        change { try PlaceService.rename(placeId: place.id, name: draft, database: $0) }
-    }
-
-    private func setCharge(_ place: PlaceRowModel, _ on: Bool) {
-        change { try PlaceService.setCanCharge(placeId: place.id, canCharge: on, database: $0) }
-    }
-
-    private func setRadius(_ place: PlaceRowModel, _ metres: Double) {
-        change { try PlaceService.setRadius(placeId: place.id, radiusM: metres > 0 ? metres : nil, database: $0) }
+        items = PlaceMapLoader.items(database: db)
     }
 }

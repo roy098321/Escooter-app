@@ -48,6 +48,7 @@ struct RideDetailView: View {
     @State private var toast: String?
     // M5-03: map layers, elevation, charts
     @State private var series: RideSeries?
+    @State private var pins: [PlacePin] = []
     @State private var layer: MapLayer = .speed
     @Environment(\.dismiss) private var dismiss
 
@@ -382,6 +383,7 @@ struct RideDetailView: View {
         let gradient = (previewSeries ?? series)?.values(layer) ?? []   // F-04: continuous gradient when the readings are there
         return Map(initialPosition: Self.position(path, sheet: true), interactionModes: [.pan, .zoom]) {
             GradientPath.lines(gradient, layer: layer)
+            PlacePinMarks(pins: preview != nil ? RideDetailPreview.pins : pins)
             ForEach(Array((gradient.isEmpty ? layerSegments : []).enumerated()), id: \.offset) { _, seg in
                 MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(MapLayer.color(level: seg.level), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
@@ -449,6 +451,7 @@ struct RideDetailView: View {
         if let full = RideSeriesLoader.toFull(db, rideId: id) { withExtras.scooterStats.append(SummaryStat("To full", full)) }
         model = withExtras
         series = RideSeriesLoader.load(db, rideId: id)
+        pins = PlaceMapLoader.pins(rideId: id, database: db)
         refreshTools(id, db)
         offer = RouteService.offer(rideId: id, database: db)
         refreshSmart(id, db)
@@ -706,4 +709,12 @@ extension RideDetailView {
             .padding(.horizontal, 4)
         }
     }
+}
+
+extension RideDetailPreview {
+    /// F-06: made-up start / end places on the preview path (first and last point of `model`)
+    static let pins: [PlacePin] = [
+        PlacePin(id: "p1", name: "Home", lat: 40.0, lon: -75.0, colourId: "green"),
+        PlacePin(id: "p2", name: "Work", lat: 40.0106, lon: -74.9870, colourId: "blue")
+    ]
 }

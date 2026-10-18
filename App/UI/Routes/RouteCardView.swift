@@ -21,6 +21,7 @@ struct RouteCardView: View {
     @State private var errorText: String?
     @State private var arriveInfo: (rides: [RouteRideStats], destination: String)?
     @State private var previewFollow = false
+    @State private var pins: [PlacePin] = []
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -140,6 +141,7 @@ struct RouteCardView: View {
                     .stroke(l.dashed ? Color.orange : Color.blue,
                             style: StrokeStyle(lineWidth: l.dashed ? 4 : 5, lineCap: .round, lineJoin: .round, dash: l.dashed ? [2, 8] : []))
             }
+            PlacePinMarks(pins: preview != nil ? RoutesPreview.pins : pins)
             // M6-01: the fastest combination being followed, on top of the variants
             if let h = highlight, h.count >= 2 {
                 MapPolyline(coordinates: h.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
@@ -316,6 +318,7 @@ struct RouteCardView: View {
             return
         }
         model = loaded
+        pins = PlaceMapLoader.pins(routeId: id, database: db)
         if let input = RouteCardLoader.cardInput(routeId: id, database: db) {
             arriveInfo = (input.rides, WhereTo.label(toName: input.toName, title: loaded.title))
         }

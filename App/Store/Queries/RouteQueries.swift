@@ -219,3 +219,37 @@ struct RouteQueries {
         }
     }
 }
+
+// MARK: F-08 / F-06 / F-13 (place colours, ride end places, places by hand)
+extension RouteQueries {
+    /// placeId to colour id, from the `place.colour.<id>` settings
+    func placeColours() throws -> [String: String] {
+        let prefix = "place.colour."
+        let rows = try database.writer.read { db in
+            try Row.fetchAll(db, sql: "SELECT key, json FROM setting WHERE key LIKE 'place.colour.%'")
+        }
+        var out: [String: String] = [:]
+        for r in rows {
+            let key: String = r["key"]
+            let json: String = r["json"]
+            if let data = json.data(using: .utf8), let id = try? JSONDecoder().decode(String.self, from: data) {
+                out[String(key.dropFirst(prefix.count))] = id
+            }
+        }
+        return out
+    }
+
+    /// rideId to the place the ride ended at (only rides that have one)
+    func endPlaceIds() throws -> [String: String] {
+        let rows = try database.writer.read { db in
+            try Row.fetchAll(db, sql: "SELECT id, endPlaceId FROM ride WHERE endPlaceId IS NOT NULL")
+        }
+        var out: [String: String] = [:]
+        for r in rows {
+            let id: String = r["id"]
+            let place: String = r["endPlaceId"]
+            out[id] = place
+        }
+        return out
+    }
+}

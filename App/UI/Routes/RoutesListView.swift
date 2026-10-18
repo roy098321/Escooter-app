@@ -235,11 +235,15 @@ enum RoutesPreview {
         (0..<6).map { ride($0, daysAgo: $0 + 1, timeS: 780 + Double($0 % 3) * 60, used: 10, variant: "v1") }
     }
 
-    /// `-uiShot places`: made-up places
-    static func places() -> [PlaceRowModel] {
-        [PlaceListBuilder.row(id: "p1", name: "Home", radiusM: nil, canCharge: true, routeCount: 3),
-         PlaceListBuilder.row(id: "p2", name: "Work", radiusM: 200, canCharge: false, routeCount: 2),
-         PlaceListBuilder.row(id: "p3", name: nil, radiusM: nil, canCharge: false, routeCount: 1)]
+    /// `-uiShot places`, `places-map`, `place-detail`: made-up places (synthetic coordinates, not real ones)
+    static func places() -> [PlaceMapItem] {
+        func item(_ id: String, _ name: String?, _ radius: Double?, _ charge: Bool, _ routes: Int, _ colour: String, _ lat: Double, _ lon: Double) -> PlaceMapItem {
+            PlaceMapItem(id: id, row: PlaceListBuilder.row(id: id, name: name, radiusM: radius, canCharge: charge, routeCount: routes, colourId: colour),
+                         lat: lat, lon: lon, colourId: colour)
+        }
+        return [item("p1", "Home", nil, true, 3, "green", 40.0105, -74.9885),
+                item("p2", "Work", 200, false, 2, "blue", 40.0305, -74.9645),
+                item("p3", nil, nil, false, 1, "orange", 40.0205, -74.9985)]
     }
 
     static func card(_ name: String) -> RouteCardModel {
@@ -261,4 +265,12 @@ enum RoutesPreview {
         model.fastest = FastestCard.make(ChoiceSamples.answer(ChoiceSamples.nineRides).answer)
         return model
     }
+}
+
+extension RoutesPreview {
+    /// F-06: made-up start / end places on the route card preview line (first and last point of `line`)
+    static let pins: [PlacePin] = [
+        PlacePin(id: "p1", name: "Home", lat: 40.0, lon: -75.0, colourId: "green"),
+        PlacePin(id: "p2", name: "Work", lat: 40.0145, lon: -74.9826, colourId: "blue")
+    ]
 }

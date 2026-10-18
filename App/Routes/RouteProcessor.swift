@@ -43,6 +43,7 @@ enum RouteProcessor {
             try store.save(place: PlaceRecord(id: p.id, name: p.name, lat: p.point.lat, lon: p.point.lon, radiusM: p.radiusM,
                                               canCharge: p.canCharge, learnedAltM: nil, createdAt: now))
         }
+        if !update.newPlaces.isEmpty { _ = PlaceColourStore.colours(database: database) }     // F-08: each new place gets its colour at once
         for r in update.newRoutes {
             try store.save(route: RouteRecord(id: r.id, fromPlaceId: r.fromPlaceId, toPlaceId: r.toPlaceId, name: r.name,
                                               usualDistanceM: r.usualDistanceM, sizeClass: r.sizeClass, state: r.state.rawValue, createdAt: now))

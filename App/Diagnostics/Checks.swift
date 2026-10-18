@@ -511,6 +511,12 @@ enum CheckList {
           "Speed 88 pt, battery and ride time 60 pt (safety minimums 76 / 60); the camera heads along the course, aims at most 1.5 s ahead of the fix and holds its heading below 5 km/h"),
         m("u57", p6M, "The way back of a saved route is saved at once (B24)", "Nothing to do · Run all automatic marks it",
           "On a temporary database: with Home → Work saved, the first Work → Home trip is on a saved route; Not a route / Remove still dismisses it"),
+        m("u58", p6M, "Place colours (F-08)", "Nothing to do · Run all automatic marks it",
+          "On a temporary database: Home gets green and Work blue, the other places the next colours of the colour-blind-safe set in order, every place its own colour; a colour picked by hand is stored per place (setting place.colour.<id>) and the others stay"),
+        m("u59", p6M, "Places by hand and start / end labels (F-13 / F-06)", "Nothing to do · Run all automatic marks it",
+          "On a temporary database: a pin with name, circle size and colour is saved as a place in the same table, shows on the place map screen and can be changed; route and ride maps get a named, coloured pin for their start and end place; a ride that ended at a place has that place's colour for the Rides list strip"),
+        m("u60", p6M, "The place map's street name asks with rounded coordinates only (F-06 / P-2)", "Nothing to do · Run all automatic marks it",
+          "Coordinates are rounded to 3 decimals (about 100 m) before the phone's geocoder is asked, nearby points share one cache entry, and a street asked before is read from the cache without asking again"),
         m("rt21", routesM, "A real way back is offered after one ride", "Ride Work → Home (or the way back of any route you have) once",
           "The summary offers Save as route? (\"This is the way back of one of your routes\"); the ride shows its start and end place", scooter: true, manual: true),
         m("ui1", p6M, "Home and Rides scroll to the very bottom, short stiff bounce (B20 / B23)", "Home → drag up to the end. Rides → scroll the whole list. Pull past each end",
@@ -518,9 +524,15 @@ enum CheckList {
         m("ui2", p6M, "Live tiles: equal battery and ride time, smaller speed (B21)", "Developer → Simulated scooter → Run on the real screens → Ride 1",
           "Speed tile shorter (88 pt) with km/h and SLOW on the right; battery and ride-time tiles the same size and font, centred, small labels battery / ride time", manual: true, tool: .simulator),
         m("ui3", p6M, "Map glides, turns with you and looks ahead (B22 / F-10)", "Ride with the CorckieApp screen on, along a street with a few turns",
-          "The map moves continuously (no move-stop-move), turns so your direction is up, your dot sits in the lower third, it stays still while you stand, and with Reduce Motion on it stays north-up without animation", scooter: true, manual: true),
+          "The map moves continuously (no move-stop-move), turns so your direction is up, your dot sits just above the speed tile (not hidden behind it), it stays still while you stand, and with Reduce Motion on it stays north-up without animation", scooter: true, manual: true),
         m("ui4", p6M, "New app icon", "Look at the Home Screen and Settings → CorckieApp",
-          "The orange split C on a dark disc over beige, with orange drops", manual: true)
+          "The orange split C on a dark disc over beige, with orange drops", manual: true),
+        m("ui5", p6M, "Places on the map (F-06)", "Settings or Routes → Places",
+          "Each place has a small map with its pin and circle in its colour and a colour dot by its name; tap one: a full map with the pin, circle, name, the street name below it, and Rename, circle size, colour and I can charge here. Route cards and ride maps label their start and end with the place name on a coloured pin", manual: true),
+        m("ui6", p6M, "Add a place by hand (F-13)", "Places → + (top right)",
+          "Press and hold on the map drops a pin (or use the button for the middle of the map, or search an address); name it, pick the circle size and colour, Save place: it appears in Places like the learned ones", manual: true),
+        m("ui7", p6M, "Place colours (F-08)", "Rides, Places and a ride map",
+          "Each place has its own colour (Home green, Work blue, then others), editable on the place map screen; the pins on the maps use it; Rides rows that end at a place have a thin strip of that colour on their left, grey when the ride has no saved destination", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

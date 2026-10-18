@@ -9,8 +9,11 @@ import SwiftUI
 struct RidesListView: View {
     /// ui-shots: made-up rides instead of the stored ones
     var preview: [RideListItem]?
+    /// ui-shots: made-up place colours (placeId to colour id)
+    var previewColours: [String: String]?
 
     @State private var items: [RideListItem] = []
+    @State private var placeColours: [String: String] = [:]
     @State private var filter: RideDateFilter = .allTime
     @State private var hopsOpen = false
     @State private var pendingDelete: RideListItem?
@@ -211,12 +214,23 @@ struct RidesListView: View {
         if ride.kind == "shortHop" && !showDay { Pill(text: "Short hop", tint: .secondary) }
     }
 
+    /// F-08: a thin strip on the left of the row in the colour of the place the ride ended at (grey without a saved destination)
+    private func placeStrip(_ ride: RideListItem) -> some View {
+        let colour = ride.endPlaceId.flatMap { placeColours[$0] }
+        return Capsule()
+            .fill(colour.map { PlaceColourStore.color($0) } ?? Color(hex: PlaceColours.greyHex).opacity(0.5))
+            .frame(width: 4)
+            .padding(.vertical, 2)
+            .accessibilityHidden(true)
+    }
+
     private func row(_ ride: RideListItem, showDay: Bool = false, latest: Bool = false) -> some View {
         let offset = ride.utcOffsetMin ?? TimeZone.current.secondsFromGMT() / 60
         let date = Date(timeIntervalSince1970: Double(ride.startAt) / 1000)
         let (km, minutes) = Self.numbers(ride)
         return Button { selected = RideRoute(id: ride.id) } label: {
             HStack(alignment: .center, spacing: 10) {
+                placeStrip(ride)
                 VStack(alignment: .leading, spacing: 3) {
                     let time = Text(Self.timeText(date, offsetMin: offset, withDay: showDay)).font(.body.weight(.semibold))
                     ViewThatFits(in: .horizontal) {
@@ -252,12 +266,14 @@ struct RidesListView: View {
     }
 
     private func reload() {
-        if let preview { items = preview; return }
+        if let preview { items = preview; placeColours = previewColours ?? [:]; return }
         guard let db = AppModel.shared.displayDatabase else { items = []; return }
+        let ends = (try? RouteQueries(db).endPlaceIds()) ?? [:]
+        placeColours = PlaceColourStore.colours(database: db)
         let rows = (try? RideQueries(db).rides()) ?? []
         items = rows.map {
             RideListItem(id: $0.id, startAt: $0.startAt, utcOffsetMin: $0.utcOffsetMin, kind: $0.kind,
-                         distanceM: $0.distanceM, totalS: $0.totalS)
+                         distanceM: $0.distanceM, totalS: $0.totalS, endPlaceId: ends[$0.id])
         }
     }
 
@@ -337,5 +353,18 @@ enum RidesPreview {
             RideListItem(id: "p6", startAt: now - 54 * h, utcOffsetMin: offset, kind: "shortHop", distanceM: 1_200, totalS: 300),
             RideListItem(id: "p7", startAt: now - 77 * h, utcOffsetMin: offset, kind: "ride", distanceM: 9_800, totalS: 1_740)
         ]
+    }
+}
+
+extension RidesPreview {
+    /// F-08: made-up place colours for `-uiShot rides-colours`
+    static let placeColours: [String: String] = ["home": "green", "work": "blue", "gym": "orange"]
+
+    /// rides that ended at Home, Work, a gym and nowhere saved
+    static func coloured() -> [RideListItem] {
+        var items = list()
+        let ends: [String?] = ["work", "home", "work", nil, "gym", "home", "work"]
+        for i in items.indices { items[i].endPlaceId = ends[i] }
+        return items
     }
 }

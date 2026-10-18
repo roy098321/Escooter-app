@@ -65,7 +65,7 @@ actor RouteNaming {
 
     /// One street for one (rounded) point: from the cache, else from the geocoder. `answered` = the geocoder (or the cache) gave an
     /// answer, even "no street here"; false = it could not be asked (offline, throttled).
-    private func street(at point: GeoPoint, database: AppDatabase) async -> (street: String?, answered: Bool) {
+    func street(at point: GeoPoint, database: AppDatabase) async -> (street: String?, answered: Bool) {
         let q = RideQueries(database)
         let key = StreetNaming.cacheKey(point)
         if let json = try? q.setting(key: key), let data = json.data(using: .utf8),
