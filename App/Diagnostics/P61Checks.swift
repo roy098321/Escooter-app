@@ -117,7 +117,7 @@ enum P61Checks {
             }
             let stops = try RideQueries(temp).stops(rideId: rideId)
             let longStop = stops.contains { ($0.endT ?? $0.startT) - $0.startT >= 10_000 }
-            let empty = counts.filter { $0.1 == 0 && ($0.0 != "stopId" || longStop) }.map(\.0)
+            let empty = counts.filter { $0.1 == 0 && ($0.0 != "stopId" || longStop) }.map { $0.0 }
             let full = counts.filter { ["moving", "distanceM"].contains($0.0) }.allSatisfy { $0.1 == total }
             expect(empty.isEmpty, empty.isEmpty ? "every column has values (\(total) samples)" : "empty: " + empty.joined(separator: ", "))
             expect(full, "moving and distance on every sample")

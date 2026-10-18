@@ -178,7 +178,7 @@ final class PhoneReplayTests: XCTestCase {
         XCTAssertTrue(stream.scooter.contains { $0.t == 110 && $0.event == .connected })
         let inGap = stream.phone.compactMap(\.fix).filter { $0.t > 75 && $0.t < 105 }
         XCTAssertGreaterThan(inGap.count, 25)
-        for fix in inGap { XCTAssertEqual(fix.speedMps * 3.6, 46, accuracy: 0.1) }
+        for fix in inGap { XCTAssertEqual(fix.speedMps * 3.6, 49, accuracy: 0.1) }
     }
 
     /// TRAP-WALK: 5 km/h on the wheel, no motor current, GPS walking.

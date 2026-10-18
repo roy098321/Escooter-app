@@ -56,15 +56,15 @@ final class LiveStateTests: XCTestCase {
 
     func testSlowOnGpsSpeed() {
         var b = LiveStateBuilder()
-        let s = b.update(LiveInput(gpsSpeedKmh: 46, scooterLinked: false))
+        let s = b.update(LiveInput(gpsSpeedKmh: 49, scooterLinked: false))
         XCTAssertTrue(s.slow)
         XCTAssertEqual(s.speedLabel, "GPS")      // GPS label is always set in phone mode
-        XCTAssertFalse(b.update(LiveInput(gpsSpeedKmh: 42.5, scooterLinked: false)).slow)
+        XCTAssertFalse(b.update(LiveInput(gpsSpeedKmh: 45.5, scooterLinked: false)).slow)
     }
 
     func testNoSpeedAtAllKeepsWarningState() {
         var b = LiveStateBuilder()
-        _ = b.update(LiveInput(scooterSpeedKmh: 47))
+        _ = b.update(LiveInput(scooterSpeedKmh: 50))
         let s = b.update(LiveInput(scooterSpeedKmh: nil, gpsSpeedKmh: nil, scooterLinked: false))
         XCTAssertNil(s.speedKmh)
         XCTAssertTrue(s.slow)
