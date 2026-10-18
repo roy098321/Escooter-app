@@ -77,6 +77,7 @@ struct RideDetailView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .stiffBounce()
         .onAppear { if let l = previewLayer { layer = l } }
         .confirmationDialog("Delete this ride?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete ride", role: .destructive) { delete() }

@@ -53,4 +53,19 @@ final class LiveViewGuardTests: XCTestCase {
         guard let range = live.range(of: "closeReady()") else { return XCTFail("closeReady missing") }
         XCTAssertTrue(live[..<range.lowerBound].suffix(600).contains("if s.canClose"), "Close exists only where canClose is true (Ready)")
     }
+
+    /// B21: the live numbers keep their safe sizes (speed 76 pt, battery and ride time 60 pt, banners 17 pt) and the tiles are drawn from them
+    func test_liveNumbersKeepTheirSafeSizes() throws {
+        let live = try text("UI/Live/LiveRideView.swift")
+        func constant(_ name: String) -> Int? {
+            guard let r = live.range(of: "static let \(name): CGFloat = ") else { return nil }
+            return Int(live[r.upperBound...].prefix(while: { $0.isNumber }))
+        }
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(constant("speedPt")), 76)
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(constant("tilePt")), 60)
+        XCTAssertTrue(live.contains("size: Self.speedPt"), "the speed number uses speedPt")
+        XCTAssertEqual(live.components(separatedBy: "size: Self.tilePt").count - 1, 1, "battery and ride time share one small tile (same font)")
+        XCTAssertTrue(live.contains("batteryTile(s)") && live.contains("clockTile(s)"))
+        XCTAssertTrue(live.contains("banner(s, text)") && live.contains(".font(.title3.weight(.semibold))"), "banners stay at title3 (20 pt, above 17)")
+    }
 }

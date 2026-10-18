@@ -95,6 +95,7 @@ struct RidesListView: View {
             .padding(.horizontal, DS.Space.gutter)
             Spacer(minLength: 0)
         } else {
+            ScrollViewReader { proxy in
             List {
                 filterPill
                     .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
@@ -120,9 +121,20 @@ struct RidesListView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                 }
+                Color.clear.frame(height: 1).id("list-end")
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .stiffBounce()
+            .task {
+                // the ui-shot of the very bottom of a long list (B20)
+                guard UIShot.requested == "rides-long" else { return }
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                proxy.scrollTo("list-end", anchor: .bottom)
+            }
+            }
         }
     }
 
@@ -297,6 +309,17 @@ struct RidesListView: View {
 
 /// Made-up rides for the CI ui-shot `rides-list` (not real places or days)
 enum RidesPreview {
+    /// B20: 40 made-up rides over many days, long enough to scroll
+    static func long() -> [RideListItem] {
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let h: Int64 = 3_600_000
+        let offset = TimeZone.current.secondsFromGMT() / 60
+        return (0..<40).map { i in
+            RideListItem(id: "q\(i)", startAt: now - Int64(2 + i * 19) * h, utcOffsetMin: offset, kind: "ride",
+                         distanceM: Double(4_000 + (i * 733) % 9_000), totalS: Double(900 + (i * 137) % 1_200))
+        }
+    }
+
     static func list() -> [RideListItem] {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let h: Int64 = 3_600_000

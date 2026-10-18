@@ -34,6 +34,7 @@ struct BatteryView: View {
             .padding(DS.Space.gutter)
         }
         .background { MapBackdrop().ignoresSafeArea() }
+        .stiffBounce()
         .navigationTitle("Battery")
         .onAppear(perform: reload)
         .screen("Battery")

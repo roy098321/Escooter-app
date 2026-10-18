@@ -160,7 +160,14 @@ enum RouteProcessor {
 enum RouteService {
     /// "Save as route?" → Save
     static func save(routeId: String, database: AppDatabase) throws {
-        try RouteQueries(database).setState(routeId: routeId, state: "saved")
+        let store = RouteQueries(database)
+        try store.setState(routeId: routeId, state: "saved")
+        // B24 follow-up: a way back that is only suggested (Work → Home) is saved with it; a dismissed one stays dismissed
+        if let route = try store.route(id: routeId), let from = route.fromPlaceId, let to = route.toPlaceId {
+            for back in try store.routes() where back.fromPlaceId == to && back.toPlaceId == from && back.state == "suggested" {
+                try store.setState(routeId: back.id, state: "saved")
+            }
+        }
     }
 
     /// "Not a route": the route row stays as `dismissed` so the trip is never suggested again; its rides lose the link.

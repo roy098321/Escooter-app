@@ -50,7 +50,6 @@ private struct SunlightRoot: ViewModifier {
         content
             .environment(\.sunlight, monitor.on)
             .environment(\.legibilityWeight, monitor.on ? LegibilityWeight.bold : nil)
-            .scrollBounceBehavior(.basedOnSize)   // B17: screens that fit do not rubber-band
             .preferredColorScheme(monitor.on ? .light : nil)
             .onAppear { monitor.refresh() }
             .onChange(of: phase) { _, p in if p == .active { monitor.refresh() } }

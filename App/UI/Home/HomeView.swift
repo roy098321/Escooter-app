@@ -112,6 +112,7 @@ struct HomeView: View {
             .padding(.horizontal, DS.Space.gutter)
             .padding(.bottom, DS.Space.block)
         }
+        .defaultScrollAnchor(UIShot.requested == "home-bottom" ? .bottom : nil)   // the ui-shot of the very bottom (B23)
     }
 
     // MARK: Load for the next ride (F-02)

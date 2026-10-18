@@ -35,6 +35,47 @@ final class RouteRelinkTests: XCTestCase {
         return try XCTUnwrap(try RouteProcessor.process(rideId: id, database: db))
     }
 
+    /// B24 follow-up: when Home → Work is already saved, the first trip back is saved at once (matched), and it can still be dismissed.
+    func test_B24_wayBackOfASavedRoute_isSavedAtOnce() throws {
+        let db = try open()
+        let store = RouteQueries(db)
+        try ride(db, "a", SyntheticRoutes.main, at: 0)
+        let b = try ride(db, "b", SyntheticRoutes.main, at: 1)
+        let abId = try XCTUnwrap(b.routeId)
+        try RouteService.save(routeId: abId, database: db)
+
+        let c = try ride(db, "c", back, at: 1.4)
+        let baId = try XCTUnwrap(c.routeId)
+        XCTAssertNotEqual(baId, abId)
+        XCTAssertEqual(c.outcome, .matched)
+        XCTAssertEqual(try store.route(id: baId)?.state, "saved")
+        XCTAssertEqual(try store.counts().places, 2)
+
+        // Not a route / Remove still work
+        try RouteService.remove(routeId: baId, database: db)
+        XCTAssertEqual(try store.route(id: baId)?.state, "dismissed")
+        XCTAssertEqual(try store.route(id: abId)?.state, "saved")
+    }
+
+    /// B24 follow-up: saving the forward route afterwards saves a suggested way back too; a dismissed way back stays dismissed.
+    func test_B24_savingTheForwardRoute_savesASuggestedWayBack() throws {
+        let db = try open()
+        let store = RouteQueries(db)
+        try ride(db, "a", SyntheticRoutes.main, at: 0)
+        let b = try ride(db, "b", SyntheticRoutes.main, at: 1)
+        let abId = try XCTUnwrap(b.routeId)
+        let c = try ride(db, "c", back, at: 1.4)
+        let baId = try XCTUnwrap(c.routeId)
+        XCTAssertEqual(try store.route(id: baId)?.state, "suggested")
+        try RouteService.save(routeId: abId, database: db)
+        XCTAssertEqual(try store.route(id: baId)?.state, "saved")
+
+        try RouteService.dismiss(routeId: baId, database: db)
+        try RouteService.save(routeId: abId, database: db)
+        XCTAssertEqual(try store.route(id: baId)?.state, "dismissed")
+    }
+
+
     func test_B24_atRideClose_wayBackIsOffered_andEveryRideHasItsPlaces() throws {
         let db = try open()
         let store = RouteQueries(db)

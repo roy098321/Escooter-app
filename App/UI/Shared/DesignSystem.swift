@@ -245,13 +245,13 @@ private struct GlassListLook: ViewModifier {
                 .background(Color(.systemGroupedBackground).ignoresSafeArea())
                 .navigationBarTitleDisplayMode(.large)
                 .fontWeight(sunlight ? .semibold : nil)
-                .scrollBounceBehavior(.basedOnSize)
+                .stiffBounce()
         } else {
             content
                 .scrollContentBackground(.hidden)
                 .background { MapBackdrop().ignoresSafeArea() }
                 .textCase(nil)
-                .scrollBounceBehavior(.basedOnSize)
+                .stiffBounce()
         }
     }
 }

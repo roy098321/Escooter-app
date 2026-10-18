@@ -23,6 +23,8 @@ struct FloatingTabBar: View {
     @Environment(\.sunlight) private var sunlight
 
     static let barHeight: CGFloat = 64
+    /// What the bar covers at the bottom of a tab (bar + room for the raised Home disc + the gap below + a little air): scroll content gets this as a bottom margin (B20 / B23)
+    static let clearance: CGFloat = barHeight + 24 + 8 + 12
     private let discSize: CGFloat = 58
 
     var body: some View {

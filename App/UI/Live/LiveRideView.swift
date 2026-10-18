@@ -22,6 +22,7 @@ struct LiveRideView: View {
     @State private var holdActive = false
     @State private var holdProgress = 0.0
     @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
+    @State private var track = LiveCameraTrack()
     private let ticker = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     private var screen: LiveScreenState {
@@ -63,27 +64,46 @@ struct LiveRideView: View {
             if let text { AccessibilityNotification.Announcement(text).post() }
         }
         .onReceive(ticker) { _ in tickHold() }
-        .onChange(of: position?.lat) { _, _ in follow() }
+        .onChange(of: position) { _, _ in follow() }
         .screen("Live ride")
     }
 
     // MARK: Map
 
+    /// F-10: with motion on, the Map is taller than the screen (4/3 of it, hanging off the bottom), so the camera centre, and with it the
+    /// rider's dot, sits two thirds of the way down: most of the screen shows the road ahead. The dot is drawn at that fixed spot.
+    private var lookAhead: Bool { !reduceMotion }
+
     private func mapView(_ s: LiveScreenState) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .top) {
+                mapContent(s)
+                    .frame(width: geo.size.width, height: lookAhead ? geo.size.height * 4 / 3 : geo.size.height)
+                if lookAhead, position != nil {
+                    dotView(s).position(x: geo.size.width / 2, y: geo.size.height * 2 / 3)
+                }
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    private func dotView(_ s: LiveScreenState) -> some View {
+        // M2-08: hollow while the dot moves by wheel distance (no GPS, known route)
+        Circle()
+            .fill(s.dotHollow ? Color.white.opacity(0.6) : (s.dotGreyed ? Color.gray : Color.blue))
+            .frame(width: 20, height: 20)
+            .overlay(Circle().stroke(s.dotHollow ? Color.blue : Color.white, lineWidth: 3))
+    }
+
+    private func mapContent(_ s: LiveScreenState) -> some View {
         Map(position: $camera, interactionModes: []) {
             ForEach(Array(LiveGradient.stretches(path).enumerated()), id: \.offset) { _, st in
                 MapPolyline(coordinates: st.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(GradientPath.color(.speed, st.value),
                             style: StrokeStyle(lineWidth: sunlight ? 9 : 6, lineCap: .round, lineJoin: .round, dash: st.dashed ? [2, 10] : []))
             }
-            if let p = position {
-                Annotation("", coordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon)) {
-                    // M2-08: hollow while the dot moves by wheel distance (no GPS, known route)
-                    Circle()
-                        .fill(s.dotHollow ? Color.white.opacity(0.6) : (s.dotGreyed ? Color.gray : Color.blue))
-                        .frame(width: 20, height: 20)
-                        .overlay(Circle().stroke(s.dotHollow ? Color.blue : Color.white, lineWidth: 3))
-                }
+            if let p = position, !lookAhead {
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon)) { dotView(s) }
             }
             if position == nil {
                 UserAnnotation()
@@ -91,16 +111,31 @@ struct LiveRideView: View {
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .accessibilityLabel("Map, following your position")
+        .onAppear { showPreviewCamera() }
     }
 
+    /// ui-shots: the made-up position, turned the way the made-up path runs
+    private func showPreviewCamera() {
+        guard let p = preview?.position else { return }
+        camera = .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon), distance: 700,
+                                   heading: lookAhead ? 40 : 0))
+    }
+
+    /// B22 / F-10: every fix glides the camera (and with it the dot) in a straight line over the fix interval to the position predicted
+    /// for the next fix; the map turns with the course. No timers: one animation per fix. Reduce Motion: north-up, no animation.
     private func follow() {
         guard preview == nil, let p = position else { return }
-        let target = MapCameraPosition.camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon), distance: 700))
+        let speed = screen.tiles.speedKmh.map(Double.init)
+        let u = track.fix(lat: p.lat, lon: p.lon, atS: Date().timeIntervalSince1970, speedKmh: speed)
         if reduceMotion {
-            camera = target
-        } else {
-            withAnimation(.easeInOut(duration: 0.8)) { camera = target }
+            camera = .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon), distance: 700))
+            return
         }
+        let target = MapCameraPosition.camera(MapCamera(
+            centerCoordinate: CLLocationCoordinate2D(latitude: u.centerLat, longitude: u.centerLon),
+            distance: LiveCameraTrack.cameraDistanceM(speedKmh: speed ?? 0),
+            heading: u.headingDeg ?? 0))
+        withAnimation(.linear(duration: u.durationS)) { camera = target }
     }
 
     static func color(_ bucket: Int) -> Color {
@@ -178,66 +213,83 @@ struct LiveRideView: View {
 
     // MARK: Tiles
 
+    /// B21: font sizes of the live tiles. Safety guards (LiveViewGuardTests): speed >= 76 pt, battery and ride time >= 60 pt.
+    static let speedPt: CGFloat = 88
+    static let tilePt: CGFloat = 60
+
     private func tiles(_ s: LiveScreenState) -> some View {
+        VStack(spacing: 12) {
+            speedTile(s)
+            HStack(spacing: 12) {
+                batteryTile(s)
+                if s.showClock { clockTile(s) }
+            }
+        }
+    }
+
+    private func speedTile(_ s: LiveScreenState) -> some View {
         let t = s.tiles
-        let batteryNumber: String = {
-            guard let b = t.batteryPct else { return "\u{2013}" }
-            return (t.batteryEstimated ? "~" : "") + "\(b)%"
-        }()
         let speedLabel = "Speed " + (t.speedKmh.map { "\($0) kilometres per hour" } ?? "unknown") + (t.slow ? ", too fast" : "")
             + (t.speedLabel.map { ", " + $0 } ?? "")
-        let batteryLabel = "Battery " + (t.batteryPct.map { "\($0) percent" + (t.batteryEstimated ? ", estimated" : "") } ?? "unknown")
-        return VStack(spacing: 12) {
-            GlassCard(tint: t.slow ? Color.red : nil) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(t.speedKmh.map { String($0) } ?? "\u{2013}")
-                        .font(.system(size: 112, weight: .bold, design: .rounded).monospacedDigit())
-                        .foregroundStyle(t.slow ? Color.red : (t.speedGreyed ? Color.secondary : Color.primary))
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 6) {
-                        Text("km/h").font(.title3).foregroundStyle(.secondary)
-                        if let label = t.speedLabel {
-                            Text(label)
-                                .font(.headline)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 2)
-                                .sunPanel(Capsule(), thin: true)
-                        }
-                        if let slow = t.slowText {
-                            Text(slow)
-                                .font(.system(size: 34, weight: .heavy, design: .rounded))
-                                .foregroundStyle(Color.white)
-                                .padding(.horizontal, 12)
-                                .background(Color.red, in: Capsule())
-                        }
+        return GlassCard(tint: t.slow ? Color.red : nil) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(t.speedKmh.map { String($0) } ?? "\u{2013}")
+                    .font(.system(size: Self.speedPt, weight: .bold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(t.slow ? Color.red : (t.speedGreyed ? Color.secondary : Color.primary))
+                Spacer()
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text("km/h").font(.title3).foregroundStyle(.secondary)
+                    if let label = t.speedLabel {
+                        Text(label)
+                            .font(.headline)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 2)
+                            .sunPanel(Capsule(), thin: true)
                     }
-                }
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(speedLabel)
-            HStack(spacing: 12) {
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(batteryNumber)
-                            .font(.system(size: 64, weight: .bold, design: .rounded).monospacedDigit())
-                        if t.batteryEstimated {
-                            Text("est.").font(.headline).foregroundStyle(.secondary)
-                        }
+                    if let slow = t.slowText {
+                        Text(slow)
+                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Color.white)
+                            .padding(.horizontal, 12)
+                            .background(Color.red, in: Capsule())
                     }
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(batteryLabel)
-                if s.showClock {
-                    GlassCard {
-                        Text(s.clockText)
-                            .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
-                            .frame(maxWidth: .infinity)
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Ride time " + s.clockText)
                 }
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(speedLabel)
+    }
+
+    /// battery and ride time share one look: same font, centred, a small label under the number (B21)
+    private func smallTile(_ number: String, label: String) -> some View {
+        GlassCard {
+            VStack(spacing: 0) {
+                Text(number)
+                    .font(.system(size: Self.tilePt, weight: .bold, design: .rounded).monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)       // only for "~100%" or a ride past an hour; normally the full size
+                Text(label).font(.footnote).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func batteryTile(_ s: LiveScreenState) -> some View {
+        let t = s.tiles
+        let number: String = {
+            guard let b = t.batteryPct else { return "\u{2013}" }
+            return (t.batteryEstimated ? "~" : "") + "\(b)%"
+        }()
+        let spoken = "Battery " + (t.batteryPct.map { "\($0) percent" + (t.batteryEstimated ? ", estimated" : "") } ?? "unknown")
+        return smallTile(number, label: t.batteryEstimated ? "battery \u{00B7} est." : "battery")
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spoken)
+    }
+
+    private func clockTile(_ s: LiveScreenState) -> some View {
+        smallTile(s.clockText, label: "ride time")
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Ride time " + s.clockText)
     }
 
     // MARK: Controls

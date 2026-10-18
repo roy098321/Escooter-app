@@ -505,8 +505,22 @@ enum CheckList {
           "The made-up rides that drop the link while standing (END-A, AUTO-OFF) end as scooterOff, not disconnected, with no scooter gap after the switch-off"),
         m("u54", p6M, "\"Scooter on\" uses a live battery % (B27)", "Nothing to do · Run all automatic marks it",
           "With packets but no live battery reading within 2 s the notification says Scooter on without a %; a frame left from before the switch-off gives no %; a new connection starts with no frame"),
+        m("u55", p6M, "Short stiff bounce and room under the floating bar (B20 / B23)", "Nothing to do · Run all automatic marks it",
+          "The shared scroll helper caps the overscroll at its limit (35 pt) with strong resistance at both ends, leaves the inside of the list alone, and the bottom margin covers the bar plus the raised Home disc"),
+        m("u56", p6M, "Live tile sizes and the camera glide (B21 / B22 / F-10)", "Nothing to do · Run all automatic marks it",
+          "Speed 88 pt, battery and ride time 60 pt (safety minimums 76 / 60); the camera heads along the course, aims at most 1.5 s ahead of the fix and holds its heading below 5 km/h"),
+        m("u57", p6M, "The way back of a saved route is saved at once (B24)", "Nothing to do · Run all automatic marks it",
+          "On a temporary database: with Home → Work saved, the first Work → Home trip is on a saved route; Not a route / Remove still dismisses it"),
         m("rt21", routesM, "A real way back is offered after one ride", "Ride Work → Home (or the way back of any route you have) once",
-          "The summary offers Save as route? (\"This is the way back of one of your routes\"); the ride shows its start and end place", scooter: true, manual: true)
+          "The summary offers Save as route? (\"This is the way back of one of your routes\"); the ride shows its start and end place", scooter: true, manual: true),
+        m("ui1", p6M, "Home and Rides scroll to the very bottom, short stiff bounce (B20 / B23)", "Home → drag up to the end. Rides → scroll the whole list. Pull past each end",
+          "The last item (Load for the next ride; the oldest ride) rests fully above the tab bar; the screen always scrolls when content is taller; past the ends it gives only a short, firm bounce (about 35 pt), not a wall and not soft", manual: true),
+        m("ui2", p6M, "Live tiles: equal battery and ride time, smaller speed (B21)", "Developer → Simulated scooter → Run on the real screens → Ride 1",
+          "Speed tile shorter (88 pt) with km/h and SLOW on the right; battery and ride-time tiles the same size and font, centred, small labels battery / ride time", manual: true, tool: .simulator),
+        m("ui3", p6M, "Map glides, turns with you and looks ahead (B22 / F-10)", "Ride with the CorckieApp screen on, along a street with a few turns",
+          "The map moves continuously (no move-stop-move), turns so your direction is up, your dot sits in the lower third, it stays still while you stand, and with Reduce Motion on it stays north-up without animation", scooter: true, manual: true),
+        m("ui4", p6M, "New app icon", "Look at the Home Screen and Settings → CorckieApp",
+          "The orange split C on a dark disc over beige, with orange drops", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

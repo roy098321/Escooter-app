@@ -232,6 +232,17 @@ final class RoutesTests: XCTestCase {
         XCTAssertTrue(d.newRoutes.isEmpty)
     }
 
+    /// B24 follow-up: the way back of a SAVED route is saved at once (matched), the way back of a suggested one is only suggested.
+    func test_B24_wayBackOfASavedRoute_isSaved() {
+        var r = feed([ride("a", SyntheticRoutes.main), ride("b", SyntheticRoutes.main, at: 24)])
+        r.book.routes[0].state = .saved
+        let c = r.book.ingest(ride("c", SyntheticRoutes.reversed(SyntheticRoutes.main), at: 32), pool: [], makeID: { self.makeID() })
+        XCTAssertEqual(c.assignments.first?.outcome, .matched)
+        XCTAssertEqual(c.newRoutes.first?.state, .saved)
+        XCTAssertEqual(c.newRoutes.count, 1)
+    }
+
+
     /// B24: a dismissed route is not reversed into a new suggestion; its way back waits for two trips as usual.
     func test_B24_wayBackOfADismissedRoute_waits() {
         var r = feed([ride("a", SyntheticRoutes.main), ride("b", SyntheticRoutes.main, at: 24)])

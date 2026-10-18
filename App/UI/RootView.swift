@@ -9,7 +9,7 @@ struct RootView: View {
 
     var body: some View {
         // v1 on every tab and pushed screen (owner, P4 D3); sheets add their own `.v1Label()`.
-        content.v1Label().sunlightRoot().scrollBounceBehavior(.basedOnSize)
+        content.v1Label().sunlightRoot()
             .onAppear { MapSnapshotStore.shared.refresh() }
             .onChange(of: scenePhase) { _, p in if p == .active { MapSnapshotStore.shared.refresh() } }
             .onChange(of: PhoneSensors.shared.roundedLocation.map { "\($0.lat),\($0.lon)" }) { _, _ in MapSnapshotStore.shared.refresh() }
@@ -55,22 +55,32 @@ struct RootView: View {
         // underneath, so every tab keeps its own stack and its on-appear refresh.
         TabView(selection: $tab) {
             RoutesListView()
+                .tabBarClearance()
+                .stiffBounce()
                 .id(rootTokens[0])
                 .toolbar(.hidden, for: .tabBar)
                 .tag(0)
             RidesListView()
+                .tabBarClearance()
+                .stiffBounce()
                 .id(rootTokens[1])
                 .toolbar(.hidden, for: .tabBar)
                 .tag(1)
             HomeView()
+                .tabBarClearance()
+                .stiffBounce()
                 .id(rootTokens[2])
                 .toolbar(.hidden, for: .tabBar)
                 .tag(2)
             StatsView()
+                .tabBarClearance()
+                .stiffBounce()
                 .id(rootTokens[3])
                 .toolbar(.hidden, for: .tabBar)
                 .tag(3)
             ScooterTabView()
+                .tabBarClearance()
+                .stiffBounce()
                 .id(rootTokens[4])
                 .toolbar(.hidden, for: .tabBar)
                 .tag(4)
@@ -157,7 +167,7 @@ enum UIShot {
 
     /// Every screen name the ui-shots and the check u44 open (M6-05). New states are added here and to the ui-shots list in ci.yml.
     static let allNames: [String] = [
-        "settings", "settings-full", "settings-data", "export", "restore", "developer", "checks", "results", "simulator", "outside", "scooter", "rides", "rides-list",
+        "settings", "settings-full", "settings-data", "export", "restore", "developer", "checks", "results", "simulator", "outside", "scooter", "rides", "rides-list", "rides-long", "home-bottom",
         "ride-detail", "ride-nogps", "ride-gap", "ride-walk", "ride-detail-full", "ride-layer-speed", "ride-layer-hills", "ride-layer-wind", "ride-save-route", "ride-prompt", "ride-insights", "replay",
         "ride-compare", "ride-merge", "ride-trim", "routes-empty", "routes-list", "routes-greyed", "route-card", "route-card-sparse", "places",
         "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-empty", "week-card", "factors", "factors-sparse",
@@ -183,6 +193,14 @@ enum UIShot {
             case "simulator": SimulatorView()
             case "rides": RidesListView()
             case "rides-list": RidesListView(preview: RidesPreview.list())
+            case "rides-long":
+                RidesListView(preview: RidesPreview.long())
+                    .tabBarClearance()
+                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }
+            case "home-bottom":
+                HomeView(preview: HomePreview.input("home-ready"))
+                    .tabBarClearance()
+                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(2)) }
             case "ride-detail", "ride-nogps", "ride-gap", "ride-walk":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model(name))
                     .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }

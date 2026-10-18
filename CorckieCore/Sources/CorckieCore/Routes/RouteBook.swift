@@ -131,6 +131,7 @@ public struct RouteBook: Equatable, Sendable {
         let reverse = reverseOfKnownRoute(start: ends.start, end: ends.end)
         guard mates.count + 1 >= T.t63SuggestRouteTrips || reverse else { return plain(.pending) }
 
+        // B24 follow-up: when the forward route is already SAVED its way back is saved at once too (Not a route / Remove still work)
         // New suggested route: places at the FIRST trip's points (not averaged: they would drift)
         let all = (mates + [ride]).sorted { $0.startAt < $1.startAt }
         guard let firstTrip = all.first, let fs = firstTrip.shape.start, let fe = firstTrip.shape.end else { return plain(.pending) }
@@ -141,7 +142,8 @@ public struct RouteBook: Equatable, Sendable {
         guard let startPlace = sp, let endPlace = ep else { return plain(.pending) }
         let usual = Geo.median(all.map { $0.distanceM }) ?? ride.distanceM
         let route = RouteInfo(id: makeID(), fromPlaceId: startPlace.id, toPlaceId: endPlace.id, name: nil, usualDistanceM: usual,
-                              state: .suggested, sizeClass: RideSizeClass.of(distanceM: usual).rawValue)
+                              state: reverse && forwardSaved(start: ends.start, end: ends.end) ? .saved : .suggested,
+                              sizeClass: RideSizeClass.of(distanceM: usual).rawValue)
         routes.append(route)
         update.newRoutes.append(route)
         var assignments: [RideAssignment] = []
@@ -176,6 +178,12 @@ public struct RouteBook: Equatable, Sendable {
         guard let a = start?.id, let b = end?.id, a != b else { return false }
         guard !routes.contains(where: { $0.fromPlaceId == a && $0.toPlaceId == b }) else { return false }
         return routes.contains { $0.fromPlaceId == b && $0.toPlaceId == a && $0.state != .dismissed }
+    }
+
+    /// B24 follow-up: the route end → start that makes this trip its way back is saved (not just suggested)
+    func forwardSaved(start: PlaceInfo?, end: PlaceInfo?) -> Bool {
+        guard let a = start?.id, let b = end?.id else { return false }
+        return routes.contains { $0.fromPlaceId == b && $0.toPlaceId == a && $0.state == .saved }
     }
 
     /// The route whose two places both reach the trip's ends (nearest places win). Dismissed routes count, so they stay dismissed.
