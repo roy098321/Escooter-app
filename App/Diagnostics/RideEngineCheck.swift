@@ -68,14 +68,14 @@ enum RideEngineCheck {
         func f0(_ v: Double) -> String { String(format: "%.0f", v) }
 
         if let r = run("END-A"), let e = r.ends.first {
-            expect(e.reason == .disconnected && abs(e.endT - 135) <= 2,
-                   "dropped while standing: ends by A after 30 s (\(f0(e.decidedAtT - 155)) s), end time = last movement")
+            expect(e.reason == .scooterOff && abs(e.endT - 135) <= 2,
+                   "dropped while standing (B26: scooter off): ends by A after 30 s (\(f0(e.decidedAtT - 155)) s), end time = last movement")
         } else { expect(false, "END-A: no end") }
         if let r = run("OFF-0x80"), let e = r.ends.first {
             expect(e.reason == .scooterOff && e.decidedAtT - 150 <= 1, "0x80: ends at once (scooter switched off)")
         } else { expect(false, "OFF-0x80: no end") }
         if let r = run("AUTO-OFF"), let e = r.ends.first {
-            expect(e.reason == .disconnected && abs(e.endT - 135) <= 2, "auto-off after 5 min (no 0x80): ends, end time = last movement")
+            expect(e.reason == .scooterOff && abs(e.endT - 135) <= 2, "auto-off after 5 min (no 0x80): ends as scooter off, end time = last movement")
         } else { expect(false, "AUTO-OFF: no end") }
         if let r = run("STANDSTILL-10"), let e = r.ends.first {
             expect(e.reason == .standstill, "standing 10 min with the scooter on: ends by standstill")
@@ -104,8 +104,8 @@ enum RideEngineCheck {
 
     /// u11 (M1-05): phone takeover and the speed warning on the fake scooter: a 1-s blip changes nothing, after
     /// ~5 s the phone takes over (GPS speed labelled, "~N% est.", gap row), the scooter numbers and the odometer
-    /// distance come back on reconnect; SLOW above 45 / clears below 43 on scooter speed (SPD-46) and on GPS speed
-    /// while disconnected (SPD-46-GPS), one on / off per crossing.
+    /// distance come back on reconnect; SLOW above 48 / clears below 46 on scooter speed (SPD-49) and on GPS speed
+    /// while disconnected (SPD-49-GPS), one on / off per crossing.
     static func runTakeover() {
         var notes: [String] = []
         var ok = true
@@ -116,26 +116,26 @@ enum RideEngineCheck {
         func scenario(_ id: String) -> SimStream? { SyntheticScenario.all.first { $0.id == id }?.build() }
         func f0(_ v: Double) -> String { String(format: "%.0f", v) }
 
-        if let s = scenario("SPD-46") {
+        if let s = scenario("SPD-49") {
             let r = EngineRunner.run(s, tailS: 5, collectLive: true)
             let c = r.slowChanges
-            let still44 = r.live.first { $0.t == 40 }?.state.slow ?? false
-            expect(c.count == 2 && c[0].on && !c[1].on && still44,
-                   "SPD-46: SLOW on at \(c.first.map { f0($0.t) } ?? "–") s (> 45), still red at 44, off at \(c.count > 1 ? f0(c[1].t) : "–") s (< 43), \(c.count) changes")
-        } else { expect(false, "SPD-46 scenario missing") }
+            let still47 = r.live.first { $0.t == 40 }?.state.slow ?? false
+            expect(c.count == 2 && c[0].on && !c[1].on && still47,
+                   "SPD-49: SLOW on at \(c.first.map { f0($0.t) } ?? "–") s (> 48), still red at 47, off at \(c.count > 1 ? f0(c[1].t) : "–") s (< 46), \(c.count) changes")
+        } else { expect(false, "SPD-49 scenario missing") }
 
-        if let s = scenario("SPD-46-GPS") {
+        if let s = scenario("SPD-49-GPS") {
             let r = EngineRunner.run(s, tailS: 5, collectLive: true)
             let phone = r.live.filter { $0.t >= 77 && $0.t <= 108 }
             let gpsSlow = !phone.isEmpty && phone.allSatisfy { $0.state.slow && $0.state.speedLabel == "GPS" && $0.state.batteryEstimated }
             let held = r.live.filter { $0.t >= 71 && $0.t <= 74 }.allSatisfy { $0.state.speedSource == .scooter }
             let changes = r.slowChanges.filter { $0.t <= 130 }.count
             expect(gpsSlow && held && changes == 1,
-                   "SPD-46-GPS: held for the ~5 s wait, then red + SLOW with the GPS label and ~% est. while disconnected; \(changes) change")
+                   "SPD-49-GPS: held for the ~5 s wait, then red + SLOW with the GPS label and ~% est. while disconnected; \(changes) change")
             let filled = (r.ends.first?.ride ?? r.engine.ride)?.gapList.first?.odometerFilledM
             expect(r.phoneModeEnds.count == 1 && (filled ?? 0) > 300,
                    "reconnect: scooter numbers back, odometer filled \(filled.map { f0($0) } ?? "–") m of the gap")
-        } else { expect(false, "SPD-46-GPS scenario missing") }
+        } else { expect(false, "SPD-49-GPS scenario missing") }
 
         // A 1-s blip: no takeover, no gap
         var e = RideEngine()

@@ -776,6 +776,9 @@ public struct RideEngine: Codable, Equatable, Sendable {
         } else if t - lastMove >= T.t20EndStandstillS {
             reason = .standstill                                 // C
         }
+        // B26 (T-04): the link went and nothing moved after it (the scooter switched off without the 0x80 flag, CBError 6):
+        // that is the scooter off, not a lost connection
+        if reason == .disconnected, let g = goneSince, lastMove <= g + Self.takeoverWaitS { reason = .scooterOff }
         guard let reason else { return }
         if phase == .starting {
             cancel(r, reason == .scooterOff ? .scooterOff : .disconnected, at: t, &out)

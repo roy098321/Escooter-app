@@ -173,7 +173,7 @@ final class RideEngineEndTests: XCTestCase {
         let r = EngineRunner.run(try stream("END-A"))
         XCTAssertEqual(r.ends.count, 1)
         let end = try XCTUnwrap(r.ends.first)
-        XCTAssertEqual(end.reason, .disconnected)
+        XCTAssertEqual(end.reason, .scooterOff, "B26: nothing moved after the drop: the scooter was switched off")
         XCTAssertEqual(end.decidedAtT, 185, accuracy: 2, "T17: 30 s after the drop, GPS still")
         XCTAssertEqual(end.endT, 135, accuracy: 1.5)
         XCTAssertEqual(end.sizeClass, .shortHop)
@@ -185,9 +185,12 @@ final class RideEngineEndTests: XCTestCase {
         let r = EngineRunner.run(try stream("AUTO-OFF"))
         let end = try XCTUnwrap(r.ends.first)
         XCTAssertEqual(r.ends.count, 1)
-        XCTAssertEqual(end.reason, .disconnected)
+        XCTAssertEqual(end.reason, .scooterOff, "B26: auto-off without 0x80 is the scooter off")
         XCTAssertEqual(end.decidedAtT, 465, accuracy: 2)
         XCTAssertEqual(end.endT, 135, accuracy: 1.5)
+        // B26: the time after the switch-off is no scooter gap
+        XCTAssertTrue(end.ride.gapList.isEmpty)
+        XCTAssertEqual(end.metrics(r.samples[end.ride.seq] ?? []).gapScooterS, 0, accuracy: 0.001)
     }
 
     func test_OFF_0x80_A2_endsAtOnce() throws {
@@ -224,7 +227,7 @@ final class RideEngineEndTests: XCTestCase {
         XCTAssertNotNil(e.ride, "29 s")
         let out = e.handle(.fix(fix(41, kmh: 0)), at: 41)
         guard case let .rideEnded(end)? = out.last else { return XCTFail("expected an end at 30 s, got \(out)") }
-        XCTAssertEqual(end.reason, .disconnected)
+        XCTAssertEqual(end.reason, .scooterOff, "B26: standing when the link went")
         XCTAssertEqual(end.endT, 10, accuracy: 0.01, "last movement")
 
         // no good fix at all: T18 2 min
@@ -234,7 +237,7 @@ final class RideEngineEndTests: XCTestCase {
         XCTAssertNotNil(f.ride, "119 s without the scooter and without GPS")
         let late = f.handle(.tick, at: 131)
         XCTAssertEqual(late.count, 1)
-        if case let .rideEnded(end)? = late.first { XCTAssertEqual(end.reason, .disconnected) } else { XCTFail("\(late)") }
+        if case let .rideEnded(end)? = late.first { XCTAssertEqual(end.reason, .scooterOff) } else { XCTFail("\(late)") }
 
         // moving on GPS: the ride goes on in phone mode
         var g = riding(until: 10)
@@ -245,6 +248,27 @@ final class RideEngineEndTests: XCTestCase {
             g.handle(.fix(fix(Double(i), northM: north, kmh: 20)), at: Double(i))
         }
         XCTAssertNotNil(g.ride)
+    }
+
+    /// B26 (T-04): a drop while riding on is still a lost connection: GPS kept moving after it, then the rider stopped.
+    func test_B26_dropWhileMoving_thenStop_staysDisconnected() {
+        var e = riding(until: 10)
+        e.handle(.disconnected, at: 11)
+        var north = 0.0
+        for i in 12...60 {
+            north += 20 / 3.6
+            e.handle(.fix(fix(Double(i), northM: north, kmh: 20)), at: Double(i))
+        }
+        var out: [RideEngineEvent] = []
+        for i in 61...120 where out.isEmpty {
+            out = e.handle(.fix(fix(Double(i), northM: north, kmh: 0)), at: Double(i)).filter {
+                if case .rideEnded = $0 { return true }
+                return false
+            }
+        }
+        guard case let .rideEnded(end)? = out.first else { return XCTFail("no end") }
+        XCTAssertEqual(end.reason, .disconnected)
+        XCTAssertEqual(end.endT, 60, accuracy: 1.5, "ends at the last movement on GPS")
     }
 
     func test_A_oneSecondBlip_doesNothing() {
