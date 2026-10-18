@@ -1,5 +1,6 @@
 import XCTest
 @testable import CorckieCore
+@testable import CorckieSim
 
 /// M1-07 / M1-10: "Going for a ride?" rules and the notifier that acts on them.
 final class GoingForARideTests: XCTestCase {
@@ -31,6 +32,42 @@ final class GoingForARideTests: XCTestCase {
         XCTAssertEqual(c.entries, [MessageLogEntry(type: "going_for_a_ride", channel: "notification", at: 1, droppedReason: nil)])
         n.batteryReading(pct: 91, at: 2, appActive: false, rideActive: false)
         XCTAssertEqual(c.sent.count, 1)
+    }
+
+    /// B27 (T-04): packets flow but no live battery reading comes within 2 s: "Scooter on" without a %, never an old value.
+    func test_B27_noLiveBatteryWithin2s_sendsWithoutAPercent() {
+        let (n, c) = make()
+        n.scooterConnected(at: 0, appActive: false, rideActive: false)
+        n.packet(at: 0.4)
+        n.tick(at: 1.9, appActive: false, rideActive: false)
+        XCTAssertTrue(c.sent.isEmpty, "still inside the 2 s")
+        n.packet(at: 2.4)
+        n.tick(at: 2.4, appActive: false, rideActive: false)
+        XCTAssertEqual(c.sent.map { $0.title }, ["Scooter on"])
+        n.batteryReading(pct: 11, at: 2.6, appActive: false, rideActive: false)
+        XCTAssertEqual(c.sent.count, 1, "one per power-on")
+    }
+
+    /// B27: the % only comes from a packet A that is live now; the frame left from before the switch-off gives none.
+    func test_B27_liveBatteryPct_onlyFromAFreshPacketA() {
+        var stale = ScooterFrame(t: 100)
+        stale.batteryPct = 11
+        stale.ageA = 0
+        XCTAssertNil(GoingForARideContent.liveBatteryPct(stale, now: 900), "the last frame before the switch-off")
+        XCTAssertEqual(GoingForARideContent.liveBatteryPct(stale, now: 101), 11)
+        var noA = ScooterFrame(t: 900)
+        noA.batteryPct = nil
+        XCTAssertNil(GoingForARideContent.liveBatteryPct(noA, now: 900), "packet B only")
+        XCTAssertNil(GoingForARideContent.liveBatteryPct(nil, now: 900))
+        // the pipeline forgets the previous connection's frame on connect
+        var p = ScooterPipeline()
+        p.handle(TimedScooterEvent(t: 0, event: .connected))
+        var values = PacketEncoder.Values()
+        values.batteryPct = 11
+        p.handle(TimedScooterEvent(t: 1, event: .packet(PacketEncoder.packetA(values))))
+        XCTAssertEqual(p.frame?.batteryPct, 11)
+        p.handle(TimedScooterEvent(t: 2, event: .connected))
+        XCTAssertNil(p.frame, "no frame from before this connection")
     }
 
     func testThreeReconnectBlipsStillOneNotification() {                  // B04 pattern

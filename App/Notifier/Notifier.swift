@@ -42,12 +42,14 @@ final class Notifier: NSObject, NotificationSending, MessageLogging {
         }
     }
 
+    /// `batteryPct`: only from a packet A of this connection (B27: never the value seen before the switch-off)
     func packet(batteryPct: Int?, shuttingDown: Bool) {
         let t = now()
         if shuttingDown {
             core.powerOff(at: t)
             return
         }
+        core.packet(at: t)
         if let pct = batteryPct {
             core.batteryReading(pct: Double(pct), at: t, appActive: appActive, rideActive: rideActive)
         }

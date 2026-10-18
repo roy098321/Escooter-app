@@ -38,14 +38,17 @@ public struct GoingForARideRule: Equatable, Sendable {
     public static let messageType = "going_for_a_ride"
     /// A link down for longer than this ends the power-on
     public static let sessionGapS = 120.0
-    /// The battery reading is awaited this long; then the notification goes out without it
+    /// The battery reading is awaited this long after the connect; then the notification goes out without it
     public static let batteryWaitS = 10.0
+    /// B27 (T-04): once packets flow, a live battery reading must come within this; else "Scooter on" without a %
+    public static let liveBatteryWaitS = 2.0
 
     private var sessionOpen = false
     private var settled = false            // sent or deliberately dropped for this power-on
     private var waitingSince: Double?      // connected, waiting for the first battery reading
     private var delivered = false          // the notification is on the phone right now
     private var disconnectedAt: Double?
+    private var firstPacketAt: Double?     // the first packet of this connection (B27)
 
     public init() {}
 
@@ -56,6 +59,7 @@ public struct GoingForARideRule: Equatable, Sendable {
     public mutating func scooterConnected(at t: Double, appActive: Bool, rideActive: Bool) -> [GoingForARideOutput] {
         var out = closeIfStale(at: t)
         disconnectedAt = nil
+        firstPacketAt = nil
         if !sessionOpen {
             sessionOpen = true
             settled = false
@@ -70,6 +74,12 @@ public struct GoingForARideRule: Equatable, Sendable {
             waitingSince = t
         }
         return out
+    }
+
+    /// B27: a packet of this connection arrived (the battery % must be read from this connection's packets, never a value
+    /// seen before the switch-off: the app passes `batteryReading` only for a fresh packet A).
+    public mutating func packet(at t: Double) {
+        if sessionOpen, !settled, firstPacketAt == nil { firstPacketAt = t }
     }
 
     public mutating func batteryReading(pct: Double, at t: Double, appActive: Bool, rideActive: Bool) -> [GoingForARideOutput] {
@@ -100,7 +110,8 @@ public struct GoingForARideRule: Equatable, Sendable {
     /// Call about once a second (or when the app wakes): ends a long disconnect, stops waiting for the battery.
     public mutating func tick(at t: Double, appActive: Bool, rideActive: Bool) -> [GoingForARideOutput] {
         var out = closeIfStale(at: t)
-        if sessionOpen, !settled, disconnectedAt == nil, let since = waitingSince, t - since >= Self.batteryWaitS {
+        let liveWaitOver = firstPacketAt.map { t - $0 >= Self.liveBatteryWaitS } ?? false
+        if sessionOpen, !settled, disconnectedAt == nil, let since = waitingSince, t - since >= Self.batteryWaitS || liveWaitOver {
             if rideActive {
                 out += drop(at: t, reason: "ride in progress")
             } else if appActive {
@@ -125,6 +136,7 @@ public struct GoingForARideRule: Equatable, Sendable {
         settled = false
         waitingSince = nil
         disconnectedAt = nil
+        firstPacketAt = nil
         delivered = false
         return wasDelivered ? [.remove(reason: reason)] : []
     }
@@ -161,6 +173,12 @@ public enum GoingForARideContent {
     public static let soundName = "chime2_kickoff.wav"
     public static let body = "Going for a ride? Tap here"
 
+    /// B27: the battery % of a frame only when its packet A is live at `now` (at most `liveBatteryWaitS` old); nil otherwise.
+    public static func liveBatteryPct(_ frame: ScooterFrame?, now: Double) -> Int? {
+        guard let f = frame, let age = f.ageA, now - f.t + age <= GoingForARideRule.liveBatteryWaitS else { return nil }
+        return f.batteryPct
+    }
+
     public static func title(batteryPct: Int?) -> String {
         guard let b = batteryPct else { return "Scooter on" }
         return "Scooter on · \(b)%"
@@ -187,6 +205,8 @@ public final class GoingForARideNotifier {
     }
 
     public func scooterDisconnected(at t: Double) { rule.scooterDisconnected(at: t) }
+
+    public func packet(at t: Double) { rule.packet(at: t) }
 
     public func powerOff(at t: Double) { apply(rule.powerOff(at: t)) }
 

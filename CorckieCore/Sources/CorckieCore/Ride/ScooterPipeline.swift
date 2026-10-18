@@ -25,6 +25,10 @@ public struct ScooterPipeline {
             connected = true
             connects += 1
             plausibility.connected(at: e.t)
+            // B27: nothing from before this connection is carried into its frames (a missed disconnect included); the last
+            // frame of the previous connection is no live reading any more
+            assembler.reset()
+            frame = nil
         case .disconnected:
             connected = false
             disconnects += 1
