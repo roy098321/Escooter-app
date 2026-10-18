@@ -85,6 +85,15 @@ struct RideSampleRecord: Codable, FetchableRecord, PersistableRecord, Equatable 
     var batteryPct: Int?
     var tempC: Double?
     var odometerKm: Double?
+    /// B25: degrees from the phone's GPS (nil = unknown)
+    var courseDeg: Double?
+    /// B25: GPS altitude, m
+    var altFixedM: Double?
+    /// B25: from packet A (nil before the first one)
+    var gear: Int?
+    var capKmh: Int?
+    var brake: Bool?
+    var light: Bool?
     /// scooter / phone
     var mode: String?
     var moving: Bool?

@@ -22,10 +22,20 @@ public struct RideSample: Equatable, Sendable {
     public var odometerKm: Double?
     /// From the ride engine (M3 stops); nil = derive it from the speed
     public var moving: Bool?
+    /// B25: the scooter's gear / speed cap (packet A; nil without one), brake and headlight
+    public var gear: Int?
+    public var capKmh: Int?
+    public var brake: Bool?
+    public var light: Bool?
+    /// B25: the phone's GPS course (degrees, nil when unknown) and GPS altitude (m)
+    public var courseDeg: Double?
+    public var altFixedM: Double?
 
     public init(t: Double, speedKmh: Double? = nil, gpsSpeedKmh: Double? = nil, lat: Double? = nil, lon: Double? = nil,
                 hAccM: Double? = nil, altBaroM: Double? = nil, voltage: Double? = nil, currentA: Double? = nil,
-                batteryPct: Int? = nil, tempC: Double? = nil, odometerKm: Double? = nil, moving: Bool? = nil) {
+                batteryPct: Int? = nil, tempC: Double? = nil, odometerKm: Double? = nil, moving: Bool? = nil,
+                gear: Int? = nil, capKmh: Int? = nil, brake: Bool? = nil, light: Bool? = nil, courseDeg: Double? = nil,
+                altFixedM: Double? = nil) {
         self.t = t
         self.speedKmh = speedKmh
         self.gpsSpeedKmh = gpsSpeedKmh
@@ -39,6 +49,12 @@ public struct RideSample: Equatable, Sendable {
         self.tempC = tempC
         self.odometerKm = odometerKm
         self.moving = moving
+        self.gear = gear
+        self.capKmh = capKmh
+        self.brake = brake
+        self.light = light
+        self.courseDeg = courseDeg
+        self.altFixedM = altFixedM
     }
 
     /// W (voltage × current)
@@ -89,11 +105,20 @@ public struct RideSampler: Sendable {
         s.batteryPct = frame.batteryPct
         s.tempC = frame.temperatureC
         s.odometerKm = frame.odometerKm
+        if frame.ageA != nil {
+            // B25: the gear, cap, brake and light bits come with packet A (none yet: left empty, not "off")
+            s.gear = frame.gear
+            s.capKmh = frame.capKmh
+            s.brake = frame.brake
+            s.light = frame.headlight
+        }
         if let f = fix, frame.t - f.t <= Self.maxFixAgeS, frame.t >= f.t {
             s.lat = f.lat
             s.lon = f.lon
             s.hAccM = f.hAccM >= 0 ? f.hAccM : nil
             s.gpsSpeedKmh = f.speedMps >= 0 ? f.speedMps * 3.6 : nil
+            s.courseDeg = f.courseDeg >= 0 ? f.courseDeg : nil
+            s.altFixedM = f.altitudeM
         }
         if let b = baro, frame.t - b.t <= Self.maxFixAgeS, frame.t >= b.t {
             s.altBaroM = b.relativeAltitudeM
@@ -115,6 +140,8 @@ extension RideSampler {
         s.lon = f.lon
         s.hAccM = f.hAccM >= 0 ? f.hAccM : nil
         s.gpsSpeedKmh = f.speedMps >= 0 ? f.speedMps * 3.6 : nil
+        s.courseDeg = f.courseDeg >= 0 ? f.courseDeg : nil
+        s.altFixedM = f.altitudeM
         if let b = lastBaro, f.t - b.t <= Self.maxFixAgeS, f.t >= b.t { s.altBaroM = b.relativeAltitudeM }
         return s
     }
@@ -231,13 +258,14 @@ public enum RideMetricsCalculator {
             m.stops = countStops(samples, moving)
         }
 
-        // gaps, M8 raw energy
+        // gaps, M8 raw energy. B26: missing scooter data after the last movement is the scooter switched off, not a gap
+        let lastMovingT = moving.lastIndex(of: true).map { samples[$0].t }
         for i in 1..<max(samples.count, 1) {
             let a = samples[i - 1], b = samples[i]
             let dt = b.t - a.t
             guard dt > 0 else { continue }
             let scooterCovered = a.speedKmh != nil && b.speedKmh != nil && dt <= maxStepS
-            if !scooterCovered { m.gapScooterS += dt }
+            if !scooterCovered, lastMovingT.map({ a.t < $0 }) ?? true { m.gapScooterS += dt }
             if dt <= maxStepS, let pa = a.powerW, let pb = b.powerW {
                 m.energyWhRaw += (pa + pb) / 2 * dt / 3600
             }

@@ -52,6 +52,53 @@ final class RecorderTests: XCTestCase {
         }
     }
 
+    /// B25 (T-04): ride 2 with the phone's GPS (F3 + F4) through the real Recorder: every ride_sample column gets a value
+    /// (gear, cap, brake, light from packet A; course and GPS altitude from the fix; moving, stop and distance at ride close).
+    func test_B25_everySampleColumnIsWritten() async throws {
+        let bundle = Bundle(for: RecorderTests.self)
+        func text(_ name: String) throws -> String {
+            let url = try XCTUnwrap(bundle.url(forResource: name, withExtension: "csv", subdirectory: "Fixtures"), name)
+            return try String(contentsOf: url, encoding: .utf8)
+        }
+        let f3 = try text("F3_ride2_merged")
+        let sim = try XCTUnwrap(SimFixture.all.first { $0.id == "F3" })
+        let start = try XCTUnwrap(LogReader.mergedStartTimeOfDayS(f3))
+        let phone = try PhoneSource.events(locationText: try text("F4_ride2_location"), barometerText: try text("F4_ride2_barometer"),
+                                           scooterStartTimeOfDayS: start)
+        let db = try AppDatabase.openTemporary(build: "test")
+        defer { db.discardTemporary() }
+        let rec = recorder(db, stateURL: Recorder.stateURL(for: db))
+        await rec.process(RecorderRunner.inputs(SimStream(scooter: try sim.events(from: f3), phone: phone)))
+        let errors = await rec.writeErrors
+        XCTAssertEqual(errors, [])
+        let ids = await rec.closedRideIds
+        let rideId = try XCTUnwrap(ids.first)
+        let columns = ["speedMps", "gpsSpeedMps", "lat", "lon", "hAccM", "courseDeg", "altBaroM", "altFixedM", "voltage", "currentA",
+                       "powerW", "batteryPct", "tempC", "gear", "capKmh", "brake", "light", "odometerKm", "mode", "moving", "distanceM"]
+        let counts = try db.writer.read { d in
+            try columns.map { c in (c, try Int.fetchOne(d, sql: "SELECT COUNT(\(c)) FROM ride_sample WHERE rideId = ?", arguments: [rideId]) ?? 0) }
+        }
+        let total = try RideQueries(db).sampleCount(rideId: rideId)
+        XCTAssertGreaterThan(total, 100)
+        for (c, n) in counts { XCTAssertGreaterThan(n, 0, "\(c) never written") }
+        let filled = Dictionary(uniqueKeysWithValues: counts)
+        XCTAssertEqual(filled["moving"], total, "moving on every sample")
+        XCTAssertEqual(filled["distanceM"], total, "distance on every sample")
+        // stopId: every sample inside a stop names it (a stop shorter than the 5-s sample step may hold none)
+        let stops = try RideQueries(db).stops(rideId: rideId)
+        let long = stops.filter { ($0.endT ?? $0.startT) - $0.startT >= 10_000 }
+        let withStop = try db.writer.read { d in
+            try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM ride_sample WHERE rideId = ? AND stopId IS NOT NULL", arguments: [rideId]) ?? 0
+        }
+        if !long.isEmpty { XCTAssertGreaterThan(withStop, 0, "stopId never written") }
+        let orphan = try db.writer.read { d in
+            try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM ride_sample s WHERE s.rideId = ? AND s.stopId IS NOT NULL AND s.stopId NOT IN (SELECT id FROM stop)",
+                             arguments: [rideId]) ?? 0
+        }
+        XCTAssertEqual(orphan, 0, "stopId points at a stop row")
+        XCTAssertEqual(try XCTUnwrap(try RideQueries(db).ride(id: rideId)).distanceM ?? 0, 13_700, accuracy: 150)
+    }
+
     /// M1-15 / d8: the simulator's Recorder writes only into its own temporary database; a separate (stand-in real)
     /// database keeps every row count, and everything the simulation stored is marked simulated.
     func test_d8_simulatedRun_keepsTheRealDatabaseApart() async throws {

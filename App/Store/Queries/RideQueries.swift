@@ -102,6 +102,18 @@ struct RideQueries {
         }
     }
 
+    /// B25: moving, stop and cumulative distance written onto the stored samples at ride close (t = ms from the ride start).
+    func annotateSamples(rideId: String, _ rows: [(t: Int64, moving: Bool, stopId: String?, distanceM: Double)]) throws {
+        try requireWritable()
+        guard !rows.isEmpty else { return }
+        try writer.write { db in
+            let statement = try db.makeStatement(sql: "UPDATE ride_sample SET moving = ?, stopId = ?, distanceM = ? WHERE rideId = ? AND t = ?")
+            for r in rows {
+                try statement.execute(arguments: [r.moving, r.stopId, r.distanceM, rideId, r.t])
+            }
+        }
+    }
+
     /// Marks the samples between two times (ms from the ride start, inclusive) with a mode, e.g. "walk".
     func setSampleMode(rideId: String, fromT: Int64, toT: Int64, mode: String) throws {
         try requireWritable()

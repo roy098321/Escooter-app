@@ -160,6 +160,8 @@ actor Recorder {
             r.endAt = ride.startAt + last.t
             r.kind = RideSizeClass.of(distanceM: m.distanceM).rawValue
             try q.save(r)
+            let notes = SampleAnnotator.annotate(samples.map(Self.sample(from:)), stops: [])
+            try? q.annotateSamples(rideId: r.id, notes.map { (t: Int64(($0.t * 1000).rounded()), moving: $0.moving, stopId: nil, distanceM: $0.distanceM) })
             do { try RouteProcessor.process(rideId: r.id, database: q.database) } catch { note("routes \(r.id): \(error.localizedDescription)") }
             do { try FactorUpdater.update(q.database, rideId: r.id) } catch { note("factors \(r.id): \(error.localizedDescription)") }
             do { try FastestService.update(q.database, rideId: r.id) } catch { note("choice points \(r.id): \(error.localizedDescription)") }
@@ -307,9 +309,16 @@ actor Recorder {
             try q.save(r)
             let start = end.ride.startT
             func relMs(_ t: Double) -> Int64 { Int64(((t - start) * 1000).rounded()) }
-            try q.replaceStops(rideId: id, stops: end.ride.stops.map {
+            let stopRows = end.ride.stops.map {
                 StopRecord(rideId: id, startT: relMs($0.startT), endT: $0.endT.map(relMs), lat: $0.lat, lon: $0.lon)
-            })
+            }
+            try q.replaceStops(rideId: id, stops: stopRows)
+            // B25: moving, stop and distance onto every sample (the same flags and series as the ride's totals)
+            do {
+                try q.annotateSamples(rideId: id, end.sampleAnnotations(samples).map {
+                    (t: Int64(($0.t * 1000).rounded()), moving: $0.moving, stopId: $0.stopIndex.map { stopRows[$0].id }, distanceM: $0.distanceM)
+                })
+            } catch { note("sample columns \(id): \(error.localizedDescription)") }
             try q.replaceGaps(rideId: id, kind: "scooter", gaps: end.ride.gapList.map { (startT: relMs($0.startT), endT: $0.endT.map(relMs)) })
             for w in end.ride.walks {
                 try q.setSampleMode(rideId: id, fromT: relMs(w.startT), toT: relMs(w.endT ?? end.endT), mode: "walk")
@@ -417,6 +426,12 @@ actor Recorder {
         r.odometerKm = s.odometerKm
         r.mode = x.mode
         r.moving = s.moving
+        r.gear = s.gear
+        r.capKmh = s.capKmh
+        r.brake = s.brake
+        r.light = s.light
+        r.courseDeg = s.courseDeg
+        r.altFixedM = s.altFixedM
         return r
     }
 
