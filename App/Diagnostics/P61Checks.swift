@@ -110,7 +110,7 @@ enum P61Checks {
             }
             let columns = ["gear", "capKmh", "brake", "light", "courseDeg", "altFixedM", "moving", "stopId", "distanceM"]
             let total = try RideQueries(temp).sampleCount(rideId: rideId)
-            let counts: [(String, Int)] = try temp.writer.read { db in
+            let counts: [(String, Int)] = try await temp.writer.read { db in
                 try columns.map { c in
                     (c, try Int.fetchOne(db, sql: "SELECT COUNT(\(c)) FROM ride_sample WHERE rideId = ?", arguments: [rideId]) ?? 0)
                 }

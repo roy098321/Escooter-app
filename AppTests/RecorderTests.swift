@@ -75,7 +75,7 @@ final class RecorderTests: XCTestCase {
         let rideId = try XCTUnwrap(ids.first)
         let columns = ["speedMps", "gpsSpeedMps", "lat", "lon", "hAccM", "courseDeg", "altBaroM", "altFixedM", "voltage", "currentA",
                        "powerW", "batteryPct", "tempC", "gear", "capKmh", "brake", "light", "odometerKm", "mode", "moving", "distanceM"]
-        let counts = try db.writer.read { d in
+        let counts = try await db.writer.read { d in
             try columns.map { c in (c, try Int.fetchOne(d, sql: "SELECT COUNT(\(c)) FROM ride_sample WHERE rideId = ?", arguments: [rideId]) ?? 0) }
         }
         let total = try RideQueries(db).sampleCount(rideId: rideId)
@@ -87,11 +87,11 @@ final class RecorderTests: XCTestCase {
         // stopId: every sample inside a stop names it (a stop shorter than the 5-s sample step may hold none)
         let stops = try RideQueries(db).stops(rideId: rideId)
         let long = stops.filter { ($0.endT ?? $0.startT) - $0.startT >= 10_000 }
-        let withStop = try db.writer.read { d in
+        let withStop = try await db.writer.read { d in
             try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM ride_sample WHERE rideId = ? AND stopId IS NOT NULL", arguments: [rideId]) ?? 0
         }
         if !long.isEmpty { XCTAssertGreaterThan(withStop, 0, "stopId never written") }
-        let orphan = try db.writer.read { d in
+        let orphan = try await db.writer.read { d in
             try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM ride_sample s WHERE s.rideId = ? AND s.stopId IS NOT NULL AND s.stopId NOT IN (SELECT id FROM stop)",
                              arguments: [rideId]) ?? 0
         }
