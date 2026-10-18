@@ -53,7 +53,13 @@ enum RouteProcessor {
         }
         var touched: [String] = []
         for a in update.assignments {
-            guard let routeId = a.routeId else { continue }
+            guard let routeId = a.routeId else {
+                // B24: a ride on no route still gets its start / end place from the place circles
+                if a.startPlaceId != nil || a.endPlaceId != nil {
+                    try store.setPlaces(rideId: a.rideId, startPlaceId: a.startPlaceId, endPlaceId: a.endPlaceId)
+                }
+                continue
+            }
             try store.setLink(rideId: a.rideId, RideRouteLink(routeId: routeId, variantId: a.variantId, startPlaceId: a.startPlaceId,
                                                               endPlaceId: a.endPlaceId))
             if let route = book.routes.first(where: { $0.id == routeId }), let size = route.sizeClass {

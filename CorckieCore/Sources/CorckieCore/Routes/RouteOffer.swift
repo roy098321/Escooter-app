@@ -19,6 +19,11 @@ public struct RouteOfferModel: Equatable, Sendable {
             return RouteOfferModel(routeId: routeId, saved: true, headline: "Route \u{00B7} \(title)",
                                    detail: "This ride is one of \(ridesOnRoute) on this route.")
         case .suggested:
+            if ridesOnRoute <= 1 {
+                // B24: the way back of a known route is offered after its first trip
+                return RouteOfferModel(routeId: routeId, saved: false, headline: "Save as route?",
+                                       detail: "This is the way back of one of your routes. Save it to see your usual time and today's estimate.")
+            }
             let times = ridesOnRoute <= 2 ? "twice" : "\(ridesOnRoute) times"
             return RouteOfferModel(routeId: routeId, saved: false, headline: "Save as route?",
                                    detail: "You have ridden this same trip \(times). Save it to see your usual time and today's estimate.")

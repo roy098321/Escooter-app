@@ -126,6 +126,15 @@ struct RouteQueries {
         }
     }
 
+    /// B24: the ride's start / end place from the place circles, for a ride on no route (its route link is left as it is).
+    func setPlaces(rideId: String, startPlaceId: String?, endPlaceId: String?) throws {
+        try requireWritable()
+        try writer.write { db in
+            try db.execute(sql: "UPDATE ride SET startPlaceId = ?, endPlaceId = ? WHERE id = ?",
+                           arguments: [startPlaceId, endPlaceId, rideId])
+        }
+    }
+
     /// M36: rides on a saved route take the route's size class.
     func setRideKind(rideId: String, kind: String) throws {
         try requireWritable()
@@ -190,11 +199,12 @@ struct RouteQueries {
         }
     }
 
-    /// The route's rides lose their route (the route row stays, e.g. `dismissed`, or goes with `deleteRoute`).
+    /// The route's rides lose their route (the route row stays, e.g. `dismissed`, or goes with `deleteRoute`). Their start / end
+    /// places stay (B24: places come from the circles, not from the route).
     func detachRides(routeId: String) throws {
         try requireWritable()
         try writer.write { db in
-            try db.execute(sql: "UPDATE ride SET routeId = NULL, variantId = NULL, startPlaceId = NULL, endPlaceId = NULL WHERE routeId = ?",
+            try db.execute(sql: "UPDATE ride SET routeId = NULL, variantId = NULL WHERE routeId = ?",
                            arguments: [routeId])
         }
     }

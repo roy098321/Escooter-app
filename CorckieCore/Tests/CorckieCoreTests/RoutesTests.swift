@@ -212,6 +212,64 @@ final class RoutesTests: XCTestCase {
         XCTAssertEqual(r.assigned["d"]?.routeId, ba.id)
     }
 
+    /// B24 (T-04): Work → Home after Home → Work is a route of its own at once (no second trip needed), on the same two places.
+    func test_B24_wayBackOfAKnownRoute_isItsOwnRoute_afterOneTrip() {
+        let r = feed([ride("a", SyntheticRoutes.main), ride("b", SyntheticRoutes.main, at: 24),
+                      ride("c", SyntheticRoutes.reversed(SyntheticRoutes.main), at: 32)])
+        XCTAssertEqual(r.outcomes["c"], .suggested)
+        XCTAssertEqual(r.book.routes.count, 2)
+        XCTAssertEqual(r.book.places.count, 2, "no new places for the way back")
+        let ab = r.book.routes[0], ba = r.book.routes[1]
+        XCTAssertEqual(ba.fromPlaceId, ab.toPlaceId)
+        XCTAssertEqual(ba.toPlaceId, ab.fromPlaceId)
+        XCTAssertEqual(r.assigned["c"]?.routeId, ba.id)
+        XCTAssertEqual(r.assigned["c"]?.startPlaceId, ab.toPlaceId)
+        XCTAssertEqual(r.assigned["c"]?.endPlaceId, ab.fromPlaceId)
+        // the next trip back joins it (it counts toward the 3 / 5 rides the estimates need)
+        var book = r.book
+        let d = book.ingest(ride("d", SyntheticRoutes.reversed(SyntheticRoutes.main), at: 56), pool: [], makeID: { self.makeID() })
+        XCTAssertEqual(d.assignments.first?.routeId, ba.id)
+        XCTAssertTrue(d.newRoutes.isEmpty)
+    }
+
+    /// B24: a dismissed route is not reversed into a new suggestion; its way back waits for two trips as usual.
+    func test_B24_wayBackOfADismissedRoute_waits() {
+        var r = feed([ride("a", SyntheticRoutes.main), ride("b", SyntheticRoutes.main, at: 24)])
+        r.book.routes[0].state = .dismissed
+        let c = r.book.ingest(ride("c", SyntheticRoutes.reversed(SyntheticRoutes.main), at: 32), pool: [], makeID: { self.makeID() })
+        XCTAssertEqual(c.assignments.first?.outcome, .pending)
+        XCTAssertNotNil(c.assignments.first?.startPlaceId, "places are still set")
+    }
+
+    /// B24: a ride on no route still gets its start / end place from the circles (pending, loop, short, no GPS at an end).
+    func test_B24_placesOnEveryRide_withoutARoute() {
+        let r = feed([ride("a", SyntheticRoutes.main), ride("b", SyntheticRoutes.main, at: 24)])
+        var book = r.book
+        let home = r.book.routes[0].fromPlaceId, work = r.book.routes[0].toPlaceId
+        // somewhere new → home: pending, but it ends at home
+        let elsewhere = SyntheticRoutes.offset(SyntheticRoutes.reversed(SyntheticRoutes.main), by: (x: 3_000, y: 0)) + [(x: 0, y: 0)]
+        let p = book.ingest(ride("p", elsewhere, at: 30), pool: [])
+        XCTAssertEqual(p.assignments.first?.outcome, .pending)
+        XCTAssertNil(p.assignments.first?.startPlaceId)
+        XCTAssertEqual(p.assignments.first?.endPlaceId, home)
+        // a loop from home
+        let l = book.ingest(ride("l", SyntheticRoutes.loop, at: 40), pool: [])
+        XCTAssertEqual(l.assignments.first?.outcome, .loop)
+        XCTAssertEqual(l.assignments.first?.startPlaceId, home)
+        XCTAssertEqual(l.assignments.first?.endPlaceId, home)
+        // the odometer says GPS came late: no route, but the first fix still names the place
+        var late = ride("n", SyntheticRoutes.main, at: 50)
+        late.shape.start = nil
+        let n = book.ingest(late, pool: [])
+        XCTAssertEqual(n.assignments.first?.outcome, .noGps)
+        XCTAssertEqual(n.assignments.first?.startPlaceId, home)
+        XCTAssertEqual(n.assignments.first?.endPlaceId, work)
+        // a circle set by hand is used instead of the automatic one
+        book.places = book.places.map { var x = $0; if x.id == home { x.radiusM = 30 }; return x }
+        let moved = SyntheticRoutes.offset(SyntheticRoutes.loop, by: (x: 80, y: 0))
+        XCTAssertNil(book.ingest(ride("m", moved, at: 60), pool: []).assignments.first?.startPlaceId, "80 m off a 30 m circle")
+    }
+
     func test_M11_routeUsesItsUsualDistanceForTheTolerance() {
         // a saved route of 20 km has a 1 km tolerance, so a trip starting 600 m from the place still matches it
         let from = PlaceInfo(id: "A", point: geo((x: 0, y: 0)))

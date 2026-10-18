@@ -99,7 +99,11 @@ public struct RouteBook: Equatable, Sendable {
     /// `pool` = earlier rides that are not on any route yet (newest first is fine, the order does not matter).
     public mutating func ingest(_ ride: RoutedRide, pool: [RoutedRide], makeID: () -> String = { UUID().uuidString }) -> RouteUpdate {
         var update = RouteUpdate()
-        func plain(_ outcome: RideOutcome) -> RouteUpdate { Self.plainUpdate(ride.id, outcome) }
+        // B24: every ride gets its start / end place from the place circles, also when it is on no route
+        let ends = endPlaces(of: ride)
+        func plain(_ outcome: RideOutcome) -> RouteUpdate {
+            Self.plainUpdate(ride.id, outcome, startPlaceId: ends.start?.id, endPlaceId: ends.end?.id)
+        }
         guard let s = ride.shape.start, let e = ride.shape.end else { return plain(.noGps) }
         guard ride.distanceM >= Self.minTripM else { return plain(.tooShort) }
 
@@ -122,14 +126,17 @@ public struct RouteBook: Equatable, Sendable {
             let t = PlaceMatcher.toleranceM(tripLengthM: max(ride.distanceM, other.distanceM))
             if Geo.distanceM(s, os) <= t, Geo.distanceM(e, oe) <= t, Geo.distanceM(os, oe) > t { mates.append(other) }
         }
-        guard mates.count + 1 >= T.t63SuggestRouteTrips else { return plain(.pending) }
+        // B24: the way back of a route that exists (Work → Home when Home → Work is known) is its own directional route
+        // at once, offered with "Save as route?" like any other; it does not wait for a second trip
+        let reverse = reverseOfKnownRoute(start: ends.start, end: ends.end)
+        guard mates.count + 1 >= T.t63SuggestRouteTrips || reverse else { return plain(.pending) }
 
         // New suggested route: places at the FIRST trip's points (not averaged: they would drift)
         let all = (mates + [ride]).sorted { $0.startAt < $1.startAt }
         guard let firstTrip = all.first, let fs = firstTrip.shape.start, let fe = firstTrip.shape.end else { return plain(.pending) }
-        var sp = PlaceMatcher.nearest(to: fs, in: places, tripLengthM: firstTrip.distanceM)
+        var sp = reverse ? ends.start : PlaceMatcher.nearest(to: fs, in: places, tripLengthM: firstTrip.distanceM)
         if sp == nil { sp = newPlace(at: fs, makeID: makeID, update: &update) }
-        var ep = PlaceMatcher.nearest(to: fe, in: places, tripLengthM: firstTrip.distanceM)
+        var ep = reverse ? ends.end : PlaceMatcher.nearest(to: fe, in: places, tripLengthM: firstTrip.distanceM)
         if ep == nil { ep = newPlace(at: fe, makeID: makeID, update: &update) }
         guard let startPlace = sp, let endPlace = ep else { return plain(.pending) }
         let usual = Geo.median(all.map { $0.distanceM }) ?? ride.distanceM
@@ -147,10 +154,28 @@ public struct RouteBook: Equatable, Sendable {
 
     // MARK: Pieces
 
-    static func plainUpdate(_ rideId: String, _ outcome: RideOutcome) -> RouteUpdate {
+    static func plainUpdate(_ rideId: String, _ outcome: RideOutcome, startPlaceId: String? = nil, endPlaceId: String? = nil) -> RouteUpdate {
         var u = RouteUpdate()
-        u.assignments = [RideAssignment(rideId: rideId, outcome: outcome, routeId: nil, variantId: nil, startPlaceId: nil, endPlaceId: nil)]
+        u.assignments = [RideAssignment(rideId: rideId, outcome: outcome, routeId: nil, variantId: nil, startPlaceId: startPlaceId,
+                                        endPlaceId: endPlaceId)]
         return u
+    }
+
+    /// B24: the places whose circle holds the ride's first / last GPS point (nearest wins; a circle of nil = automatic, T60, for
+    /// this ride's length). The first / last good fix is used even when the odometer says it came late (no route is made from it).
+    public func endPlaces(of ride: RoutedRide) -> (start: PlaceInfo?, end: PlaceInfo?) {
+        let first = ride.shape.start ?? ride.shape.path.first
+        let last = ride.shape.end ?? ride.shape.path.last
+        let start = first.flatMap { PlaceMatcher.nearest(to: $0, in: places, tripLengthM: ride.distanceM) }
+        let end = last.flatMap { PlaceMatcher.nearest(to: $0, in: places, tripLengthM: ride.distanceM) }
+        return (start, end)
+    }
+
+    /// B24: start and end are two known places, a route end → start exists (not dismissed) and start → end does not yet.
+    func reverseOfKnownRoute(start: PlaceInfo?, end: PlaceInfo?) -> Bool {
+        guard let a = start?.id, let b = end?.id, a != b else { return false }
+        guard !routes.contains(where: { $0.fromPlaceId == a && $0.toPlaceId == b }) else { return false }
+        return routes.contains { $0.fromPlaceId == b && $0.toPlaceId == a && $0.state != .dismissed }
     }
 
     /// The route whose two places both reach the trip's ends (nearest places win). Dismissed routes count, so they stay dismissed.
