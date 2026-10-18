@@ -57,8 +57,6 @@ struct PlacesView: View {
                 }
                 Text(place.row.subtitle).font(.footnote).foregroundStyle(.secondary)
             }
-            Spacer(minLength: 8)
-            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
         }
         .padding(DS.Space.cardPad)
         .glassCard(padding: 0)

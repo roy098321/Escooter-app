@@ -59,7 +59,7 @@ struct LiveRideView: View {
                 Spacer()
                 tiles(s)
                     .background(GeometryReader { g in
-                        Color.clear.preference(key: TilesTopKey.self, value: g.frame(in: .global).minY)
+                        Color.clear.preference(key: TilesTopKey.self, value: g.frame(in: .named("liveRide")).minY)
                     })
                 controls(s)
             }
@@ -67,6 +67,7 @@ struct LiveRideView: View {
             .padding(.top, 8)
             .padding(.bottom, 28)
         }
+        .coordinateSpace(name: "liveRide")
         .interactiveDismissDisabled(true)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)       // the numbers keep their size; the rest does not outgrow the screen (M6-04)
         .onChange(of: s.bannerText) { _, text in
@@ -89,9 +90,11 @@ struct LiveRideView: View {
 
     private func mapView(_ s: LiveScreenState) -> some View {
         GeometryReader { geo in
-            let top = geo.frame(in: .global).minY
-            let measured = tilesTop.map { $0 - top } ?? geo.size.height * 0.45 + Self.dotClearance
-            let dotY = CGFloat(LiveCameraTrack.dotY(tilesTop: Double(measured), clearance: Double(Self.dotClearance), minY: 80))
+            let top = geo.frame(in: .named("liveRide")).minY
+            let fallback = geo.size.height * 0.62
+            let measured = tilesTop.map { $0 - top } ?? fallback
+            let usable = measured > 150 ? measured : fallback      // a tile position not measured yet (0) is not used
+            let dotY = CGFloat(LiveCameraTrack.dotY(tilesTop: Double(usable), clearance: Double(Self.dotClearance), minY: 80))
             ZStack(alignment: .top) {
                 mapContent(s)
                     .frame(width: geo.size.width, height: lookAhead ? dotY * 2 : geo.size.height)

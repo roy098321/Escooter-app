@@ -147,12 +147,17 @@ struct PlaceMapView: View {
         VStack(alignment: .leading, spacing: 8) {
             Toggle("I can charge here", isOn: Binding(get: { place.row.canCharge },
                                                       set: { on in save { try PlaceService.setCanCharge(placeId: $0.id, canCharge: on, database: $1) } }))
+            HStack {
+                Text("Circle")
+                Spacer()
             Picker("Circle", selection: Binding(get: { place.row.radiusM ?? 0 },
                                                 set: { r in save { try PlaceService.setRadius(placeId: $0.id, radiusM: r > 0 ? r : nil, database: $1) } })) {
                 Text("Automatic").tag(0.0)
                 ForEach(PlaceListBuilder.radiusChoices, id: \.self) { r in
                     Text("\(Int(r)) m").tag(r)
                 }
+            }
+            .labelsHidden()
             }
             Text("Colour").font(.subheadline).foregroundStyle(.secondary)
             PlaceColourPicker(selected: place.colourId) { id in
