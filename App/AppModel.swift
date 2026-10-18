@@ -62,6 +62,12 @@ final class AppModel {
         CheckResults.shared.loadIfPossible()
         scooter.loadEventsIfPossible()
         openDatabase()
+        // B24: once after the update, the stored rides get their places and the ways back their routes (a9: no row is removed)
+        if let db = database, !db.isReadOnly {
+            do { try RouteRelink.runOnce(database: db) { Log.info(source: "routes", $0) } } catch {
+                Log.error(source: "routes", "Re-link of stored rides: \(error.localizedDescription)")
+            }
+        }
         if let db = database, !db.isReadOnly { RecorderService.shared.attach(db) }
         OutsideDataService.shared.refresh(database: database, reason: "app open")
         if let db = database { _ = try? RetentionService.run(db) }
@@ -128,7 +134,8 @@ final class AppModel {
             self.live.handle(TimedScooterEvent(t: time.timeIntervalSince(self.started), event: .packet(bytes)))
             self.evaluateScooterChecks()
             LastSeen.note(batteryPct: self.live.frame?.batteryPct)
-            FieldChecks.shared.packet(batteryPct: self.live.frame?.batteryPct)
+            // B27: the "Scooter on · N%" text takes the % only from a packet A just received on this connection
+            FieldChecks.shared.packet(batteryPct: GoingForARideContent.liveBatteryPct(self.live.frame, now: self.live.now))
         }
     }
 
@@ -198,8 +205,8 @@ enum InstallChecks {
         FuelPriceSetting.ensureDefault(database: database)
         CalibrationUpdater.refreshAtOpen(database)
 
-        // u2 (M1-01): version 1.0 and the decided thresholds
-        let thresholdsOk = T.t99SlowKmh == 45 && T.t99ClearKmh == 43 && T.t101SafetyMarginShare == 0.10
+        // u2 (M1-01): version 1.0 and the decided thresholds (T99 48 / 46 since P6-1)
+        let thresholdsOk = T.t99SlowKmh == 48 && T.t99ClearKmh == 46 && T.t101SafetyMarginShare == 0.10
         let line = "Version \(AppInfo.version) · speed warning on > \(Int(T.t99SlowKmh)) / off < \(Int(T.t99ClearKmh)) km/h · margin +\(Int((T.t101SafetyMarginShare * 100).rounded()))%"
         results.set("u2", thresholdsOk && AppInfo.version == "1.0" ? .pass : .fail, line)
 

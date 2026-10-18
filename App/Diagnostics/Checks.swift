@@ -145,7 +145,7 @@ enum CheckList {
         CheckItem(id: "u1", group: phone, title: "Checks show progress and step ticks (M1-00b)", how: "Start the 4-min test (b8) or Run all automatic, and watch this screen",
                   expected: "A bar with time left on the 4-min test and on Run all automatic; b9 / c5 / c6 / c7 show a checklist that ticks itself", needsScooter: false, manual: true, tool: .none),
         CheckItem(id: "u2", group: phone, title: "Version 1.0 and thresholds (M1-01)", how: "Nothing to do · Run all automatic also marks it",
-                  expected: "Version 1.0; speed warning on above 45 km/h, off below 43 (T99); safety margin +10% (T101)", needsScooter: false, manual: false, tool: .none),
+                  expected: "Version 1.0; speed warning on above 48 km/h, off below 46 (T99); safety margin +10% (T101)", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u3", group: phone, title: "Fake scooter replays phone GPS + barometer (M1-02)", how: "Nothing to do · Run all automatic marks it",
                   expected: "The ride-2 phone track lines up with the scooter samples (≤ 5 m); GPS and barometer replay on the same clock", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u4", group: phone, title: "Ride storage (M1-08)", how: "Nothing to do · Run all automatic marks it",
@@ -153,7 +153,7 @@ enum CheckList {
         CheckItem(id: "u5", group: phone, title: "Ride numbers from stored samples (M1-06)", how: "Nothing to do · Run all automatic marks it",
                   expected: "Ride 1 gives 437 Wh and 16.3 km, ride 2 gives 322 Wh and 13.7 km (±3% energy), top speed, peak temperature and time computed from one sample every 5 s", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u6", group: phone, title: "Live view rules and banner budget (M1-07)", how: "Nothing to do · Run all automatic marks it",
-                  expected: "SLOW above 45, clears below 43 (scooter and GPS); GPS speed labelled; banners locked from 5 km/h; 2 at ride start; hot once, very hot until it cools; one \"Going for a ride?\" per power-on", needsScooter: false, manual: false, tool: .none),
+                  expected: "SLOW above 48, clears below 46 (scooter and GPS); GPS speed labelled; banners locked from 5 km/h; 2 at ride start; hot once, very hot until it cools; one \"Going for a ride?\" per power-on", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u7", group: phone, title: "\"Going for a ride?\" rules and message log (M1-10)", how: "Nothing to do · Run all automatic marks it",
                   expected: "One notification per power-on across 3 reconnect blips, removed at ride start and at scooter off, sent at night, never with the app open; every decision stored in the message log of a temporary database", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u8", group: phone, title: "Rides list rules (M1-14)", how: "Nothing to do · Run all automatic marks it",
@@ -163,7 +163,7 @@ enum CheckList {
         CheckItem(id: "u10", group: phone, title: "Ride end, stops, pushing, Same ride, recovery (M1-04)", how: "Nothing to do · Run all automatic marks it",
                   expected: "On the fake scooter: dropped while standing ends after 30 s, 0x80 ends at once, auto-off and 10 min standstill end the ride, end time = last movement; pushing 1 km is a walking stretch with \"battery ran out at 3%\"; Same ride offered after a switch-off at a light; a relaunch mid-ride resumes, > 2 min recovers", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u11", group: phone, title: "Phone takeover and speed warning (M1-05)", how: "Nothing to do · Run all automatic marks it",
-                  expected: "On the fake scooter: a 1-s link drop changes nothing; after ~5 s the phone takes over (GPS speed labelled, \"~N% est.\"), scooter numbers and odometer distance back on reconnect; SLOW above 45, clears below 43 on scooter and on GPS speed, no flicker", needsScooter: false, manual: false, tool: .none),
+                  expected: "On the fake scooter: a 1-s link drop changes nothing; after ~5 s the phone takes over (GPS speed labelled, \"~N% est.\"), scooter numbers and odometer distance back on reconnect; SLOW above 48, clears below 46 on scooter and on GPS speed, no flicker", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u12", group: phone, title: "Recorder end to end (M1-09)", how: "Nothing to do · Run all automatic marks it (~10 s)",
                   expected: "Rides 1 and 2 through the Recorder into a temporary database: 437 Wh / 16.3 km and 322 Wh / 13.7 km, samples and raw packets stored; a kill mid-ride is recovered; your real rides unchanged", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u16", group: phone, title: "Backup writer (M1-16)", how: "Nothing to do · Run all automatic marks it",
@@ -171,7 +171,7 @@ enum CheckList {
         CheckItem(id: "u15", group: phone, title: "Ride summary (M1-13)", how: "Nothing to do · Run all automatic marks it. Then open a ride in Rides to look at it (a simulated ride shows the same screen)",
                   expected: "A made-up ride stored in a temporary database gives the right time, distance, average speed and battery; the path has a dashed phone stretch and a walking stretch; the notes say recovered, phone stretch, heat and on foot; a ride without GPS shows the No GPS card; delete removes the ride and its readings", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u14", group: phone, title: "Live ride screen rules (M1-12)", how: "Nothing to do · Run all automatic marks it",
-                  expected: "Ready has no clock or stop button and can be closed; a ride has no close button, only the held stop button (1 s); SLOW above 45, off below 43; GPS speed greyed and labelled, ~N% est.; one banner at a time, locked from 5 km/h; No GPS after 10 s", needsScooter: false, manual: false, tool: .none),
+                  expected: "Ready has no clock or stop button and can be closed; a ride has no close button, only the held stop button (1 s); SLOW above 48, off below 46; GPS speed greyed and labelled, ~N% est.; one banner at a time, locked from 5 km/h; No GPS after 10 s", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u13", group: phone, title: "Home states and connect rules (M1-11)", how: "Nothing to do · Run all automatic marks it",
                   expected: "First use and not connected show Connect your scooter (never Start ride); connected shows Start ride; a connect that fails shows Can't find the scooter after 30 s; a ride shows Ride in progress", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "o1", group: phone, title: "Onboarding in 3 presses (M1-11)", how: "Developer → Show onboarding (the scooter stays paired), go through it",
@@ -231,6 +231,7 @@ enum CheckList {
         list.insert(contentsOf: m5New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         list.insert(contentsOf: m6New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         list.insert(contentsOf: p6New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
+        list.insert(contentsOf: p61New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         return list
     }()
 
@@ -243,9 +244,9 @@ enum CheckList {
 
     private static let simStart = "Developer → Simulated scooter → Run on the real screens → "
     private static let m1New: [CheckItem] = [
-        m("w1", simM, "Speed warning turns on above 45", simStart + "Scenario SPD-46 · 5× · Start", "Tile red + SLOW within 1 s of passing 45 km/h", manual: true, tool: .simulator),
-        m("w2", simM, "Warning clears below 43, no flicker", "Same run as w1 (46 → 44 → 46 → 42)", "Still red at 44, clears at 42; one on / off per crossing", manual: true, tool: .simulator),
-        m("w3", simM, "Warning on GPS speed in phone mode", simStart + "Scenario SPD-46-GPS · 5× · Start", "Red + SLOW with the GPS label while disconnected", manual: true, tool: .simulator),
+        m("w1", simM, "Speed warning turns on above 48", simStart + "Scenario SPD-49 · 5× · Start", "Tile red + SLOW within 1 s of passing 48 km/h", manual: true, tool: .simulator),
+        m("w2", simM, "Warning clears below 46, no flicker", "Same run as w1 (49 → 47 → 49 → 45)", "Still red at 47, clears at 45; one on / off per crossing", manual: true, tool: .simulator),
+        m("w3", simM, "Warning on GPS speed in phone mode", simStart + "Scenario SPD-49-GPS · 5× · Start", "Red + SLOW with the GPS label while disconnected", manual: true, tool: .simulator),
         m("p1", simM, "Phone takeover on screen", simStart + "Scenario D7 · 50× · Start", "GPS speed greyed, ~N% est., dashed path, banner; scooter numbers back on reconnect", manual: true, tool: .simulator),
         m("p2", simM, "Data format changed", simStart + "Scenario SC-04 · 50× · Start", "Banner Scooter data format changed, phone mode, raw packets still stored", manual: true, tool: .simulator),
         m("l1", simM, "GPS lost", simStart + "Scenario SC-07 · 5× · Start", "No GPS chip after 10 s, dot frozen grey, distance keeps counting", manual: true, tool: .simulator),
@@ -473,7 +474,7 @@ enum CheckList {
         m("u47", p6M, "Prediction log and accuracy: shown estimates get their real outcome (T-00)", "Nothing to do · Run all automatic marks it",
           "On a temporary database a ride gets its Today time, Today battery, real range and arrival-time predictions filled in with the real numbers; the same estimate shown twice is stored once; another route's prediction waits; Accuracy and accuracy.txt show the Q-C and Q-F lines with the median error"),
         m("u48", p6M, "Shadow thresholds: what other values would have decided (T-00)", "Nothing to do · Run all automatic marks it",
-          "On a temporary database one ride with a 45.4 km/h sample is judged: SLOW at 45 gives 1 warning, at 48 gives 0 and is marked as different; the ride-end and autostart rules are stored too; shadow.txt says in how many rides each value decided differently"),
+          "On a temporary database one ride with a 45.4 km/h sample is judged: SLOW at 48 (standard) gives 0 warnings, the old 45 gives 1 and is marked as different, 51 gives 0; the ride-end and autostart rules are stored too; shadow.txt says in how many rides each value decided differently"),
         m("u49", p6M, "Scenario list ticks itself (T-00)", "Nothing to do · Run all automatic marks it",
           "One made-up night, rain, low-battery, heavy-load, GPS-loss, scooter-left-on, Low-Power-Mode, charged-after and screen-off ride ticks all ten scenario checks; a screen-on mark during the ride takes the pocket tick away again"),
         m("u50", p6M, "Idle battery: the phone's battery per hour while no ride is on (T-02)", "Nothing to do · it logs at app opens and background wakes; Run all automatic shows the result once 12 h of data exist",
@@ -493,6 +494,21 @@ enum CheckList {
         m("p6pocket", p6M, "Scenario: pocket ride (screen off the whole ride)", "Put the phone in your pocket with the screen off and ride 5 minutes or more (ticks by itself)",
           "Ticks itself when a real ride of 5 minutes or more never had the CorckieApp screen on")
     ]
+
+    /// P6-1 fix build (T-04 field data): each fix adds its check.
+    private static let p61New: [CheckItem] = [
+        m("u51", p6M, "Places on every ride, the way back is a route, stored rides re-linked (B24)", "Nothing to do · Run all automatic marks it",
+          "On a temporary database: two Home → Work trips make a route; one Work → Home trip is offered at once as its own route with both places; a ride from elsewhere ends at Home; the re-link pass gives build-164 rides their places and routes without losing a row and does nothing the second time; the line ends with this phone's re-link result"),
+        m("u52", p6M, "Every ride_sample column is written (B25)", "Nothing to do · Run all automatic marks it",
+          "Ride 2 with the phone's GPS (F3 + F4) goes through the real Recorder into a temporary database: gear, cap, brake, light, course, GPS altitude, moving, stop and distance all have values; moving and distance on every sample"),
+        m("u53", p6M, "Scooter switched off without the flag = scooter off, no gap (B26)", "Nothing to do · Run all automatic marks it",
+          "The made-up rides that drop the link while standing (END-A, AUTO-OFF) end as scooterOff, not disconnected, with no scooter gap after the switch-off"),
+        m("u54", p6M, "\"Scooter on\" uses a live battery % (B27)", "Nothing to do · Run all automatic marks it",
+          "With packets but no live battery reading within 2 s the notification says Scooter on without a %; a frame left from before the switch-off gives no %; a new connection starts with no frame"),
+        m("rt21", routesM, "A real way back is offered after one ride", "Ride Work → Home (or the way back of any route you have) once",
+          "The summary offers Save as route? (\"This is the way back of one of your routes\"); the ride shows its start and end place", scooter: true, manual: true)
+    ]
+
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }
 
     /// T-01: how a check gets its result. Automatic = "Run all automatic" settles it; On a ride = needs a real ride (most tick by
