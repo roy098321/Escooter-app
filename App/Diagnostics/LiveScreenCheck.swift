@@ -2,7 +2,7 @@ import CorckieCore
 import Foundation
 
 /// u14 (M1-12): the live ride screen's display rules on made-up inputs: Ready (no clock, no stop button, can be
-/// closed), no way out of a ride but the held stop button, SLOW 45 / 43, GPS speed greyed and labelled, "~N% est.",
+/// closed), no way out of a ride but the held stop button, SLOW 48 / 46, GPS speed greyed and labelled, "~N% est.",
 /// banners one at a time and locked from 5 km/h, "No GPS" after 10 s, hold to end needs a full second.
 enum LiveScreenCheck {
     static func run() {
@@ -23,8 +23,8 @@ enum LiveScreenCheck {
         expect(!riding.canClose && riding.showHoldToEnd && riding.clockText == "1:01", "riding: no close button, hold to end, clock")
 
         var s = LiveScreenDriver()
-        let slow = [44.9, 45.1, 44.0, 42.9].enumerated().map { s.update(LiveInput(scooterSpeedKmh: $0.element), at: Double($0.offset)).tiles.slow }
-        expect(slow == [false, true, true, false], "SLOW on above 45, off below 43")
+        let slow = [47.9, 48.1, 47.0, 45.9].enumerated().map { s.update(LiveInput(scooterSpeedKmh: $0.element), at: Double($0.offset)).tiles.slow }
+        expect(slow == [false, true, true, false], "SLOW on above 48, off below 46")
 
         var g = LiveScreenDriver()
         let gps = g.update(LiveInput(gpsSpeedKmh: 31, scooterLinked: false, scooterBatteryPct: 64, estimatedBatteryPct: 61,

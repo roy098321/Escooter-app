@@ -3,7 +3,7 @@ import Foundation
 /// M1-07: what the live ride view shows, worked out from what the ride engine (M1-03 / M1-04 / M1-05)
 /// knows. The engine fills one `LiveInput` per update (about once a second) and the view only reads the
 /// `LiveState`, so every safety rule lives here and is unit tested (CONCEPT: speed >= 76 pt, SLOW above
-/// 45 / clears below 43, GPS speed labelled, battery "~N% est.", No GPS chip after 10 s).
+/// 48 / clears below 46, GPS speed labelled, battery "~N% est.", No GPS chip after 10 s).
 
 public enum LiveSpeedSource: Equatable, Sendable {
     case scooter

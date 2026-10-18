@@ -178,9 +178,9 @@ public enum T {
     public static let t98NotificationsPerDay = 2
     public static let t98QuietFromHour = 22
     public static let t98QuietToHour = 7
-    /// T99 speed warning: on above 45 km/h, clears below 43 (owner, 2026-10-04; was 30)
-    public static let t99SlowKmh = 45.0
-    public static let t99ClearKmh = 43.0
+    /// T99 speed warning: on above 48 km/h, clears below 46 (owner, 2026-10-18 from the T-04 shadow data; was 45 / 43, before that 30)
+    public static let t99SlowKmh = 48.0
+    public static let t99ClearKmh = 46.0
     public static let t100NoGpsChipS = 10.0
     /// T101 safety margin on decisions (G2): +10% of what is needed
     public static let t101SafetyMarginShare = 0.10
@@ -270,7 +270,7 @@ public enum T {
         "T96": "≥ 1 min or ≥ 2%",
         "T97": "≥ 5 rides, ≥ 2% unexplained, 1 / day, pause 7 days after 2 dismissals, 3 answers → factor",
         "T98": "ride start ≤ 2 · banner ≤ 8 s · tappable < 5 km/h · queue ≤ 2 · ≤ 2 notifications / day · quiet 22–07 · weekly Sun 07:30",
-        "T99": "> **45 km/h**, red + \"SLOW\"; clears below 43 (owner, 2026-10-04; was 30)",
+        "T99": "> **48 km/h**, red + \"SLOW\"; clears below 46 (owner, 2026-10-18; was 45)",
         "T100": "No GPS chip after 10 s · connect fails after 30 s · last seen \"yesterday\" after 24 h · backup warning after 14 days"
     ]
 }

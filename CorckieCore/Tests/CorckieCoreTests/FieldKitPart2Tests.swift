@@ -136,12 +136,16 @@ final class FieldKitPart2Tests: XCTestCase {
         XCTAssertTrue(d[2].decision.contains("+15 s"))
     }
 
-    func test_shadow_slow_48WouldHaveWarnedLess() {
-        let d = ShadowCalc.slow(samples([40, 46, 44, 42, 47]))
+    func test_shadow_slow_48Standard_45And51Kept() {
+        let d = ShadowCalc.slow(samples([40, 49, 47, 45, 50, 42, 46]))
+        XCTAssertEqual(d.map(\.variant), ["48 km/h", "45 km/h", "51 km/h"])
+        XCTAssertEqual(d.map(\.isStandard), [true, false, false])
         XCTAssertEqual(d[0].decision, "2 warnings")
-        XCTAssertEqual(d[1].decision, "0 warnings")
-        XCTAssertTrue(d[1].differs)
+        XCTAssertEqual(d[1].decision, "2 warnings", "45: on at 49, clears at 42, on at 46")
+        XCTAssertEqual(d[2].decision, "0 warnings")
         XCTAssertFalse(d[0].differs)
+        XCTAssertFalse(d[1].differs)
+        XCTAssertTrue(d[2].differs)
     }
 
     func test_shadow_different_90sWouldHaveCalledItUsual() {

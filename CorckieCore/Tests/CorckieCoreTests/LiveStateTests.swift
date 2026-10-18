@@ -5,12 +5,12 @@ import XCTest
 final class LiveStateTests: XCTestCase {
     func testSpeedWarningHysteresis() {
         var w = SpeedWarning()
-        XCTAssertFalse(w.update(speedKmh: 44.9))
-        XCTAssertFalse(w.update(speedKmh: 45.0))     // "above 45", not at 45
-        XCTAssertTrue(w.update(speedKmh: 45.1))
-        XCTAssertTrue(w.update(speedKmh: 43.0))      // clears only below 43
-        XCTAssertFalse(w.update(speedKmh: 42.9))
-        XCTAssertFalse(w.update(speedKmh: 44.9))     // and stays off until above 45 again
+        XCTAssertFalse(w.update(speedKmh: 47.9))
+        XCTAssertFalse(w.update(speedKmh: 48.0))     // "above 48", not at 48
+        XCTAssertTrue(w.update(speedKmh: 48.1))
+        XCTAssertTrue(w.update(speedKmh: 46.0))      // clears only below 46
+        XCTAssertFalse(w.update(speedKmh: 45.9))
+        XCTAssertFalse(w.update(speedKmh: 47.9))     // and stays off until above 48 again
     }
 
     func testScooterSpeedAndBattery() {
@@ -28,12 +28,12 @@ final class LiveStateTests: XCTestCase {
 
     func testSlowOnScooterSpeedAndClears() {
         var b = LiveStateBuilder()
-        XCTAssertFalse(b.update(LiveInput(scooterSpeedKmh: 44.9)).slow)
-        let on = b.update(LiveInput(scooterSpeedKmh: 45.1))
+        XCTAssertFalse(b.update(LiveInput(scooterSpeedKmh: 47.9)).slow)
+        let on = b.update(LiveInput(scooterSpeedKmh: 48.1))
         XCTAssertTrue(on.slow)
         XCTAssertEqual(on.slowText, "SLOW")
-        XCTAssertTrue(b.update(LiveInput(scooterSpeedKmh: 43.0)).slow)
-        XCTAssertFalse(b.update(LiveInput(scooterSpeedKmh: 42.9)).slow)
+        XCTAssertTrue(b.update(LiveInput(scooterSpeedKmh: 46.0)).slow)
+        XCTAssertFalse(b.update(LiveInput(scooterSpeedKmh: 45.9)).slow)
     }
 
     func testPhoneModeUsesGpsLabelGreyAndEstimate() {

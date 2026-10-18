@@ -76,15 +76,15 @@ final class LiveScreenTests: XCTestCase {
 
     // MARK: Speed warning and labels
 
-    func testSlowOnAbove45ClearsBelow43() {
+    func testSlowOnAbove48ClearsBelow46() {
         var d = LiveScreenDriver()
-        let out = [44.9, 45.1, 44.0, 43.0, 42.9].enumerated().map { d.update(riding($0.element), at: Double($0.offset)).tiles.slow }
+        let out = [47.9, 48.1, 47.0, 46.0, 45.9].enumerated().map { d.update(riding($0.element), at: Double($0.offset)).tiles.slow }
         XCTAssertEqual(out, [false, true, true, true, false])
     }
 
     func testSlowTextAndGpsSpeedIsGreyedAndLabelled() {
         var d = LiveScreenDriver()
-        let s = d.update(riding(nil, gps: 46, linked: false, phone: true), at: 0)
+        let s = d.update(riding(nil, gps: 49, linked: false, phone: true), at: 0)
         XCTAssertTrue(s.tiles.slow)
         XCTAssertEqual(s.tiles.slowText, "SLOW")
         XCTAssertEqual(s.tiles.speedLabel, "GPS")

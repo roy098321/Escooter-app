@@ -145,34 +145,34 @@ final class PhoneReplayTests: XCTestCase {
     }
 
     func test_syntheticCatalog_hasTheScenarios() {
-        XCTAssertEqual(SyntheticScenario.all.map(\.id), ["SPD-46", "SPD-46-GPS", "TRAP-WALK", "TRAP-SPIN", "TRAP-KICK",
+        XCTAssertEqual(SyntheticScenario.all.map(\.id), ["SPD-49", "SPD-49-GPS", "TRAP-WALK", "TRAP-SPIN", "TRAP-KICK",
                                                           "END-A", "AUTO-OFF", "OFF-0x80", "STANDSTILL-10", "PUSH-1KM", "SAME-RIDE",
                                                           "ROUTE-COMMUTE", "ROUTE-COMMUTE-6", "ROUTE-VARIANT", "ROUTE-THEREBACK", "ROUTE-LOOP",
                                                           "ROUTE-NOGPS", "ROUTE-GPSLOSS", "ROUTE-LOWBATT"])
     }
 
-    /// SPD-46: the scooter goes 40 → 46 → 44 → 46 → 42 km/h; the phone's GPS says the same.
-    func test_SPD46_rampsThroughTheWarningThresholds() throws {
-        let stream = try scenario("SPD-46")
+    /// SPD-49: the scooter goes 43 → 49 → 47 → 49 → 45 km/h; the phone's GPS says the same.
+    func test_SPD49_rampsThroughTheWarningThresholds() throws {
+        let stream = try scenario("SPD-49")
         let speeds = frames(stream.scooter).compactMap(\.speedKmh)
-        XCTAssertEqual(speeds.max() ?? 0, 46, accuracy: 0.1)
+        XCTAssertEqual(speeds.max() ?? 0, 49, accuracy: 0.1)
         let pipeline = { () -> ScooterPipeline in var p = ScooterPipeline(); p.handle(stream.scooter); return p }()
         XCTAssertEqual(pipeline.plausibility.ignoredReadings, 0, "the ramp is smooth enough for G1b")
-        // crossings of 45 going up and of 43 going down, in order: up, (44 is between), up again, down
+        // crossings of 48 going up and of 46 going down, in order: up, (47 is between), up again, down
         let all = frames(stream.scooter)
         let at = { (t: Double) in all.last { $0.t <= t }?.speedKmh ?? -1 }
-        XCTAssertEqual(at(30), 40, accuracy: 0.6)
-        XCTAssertEqual(at(36), 46, accuracy: 0.6)
-        XCTAssertEqual(at(40), 44, accuracy: 0.6)
-        XCTAssertEqual(at(44), 46, accuracy: 0.6)
-        XCTAssertEqual(at(52), 42, accuracy: 0.6)
+        XCTAssertEqual(at(30), 43, accuracy: 0.6)
+        XCTAssertEqual(at(36), 49, accuracy: 0.6)
+        XCTAssertEqual(at(40), 47, accuracy: 0.6)
+        XCTAssertEqual(at(44), 49, accuracy: 0.6)
+        XCTAssertEqual(at(52), 45, accuracy: 0.6)
         let gps = stream.phone.compactMap(\.fix).map { $0.speedMps * 3.6 }
-        XCTAssertEqual(gps.max() ?? 0, 46, accuracy: 0.1)
+        XCTAssertEqual(gps.max() ?? 0, 49, accuracy: 0.1)
     }
 
-    /// SPD-46-GPS: the scooter drops while GPS reads 46; the phone keeps reporting 46.
-    func test_SPD46GPS_scooterDropsWhileGpsReads46() throws {
-        let stream = try scenario("SPD-46-GPS")
+    /// SPD-49-GPS: the scooter drops while GPS reads 49; the phone keeps reporting 49.
+    func test_SPD49GPS_scooterDropsWhileGpsReads49() throws {
+        let stream = try scenario("SPD-49-GPS")
         XCTAssertFalse(stream.scooter.contains { $0.t > 70 && $0.t < 110 && $0.bytes != nil })
         XCTAssertTrue(stream.scooter.contains { $0.t == 70 && $0.event == .disconnected })
         XCTAssertTrue(stream.scooter.contains { $0.t == 110 && $0.event == .connected })

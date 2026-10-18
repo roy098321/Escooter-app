@@ -72,7 +72,7 @@ public enum ShadowCalc {
     static let titles: [String: String] = [
         ruleEnd: "Ride end after standing still (30 / 60 / 90 s)",
         ruleStart: "Autostart speed (2 / 3 / 4 km/h)",
-        ruleSlow: "SLOW warning (45 / 48 km/h)",
+        ruleSlow: "SLOW warning (48 / 45 / 51 km/h)",
         ruleDifferent: "Noticeably different (60 s or 2% / 45 s or 1.5% / 90 s or 3%)",
         ruleGateTime: "Time estimate gate (rides needed: 3, shadow 2 / 4)",
         ruleGateBattery: "Battery estimate gate (rides needed: 5, shadow 4 / 6)",
@@ -136,7 +136,11 @@ public enum ShadowCalc {
 
     // MARK: SLOW (T99)
 
-    /// How many times the warning would have come on at 45 (standard) and at 48 km/h.
+    /// The values the shadow keeps for comparison (on above, clears below)
+    public static let shadowSlow: [(on: Double, clear: Double)] = [(45, 43), (51, 49)]
+
+    /// How many times the warning would have come on at 48 (standard since 18 Oct 2026), at the old 45 and at 51 km/h
+    /// (each clearing 2 km/h lower).
     public static func slow(_ samples: [ShadowSample]) -> [ShadowDecision] {
         func count(_ on: Double, _ clear: Double) -> Int {
             var w = SpeedWarning(onAboveKmh: on, clearBelowKmh: clear)
@@ -151,10 +155,13 @@ public enum ShadowCalc {
             return n
         }
         let std = count(T.t99SlowKmh, T.t99ClearKmh)
-        let alt = count(48, 46)
         func text(_ n: Int) -> String { n == 1 ? "1 warning" : "\(n) warnings" }
-        return [ShadowDecision(rule: ruleSlow, variant: "45 km/h", decision: text(std), differs: false, isStandard: true),
-                ShadowDecision(rule: ruleSlow, variant: "48 km/h", decision: text(alt), differs: alt != std, isStandard: false)]
+        var out = [ShadowDecision(rule: ruleSlow, variant: "\(Int(T.t99SlowKmh)) km/h", decision: text(std), differs: false, isStandard: true)]
+        for (on, clear) in shadowSlow {
+            let n = count(on, clear)
+            out.append(ShadowDecision(rule: ruleSlow, variant: "\(Int(on)) km/h", decision: text(n), differs: n != std, isStandard: false))
+        }
+        return out
     }
 
     // MARK: Noticeably different (T66)

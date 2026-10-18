@@ -24,18 +24,18 @@ final class ThresholdsTests: XCTestCase {
         XCTAssertEqual(Set(T.catalog.keys), Set(doc.keys), "code has IDs the doc doesn't, or the other way round")
     }
 
-    /// M1-01: the three decided thresholds, word for word from CALC_SPEC §10 (owner, 2026-10-04).
+    /// M1-01: the three decided thresholds, word for word from CALC_SPEC §10 (owner, 2026-10-04; T99 48 / 46 on 2026-10-18).
     func test_thresholds_T99_T101_T102_wordForWord() throws {
         let doc = try docTable()
-        XCTAssertEqual(doc["T99"], "> **45 km/h**, red + \"SLOW\"; clears below 43 (owner, 2026-10-04; was 30)")
+        XCTAssertEqual(doc["T99"], "> **48 km/h**, red + \"SLOW\"; clears below 46 (owner, 2026-10-18; was 45)")
         XCTAssertEqual(T.catalog["T99"], doc["T99"])
         XCTAssertEqual(doc["T101"], "+10% of what is needed")
         XCTAssertEqual(T.catalog["T101"], doc["T101"])
         XCTAssertEqual(doc["T102"], "wheel or GPS 1–7 km/h, motor < 0.5 A, for 30 s (M1 D3, 2026-10-04)")
         XCTAssertEqual(T.catalog["T102"], doc["T102"])
         // the typed values say the same thing
-        XCTAssertEqual(T.t99SlowKmh, 45)
-        XCTAssertEqual(T.t99ClearKmh, 43)
+        XCTAssertEqual(T.t99SlowKmh, 48)
+        XCTAssertEqual(T.t99ClearKmh, 46)
         XCTAssertEqual(T.t101SafetyMarginShare, 0.10, accuracy: 1e-12)
         XCTAssertEqual(T.t102PushingMinKmh, 1)
         XCTAssertEqual(T.t102PushingMaxKmh, 7)

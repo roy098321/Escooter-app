@@ -17,7 +17,7 @@ public struct RideFacts: Equatable, Sendable {
     public var odoEndKm: Double?
     public var topSpeedMps: Double?
     public var sampleCount: Int
-    /// seconds above 45 km/h (counted from the stored samples, 5 s each)
+    /// seconds above the SLOW limit (T99, counted from the stored samples, 5 s each)
     public var secondsOverLimit: Double
     public var gapScooterS: Double
     public var mergeGroupId: String?
@@ -114,7 +114,7 @@ public enum RideCheckRules {
         let top = real.compactMap { $0.topSpeedMps }.max() ?? 0
         let redRides = real.filter { $0.secondsOverLimit > 0 }.count
         out.append(RideCheckVerdict(id: "w4", result: .info,
-                                    note: "\(redRides) of \(real.count) rides over 45 km/h, \(Int(red)) s in all, top \(String(format: "%.0f", top * 3.6)) km/h"))
+                                    note: "\(redRides) of \(real.count) rides over \(Int(T.t99SlowKmh)) km/h, \(Int(red)) s in all, top \(String(format: "%.0f", top * 3.6)) km/h"))
 
         // b9m: link over rides, recorded
         let gaps = real.filter { $0.gapScooterS > 0 }

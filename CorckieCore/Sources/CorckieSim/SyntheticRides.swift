@@ -1,7 +1,7 @@
 import CorckieCore
 import Foundation
 
-/// Synthetic rides for the scenarios no recorded ride covers (TESTING §4: SPD-46, TRAP-*).
+/// Synthetic rides for the scenarios no recorded ride covers (TESTING §4: SPD-49, TRAP-*).
 /// Built as 1-per-second merged samples, so the same encoder and phone source as the real
 /// fixtures turn them into packets and GPS fixes: nothing special-cased downstream.
 public struct SyntheticScenario: Identifiable, Sendable {
@@ -93,23 +93,24 @@ public struct SyntheticScenario: Identifiable, Sendable {
         return SimStream(scooter: first.scooter + second.scooter, phone: first.phone + second.phone)
     }
 
-    static let spd46Profile: [(t: Double, kmh: Double)] =
-        [(0, 0), (30, 40), (36, 46), (40, 44), (44, 46), (52, 42), (70, 20), (90, 0)]
-    static let spd46GpsProfile: [(t: Double, kmh: Double)] = [(0, 0), (30, 40), (45, 46), (130, 46)]
+    /// T99 48 / 46 (owner, 18 Oct 2026): 3 km/h above the old 45 / 43 ramps, same timing
+    static let spd49Profile: [(t: Double, kmh: Double)] =
+        [(0, 0), (30, 43), (36, 49), (40, 47), (44, 49), (52, 45), (70, 20), (90, 0)]
+    static let spd49GpsProfile: [(t: Double, kmh: Double)] = [(0, 0), (30, 43), (45, 49), (130, 49)]
     static let kickProfile: [(t: Double, kmh: Double)] = [(0, 0), (5, 3), (14, 18), (60, 18)]
 
     public static let all: [SyntheticScenario] = base + SyntheticRoutes.scenarios
 
     static let base: [SyntheticScenario] = [
-        // M1-05 / T99: the scooter ramps 40 → 46 → 44 → 46 → 42 km/h; the warning must not flicker
-        SyntheticScenario(id: "SPD-46", title: "Speed ramps 40 → 46 → 44 → 46 → 42 km/h") {
-            SyntheticScenario.stream(seconds: 90, scooterKmh: { SyntheticScenario.linear(SyntheticScenario.spd46Profile, at: $0) },
-                   gpsKmh: { SyntheticScenario.linear(SyntheticScenario.spd46Profile, at: $0) }, currentA: { $0 < 70 ? 18 : 3 })
+        // M1-05 / T99: the scooter ramps 43 → 49 → 47 → 49 → 45 km/h; the warning must not flicker
+        SyntheticScenario(id: "SPD-49", title: "Speed ramps 43 → 49 → 47 → 49 → 45 km/h") {
+            SyntheticScenario.stream(seconds: 90, scooterKmh: { SyntheticScenario.linear(SyntheticScenario.spd49Profile, at: $0) },
+                   gpsKmh: { SyntheticScenario.linear(SyntheticScenario.spd49Profile, at: $0) }, currentA: { $0 < 70 ? 18 : 3 })
         },
-        // The scooter drops while GPS reads 46: the warning keeps working on the phone's speed
-        SyntheticScenario(id: "SPD-46-GPS", title: "Disconnect while GPS reads 46 km/h") {
-            SyntheticScenario.stream(seconds: 130, scooterKmh: { SyntheticScenario.linear(SyntheticScenario.spd46GpsProfile, at: $0) },
-                   gpsKmh: { SyntheticScenario.linear(SyntheticScenario.spd46GpsProfile, at: $0) }, currentA: { _ in 20 })
+        // The scooter drops while GPS reads 49: the warning keeps working on the phone's speed
+        SyntheticScenario(id: "SPD-49-GPS", title: "Disconnect while GPS reads 49 km/h") {
+            SyntheticScenario.stream(seconds: 130, scooterKmh: { SyntheticScenario.linear(SyntheticScenario.spd49GpsProfile, at: $0) },
+                   gpsKmh: { SyntheticScenario.linear(SyntheticScenario.spd49GpsProfile, at: $0) }, currentA: { _ in 20 })
                 .applying([.disconnect(at: 70, durationS: 40)])
         },
         // T14 trap: walking the switched-on scooter, 5 km/h, no motor current, GPS walking

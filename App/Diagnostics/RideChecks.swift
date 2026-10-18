@@ -9,7 +9,7 @@ enum RideChecks {
         guard let database else { return }
         let store = RideQueries(database)
         guard let rides = try? store.rides() else { return }
-        let overLimitMps = 45.0 / 3.6
+        let overLimitMps = T.t99SlowKmh / 3.6
         let facts: [RideFacts] = rides.filter { !$0.isSimulated && $0.kind == "ride" }.map { ride in
             let samples = (try? store.samples(rideId: ride.id)) ?? []
             let red = Double(samples.filter { ($0.speedMps ?? 0) > overLimitMps }.count) * RideCheckRules.sampleStepS

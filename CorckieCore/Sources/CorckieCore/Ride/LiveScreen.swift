@@ -2,8 +2,8 @@ import Foundation
 
 // M1-12: everything the live ride screen decides, pure and unit tested (the SwiftUI view only draws it).
 // Safety rules (STATES, CONCEPT C24, M1_PLAN D2): no tab bar and no navigation while a ride is on; speed and
-// battery tiles never hidden by a banner; at most one banner, tappable only below 5 km/h; SLOW red above 45 and
-// clears below 43; GPS speed greyed and labelled; "~N% est." in phone mode; "Ready" (D2): the view opened before
+// battery tiles never hidden by a banner; at most one banner, tappable only below 5 km/h; SLOW red above 48 and
+// clears below 46; GPS speed greyed and labelled; "~N% est." in phone mode; "Ready" (D2): the view opened before
 // the wheel moves shows the map, battery and speed 0, no clock, no stop button, and only there can it be closed.
 
 public enum LiveMode: String, Equatable, Sendable {

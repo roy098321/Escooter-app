@@ -1,6 +1,6 @@
 import Foundation
 
-/// T99 speed warning with hysteresis: on above 45 km/h, off below 43, so it never flickers around the
+/// T99 speed warning with hysteresis: on above 48 km/h, off below 46, so it never flickers around the
 /// limit. The same rule runs on scooter speed and on GPS speed (phone mode, P3 D3).
 public struct SpeedWarning: Equatable, Sendable {
     public private(set) var isOn = false

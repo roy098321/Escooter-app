@@ -43,7 +43,8 @@ enum AccuracyCheck {
     }
 }
 
-/// u48: shadow thresholds on a temporary database: what 48 km/h (and the other values) would have decided, written to shadow.txt.
+/// u48: shadow thresholds on a temporary database: what the old 45 km/h and 51 km/h (and the other values) would have decided,
+/// written to shadow.txt (SLOW is 48 since P6-1).
 enum ShadowCheck {
     static func run() {
         var detail = "-"
@@ -54,19 +55,22 @@ enum ShadowCheck {
             let start = Int64(Date().timeIntervalSince1970 * 1000) - 7_200_000
             try RideToolsSeed.ride(temp, id: "S1", startAt: start)
             try temp.writer.write { db in
-                // one sample at 45.4 km/h: SLOW comes on at 45, not at 48
+                // one sample at 45.4 km/h: SLOW would come on at the old 45, not at 48 (standard) or 51
                 try db.execute(sql: "UPDATE ride_sample SET speedMps = 12.6 WHERE rideId = 'S1' AND t = 50000")
                 try db.execute(sql: "UPDATE ride SET isSimulated = 0 WHERE id = 'S1'")
             }
             try FieldKitService.afterRide(temp, rideId: "S1", nowMs: start + 700_000)
             let rows = try PredictionQueries(temp).shadowRows()
             let slow48 = rows.first { $0.rule == ShadowCalc.ruleSlow && $0.variant == "48 km/h" }
-            let a = slow48?.differs == true && slow48?.decision == "0 warnings"
+            let slow45 = rows.first { $0.rule == ShadowCalc.ruleSlow && $0.variant == "45 km/h" }
+            let slow51 = rows.first { $0.rule == ShadowCalc.ruleSlow && $0.variant == "51 km/h" }
+            let a = slow48?.isStandard == true && slow48?.decision == "0 warnings" && slow45?.differs == true && slow45?.decision == "1 warning"
+                && slow51?.differs == false
             let text = FieldKitService.shadowText(temp)
-            let b = text.contains("48 km/h: 1 rides, decided differently in 1") && text.contains("Ride end after standing still")
+            let b = text.contains("45 km/h: 1 rides, decided differently in 1") && text.contains("Ride end after standing still")
             let c = rows.contains { $0.rule == ShadowCalc.ruleEnd } && rows.contains { $0.rule == ShadowCalc.ruleStart }
             ok = a && b && c
-            detail = "SLOW 48 \(a ? "ok" : "wrong") · shadow.txt \(b ? "ok" : "wrong") · end and autostart rules \(c ? "ok" : "wrong")"
+            detail = "SLOW 48 / 45 / 51 \(a ? "ok" : "wrong") · shadow.txt \(b ? "ok" : "wrong") · end and autostart rules \(c ? "ok" : "wrong")"
         } catch {
             detail = error.localizedDescription
         }

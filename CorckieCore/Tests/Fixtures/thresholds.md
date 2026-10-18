@@ -75,5 +75,5 @@
 | T96 | Q13 noteworthy | ≥ 1 min or ≥ 2% | Q13 | Guess |
 | T97 | Smart prompt | ≥ 5 rides, ≥ 2% unexplained, 1 / day, pause 7 days after 2 dismissals, 3 answers → factor | C26 | Fixed |
 | T98 | Message budget | ride start ≤ 2 · banner ≤ 8 s · tappable < 5 km/h · queue ≤ 2 · ≤ 2 notifications / day · quiet 22–07 · weekly Sun 07:30 | C24 | Fixed |
-| T99 | Speed warning tile | > **45 km/h**, red + "SLOW"; clears below 43 (owner, 2026-10-04; was 30) | C30, P3 D3 | Fixed |
+| T99 | Speed warning tile | > **48 km/h**, red + "SLOW"; clears below 46 (owner, 2026-10-18; was 45) | C30, P3 D3 | Fixed |
 | T100 | UI timers | No GPS chip after 10 s · connect fails after 30 s · last seen "yesterday" after 24 h · backup warning after 14 days | STATES, C13 | Fixed |

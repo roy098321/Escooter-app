@@ -1,8 +1,8 @@
 import CorckieCore
 import Foundation
 
-/// u6 (M1-07): the live-view safety rules and the message budget, run on a made-up ride: SLOW above 45 / clears
-/// below 43 (scooter and GPS speed), GPS speed labelled, banners locked at 5 km/h and above, at most 2 at ride
+/// u6 (M1-07): the live-view safety rules and the message budget, run on a made-up ride: SLOW above 48 / clears
+/// below 46 (scooter and GPS speed), GPS speed labelled, banners locked at 5 km/h and above, at most 2 at ride
 /// start, hot once and very hot until it cools, "Going for a ride?" once across three reconnect blips.
 enum RideRulesCheck {
     static func run() {
@@ -15,11 +15,11 @@ enum RideRulesCheck {
 
         // SLOW
         var live = LiveStateBuilder()
-        let seq: [Double] = [44.9, 45.1, 43.0, 42.9]
+        let seq: [Double] = [47.9, 48.1, 46.0, 45.9]
         let slow = seq.map { live.update(LiveInput(scooterSpeedKmh: $0)).slow }
-        expect(slow == [false, true, true, false], "SLOW on at 45.1, off at 42.9 (scooter)")
+        expect(slow == [false, true, true, false], "SLOW on at 48.1, off at 45.9 (scooter)")
         var gpsLive = LiveStateBuilder()
-        let gps = gpsLive.update(LiveInput(gpsSpeedKmh: 46, scooterLinked: false))
+        let gps = gpsLive.update(LiveInput(gpsSpeedKmh: 49, scooterLinked: false))
         expect(gps.slow && gps.speedLabel == "GPS", "SLOW + GPS label on GPS speed")
         expect(gpsLive.update(LiveInput(gpsSpeedKmh: 4, scooterLinked: false)).speedKmh == 0, "GPS under 5 km/h shows 0")
 

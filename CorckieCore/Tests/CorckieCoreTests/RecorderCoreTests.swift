@@ -146,7 +146,7 @@ final class RecorderCoreTests: XCTestCase {
     }
 
     func test_phoneMode_GPSOnlySamples_markedPhone_gapActions() throws {
-        let s = try XCTUnwrap(SyntheticScenario.all.first { $0.id == "SPD-46-GPS" }).build()
+        let s = try XCTUnwrap(SyntheticScenario.all.first { $0.id == "SPD-49-GPS" }).build()
         let store = MemoryStore()
         var core = RideRecorderCore()
         RecorderRunner.play(RecorderRunner.inputs(s, tailS: 5), core: &core, apply: store.apply)
