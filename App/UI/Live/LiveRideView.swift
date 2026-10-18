@@ -6,11 +6,6 @@ import SwiftUI
 /// cover (see `RootView`) while a ride is on, or in "Ready" (D2) when the "Going for a ride?" notification was
 /// tapped. Every decision (SLOW, GPS / "~N% est." labels, banners and when they can be tapped, which buttons exist)
 /// is made in CorckieCore (`LiveScreenDriver`, unit tested); this view only draws the result.
-private struct TilesTopKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
 struct LiveRideView: View {
     struct Preview {
         var screen: LiveScreenState
@@ -56,11 +51,10 @@ struct LiveRideView: View {
                 .ignoresSafeArea()
             VStack(spacing: 12) {
                 topArea(s)
-                Spacer()
+                // the open map above the tiles: where it ends is where the dot is kept clear of the tiles (F-10 fix)
+                Color.clear
+                    .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .named("liveRide")).maxY }) { tilesTop = $0 + 12 }
                 tiles(s)
-                    .background(GeometryReader { g in
-                        Color.clear.preference(key: TilesTopKey.self, value: g.frame(in: .named("liveRide")).minY)
-                    })
                 controls(s)
             }
             .padding(.horizontal, 16)
@@ -76,7 +70,6 @@ struct LiveRideView: View {
         }
         .onReceive(ticker) { _ in tickHold() }
         .onChange(of: position) { _, _ in follow() }
-        .onPreferenceChange(TilesTopKey.self) { tilesTop = $0 }
         .screen("Live ride")
     }
 
