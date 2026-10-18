@@ -59,4 +59,17 @@ final class LiveCameraTests: XCTestCase {
         XCTAssertEqual(LiveCameraTrack.cameraDistanceM(speedKmh: 25), 850)
         XCTAssertEqual(LiveCameraTrack.cameraDistanceM(speedKmh: 60), 950)
     }
+
+    func test_shortestHeadingTurnsTheShortWay() {
+        XCTAssertEqual(LiveCameraTrack.shortestHeading(from: 359, to: 1), 361, accuracy: 0.001)
+        XCTAssertEqual(LiveCameraTrack.shortestHeading(from: 361, to: 359), 359, accuracy: 0.001)
+        XCTAssertEqual(LiveCameraTrack.shortestHeading(from: 10, to: 350), -10, accuracy: 0.001)
+        XCTAssertEqual(LiveCameraTrack.shortestHeading(from: nil, to: 200), 200, accuracy: 0.001)
+        XCTAssertEqual(LiveCameraTrack.shortestHeading(from: 90, to: 120), 120, accuracy: 0.001)
+    }
+
+    func test_dotSitsAboveTheTilesWithClearance() {
+        XCTAssertEqual(LiveCameraTrack.dotY(tilesTop: 600, clearance: 34, minY: 80), 566, accuracy: 0.001)
+        XCTAssertEqual(LiveCameraTrack.dotY(tilesTop: 100, clearance: 34, minY: 80), 80, accuracy: 0.001)
+    }
 }

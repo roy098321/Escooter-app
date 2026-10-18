@@ -6,6 +6,11 @@ import SwiftUI
 /// cover (see `RootView`) while a ride is on, or in "Ready" (D2) when the "Going for a ride?" notification was
 /// tapped. Every decision (SLOW, GPS / "~N% est." labels, banners and when they can be tapped, which buttons exist)
 /// is made in CorckieCore (`LiveScreenDriver`, unit tested); this view only draws the result.
+private struct TilesTopKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct LiveRideView: View {
     struct Preview {
         var screen: LiveScreenState
@@ -23,6 +28,8 @@ struct LiveRideView: View {
     @State private var holdProgress = 0.0
     @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var track = LiveCameraTrack()
+    @State private var tilesTop: CGFloat?
+    @State private var lastHeading: Double?
     private let ticker = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     private var screen: LiveScreenState {
@@ -51,6 +58,9 @@ struct LiveRideView: View {
                 topArea(s)
                 Spacer()
                 tiles(s)
+                    .background(GeometryReader { g in
+                        Color.clear.preference(key: TilesTopKey.self, value: g.frame(in: .global).minY)
+                    })
                 controls(s)
             }
             .padding(.horizontal, 16)
@@ -65,22 +75,28 @@ struct LiveRideView: View {
         }
         .onReceive(ticker) { _ in tickHold() }
         .onChange(of: position) { _, _ in follow() }
+        .onPreferenceChange(TilesTopKey.self) { tilesTop = $0 }
         .screen("Live ride")
     }
 
     // MARK: Map
 
-    /// F-10: with motion on, the Map is taller than the screen (4/3 of it, hanging off the bottom), so the camera centre, and with it the
-    /// rider's dot, sits two thirds of the way down: most of the screen shows the road ahead. The dot is drawn at that fixed spot.
+    /// F-10: with motion on, the Map hangs off the bottom of the screen and its centre, where the camera puts the rider's dot, sits just above
+    /// the speed tile (24 pt clear of it), measured from the real tile layout: the map is twice as tall as that distance, so the camera
+    /// centre is exactly there and most of the visible map shows the road ahead. The dot is drawn at that same spot.
     private var lookAhead: Bool { !reduceMotion }
+    private static let dotClearance: CGFloat = 34      // 24 pt gap + the dot's radius
 
     private func mapView(_ s: LiveScreenState) -> some View {
         GeometryReader { geo in
+            let top = geo.frame(in: .global).minY
+            let measured = tilesTop.map { $0 - top } ?? geo.size.height * 0.45 + Self.dotClearance
+            let dotY = CGFloat(LiveCameraTrack.dotY(tilesTop: Double(measured), clearance: Double(Self.dotClearance), minY: 80))
             ZStack(alignment: .top) {
                 mapContent(s)
-                    .frame(width: geo.size.width, height: lookAhead ? geo.size.height * 4 / 3 : geo.size.height)
+                    .frame(width: geo.size.width, height: lookAhead ? dotY * 2 : geo.size.height)
                 if lookAhead, position != nil {
-                    dotView(s).position(x: geo.size.width / 2, y: geo.size.height * 2 / 3)
+                    dotView(s).position(x: geo.size.width / 2, y: dotY)
                 }
             }
         }
@@ -131,10 +147,12 @@ struct LiveRideView: View {
             camera = .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lon), distance: 700))
             return
         }
+        let heading = LiveCameraTrack.shortestHeading(from: lastHeading, to: u.headingDeg ?? lastHeading ?? 0)
+        lastHeading = heading
         let target = MapCameraPosition.camera(MapCamera(
             centerCoordinate: CLLocationCoordinate2D(latitude: u.centerLat, longitude: u.centerLon),
             distance: LiveCameraTrack.cameraDistanceM(speedKmh: speed ?? 0),
-            heading: u.headingDeg ?? 0))
+            heading: heading))
         withAnimation(.linear(duration: u.durationS)) { camera = target }
     }
 

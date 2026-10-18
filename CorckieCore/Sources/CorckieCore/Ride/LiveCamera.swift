@@ -78,6 +78,21 @@ public struct LiveCameraTrack: Equatable, Sendable {
         return min(950, max(450, (raw / 50).rounded() * 50))
     }
 
+    /// The heading to give the camera so it turns the short way: the equivalent of `target` (mod 360) nearest to `previous`, which may
+    /// run past 360 or below 0 (359 -> 1 becomes 359 -> 361, not a 358 degree spin back).
+    public static func shortestHeading(from previous: Double?, to target: Double) -> Double {
+        guard let p = previous else { return target }
+        var diff = (target - p).truncatingRemainder(dividingBy: 360)
+        if diff > 180 { diff -= 360 }
+        if diff < -180 { diff += 360 }
+        return p + diff
+    }
+
+    /// F-10 fix: where the rider's dot sits on the visible map: `clearance` above the top of the tiles (never above `minY`).
+    public static func dotY(tilesTop: Double, clearance: Double, minY: Double) -> Double {
+        max(minY, tilesTop - clearance)
+    }
+
     static func normalised(_ deg: Double) -> Double {
         let r = deg.truncatingRemainder(dividingBy: 360)
         return r < 0 ? r + 360 : r
