@@ -314,10 +314,14 @@ enum RidesPreview {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let h: Int64 = 3_600_000
         let offset = TimeZone.current.secondsFromGMT() / 60
-        return (0..<40).map { i in
-            RideListItem(id: "q\(i)", startAt: now - Int64(2 + i * 19) * h, utcOffsetMin: offset, kind: "ride",
-                         distanceM: Double(4_000 + (i * 733) % 9_000), totalS: Double(900 + (i * 137) % 1_200))
+        var items: [RideListItem] = []
+        for i in 0..<40 {
+            let hoursAgo: Int64 = Int64(2 + i * 19)
+            let metres: Double = Double(4_000 + (i * 733) % 9_000)
+            let seconds: Double = Double(900 + (i * 137) % 1_200)
+            items.append(RideListItem(id: "q\(i)", startAt: now - hoursAgo * h, utcOffsetMin: offset, kind: "ride", distanceM: metres, totalS: seconds))
         }
+        return items
     }
 
     static func list() -> [RideListItem] {
