@@ -88,9 +88,11 @@ struct LiveRideView: View {
             let measured = tilesTop.map { $0 - top } ?? fallback
             let usable = measured > 150 ? measured : fallback      // a tile position not measured yet (0) is not used
             let dotY = CGFloat(LiveCameraTrack.dotY(tilesTop: Double(usable), clearance: Double(Self.dotClearance), minY: 80))
+            let mapHeight = max(dotY * 2, geo.size.height)
             ZStack(alignment: .top) {
                 mapContent(s)
-                    .frame(width: geo.size.width, height: lookAhead ? dotY * 2 : geo.size.height)
+                    .frame(width: geo.size.width, height: lookAhead ? mapHeight : geo.size.height)
+                    .offset(y: lookAhead ? dotY - mapHeight / 2 : 0)      // centre stays at the dot even when the map must cover the whole screen
                 if lookAhead, position != nil {
                     dotView(s).position(x: geo.size.width / 2, y: dotY)
                 }
