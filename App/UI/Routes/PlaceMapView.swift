@@ -198,3 +198,7 @@ struct PlacePinMarks: MapContent {
         }
     }
 }
+
+extension PlaceColourStore {
+    static func color(_ id: String?) -> Color { Color(hex: PlaceColours.hex(id)) }
+}

@@ -1,7 +1,6 @@
 import CorckieCore
 import CoreLocation
 import Foundation
-import SwiftUI
 
 /// F-08: the colour of every place. Stored per place as the setting `place.colour.<id>` (a JSON string with the colour id, no schema
 /// change). A place without one gets the next colour of the set (`PlaceColours.assign`) the first time anything asks, and it is
@@ -26,7 +25,6 @@ enum PlaceColourStore {
         try RideQueries(database).setSetting(key: PlaceColours.settingKey(placeId), json: json)
     }
 
-    static func color(_ id: String?) -> Color { Color(hex: PlaceColours.hex(id)) }
 }
 
 /// A place with what the map screens need.
