@@ -23,8 +23,8 @@ enum LiveScreenCheck {
         expect(!riding.canClose && riding.showHoldToEnd && riding.clockText == "1:01", "riding: no close button, hold to end, clock")
 
         var s = LiveScreenDriver()
-        let fast = [47.9, 48.1, 52.0, 45.9].enumerated().map { s.update(LiveInput(scooterSpeedKmh: $0.element), at: Double($0.offset)) }
-        expect(fast.map { $0.tiles.speedKmh } == [48, 48, 52, 46] && fast.allSatisfy { $0.banner == nil }, "speed shown plainly, no warning above 48")
+        let speeds = [47.9, 48.1, 52.0, 45.9].enumerated().map { s.update(LiveInput(scooterSpeedKmh: $0.element), at: Double($0.offset)) }
+        expect(speeds.map { $0.tiles.speedKmh } == [48, 48, 52, 46] && speeds.allSatisfy { $0.banner == nil }, "speed shown plainly, no warning above 48")
 
         var g = LiveScreenDriver()
         let gps = g.update(LiveInput(gpsSpeedKmh: 31, scooterLinked: false, scooterBatteryPct: 64, estimatedBatteryPct: 61,
