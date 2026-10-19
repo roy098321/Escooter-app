@@ -201,7 +201,7 @@ struct ScooterTabView: View {
     /// "When last connected · 6 h ago"; older than a day: the day and clock time
     static func lastConnectedCaption(_ ms: Int64, nowMs: Int64) -> String {
         let when = nowMs - ms < 24 * 3_600_000 ? ParkedText.ago(endedAtMs: ms, nowMs: nowMs) : lastSeenText(ms)
-        return "When last connected {00B7} (when)"
+        return "When last connected \u{00B7} \(when)"
     }
 
     static func lastSeenText(_ ms: Int64?) -> String {
