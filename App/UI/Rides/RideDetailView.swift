@@ -131,7 +131,7 @@ struct RideDetailView: View {
                 }
             }
             .padding(16)
-            .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .padding(16)
         }
     }
