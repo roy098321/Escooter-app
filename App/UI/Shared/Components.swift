@@ -12,22 +12,6 @@ import SwiftUI
 ///
 ///     StatTile(value: "58 km", label: "Distance")
 ///     StatTile(value: "9", label: "Rides", trend: .up("2"))
-/// A1 (F-19): a number that changes rolls its changed digits (Apple numericText, smooth). Reduce Motion: a plain cross-fade.
-struct AliveNumber: ViewModifier {
-    let value: String
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content
-            .contentTransition(reduceMotion ? .opacity : .numericText())
-            .animation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth, value: value)
-    }
-}
-
-extension View {
-    func aliveNumber(_ value: String) -> some View { modifier(AliveNumber(value: value)) }
-}
-
 struct StatTile: View {
     enum Trend: Equatable {
         case up(String)
@@ -307,4 +291,20 @@ struct Pill: View {
             .background(filled ? tint : Theme.chip, in: Capsule())
             .foregroundStyle(filled ? Theme.onAccent : tint)
     }
+}
+
+/// A1 (F-19): a number that changes rolls its changed digits (Apple numericText, smooth). Reduce Motion: a plain cross-fade.
+struct AliveNumber: ViewModifier {
+    let value: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .contentTransition(reduceMotion ? .opacity : .numericText())
+            .animation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth, value: value)
+    }
+}
+
+extension View {
+    func aliveNumber(_ value: String) -> some View { modifier(AliveNumber(value: value)) }
 }
