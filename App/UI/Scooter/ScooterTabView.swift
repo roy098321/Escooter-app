@@ -18,7 +18,7 @@ struct ScooterTabView: View {
     @State private var rows: [MaintenanceService.Row] = []
     @State private var confirmForget = false
     @State private var connectTap = 0
-    @Environment(.dynamicTypeSize) private var typeSize
+    @Environment(\.dynamicTypeSize) private var typeSize
     private let link = AppModel.shared.scooter
 
     private var connected: Bool { preview?.connected ?? link.connected }
@@ -78,7 +78,8 @@ struct ScooterTabView: View {
         let livePct: Int? = preview != nil ? preview?.batteryPct : link.frame?.batteryPct
         let pct = connected ? (livePct ?? seenPct) : seenPct
         // S1 / S2 / S5: one status card: dot, name, odometer chip, the battery % (a clock when it is the last seen one), a small connect button
-        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))) {
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        layout {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Circle().fill(connected ? Theme.ok : Theme.accent).frame(width: 9, height: 9)

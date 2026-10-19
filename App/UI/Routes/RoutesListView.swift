@@ -13,7 +13,7 @@ struct RoutesListView: View {
     @State private var errorText: String?
     @State private var selected: RouteRef?
     @State private var showPlaces = false
-    @Environment(.dynamicTypeSize) private var typeSize
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     struct RouteRef: Hashable, Identifiable {
         let id: String

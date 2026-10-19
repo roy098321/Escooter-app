@@ -20,7 +20,7 @@ struct RidesListView: View {
     @State private var placeNames: [String: String] = [:]
     @State private var filter: RideDateFilter = .allTime
     @State private var query = ""
-    @Environment(.dynamicTypeSize) private var typeSize
+    @Environment(\.dynamicTypeSize) private var typeSize
     @AppStorage("rides.sort") private var sortRaw = RideSort.date.rawValue
     @State private var hopsOpen = false
     @State private var pendingDelete: RideListItem?
