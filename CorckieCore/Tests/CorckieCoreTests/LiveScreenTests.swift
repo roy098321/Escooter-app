@@ -1,15 +1,15 @@
 import XCTest
 @testable import CorckieCore
 
-/// M1-12: the display rules of the live ride screen: Ready (D2), no tabs, SLOW, GPS / "~N% est." labels,
+/// M1-12: the display rules of the live ride screen: Ready (D2), no tabs, GPS / "~N% est." labels,
 /// banners (one at a time, tappable only below 5 km/h), hold to end, the path.
 final class LiveScreenTests: XCTestCase {
     private func riding(_ speed: Double?, phase: RidePhase = .riding, battery: Double? = 80, gps: Double? = nil,
                         linked: Bool = true, phone: Bool = false, temp: Double? = nil, noGpsS: Double = 0,
-                        sameRide: Bool = false, format: Bool = false, est: Double? = nil, elapsed: Double? = 125) -> LiveInput {
+                        format: Bool = false, est: Double? = nil, elapsed: Double? = 125) -> LiveInput {
         LiveInput(scooterSpeedKmh: linked ? speed : nil, gpsSpeedKmh: gps, scooterLinked: linked, scooterBatteryPct: battery,
                   estimatedBatteryPct: est, starting: phase == .starting, secondsWithoutGps: noGpsS, phase: phase,
-                  scooterTempC: temp, phoneMode: phone, formatChanged: format, sameRideOffered: sameRide, rideElapsedS: elapsed)
+                  scooterTempC: temp, phoneMode: phone, formatChanged: format, rideElapsedS: elapsed)
     }
 
     // MARK: Ready (D2)
@@ -74,19 +74,18 @@ final class LiveScreenTests: XCTestCase {
         XCTAssertEqual(LiveScreenLogic.clock(nil), "0:00")
     }
 
-    // MARK: Speed warning and labels
+    // MARK: Speed and labels (no SLOW warning since P-4)
 
-    func testSlowOnAbove48ClearsBelow46() {
+    func testFastSpeedIsShownPlainlyWithNoBanner() {
         var d = LiveScreenDriver()
-        let out = [47.9, 48.1, 47.0, 46.0, 45.9].enumerated().map { d.update(riding($0.element), at: Double($0.offset)).tiles.slow }
-        XCTAssertEqual(out, [false, true, true, true, false])
+        let out = [47.9, 48.1, 52.0, 46.0].enumerated().map { d.update(riding($0.element), at: Double($0.offset)) }
+        XCTAssertEqual(out.map { $0.tiles.speedKmh }, [48, 48, 52, 46])
+        XCTAssertTrue(out.allSatisfy { $0.banner == nil && $0.bannerText == nil }, "nothing interrupts the rider for speed")
     }
 
-    func testSlowTextAndGpsSpeedIsGreyedAndLabelled() {
+    func testGpsSpeedIsGreyedAndLabelled() {
         var d = LiveScreenDriver()
         let s = d.update(riding(nil, gps: 49, linked: false, phone: true), at: 0)
-        XCTAssertTrue(s.tiles.slow)
-        XCTAssertEqual(s.tiles.slowText, "SLOW")
         XCTAssertEqual(s.tiles.speedLabel, "GPS")
         XCTAssertTrue(s.tiles.speedGreyed)
         XCTAssertTrue(s.dashedPath)
@@ -157,16 +156,13 @@ final class LiveScreenTests: XCTestCase {
         XCTAssertNil(d.update(riding(20, noGpsS: 0), at: 2).banner)
     }
 
-    func testSameRideBannerShowsYesNoUntilAnsweredAndNeverBlocksTheTiles() {
+    func testHotMotorStillRaisesItsBannerAndNothingElseDoes() {
         var d = LiveScreenDriver()
-        let s = d.update(riding(0, phase: .starting, sameRide: true), at: 0)
-        XCTAssertEqual(s.banner?.banner, .sameRide)
-        XCTAssertTrue(s.bannerIsSameRide)
-        XCTAssertEqual(s.banner?.tappable, true)
-        XCTAssertEqual(s.tiles.speedKmh, 0, "tiles are separate from the banner")
-        // answered: the engine clears the offer
-        let after = d.update(riding(0, phase: .starting, sameRide: false), at: 1)
-        XCTAssertNil(after.banner)
+        _ = d.update(riding(20, temp: 60), at: 0)
+        let hot = d.update(riding(20, temp: 92), at: 1)
+        XCTAssertEqual(hot.banner?.banner, .hot)
+        XCTAssertEqual(hot.bannerText, "Motor hot")
+        XCTAssertEqual(hot.tiles.speedKmh, 20, "the tiles are separate from the banner")
     }
 
     // MARK: Hold to end

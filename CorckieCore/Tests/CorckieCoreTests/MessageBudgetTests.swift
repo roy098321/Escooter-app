@@ -4,19 +4,19 @@ import XCTest
 /// M1-07: live banner rules (C24 order, at most 2 at ride start, 8 s, queue of 2, tappable only below 5 km/h).
 final class MessageBudgetTests: XCTestCase {
     func testPriorityOrderIsC24() {
-        let order: [LiveBanner] = [.veryHot, .choicePoint, .disconnected, .noGps, .batteryTight, .hot,
-                                   .sameRide, .starting, .destination, .headwind]
+        let order: [LiveBanner] = [.veryHot, .disconnected, .noGps, .batteryTight, .hot,
+                                   .starting, .destination, .headwind]
         XCTAssertEqual(order.sorted(), order)
         XCTAssertEqual(LiveBanner.disconnected.priority, LiveBanner.noGps.priority)
-        XCTAssertEqual(LiveBanner.sameRide.priority, LiveBanner.starting.priority)
+        XCTAssertEqual(LiveBanner.notRiding.priority, LiveBanner.starting.priority)
     }
 
     func testRideStartShowsAtMostTwoHighestFirst() {
         var q = BannerQueue()
-        q.beginRide(messages: [.headwind, .destination, .batteryTight, .sameRide])
+        q.beginRide(messages: [.headwind, .destination, .batteryTight, .starting])
         XCTAssertEqual(q.droppedToSummary.sorted(), [.destination, .headwind])
         XCTAssertEqual(q.tick(at: 0, speedKmh: 0)?.banner, .batteryTight)
-        XCTAssertEqual(q.tick(at: 8, speedKmh: 0)?.banner, .sameRide)
+        XCTAssertEqual(q.tick(at: 8, speedKmh: 0)?.banner, .starting)
         XCTAssertNil(q.tick(at: 16, speedKmh: 0))
     }
 
@@ -44,9 +44,9 @@ final class MessageBudgetTests: XCTestCase {
         var q = BannerQueue()
         q.raise(.headwind, at: 0)
         XCTAssertEqual(q.tick(at: 0, speedKmh: 20)?.banner, .headwind)
-        q.raise(.choicePoint, at: 2)
-        XCTAssertEqual(q.tick(at: 2, speedKmh: 20)?.banner, .choicePoint)
-        XCTAssertEqual(q.tick(at: 10, speedKmh: 20)?.banner, .headwind)     // after the choice point's 8 s
+        q.raise(.batteryTight, at: 2)
+        XCTAssertEqual(q.tick(at: 2, speedKmh: 20)?.banner, .batteryTight)
+        XCTAssertEqual(q.tick(at: 10, speedKmh: 20)?.banner, .headwind)     // after the battery banner's 8 s
         XCTAssertEqual(q.droppedToSummary, [])
     }
 
@@ -61,7 +61,7 @@ final class MessageBudgetTests: XCTestCase {
 
     func testQueueHoldsTwoAndDropsTheLeastImportant() {
         var q = BannerQueue()
-        q.raise(.sameRide, at: 0)
+        q.raise(.starting, at: 0)
         _ = q.tick(at: 0, speedKmh: 20)            // on screen
         q.raise(.headwind, at: 1)
         q.raise(.destination, at: 1)
@@ -83,11 +83,11 @@ final class MessageBudgetTests: XCTestCase {
         XCTAssertEqual(q.tick(at: 61, speedKmh: 20)?.banner, .headwind)
     }
 
-    func testChoicePointOutranksDisconnectedButVeryHotOutranksAll() {
+    func testDisconnectedOutranksTimedButVeryHotOutranksAll() {
         var q = BannerQueue()
         q.setActive(.disconnected, true, at: 0)
-        q.raise(.choicePoint, at: 1)
-        XCTAssertEqual(q.tick(at: 1, speedKmh: 20)?.banner, .choicePoint)
+        q.raise(.batteryTight, at: 1)
+        XCTAssertEqual(q.tick(at: 1, speedKmh: 20)?.banner, .disconnected)
         q.setActive(.veryHot, true, at: 2)
         XCTAssertEqual(q.tick(at: 2, speedKmh: 20)?.banner, .veryHot)
     }

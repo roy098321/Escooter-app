@@ -180,8 +180,8 @@ enum UIShot {
         "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-empty", "week-card", "factors", "factors-sparse",
         "scooter-tab", "scooter-tab-off", "scooter-tab-none", "battery-page", "battery-page-empty", "battery-page-calibrated",
         "onboarding1", "onboarding2", "onboarding3",
-        "live-riding", "live-ready", "live-starting", "live-slow", "live-gps", "live-slowgps", "live-nogps", "live-offline", "live-banner",
-        "live-sameride", "live-arrival", "live-routegps", "live-return",
+        "live-riding", "live-ready", "live-starting", "live-fast", "live-gps", "live-nogps", "live-offline", "live-banner",
+        "live-arrival", "live-routegps",
         "home-first", "home-notconnected", "home-ready", "home-cantfind", "home-riding", "home-location", "home-crash", "home-whereto",
         "ride-missing", "replay-missing", "data-failed", "home-simulated", "home-readonly", "stats-first-week", "export-empty", "stats-overall", "price-history", "purchase"
     ]

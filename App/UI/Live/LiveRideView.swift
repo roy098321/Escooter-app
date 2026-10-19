@@ -4,7 +4,7 @@ import SwiftUI
 
 /// M1-12 live ride view: a full-screen map, glass tiles, no tab bar and no navigation. It is shown as a full-screen
 /// cover (see `RootView`) while a ride is on, or in "Ready" (D2) when the "Going for a ride?" notification was
-/// tapped. Every decision (SLOW, GPS / "~N% est." labels, banners and when they can be tapped, which buttons exist)
+/// tapped. Every decision (GPS / "~N% est." labels, banners and when they can be tapped, which buttons exist)
 /// is made in CorckieCore (`LiveScreenDriver`, unit tested); this view only draws the result.
 struct LiveRideView: View {
     struct Preview {
@@ -65,7 +65,7 @@ struct LiveRideView: View {
         .interactiveDismissDisabled(true)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)       // the numbers keep their size; the rest does not outgrow the screen (M6-04)
         .onChange(of: s.bannerText) { _, text in
-            // VoiceOver: say a new banner (choice-point prompt, motor hot ...) out loud
+            // VoiceOver: say a new banner (motor hot ...) out loud
             if let text { AccessibilityNotification.Announcement(text).post() }
         }
         .onReceive(ticker) { _ in tickHold() }
@@ -200,30 +200,23 @@ struct LiveRideView: View {
         .sunPanel(Capsule())
     }
 
+    /// P-4: the only banners are the motor heat and plain data states (`LiveAlerts`); a tap takes one away below 5 km/h.
     private func banner(_ s: LiveScreenState, _ text: String) -> some View {
         let tappable = s.banner?.tappable ?? false
         let hot = s.banner?.banner == .veryHot || s.banner?.banner == .hot
-        let tint: Color? = hot ? Color.red : (s.bannerIsSameRide ? nil : Color.orange)
+        let tint: Color = hot ? Color.red : Color.orange
         return GlassCard(tint: tint) {
             HStack(spacing: 12) {
                 if hot { Image(systemName: "thermometer.medium").font(.title3.weight(.semibold)).accessibilityHidden(true) }
                 Text(text)
                     .font(.title3.weight(.semibold))
                     .multilineTextAlignment(.leading)
-                if s.bannerIsSameRide && tappable {
-                    Spacer(minLength: 8)
-                    Button("Yes") { answerTap += 1; RecorderService.shared.answerSameRide(true) }
-                        .buttonStyle(.borderedProminent)
-                    Button("No") { answerTap += 1; RecorderService.shared.answerSameRide(false) }
-                        .buttonStyle(.bordered)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .contentShape(Rectangle())
-        .sensoryFeedback(.impact(weight: .medium), trigger: answerTap)
         .onTapGesture {
-            if tappable && !s.bannerIsSameRide { RecorderService.shared.tapBanner() }
+            if tappable { RecorderService.shared.tapBanner() }
         }
     }
 
@@ -243,15 +236,15 @@ struct LiveRideView: View {
         }
     }
 
+    /// P-4: the speed is shown plainly, whatever it is (no red tile, no warning badge)
     private func speedTile(_ s: LiveScreenState) -> some View {
         let t = s.tiles
-        let speedLabel = "Speed " + (t.speedKmh.map { "\($0) kilometres per hour" } ?? "unknown") + (t.slow ? ", too fast" : "")
-            + (t.speedLabel.map { ", " + $0 } ?? "")
-        return GlassCard(tint: t.slow ? Color.red : nil) {
+        let speedLabel = "Speed " + (t.speedKmh.map { "\($0) kilometres per hour" } ?? "unknown") + (t.speedLabel.map { ", " + $0 } ?? "")
+        return GlassCard {
             HStack(alignment: .firstTextBaseline) {
                 Text(t.speedKmh.map { String($0) } ?? "\u{2013}")
                     .font(.system(size: Self.speedPt, weight: .bold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(t.slow ? Color.red : (t.speedGreyed ? Color.secondary : Color.primary))
+                    .foregroundStyle(t.speedGreyed ? Color.secondary : Color.primary)
                 Spacer()
                 VStack(alignment: .trailing, spacing: 6) {
                     Text("km/h").font(.title3).foregroundStyle(.secondary)
@@ -261,13 +254,6 @@ struct LiveRideView: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 2)
                             .sunPanel(Capsule(), thin: true)
-                    }
-                    if let slow = t.slowText {
-                        Text(slow)
-                            .font(.system(size: 34, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Color.white)
-                            .padding(.horizontal, 12)
-                            .background(Color.red, in: Capsule())
                     }
                 }
             }
@@ -396,10 +382,10 @@ enum LivePreview {
             input = LiveInput(scooterSpeedKmh: 0, scooterBatteryPct: 91, phase: .ready, lat: lat, lon: lon)
         case "live-starting":
             input = LiveInput(scooterSpeedKmh: 3, scooterBatteryPct: 91, starting: true, phase: .starting, lat: lat, lon: lon, rideElapsedS: 4)
-        case "live-slow":
-            input.scooterSpeedKmh = 46
-        case "live-gps", "live-slowgps":
-            input = LiveInput(gpsSpeedKmh: name == "live-slowgps" ? 47 : 31, scooterLinked: false, scooterBatteryPct: 64,
+        case "live-fast":
+            input.scooterSpeedKmh = 52     // P-4: shown plainly, no red tile
+        case "live-gps":
+            input = LiveInput(gpsSpeedKmh: 31, scooterLinked: false, scooterBatteryPct: 64,
                               estimatedBatteryPct: 61, phase: .riding, phoneMode: true, lat: lat, lon: lon, rideElapsedS: 900)
             dashedFrom = 22
         case "live-nogps":
@@ -408,23 +394,16 @@ enum LivePreview {
             input.mapOffline = true
         case "live-banner":
             input.scooterTempC = 92
-        case "live-sameride":
-            input.phase = .starting
-            input.starting = true
-            input.scooterSpeedKmh = 0
-            input.sameRideOffered = true
-            input.rideElapsedS = 6
         default:
             break
         }
         var driver = LiveScreenDriver()
         var clock = 0.0
-        if name == "live-arrival" || name == "live-routegps" || name == "live-return" {
+        if name == "live-arrival" || name == "live-routegps" {
             // M2-06 / M2-08: a made-up straight route 2.7 km long (no real place), followed from 1.1 km
             clock = Date().timeIntervalSince1970
             let points = (0..<31).map { GeoPoint(lat: lat - 0.012 + Double($0) * 0.0009, lon: lon) }
-            driver.follow(RouteFollower(destinationName: "Work", path: points, todayS: 540), utcOffsetMin: TimeZone.current.secondsFromGMT() / 60,
-                          returnWarning: name == "live-return" ? "Battery 20%: enough for Work, not for the way back." : nil)
+            driver.follow(RouteFollower(destinationName: "Work", path: points, todayS: 540), utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
             input.rideDistanceM = 1_100
             if name == "live-routegps" {
                 _ = driver.update(input, at: clock - 20)

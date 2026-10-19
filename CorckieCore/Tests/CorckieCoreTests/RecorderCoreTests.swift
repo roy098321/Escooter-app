@@ -158,6 +158,6 @@ final class RecorderCoreTests: XCTestCase {
         let phone = (store.samples[seq] ?? []).filter { $0.mode == "phone" }
         XCTAssertFalse(phone.isEmpty)
         XCTAssertTrue(phone.allSatisfy { $0.sample.speedKmh == nil && $0.sample.lat != nil })
-        XCTAssertTrue(store.lives.contains { $0.slow && $0.speedLabel == "GPS" }, "SLOW on GPS speed reaches the live view")
+        XCTAssertTrue(store.lives.contains { $0.speedLabel == "GPS" }, "GPS speed reaches the live view")
     }
 }

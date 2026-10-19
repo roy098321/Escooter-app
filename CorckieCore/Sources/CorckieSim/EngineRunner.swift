@@ -28,16 +28,6 @@ public enum EngineRunner {
                 return nil
             }
         }
-        /// Times the speed warning switched on / off (from `live`)
-        public var slowChanges: [(t: Double, on: Bool)] {
-            var out: [(t: Double, on: Bool)] = []
-            var last = false
-            for item in live where item.state.slow != last {
-                out.append((t: item.t, on: item.state.slow))
-                last = item.state.slow
-            }
-            return out
-        }
 
         public var started: [(seq: Int, at: Double, manual: Bool)] {
             events.compactMap { item -> (seq: Int, at: Double, manual: Bool)? in

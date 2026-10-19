@@ -72,7 +72,7 @@ enum P62Checks {
         let onAccent = Theme.contrast(0x24160C, 0xF89355)
         expect(onAccent >= 4.5, String(format: "dark text on the orange %.1f:1", onAccent))
         expect(resolved(Theme.danger, dark: false) != resolved(Theme.accent, dark: false) && resolved(Theme.ok, dark: false) != resolved(Theme.accent, dark: false),
-               "SLOW red and OK green stay apart from the orange")
+               "danger red and OK green stay apart from the orange")
         CheckResults.shared.set("u61", expect.ok ? .pass : .fail, expect.line)
     }
 

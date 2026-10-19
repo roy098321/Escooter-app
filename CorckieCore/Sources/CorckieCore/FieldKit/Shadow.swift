@@ -63,7 +63,6 @@ public enum ShadowCalc {
     /// Rule names (stored)
     public static let ruleEnd = "end"
     public static let ruleStart = "autostart"
-    public static let ruleSlow = "slow"
     public static let ruleDifferent = "different"
     public static let ruleGateTime = "gate.time"
     public static let ruleGateBattery = "gate.battery"
@@ -72,7 +71,6 @@ public enum ShadowCalc {
     static let titles: [String: String] = [
         ruleEnd: "Ride end after standing still (30 / 60 / 90 s)",
         ruleStart: "Autostart speed (2 / 3 / 4 km/h)",
-        ruleSlow: "SLOW warning (48 / 45 / 51 km/h)",
         ruleDifferent: "Noticeably different (60 s or 2% / 45 s or 1.5% / 90 s or 3%)",
         ruleGateTime: "Time estimate gate (rides needed: 3, shadow 2 / 4)",
         ruleGateBattery: "Battery estimate gate (rides needed: 5, shadow 4 / 6)",
@@ -81,7 +79,7 @@ public enum ShadowCalc {
 
     /// Everything for one closed ride. `routeRides` are the ride's other rides on its route (nil = not on a route).
     public static func evaluate(samples: [ShadowSample], thisTotalS: Double?, thisUsedPct: Double?, route: RouteHistory?) -> [ShadowDecision] {
-        var out = end(samples) + autostart(samples) + slow(samples)
+        var out = end(samples) + autostart(samples)
         if let r = route {
             out += different(thisTotalS: thisTotalS, thisUsedPct: thisUsedPct, otherTotalS: r.otherTotalS, otherUsedPct: r.otherUsedPct)
             out += gates(timedRides: r.otherTotalS.count + (thisTotalS == nil ? 0 : 1),
@@ -134,36 +132,6 @@ public enum ShadowCalc {
         }
     }
 
-    // MARK: SLOW (T99)
-
-    /// The values the shadow keeps for comparison (on above, clears below)
-    public static let shadowSlow: [(on: Double, clear: Double)] = [(45, 43), (51, 49)]
-
-    /// How many times the warning would have come on at 48 (standard since 18 Oct 2026), at the old 45 and at 51 km/h
-    /// (each clearing 2 km/h lower).
-    public static func slow(_ samples: [ShadowSample]) -> [ShadowDecision] {
-        func count(_ on: Double, _ clear: Double) -> Int {
-            var w = SpeedWarning(onAboveKmh: on, clearBelowKmh: clear)
-            var n = 0
-            var was = false
-            for s in samples {
-                guard let v = s.shownKmh else { continue }
-                let now = w.update(speedKmh: v)
-                if now && !was { n += 1 }
-                was = now
-            }
-            return n
-        }
-        let std = count(T.t99SlowKmh, T.t99ClearKmh)
-        func text(_ n: Int) -> String { n == 1 ? "1 warning" : "\(n) warnings" }
-        var out = [ShadowDecision(rule: ruleSlow, variant: "\(Int(T.t99SlowKmh)) km/h", decision: text(std), differs: false, isStandard: true)]
-        for (on, clear) in shadowSlow {
-            let n = count(on, clear)
-            out.append(ShadowDecision(rule: ruleSlow, variant: "\(Int(on)) km/h", decision: text(n), differs: n != std, isStandard: false))
-        }
-        return out
-    }
-
     // MARK: Noticeably different (T66)
 
     /// This ride against the route's median of its other rides (needs 3 timed ones, like the Today estimate).
@@ -204,7 +172,7 @@ public enum ShadowCalc {
         var out = "Shadow thresholds \u{00B7} \(now)\n"
         out += "What other values would have decided for each ride. The standard value decided; nothing here changed behaviour.\n"
         out += "Worked out from the stored 5-second samples, so times are approximate by 5 s.\n"
-        let rules = [ruleEnd, ruleStart, ruleSlow, ruleDifferent, ruleGateTime, ruleGateBattery, ruleGateRoute]
+        let rules = [ruleEnd, ruleStart, ruleDifferent, ruleGateTime, ruleGateBattery, ruleGateRoute]
         for rule in rules {
             let ofRule = rows.filter { $0.rule == rule }
             out += "\n\(titles[rule] ?? rule)\n"

@@ -2,8 +2,8 @@ import Foundation
 
 /// M1-07: what the live ride view shows, worked out from what the ride engine (M1-03 / M1-04 / M1-05)
 /// knows. The engine fills one `LiveInput` per update (about once a second) and the view only reads the
-/// `LiveState`, so every safety rule lives here and is unit tested (CONCEPT: speed >= 76 pt, SLOW above
-/// 48 / clears below 46, GPS speed labelled, battery "~N% est.", No GPS chip after 10 s).
+/// `LiveState`, so every safety rule lives here and is unit tested (CONCEPT: speed >= 76 pt, GPS speed labelled,
+/// battery "~N% est.", No GPS chip after 10 s). P-4 (owner, 19 Oct): no SLOW warning, the speed is shown plainly.
 
 public enum LiveSpeedSource: Equatable, Sendable {
     case scooter
@@ -41,8 +41,6 @@ public struct LiveInput: Equatable, Sendable {
     public var phoneMode: Bool = false
     /// The G1b format watch tripped (banner "Scooter data format changed")
     public var formatChanged: Bool = false
-    /// "Same ride?" is waiting for an answer
-    public var sameRideOffered: Bool = false
     /// Newest GPS fix (may be old: the dot freezes)
     public var lat: Double?
     public var lon: Double?
@@ -59,7 +57,7 @@ public struct LiveInput: Equatable, Sendable {
                 scooterBatteryPct: Double? = nil, estimatedBatteryPct: Double? = nil, starting: Bool = false,
                 secondsWithoutGps: Double = 0, mapOffline: Bool = false, phase: RidePhase = .riding,
                 scooterTempC: Double? = nil, phoneMode: Bool = false, formatChanged: Bool = false,
-                sameRideOffered: Bool = false, lat: Double? = nil, lon: Double? = nil, rideElapsedS: Double? = nil, rideDistanceM: Double? = nil,
+                lat: Double? = nil, lon: Double? = nil, rideElapsedS: Double? = nil, rideDistanceM: Double? = nil,
                 phoneGpsOff: Bool = false, locationDenied: Bool = false) {
         self.phoneGpsOff = phoneGpsOff
         self.locationDenied = locationDenied
@@ -68,7 +66,6 @@ public struct LiveInput: Equatable, Sendable {
         self.scooterTempC = scooterTempC
         self.phoneMode = phoneMode
         self.formatChanged = formatChanged
-        self.sameRideOffered = sameRideOffered
         self.lat = lat
         self.lon = lon
         self.rideElapsedS = rideElapsedS
@@ -95,18 +92,13 @@ public struct LiveState: Equatable, Sendable {
     /// "91%", "~55% est." or "–"
     public var batteryText: String
     public var batteryEstimated: Bool
-    /// Red + "SLOW"
-    public var slow: Bool
-    public var slowText: String?
     public var chips: [LiveChip]
     /// The "starting…" dot
     public var showStartingDot: Bool
 }
 
-/// Keeps the speed-warning hysteresis between updates.
+/// Builds the live tiles from one `LiveInput`. No state is kept between updates since the SLOW warning was removed (P-4).
 public struct LiveStateBuilder: Equatable, Sendable {
-    public private(set) var warning = SpeedWarning()
-
     public init() {}
 
     public mutating func update(_ input: LiveInput) -> LiveState {
@@ -124,8 +116,6 @@ public struct LiveStateBuilder: Equatable, Sendable {
                 speed = nil
             }
         }
-        // no speed at all: the warning keeps its state (nothing to compare, nothing flickers)
-        let slow = speed.map { warning.update(speedKmh: $0) } ?? warning.isOn
 
         let battery: Double?
         let estimated: Bool
@@ -153,9 +143,9 @@ public struct LiveStateBuilder: Equatable, Sendable {
         return LiveState(speedKmh: speed.map { Int($0.rounded()) }, speedSource: source,
                          speedLabel: source == .gps ? "GPS" : nil, speedGreyed: source == .gps,
                          batteryPct: batteryInt, batteryText: text, batteryEstimated: estimated,
-                         slow: slow, slowText: slow ? "SLOW" : nil, chips: chips,
+                         chips: chips,
                          showStartingDot: input.starting)
     }
 
-    public mutating func reset() { warning.reset() }
+    public mutating func reset() {}
 }

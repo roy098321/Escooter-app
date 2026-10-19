@@ -9,15 +9,13 @@ enum RideChecks {
         guard let database else { return }
         let store = RideQueries(database)
         guard let rides = try? store.rides() else { return }
-        let overLimitMps = T.t99SlowKmh / 3.6
         let facts: [RideFacts] = rides.filter { !$0.isSimulated && $0.kind == "ride" }.map { ride in
             let samples = (try? store.samples(rideId: ride.id)) ?? []
-            let red = Double(samples.filter { ($0.speedMps ?? 0) > overLimitMps }.count) * RideCheckRules.sampleStepS
             return RideFacts(id: ride.id, startAtMs: ride.startAt, utcOffsetMin: ride.utcOffsetMin ?? 0, kind: ride.kind,
                              status: ride.status, endReason: ride.endReason, isSimulated: ride.isSimulated,
                              totalS: ride.totalS ?? 0, distanceM: ride.distanceM, odoStartKm: ride.odoStartKm,
                              odoEndKm: ride.odoEndKm, topSpeedMps: ride.topSpeedMps, sampleCount: samples.count,
-                             secondsOverLimit: red, gapScooterS: ride.gapScooterS ?? 0, mergeGroupId: ride.mergeGroupId)
+                             gapScooterS: ride.gapScooterS ?? 0, mergeGroupId: ride.mergeGroupId)
         }
         let results = CheckResults.shared
         for verdict in RideCheckRules.evaluate(facts) {

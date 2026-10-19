@@ -469,22 +469,21 @@ extension RouteCheck {
                 chargeOk = status(15) == .tight && status(25) == .fits
                     && RouteFollowLoader.returnWarning(routeId: route.id, database: temp, battery: BatteryNow(pct: 25)) == nil
             }
-            // the warning on the live screen: once, at ride start
+            // P-4: nothing about the way back is shown on the live screen (the card and the summary keep the warning)
             let pts = (0..<31).map { GeoPoint(lat: 10 + Double($0) * 0.0009, lon: -30) }
             var driver = LiveScreenDriver()
-            driver.follow(RouteFollower(destinationName: "Work", path: pts, todayS: 540), returnWarning: "Battery 15%: enough for Work, not for the way back.")
-            func tick(_ t: Double) -> String? {
-                driver.update(LiveInput(scooterSpeedKmh: 0, scooterBatteryPct: 15, phase: .riding, lat: 10.001, lon: -30, rideElapsedS: t, rideDistanceM: 0), at: t).bannerText
+            driver.follow(RouteFollower(destinationName: "Work", path: pts, todayS: 540))
+            var quiet = true
+            for t in 0..<40 {
+                let screen = driver.update(LiveInput(scooterSpeedKmh: 0, scooterBatteryPct: 15, phase: .riding, lat: 10.001, lon: -30, rideElapsedS: Double(t), rideDistanceM: 0), at: Double(t))
+                if screen.bannerText != nil { quiet = false }
             }
-            let first = tick(0)
-            var again = false
-            for t in 9..<40 where tick(Double(t)) == first { again = true }
-            let onceOk = first == "Battery 15%: enough for Work, not for the way back." && !again
+            let onceOk = quiet
             let ok = edges && noBattery && warnOne && warnTight && warnFit && chargeOk && onceOk
             results.set("u25", ok ? .pass : .fail,
                         "fits / tight / one way only / not enough at the edges \(edges ? "ok" : "wrong") · no battery reading, no card \(noBattery ? "ok" : "wrong") · "
                         + "start warning one way only \(warnOne ? "ok" : "wrong"), tight \(warnTight ? "ok" : "wrong"), fits is silent \(warnFit ? "ok" : "wrong") · "
-                        + "I can charge here \(chargeOk ? "ok" : "wrong") · shown once at ride start \(onceOk ? "ok" : "wrong")")
+                        + "I can charge here \(chargeOk ? "ok" : "wrong") · silent on the live screen \(onceOk ? "ok" : "wrong")")
         } catch {
             results.set("u25", .fail, "There and back check failed: \(error.localizedDescription)")
         }

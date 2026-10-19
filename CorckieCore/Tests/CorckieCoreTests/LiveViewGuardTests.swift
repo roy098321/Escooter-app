@@ -45,7 +45,7 @@ final class LiveViewGuardTests: XCTestCase {
         let service = try text("Adapters/RecorderService.swift")
         XCTAssertTrue(service.contains("driver.tapBanner(speedKmh: speed)"), "banner taps go through BannerQueue's 5 km/h gate")
         let live = try text("UI/Live/LiveRideView.swift")
-        XCTAssertTrue(live.contains("if tappable && !s.bannerIsSameRide"), "a banner tap needs the tappable flag")
+        XCTAssertTrue(live.contains("if tappable { RecorderService.shared.tapBanner() }"), "a banner tap needs the tappable flag")
     }
 
     func test_closeButtonOnlyInReady() throws {
@@ -67,5 +67,33 @@ final class LiveViewGuardTests: XCTestCase {
         XCTAssertEqual(live.components(separatedBy: "size: Self.tilePt").count - 1, 1, "battery and ride time share one small tile (same font)")
         XCTAssertTrue(live.contains("batteryTile(s)") && live.contains("clockTile(s)"))
         XCTAssertTrue(live.contains("banner(s, text)") && live.contains(".font(.title3.weight(.semibold))"), "banners stay at title3 (20 pt, above 17)")
+    }
+
+    private func core(_ path: String) throws -> String {
+        try String(contentsOf: appFolder.deletingLastPathComponent().appendingPathComponent("CorckieCore/Sources/CorckieCore/" + path), encoding: .utf8)
+    }
+
+    /// P-4 (owner, 19 Oct): the rider is not interrupted. No SLOW, no live insights, no "Same ride?", no prompts, no choice-point
+    /// prompts in the live view; the motor-hot banner stays and the only place that raises anything is `LiveAlerts`.
+    func test_P4_liveViewIsQuiet() throws {
+        let live = try text("UI/Live/LiveRideView.swift")
+        for gone in ["SLOW", ".slow", "slowText", "bannerIsSameRide", "answerSameRide", "Same ride", "Button(\"Yes\")", "choicePoint", "returnWarning"] {
+            XCTAssertFalse(live.contains(gone), "the live view must not contain \(gone)")
+        }
+        let service = try text("Adapters/RecorderService.swift")
+        for gone in ["answerSameRide", "returnWarning:", "prompts:", "FastestService.prompter", "promptsShownNow"] {
+            XCTAssertFalse(service.contains(gone), "RecorderService must not contain \(gone)")
+        }
+        let screen = try core("Ride/LiveScreen.swift")
+        for gone in ["choicePoint", "sameRide", "returnWarning", "prompter", "ChoicePrompt", ".slow", "SpeedWarning"] {
+            XCTAssertFalse(screen.contains(gone), "the live screen driver must not contain \(gone)")
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: appFolder.deletingLastPathComponent()
+            .appendingPathComponent("CorckieCore/Sources/CorckieCore/Ride/SpeedWarning.swift").path), "SpeedWarning is deleted")
+        XCTAssertTrue(screen.contains("LiveAlerts.feed(&banners"), "the driver raises banners only through LiveAlerts")
+        let alerts = try core("Ride/LiveAlerts.swift")
+        XCTAssertEqual(alerts.components(separatedBy: "    case ").count - 1, 1, "LiveAlert has one case for now (motorHot)")
+        XCTAssertTrue(alerts.contains("case motorHot"))
+        XCTAssertTrue(live.contains("Hold to end") && live.contains("a.short") && live.contains("batteryTile(s)"), "numbers, arrival chip and hold-to-end stay")
     }
 }

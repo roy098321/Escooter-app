@@ -79,8 +79,9 @@ final class PredictionStoreTests: XCTestCase {
         XCTAssertTrue(FieldKitService.accuracyText(db).contains("Q-C Today's time estimate"))
 
         let shadow = try store.shadowRows()
-        XCTAssertTrue(shadow.contains { $0.rule == ShadowCalc.ruleSlow && $0.variant == "48 km/h" })
-        XCTAssertTrue(FieldKitService.shadowText(db).contains("SLOW warning"))
+        XCTAssertTrue(shadow.contains { $0.rule == ShadowCalc.ruleStart && $0.variant == "2 km/h" && $0.isStandard })
+        XCTAssertTrue(FieldKitService.shadowText(db).contains("Autostart speed"))
+        XCTAssertFalse(FieldKitService.shadowText(db).contains("SLOW"), "the SLOW rule is gone (P-4)")
     }
 
     func test_afterRide_ignoresSimulatedRides_andShortHops() throws {

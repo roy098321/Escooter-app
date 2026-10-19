@@ -36,7 +36,7 @@ final class RideCheckRulesTests: XCTestCase {
     func test_scooterOffAndRecordedChecks() {
         let list = RideCheckRules.evaluate([ride("a", reason: "scooterOff")])
         XCTAssertEqual(verdict("e2m", list)?.result, .pass)
-        XCTAssertEqual(verdict("w4", list)?.result, .info)
+        XCTAssertNil(verdict("w4", list), "the SLOW warning is gone (P-4), so is its check")
         XCTAssertEqual(verdict("b9m", list)?.result, .info)
         XCTAssertEqual(verdict("s2", list)?.result, .info)
         XCTAssertEqual(verdict("s5", list)?.result, .pass)

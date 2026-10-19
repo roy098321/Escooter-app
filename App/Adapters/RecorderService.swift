@@ -140,7 +140,7 @@ final class RecorderService {
         send(.baro(BaroReading(t: t, relativeAltitudeM: relativeAltitudeM, pressureKPa: pressureKPa)), at: t)
     }
 
-    /// Home → Start ride, live view → Not riding / hold to end / Same ride? (M1-11, M1-12)
+    /// Home → Start ride, live view → Not riding / hold to end (M1-11, M1-12)
     func press(_ input: RideEngineInput) { send(.press(input)) }
 
     // MARK: Live view (M1-12)
@@ -168,25 +168,16 @@ final class RecorderService {
             }
             if let db = AppModel.shared.displayDatabase {
                 let battery = input.scooterBatteryPct.map { BatteryNow(pct: $0) } ?? BatteryNowSource.current(database: db)
-                // M4-03: the ride-start insights (Q9 folded in, Q1 destination guess, Q2 tight battery, Q15 headwind) are stored as
-                // candidates; the live view shows Q9's line as before (M2-09), the rest wait for the message budget (M4-04).
-                let start = InsightRunner.atRideStart(db, routeId: RouteFollowSelection.shared.routeId, battery: battery, lat: input.lat, lon: input.lon)
+                // M4-03: the ride-start insights (Q9, Q1 destination guess, Q2 tight battery, Q15 headwind) are only stored as candidates for the
+                // ride summary; since P-4 nothing of them is shown during the ride.
+                _ = InsightRunner.atRideStart(db, routeId: RouteFollowSelection.shared.routeId, battery: battery, lat: input.lat, lon: input.lon)
                 if let id = RouteFollowSelection.shared.routeId {
-                    let warning = (start.shown + start.toSummary).first { $0.type == .q9Live }?.text
-                    let combination = RouteFollowSelection.shared.combination
-                    driver.follow(RouteFollowLoader.follower(routeId: id, database: db, combination: combination),
-                                  utcOffsetMin: RouteCardLoader.currentOffsetMin(),
-                                  returnWarning: warning,
-                                  prompts: combination ? FastestService.prompter(db, routeId: id) : nil)     // M6-02
+                    driver.follow(RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination),
+                                  utcOffsetMin: RouteCardLoader.currentOffsetMin())
                 }
             }
         } else if !rideOn, followChecked {
             followChecked = false
-            // M6-02: prompts shown / quiet re-plans of the ride that just ended, for the ride's developer line (P6)
-            if driver.promptsShownNow > 0 || EngineClock.shared.jumpsThisRide > 0, let db = AppModel.shared.displayDatabase, !db.isReadOnly {
-                try? RideQueries(db).setSetting(key: "m6.lastRidePrompts",
-                                                json: "{\"shown\":\(driver.promptsShownNow),\"replans\":\(driver.choiceReplansNow),\"clockChanges\":\(EngineClock.shared.jumpsThisRide)}")
-            }
             RouteFollowSelection.shared.routeId = nil
             RouteFollowSelection.shared.combination = false
         }
@@ -220,15 +211,12 @@ final class RecorderService {
         liveScreen = screen
     }
 
-    /// The rider taps the shown banner (refused at 5 km/h or more) or answers "Same ride?".
+    /// The rider taps the shown banner (refused at 5 km/h or more).
     func tapBanner() {
         let speed = Double(liveScreen?.tiles.speedKmh ?? 0)
         driver.tapBanner(speedKmh: speed)
     }
 
-    func answerSameRide(_ yes: Bool) {
-        press(.sameRideAnswer(yes))
-    }
 
     // MARK: Simulator (M1-15)
 

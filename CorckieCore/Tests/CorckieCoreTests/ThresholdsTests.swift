@@ -24,18 +24,15 @@ final class ThresholdsTests: XCTestCase {
         XCTAssertEqual(Set(T.catalog.keys), Set(doc.keys), "code has IDs the doc doesn't, or the other way round")
     }
 
-    /// M1-01: the three decided thresholds, word for word from CALC_SPEC §10 (owner, 2026-10-04; T99 48 / 46 on 2026-10-18).
-    func test_thresholds_T99_T101_T102_wordForWord() throws {
+    /// M1-01: the decided thresholds, word for word from CALC_SPEC §10 (owner, 2026-10-04). T99 (the SLOW warning) was removed on 2026-10-19 (P-4).
+    func test_thresholds_T101_T102_wordForWord() throws {
         let doc = try docTable()
-        XCTAssertEqual(doc["T99"], "> **48 km/h**, red + \"SLOW\"; clears below 46 (owner, 2026-10-18; was 45)")
-        XCTAssertEqual(T.catalog["T99"], doc["T99"])
         XCTAssertEqual(doc["T101"], "+10% of what is needed")
         XCTAssertEqual(T.catalog["T101"], doc["T101"])
         XCTAssertEqual(doc["T102"], "wheel or GPS 1–7 km/h, motor < 0.5 A, for 30 s (M1 D3, 2026-10-04)")
         XCTAssertEqual(T.catalog["T102"], doc["T102"])
+        XCTAssertNil(T.catalog["T99"], "no SLOW warning any more (P-4)")
         // the typed values say the same thing
-        XCTAssertEqual(T.t99SlowKmh, 48)
-        XCTAssertEqual(T.t99ClearKmh, 46)
         XCTAssertEqual(T.t101SafetyMarginShare, 0.10, accuracy: 1e-12)
         XCTAssertEqual(T.t102PushingMinKmh, 1)
         XCTAssertEqual(T.t102PushingMaxKmh, 7)
@@ -51,7 +48,7 @@ final class ThresholdsTests: XCTestCase {
             ("T06", T.t06MaxTempC), ("T07", T.t07FailedFrameShare * 100), ("T07", T.t07NoPacketAS),
             ("T10", T.t10AutostartKmh), ("T17", T.t17EndDisconnectedS), ("T20", T.t20EndStandstillS / 60),
             ("T28", T.t28GoodFixM), ("T29", T.t29GpsZeroKmh), ("T42", T.t42PackVoltage),
-            ("T42", T.t42DefaultPackAh), ("T47", T.t47HotC), ("T47", T.t47VeryHotC), ("T99", T.t99SlowKmh), ("T99", T.t99ClearKmh),
+            ("T42", T.t42DefaultPackAh), ("T47", T.t47HotC), ("T47", T.t47VeryHotC),
             ("T101", T.t101SafetyMarginShare * 100), ("T102", T.t102PushingMaxKmh), ("T102", T.t102PushingS)
         ]
         for (id, value) in checks {

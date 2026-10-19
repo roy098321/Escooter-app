@@ -17,15 +17,13 @@ public struct RideFacts: Equatable, Sendable {
     public var odoEndKm: Double?
     public var topSpeedMps: Double?
     public var sampleCount: Int
-    /// seconds above the SLOW limit (T99, counted from the stored samples, 5 s each)
-    public var secondsOverLimit: Double
     public var gapScooterS: Double
     public var mergeGroupId: String?
 
     public init(id: String, startAtMs: Int64, utcOffsetMin: Int = 0, kind: String = "ride", status: String = "ended",
                 endReason: String? = nil, isSimulated: Bool = false, totalS: Double = 0, distanceM: Double? = nil,
                 odoStartKm: Double? = nil, odoEndKm: Double? = nil, topSpeedMps: Double? = nil, sampleCount: Int = 0,
-                secondsOverLimit: Double = 0, gapScooterS: Double = 0, mergeGroupId: String? = nil) {
+                gapScooterS: Double = 0, mergeGroupId: String? = nil) {
         self.id = id
         self.startAtMs = startAtMs
         self.utcOffsetMin = utcOffsetMin
@@ -39,7 +37,6 @@ public struct RideFacts: Equatable, Sendable {
         self.odoEndKm = odoEndKm
         self.topSpeedMps = topSpeedMps
         self.sampleCount = sampleCount
-        self.secondsOverLimit = secondsOverLimit
         self.gapScooterS = gapScooterS
         self.mergeGroupId = mergeGroupId
     }
@@ -109,12 +106,6 @@ public enum RideCheckRules {
             out.append(RideCheckVerdict(id: "e3m", result: .pass, note: "A ride was joined from two pieces"))
         }
 
-        // w4: speed warning on real rides, recorded for tuning
-        let red = real.reduce(0.0) { $0 + $1.secondsOverLimit }
-        let top = real.compactMap { $0.topSpeedMps }.max() ?? 0
-        let redRides = real.filter { $0.secondsOverLimit > 0 }.count
-        out.append(RideCheckVerdict(id: "w4", result: .info,
-                                    note: "\(redRides) of \(real.count) rides over \(Int(T.t99SlowKmh)) km/h, \(Int(red)) s in all, top \(String(format: "%.0f", top * 3.6)) km/h"))
 
         // b9m: link over rides, recorded
         let gaps = real.filter { $0.gapScooterS > 0 }

@@ -9,17 +9,16 @@ import Foundation
 /// condition lasts; hot is announced once per ride.
 
 public enum LiveBanner: Int, CaseIterable, Comparable, Sendable {
-    case veryHot = 1, choicePoint, disconnected, noGps, batteryTight, returnCheck, phoneBatteryLow, hot, sameRide, starting, notRiding, destination, headwind
+    case veryHot = 1, disconnected, noGps, batteryTight, returnCheck, phoneBatteryLow, hot, starting, notRiding, destination, headwind
 
     /// C24 order: 1 = most important. Disconnected and No GPS share row 3.
     public var priority: Int {
         switch self {
         case .veryHot: return 1
-        case .choicePoint: return 2
         case .disconnected, .noGps: return 3
         case .batteryTight, .returnCheck, .phoneBatteryLow: return 4
         case .hot: return 5
-        case .sameRide, .starting, .notRiding: return 6
+        case .starting, .notRiding: return 6
         case .destination: return 7
         case .headwind: return 8
         }
@@ -37,20 +36,18 @@ public enum LiveBanner: Int, CaseIterable, Comparable, Sendable {
         }
     }
 
-    /// Announced once per ride (a choice point can come again)
-    var oncePerRide: Bool { !isSticky && self != .choicePoint }
+    /// Announced once per ride
+    var oncePerRide: Bool { !isSticky }
 
     public var text: String {
         switch self {
         case .veryHot: return "Motor very hot"
-        case .choicePoint: return "Choice point ahead"
         case .disconnected: return "Scooter disconnected · reconnecting…"
         case .noGps: return "No GPS"
         case .batteryTight: return "Battery is tight for this ride"
         case .returnCheck: return "Battery may not last for the way back"
         case .phoneBatteryLow: return PhoneBatteryPolicy.bannerText
         case .hot: return "Motor hot"
-        case .sameRide: return "Same ride?"
         case .starting: return "Starting…"
         case .notRiding: return "Not riding"
         case .destination: return "Destination guess"
@@ -77,7 +74,6 @@ public struct BannerQueue: Sendable {
     private var current: (banner: LiveBanner, since: Double)?
     private var waiting: [LiveBanner] = []              // arrival order
     private var raisedThisRide: Set<LiveBanner> = []
-    private var held: Set<LiveBanner> = []                // timed banners that stay while their condition lasts (choice point)
     private var heat = HeatWatch()
     /// Messages that never got on screen; the ride summary shows them
     public private(set) var droppedToSummary: [LiveBanner] = []
@@ -93,7 +89,6 @@ public struct BannerQueue: Sendable {
         current = nil
         waiting = []
         raisedThisRide = []
-        held = []
         heat = HeatWatch()
         droppedToSummary = []
         let timed = Array(Set(messages.filter { !$0.isSticky })).sorted()
@@ -130,17 +125,6 @@ public struct BannerQueue: Sendable {
         }
     }
 
-    /// M6-02: a timed banner that stays on screen while its condition lasts (no 8 s limit); `clear` takes it away.
-    public mutating func hold(_ banner: LiveBanner, _ on: Bool) {
-        if on { held.insert(banner) } else { held.remove(banner) }
-    }
-
-    /// Takes a timed banner off the screen and out of the queue (the choice point was passed).
-    public mutating func clear(_ banner: LiveBanner) {
-        if current?.banner == banner { current = nil }
-        waiting.removeAll { $0 == banner }
-    }
-
     /// M38 through `HeatWatch`: very hot stays until the motor is below hot; hot is announced once.
     public mutating func feedHeat(tempC: Double, at t: Double) {
         let announced = heat.update(tempC)
@@ -162,7 +146,7 @@ public struct BannerQueue: Sendable {
 
     /// Call about once a second with the speed shown on screen. Returns the banner to show, if any.
     public mutating func tick(at t: Double, speedKmh: Double) -> Shown? {
-        if let c = current, t - c.since >= bannerS, !held.contains(c.banner) { current = nil }
+        if let c = current, t - c.since >= bannerS { current = nil }
 
         var best: (banner: LiveBanner, isSticky: Bool)?
         for b in sticky.keys where best == nil || b < best!.banner { best = (b, true) }

@@ -979,7 +979,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
                          secondsWithoutGps: freshFix(at: t) == nil ? noGps : 0,
                          mapOffline: mapOffline, phase: phase,
                          scooterTempC: linked ? temperatureC : nil, phoneMode: phone,
-                         formatChanged: untrustedSince != nil, sameRideOffered: pendingSameRideSeq != nil,
+                         formatChanged: untrustedSince != nil,
                          lat: lastFix?.lat, lon: lastFix?.lon, rideElapsedS: ride.map { max(0, t - $0.startT) },
                          rideDistanceM: ride.map { $0.wheelM })
     }

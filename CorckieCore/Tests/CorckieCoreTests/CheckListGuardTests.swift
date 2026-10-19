@@ -73,7 +73,7 @@ final class CheckListGuardTests: XCTestCase {
 
     func test_realRideChecks_areMarkedOnARide() throws {
         let places = Dictionary(uniqueKeysWithValues: try guideEntries().map { entry -> (String, Bool) in (entry.id, entry.body.contains("place: .ride)")) })
-        for id in ["x1", "x2", "s2", "s3", "s5", "e2m", "e3m", "w4", "b9m", "c8", "q1", "d10", "bt1", "bt2", "rt13", "mf1", "mi3", "mx1", "mk1", "mk2",
+        for id in ["x1", "x2", "s2", "s3", "s5", "e2m", "e3m", "b9m", "c8", "q1", "d10", "bt1", "bt2", "rt13", "mf1", "mi3", "mx1", "mk1", "mk2",
                    "mq1", "mq2", "p6lb", "p6rain", "p6night", "p6gps", "p6load", "p6route", "p6lpm", "p6left", "p6chg", "p6pocket"] {
             XCTAssertEqual(places[id], true, "\(id) needs a real ride and must be marked On a ride")
         }

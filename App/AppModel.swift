@@ -205,9 +205,9 @@ enum InstallChecks {
         FuelPriceSetting.ensureDefault(database: database)
         CalibrationUpdater.refreshAtOpen(database)
 
-        // u2 (M1-01): version 1.0 and the decided thresholds (T99 48 / 46 since P6-1)
-        let thresholdsOk = T.t99SlowKmh == 48 && T.t99ClearKmh == 46 && T.t101SafetyMarginShare == 0.10
-        let line = "Version \(AppInfo.version) · speed warning on > \(Int(T.t99SlowKmh)) / off < \(Int(T.t99ClearKmh)) km/h · margin +\(Int((T.t101SafetyMarginShare * 100).rounded()))%"
+        // u2 (M1-01): version 1.0 and the decided thresholds (T101 margin; the SLOW limit T99 went with the SLOW warning, P-4)
+        let thresholdsOk = T.t101SafetyMarginShare == 0.10
+        let line = "Version \(AppInfo.version) \u{00B7} margin +\(Int((T.t101SafetyMarginShare * 100).rounded()))%"
         results.set("u2", thresholdsOk && AppInfo.version == "1.0" ? .pass : .fail, line)
 
         if let db = database {

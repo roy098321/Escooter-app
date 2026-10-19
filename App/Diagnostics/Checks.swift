@@ -145,7 +145,7 @@ enum CheckList {
         CheckItem(id: "u1", group: phone, title: "Checks show progress and step ticks (M1-00b)", how: "Start the 4-min test (b8) or Run all automatic, and watch this screen",
                   expected: "A bar with time left on the 4-min test and on Run all automatic; b9 / c5 / c6 / c7 show a checklist that ticks itself", needsScooter: false, manual: true, tool: .none),
         CheckItem(id: "u2", group: phone, title: "Version 1.0 and thresholds (M1-01)", how: "Nothing to do · Run all automatic also marks it",
-                  expected: "Version 1.0; speed warning on above 48 km/h, off below 46 (T99); safety margin +10% (T101)", needsScooter: false, manual: false, tool: .none),
+                  expected: "Version 1.0; safety margin +10% (T101)", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u3", group: phone, title: "Fake scooter replays phone GPS + barometer (M1-02)", how: "Nothing to do · Run all automatic marks it",
                   expected: "The ride-2 phone track lines up with the scooter samples (≤ 5 m); GPS and barometer replay on the same clock", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u4", group: phone, title: "Ride storage (M1-08)", how: "Nothing to do · Run all automatic marks it",
@@ -153,7 +153,7 @@ enum CheckList {
         CheckItem(id: "u5", group: phone, title: "Ride numbers from stored samples (M1-06)", how: "Nothing to do · Run all automatic marks it",
                   expected: "Ride 1 gives 437 Wh and 16.3 km, ride 2 gives 322 Wh and 13.7 km (±3% energy), top speed, peak temperature and time computed from one sample every 5 s", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u6", group: phone, title: "Live view rules and banner budget (M1-07)", how: "Nothing to do · Run all automatic marks it",
-                  expected: "SLOW above 48, clears below 46 (scooter and GPS); GPS speed labelled; banners locked from 5 km/h; 2 at ride start; hot once, very hot until it cools; one \"Going for a ride?\" per power-on", needsScooter: false, manual: false, tool: .none),
+                  expected: "GPS speed labelled, any speed shown plainly (no SLOW); banners locked from 5 km/h; 2 at ride start; hot once, very hot until it cools; one \"Going for a ride?\" per power-on", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u7", group: phone, title: "\"Going for a ride?\" rules and message log (M1-10)", how: "Nothing to do · Run all automatic marks it",
                   expected: "One notification per power-on across 3 reconnect blips, removed at ride start and at scooter off, sent at night, never with the app open; every decision stored in the message log of a temporary database", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u8", group: phone, title: "Rides list rules (M1-14)", how: "Nothing to do · Run all automatic marks it",
@@ -162,8 +162,8 @@ enum CheckList {
                   expected: "On the fake scooter: walking the scooter is cancelled or trimmed away, a spinning wheel is cancelled within 20 s, a kick-start is confirmed by the motor current; Start ride skips the confirm step; Not riding cancels silently", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u10", group: phone, title: "Ride end, stops, pushing, Same ride, recovery (M1-04)", how: "Nothing to do · Run all automatic marks it",
                   expected: "On the fake scooter: dropped while standing ends after 30 s, 0x80 ends at once, auto-off and 10 min standstill end the ride, end time = last movement; pushing 1 km is a walking stretch with \"battery ran out at 3%\"; Same ride offered after a switch-off at a light; a relaunch mid-ride resumes, > 2 min recovers", needsScooter: false, manual: false, tool: .none),
-        CheckItem(id: "u11", group: phone, title: "Phone takeover and speed warning (M1-05)", how: "Nothing to do · Run all automatic marks it",
-                  expected: "On the fake scooter: a 1-s link drop changes nothing; after ~5 s the phone takes over (GPS speed labelled, \"~N% est.\"), scooter numbers and odometer distance back on reconnect; SLOW above 48, clears below 46 on scooter and on GPS speed, no flicker", needsScooter: false, manual: false, tool: .none),
+        CheckItem(id: "u11", group: phone, title: "Phone takeover (M1-05)", how: "Nothing to do · Run all automatic marks it",
+                  expected: "On the fake scooter: a 1-s link drop changes nothing; after ~5 s the phone takes over (GPS speed labelled, \"~N% est.\"), scooter numbers and odometer distance back on reconnect; fast speeds (49 km/h) shown as they are, on the scooter and on GPS speed", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u12", group: phone, title: "Recorder end to end (M1-09)", how: "Nothing to do · Run all automatic marks it (~10 s)",
                   expected: "Rides 1 and 2 through the Recorder into a temporary database: 437 Wh / 16.3 km and 322 Wh / 13.7 km, samples and raw packets stored; a kill mid-ride is recovered; your real rides unchanged", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u16", group: phone, title: "Backup writer (M1-16)", how: "Nothing to do · Run all automatic marks it",
@@ -171,7 +171,7 @@ enum CheckList {
         CheckItem(id: "u15", group: phone, title: "Ride summary (M1-13)", how: "Nothing to do · Run all automatic marks it. Then open a ride in Rides to look at it (a simulated ride shows the same screen)",
                   expected: "A made-up ride stored in a temporary database gives the right time, distance, average speed and battery; the path has a dashed phone stretch and a walking stretch; the notes say recovered, phone stretch, heat and on foot; a ride without GPS shows the No GPS card; delete removes the ride and its readings", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u14", group: phone, title: "Live ride screen rules (M1-12)", how: "Nothing to do · Run all automatic marks it",
-                  expected: "Ready has no clock or stop button and can be closed; a ride has no close button, only the held stop button (1 s); SLOW above 48, off below 46; GPS speed greyed and labelled, ~N% est.; one banner at a time, locked from 5 km/h; No GPS after 10 s", needsScooter: false, manual: false, tool: .none),
+                  expected: "Ready has no clock or stop button and can be closed; a ride has no close button, only the held stop button (1 s); any speed shown plainly (no SLOW); GPS speed greyed and labelled, ~N% est.; one banner at a time, locked from 5 km/h; No GPS after 10 s", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u13", group: phone, title: "Home states and connect rules (M1-11)", how: "Nothing to do · Run all automatic marks it",
                   expected: "First use and not connected show Connect your scooter (never Start ride); connected shows Start ride; a connect that fails shows Can't find the scooter after 30 s; a ride shows Ride in progress", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "o1", group: phone, title: "Onboarding in 3 presses (M1-11)", how: "Developer → Show onboarding (the scooter stays paired), go through it",
@@ -245,9 +245,6 @@ enum CheckList {
 
     private static let simStart = "Developer → Simulated scooter → Run on the real screens → "
     private static let m1New: [CheckItem] = [
-        m("w1", simM, "Speed warning turns on above 48", simStart + "Scenario SPD-49 · 5× · Start", "Tile red + SLOW within 1 s of passing 48 km/h", manual: true, tool: .simulator),
-        m("w2", simM, "Warning clears below 46, no flicker", "Same run as w1 (49 → 47 → 49 → 45)", "Still red at 47, clears at 45; one on / off per crossing", manual: true, tool: .simulator),
-        m("w3", simM, "Warning on GPS speed in phone mode", simStart + "Scenario SPD-49-GPS · 5× · Start", "Red + SLOW with the GPS label while disconnected", manual: true, tool: .simulator),
         m("p1", simM, "Phone takeover on screen", simStart + "Scenario D7 · 50× · Start", "GPS speed greyed, ~N% est., dashed path, banner; scooter numbers back on reconnect", manual: true, tool: .simulator),
         m("p2", simM, "Data format changed", simStart + "Scenario SC-04 · 50× · Start", "Banner Scooter data format changed, phone mode, raw packets still stored", manual: true, tool: .simulator),
         m("l1", simM, "GPS lost", simStart + "Scenario SC-07 · 5× · Start", "No GPS chip after 10 s, dot frozen grey, distance keeps counting", manual: true, tool: .simulator),
@@ -291,8 +288,7 @@ enum CheckList {
         m("p3", ridesM, "Phone takeover: out of range and back", "Mid-ride stop, lock the phone, walk away until the scooter drops, walk back within 30 s, ride on", "Banner + GPS speed while away; reconnects by itself; gap row; distance filled from the odometer", scooter: true, manual: true),
         m("p4", ridesM, "Phone takeover: out of range and stop", "At the end of a ride leave the scooter on, walk away, stand still ~1 min", "Phone mode, then the ride ends; end time = last riding movement", scooter: true, manual: true),
         m("e2m", ridesM, "Scooter off ends the ride at once", "At the end of a ride switch the scooter off", "Ride ends at once, end reason scooter switched off", scooter: true),
-        m("e3m", ridesM, "Same ride", "Mid-commute switch off at a stop, set off again within 10 min", "Same ride? banner; Yes joins the two pieces", scooter: true),
-        m("w4", ridesM, "Speed warning on real rides", "Nothing to do", "Times red, seconds red, top speed per ride (for tuning)", scooter: true),
+        m("e3m", ridesM, "Same ride", "Mid-commute switch off at a stop, set off again within 10 min", "Nothing is asked during the ride; the summary of the second piece asks Same ride? and Merge joins the two pieces", scooter: true),
         m("b9m", ridesM, "Link over a ride", "Nothing to do", "Disconnects per ride and their reasons", scooter: true)
     ]
 
@@ -315,8 +311,8 @@ enum CheckList {
           "Leave = target - today - margin (upper edge minus median), settled in at most 3 steps across the rush-hour boundary; under 3 rides says so; the reminder is held to 07:00 or dropped in quiet hours and replaced only when 2 min or more earlier"),
         m("u24", routesM, "Dot follows the route without GPS (M2-08)", "Nothing to do · Run all automatic marks it",
           "GPS lost on a known route: the hollow dot moves by wheel distance and is within 30 m after 2 km; off the route it stays frozen and grey"),
-        m("u25", routesM, "There and back and the ride-start warning (M2-09)", "Nothing to do · Run all automatic marks it",
-          "Round trip with a 10% margin and a 5% reserve: fits at 10% spare, tight below, not for the way back, not even there; I can charge here lifts the way back; the warning at ride start comes once and only when it does not fit"),
+        m("u25", routesM, "There and back and the ride-start warning text (M2-09)", "Nothing to do · Run all automatic marks it",
+          "Round trip with a 10% margin and a 5% reserve: fits at 10% spare, tight below, not for the way back, not even there; I can charge here lifts the way back; the warning text is made only when it does not fit, and the live screen shows nothing of it (P-4)"),
         m("d12", routesM, "Simulated routes never touch real routes (M2-01)", "Checked after every simulator run", "Real place, route and variant counts unchanged", tool: .simulator),
         m("q2", routesM, "Route processing is quick (M2-01)", "Nothing to do · it measures every ride", "Milliseconds for matching one ride are in the note (a ride close must stay fast)"),
         m("rt1", routesM, "Save as route? after 2 commutes", routeSim + "Scenario ROUTE-COMMUTE · 50× · Start; open the 2nd summary",
@@ -338,7 +334,7 @@ enum CheckList {
         m("rt14", routesM, "Arrive by and the reminder", routeSim + "Scenario ROUTE-COMMUTE-6 · 50× · save the route · Routes → the route → Arrive by → pick a time about 40 min from now, switch Remind me on",
           "Leave by HH:MM with today's minutes + margin; the reminder line says set for HH:MM (or held to 07:00 in quiet hours); the reminder arrives on the lock screen at that time", manual: true, tool: .simulator),
         m("rt15", routesM, "There and back card and the ride-start warning", routeSim + "Scenario ROUTE-LOWBATT · 50× · save both routes on their 2nd summaries · wait for the end (battery 10%) → Home → Where to? → Route 1 → Start; then open the route",
-          "The route card shows ❌ Not enough for the way back (or for the way there); at ride start one banner says the battery does not last for the way back, and it does not come again", manual: true, tool: .simulator),
+          "The route card shows ❌ Not enough for the way back (or for the way there); nothing is shown during the ride (P-4): the warning stays on the route card and the summary", manual: true, tool: .simulator),
         m("rt13", routesM, "A real route is learned", "Ride the same trip twice (any two real rides between the same two places)", "After ride 2 the summary offers Save as route?", scooter: true, manual: true),
         m("rt16", routesM, "Parking a little differently still matches", "Start the second trip 50–150 m from the first start", "Same route, not a new suggestion", scooter: true, manual: true),
         m("rt17", routesM, "A real detour is a variant named after the street", "Ride to the same place by another street (internet on)", "A second variant via the street, or Variant 2 when no street came back", scooter: true, manual: true),
@@ -445,12 +441,10 @@ enum CheckList {
     private static let m6New: [CheckItem] = [
         m("u42", fastM, "Fastest combination: choice points, option times, gates, Follow path, Q3 (M6-01)", "Nothing to do · Run all automatic marks it",
           "Nine made-up rides on a 4 km route in the ocean (3 the usual way, 3 via a park detour, 3 left at the lights) are written to a temporary database: 2 choice points with 2 options each and 18 option times are stored; the fastest combination is park + left (never ridden as a whole, ~1:30 faster than the fastest way ridden), Follow gives a path on ridden stretches only; with one way seen twice the card says 2 of 3; Q3 gets a verdict for the park; the line ends with this phone's choice points"),
-        m("u43", fastM, "Live choice-point prompts: 15 s ahead, gates, one at a time, quiet re-plan (M6-02)", "Nothing to do · Run all automatic marks it",
-          "The nine made-up rides are ridden again through the live screen with Follow on: the prompt comes about 15 s before the first split and goes 30 m after it, the second comes later, one at a time; with a saving under 20 s or ways under 30 m apart nothing shows; taking the usual way where the park was chosen shows nothing and the arrival time stays on the path (quiet re-plan); the prompts are counted for the ride's developer line"),
         m("u44", fastM, "Every screen in every state is drawn at normal and largest text, none blank (M6-05)", "Nothing to do · Run all automatic marks it (about 30 s)",
           "The made-up screens of the ui-shot list (all tabs, pushed screens, live ride states, Home states, simulated, read-only, data update failed, empty and first-use states) are built and drawn off-screen once at the normal text size and once at the largest accessibility size; the result names any screen that comes out blank"),
         m("ma1", fastM, "Largest Dynamic Type and VoiceOver walk (M6-04)", "Settings app → Accessibility → Display & Text Size → Larger Text (largest) and VoiceOver on; walk Home, Rides, Routes, Stats, Settings",
-          "Nothing is cut off or overlaps at the largest size (tiles go one per row); the live view keeps its big numbers; VoiceOver reads every button, tile and chart (\"Speed 27 kilometres per hour\", \"Settings\", \"Earlier\"); the live prompt is spoken when it appears; Hold to end can be held with VoiceOver on (touch it directly); the map does not move with animation when Reduce Motion is on", manual: true),
+          "Nothing is cut off or overlaps at the largest size (tiles go one per row); the live view keeps its big numbers; VoiceOver reads every button, tile and chart (\"Speed 27 kilometres per hour\", \"Settings\", \"Earlier\"); the motor-hot banner is spoken when it appears; Hold to end can be held with VoiceOver on (touch it directly); the map does not move with animation when Reduce Motion is on", manual: true),
         m("u45", fastM, "Edge cases: phone battery, storage, expiry reminder, clock change (M6-06)", "Nothing to do · Run all automatic marks it",
           "Phone battery 25% normal, 19% GPS less often, 9% GPS off with the banner Phone battery low · map paused (tiles untouched), charging keeps full GPS, Low Power Mode = less often; storage levels (1 GB: thin early, 300 MB: Home card); the expiry reminder is planned 1 day before the 7-day signature ends; a phone clock set an hour forward does not move a ride; a temporary database loses its old raw chunk early but keeps energy chunks, recent data and the ride; the line ends with this phone's free space and signature"),
         m("u46", p6M, "Field kit: ride notes, thumbs, last 15 minutes of logs in the export (T-00)", "Nothing to do · Run all automatic marks it",
@@ -465,8 +459,6 @@ enum CheckList {
         m("ms3", fastM, "Sunlight mode and colour-blind speed colours (M6-03)", "Settings → Units and display → Sunlight mode On / Auto, in real sun; Colour-blind friendly speed colours",
           "Sunlight On: the live tiles, banners and chips are solid with a black edge, text is bold, the app is light, the path on the map is thicker; Auto switches it on with the screen brightness at 90% or more in daylight (and with iOS Increase Contrast / Reduce Transparency); Off keeps the glass. Colour-blind colours: the path on the live map, the ride detail legend and the replay use blue to orange-red, no red / green pair; ui-shots sun-live-riding sun-home sun-replay", manual: true)
         ,
-        m("mq2", fastM, "Live prompt on a real ride (phone in the holder)", "Follow a combination (mq1), ride it with the phone in the holder",
-          "About 15 s before a place where the fastest mix takes another way the banner says which way (\"Keep right · Way via Park Ave · saves ~1:40\" or \"Stay on the usual way · saves ~40 s\") and goes away after the place; readable at speed; taking the other way gives no message; with the phone in the pocket nothing is seen, by design", manual: true)
     ]
 
 
@@ -475,7 +467,7 @@ enum CheckList {
         m("u47", p6M, "Prediction log and accuracy: shown estimates get their real outcome (T-00)", "Nothing to do · Run all automatic marks it",
           "On a temporary database a ride gets its Today time, Today battery, real range and arrival-time predictions filled in with the real numbers; the same estimate shown twice is stored once; another route's prediction waits; Accuracy and accuracy.txt show the Q-C and Q-F lines with the median error"),
         m("u48", p6M, "Shadow thresholds: what other values would have decided (T-00)", "Nothing to do · Run all automatic marks it",
-          "On a temporary database one ride with a 45.4 km/h sample is judged: SLOW at 48 (standard) gives 0 warnings, the old 45 gives 1 and is marked as different, 51 gives 0; the ride-end and autostart rules are stored too; shadow.txt says in how many rides each value decided differently"),
+          "On a temporary database one ride is judged: the autostart rule (2 standard, 3, 4 km/h) and the ride-end rule are stored, there is no SLOW rule any more; shadow.txt says in how many rides each value decided differently"),
         m("u49", p6M, "Scenario list ticks itself (T-00)", "Nothing to do · Run all automatic marks it",
           "One made-up night, rain, low-battery, heavy-load, GPS-loss, scooter-left-on, Low-Power-Mode, charged-after and screen-off ride ticks all ten scenario checks; a screen-on mark during the ride takes the pocket tick away again"),
         m("u50", p6M, "Idle battery: the phone's battery per hour while no ride is on (T-02)", "Nothing to do · it logs at app opens and background wakes; Run all automatic shows the result once 12 h of data exist",
@@ -523,7 +515,7 @@ enum CheckList {
         m("ui1", p6M, "Home and Rides scroll to the very bottom, short stiff bounce (B20 / B23)", "Home → drag up to the end. Rides → scroll the whole list. Pull past each end",
           "The last item (Load for the next ride; the oldest ride) rests fully above the tab bar; the screen always scrolls when content is taller; past the ends it gives only a short, firm bounce (about 35 pt), not a wall and not soft", manual: true),
         m("ui2", p6M, "Live tiles: equal battery and ride time, smaller speed (B21)", "Developer → Simulated scooter → Run on the real screens → Ride 1",
-          "Speed tile shorter (88 pt) with km/h and SLOW on the right; battery and ride-time tiles the same size and font, centred, small labels battery / ride time", manual: true, tool: .simulator),
+          "Speed tile shorter (88 pt) with km/h on the right, never red; battery and ride-time tiles the same size and font, centred, small labels battery / ride time", manual: true, tool: .simulator),
         m("ui3", p6M, "Map glides, turns with you and looks ahead (B22 / F-10)", "Ride with the CorckieApp screen on, along a street with a few turns",
           "The map moves continuously (no move-stop-move), turns so your direction is up, your dot sits just above the speed tile (not hidden behind it), it stays still while you stand, and with Reduce Motion on it stays north-up without animation", scooter: true, manual: true),
         m("ui4", p6M, "New app icon", "Look at the Home Screen and Settings → CorckieApp",

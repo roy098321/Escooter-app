@@ -87,28 +87,18 @@ final class ThereAndBackTests: XCTestCase {
         return try XCTUnwrap(RouteFollower(destinationName: "Work", path: pts, todayS: 540))
     }
 
-    func test_liveScreen_warningShowsOnceAtRideStart() throws {
-        let text = "Battery 27%: enough for Work, not for the way back."
+    /// P-4: the ride-start "not enough for the way back" line is no longer on the live screen (it stays on the route card / summary)
+    func test_liveScreen_showsNoWayBackWarning() throws {
         var d = LiveScreenDriver()
-        d.follow(try follower(), utcOffsetMin: 0, returnWarning: text)
-        func riding(_ t: Double) -> LiveScreenState {
-            d.update(LiveInput(scooterSpeedKmh: 0, scooterBatteryPct: 27, phase: .riding, lat: 10.001, lon: -30, rideElapsedS: t, rideDistanceM: 0), at: t)
+        d.follow(try follower(), utcOffsetMin: 0)
+        for t in 0..<60 {
+            let s = d.update(LiveInput(scooterSpeedKmh: 0, scooterBatteryPct: 27, phase: .riding, lat: 10.001, lon: -30, rideElapsedS: Double(t), rideDistanceM: 0), at: Double(t))
+            XCTAssertNil(s.banner, "nothing interrupts the rider (t \(t))")
+            XCTAssertNotNil(s.arrival, "the arrival chip stays")
         }
-        let first = riding(0)
-        XCTAssertEqual(first.banner?.banner, .returnCheck)
-        XCTAssertEqual(first.bannerText, text)
-        // the banner leaves after its 8 s and does not come back
-        var shownAgain = false
-        for t in 9..<60 where riding(Double(t)).bannerText == text { shownAgain = true }
-        XCTAssertFalse(shownAgain)
-        // the next ride has no warning (the route choice and the warning end with the ride)
-        _ = d.update(LiveInput(phase: .idle), at: 100)
-        let next = d.update(LiveInput(scooterSpeedKmh: 0, scooterBatteryPct: 27, phase: .riding, rideElapsedS: 0), at: 200)
-        XCTAssertNil(next.banner)
-        XCTAssertNil(next.arrival)
     }
 
-    func test_liveScreen_warningCountsInTheTwoStartMessages() throws {
+    func test_rideStartMessages_warningCountsInTheTwoStartMessages() throws {
         var q = BannerQueue()
         q.beginRide(messages: [.returnCheck, .destination, .headwind])
         XCTAssertEqual(q.waitingCount, 2)

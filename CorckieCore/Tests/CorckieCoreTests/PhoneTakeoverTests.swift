@@ -4,8 +4,8 @@ import XCTest
 
 /// M1-05: phone takeover (G1) on top of the ride engine: the ~5 s wait (no switch for a 1-s blip), GPS speed as
 /// the 3-s median, labelled; "~N% est." (T49, decision 5 fallback chain); gap rows; the odometer fills the
-/// distance on reconnect; scooter-only totals; format change → phone mode (SC-04); the T99 speed warning on
-/// scooter and GPS speed (SPD-49, SPD-49-GPS).
+/// distance on reconnect; scooter-only totals; format change → phone mode (SC-04); the speed ramps shown plainly on
+/// scooter and GPS speed (SPD-49, SPD-49-GPS; no SLOW warning since P-4).
 final class PhoneTakeoverTests: XCTestCase {
     // MARK: Helpers
 
@@ -154,39 +154,29 @@ final class PhoneTakeoverTests: XCTestCase {
 
     // MARK: Scenarios
 
-    func test_SPD49_onAbove48_stillOnAt47_clearsBelow46_noFlicker() throws {
+    /// P-4: the speed ramps 43, 49, 47, 49, 45 km/h and is simply shown (no SLOW state any more)
+    func test_SPD49_speedShownPlainly_scooterSpeed_noTakeover() throws {
         let r = EngineRunner.run(try scenario("SPD-49"), tailS: 5, collectLive: true)
-        let changes = r.slowChanges
-        XCTAssertEqual(changes.count, 2, "one on, one off: \(changes)")
-        let on = try XCTUnwrap(changes.first)
-        XCTAssertTrue(on.on)
-        XCTAssertTrue((35...37).contains(on.t), "on just after passing 48 (\(on.t))")
-        XCTAssertTrue(r.live.first { $0.t == 40 }?.state.slow ?? false, "still red at 47")
-        let off = try XCTUnwrap(changes.last)
-        XCTAssertFalse(off.on)
-        XCTAssertTrue((50...52).contains(off.t), "clears below 46 (\(off.t))")
+        XCTAssertEqual(r.live.first { $0.t == 40 }?.state.speedKmh, 47, "47 km/h at 40 s, shown as it is")
+        XCTAssertTrue(r.live.contains { ($0.state.speedKmh ?? 0) >= 49 }, "the 49 km/h peak is shown")
         XCTAssertTrue(r.live.allSatisfy { $0.state.speedSource == .scooter || $0.t > 90 }, "scooter speed, no takeover")
     }
 
-    func test_SPD49_GPS_warningKeepsWorkingOnGpsSpeed_labelled() throws {
+    func test_SPD49_GPS_phoneTakesOverAfterTheWait_speedLabelledGps() throws {
         let r = EngineRunner.run(try scenario("SPD-49-GPS"), tailS: 5, collectLive: true)
-        let changes = r.slowChanges.filter { $0.t <= 130 }
-        XCTAssertEqual(changes.count, 1, "on once, never flickers through the drop: \(changes)")
         XCTAssertEqual(r.phoneModeStarts.count, 1)
         let start = try XCTUnwrap(r.phoneModeStarts.first)
         XCTAssertEqual(start.at, 70, accuracy: 1)
         XCTAssertEqual(start.reason, .disconnected)
         for item in r.live where item.t >= 71 && item.t <= 74 {
             XCTAssertEqual(item.state.speedSource, .scooter, "held during the ~5 s wait (t \(item.t))")
-            XCTAssertTrue(item.state.slow)
         }
         let phone = r.live.filter { $0.t >= 77 && $0.t <= 108 }
         XCTAssertFalse(phone.isEmpty)
         for item in phone {
             XCTAssertEqual(item.state.speedSource, .gps, "t \(item.t)")
             XCTAssertEqual(item.state.speedLabel, "GPS")
-            XCTAssertTrue(item.state.slow, "red + SLOW on GPS speed (t \(item.t))")
-            XCTAssertEqual(item.state.slowText, "SLOW")
+            XCTAssertEqual(item.state.speedKmh, 49, "GPS speed shown plainly (t \(item.t))")
             XCTAssertTrue(item.state.batteryEstimated, "~N% est. (t \(item.t))")
         }
         let end = try XCTUnwrap(r.phoneModeEnds.first)

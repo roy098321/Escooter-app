@@ -2,9 +2,11 @@ import Foundation
 
 // M1-12: everything the live ride screen decides, pure and unit tested (the SwiftUI view only draws it).
 // Safety rules (STATES, CONCEPT C24, M1_PLAN D2): no tab bar and no navigation while a ride is on; speed and
-// battery tiles never hidden by a banner; at most one banner, tappable only below 5 km/h; SLOW red above 48 and
-// clears below 46; GPS speed greyed and labelled; "~N% est." in phone mode; "Ready" (D2): the view opened before
-// the wheel moves shows the map, battery and speed 0, no clock, no stop button, and only there can it be closed.
+// battery tiles never hidden by a banner; at most one banner, tappable only below 5 km/h; GPS speed greyed and labelled;
+// "~N% est." in phone mode; "Ready" (D2): the view opened before the wheel moves shows the map, battery and speed 0, no clock,
+// no stop button, and only there can it be closed.
+// P-4 (owner, 19 Oct): do not interrupt the rider unless absolutely necessary. No SLOW warning, no live insights, no "Same ride?",
+// no prompts and no choice-point prompts in the live view; the only interruptions live in `LiveAlerts`.
 
 public enum LiveMode: String, Equatable, Sendable {
     /// Opened from the "Going for a ride?" notification: no ride yet
@@ -19,8 +21,6 @@ public struct LiveScreenState: Equatable, Sendable {
     public var tiles: LiveState
     public var banner: BannerQueue.Shown?
     public var bannerText: String?
-    /// "Same ride?" shows Yes / No instead of one tap target
-    public var bannerIsSameRide: Bool
     /// "No GPS" is left out while its banner shows
     public var chips: [LiveChip]
     public var showClock: Bool
@@ -70,49 +70,30 @@ public struct EtaMark: Equatable, Sendable {
     }
 }
 
-/// Keeps the speed-warning hysteresis and the banner queue between updates (about once a second).
+/// Keeps the banner queue between updates (about once a second).
 public struct LiveScreenDriver: Sendable {
     private var builder = LiveStateBuilder()
     private var banners = BannerQueue()
     private var lastPhase: RidePhase = .idle
-    private var sameRideWasOffered = false
     private var follower: RouteFollower?
     private var arrivalDisplay = ArrivalDisplay()
     private var utcOffsetMin = 0
-    private var returnWarning: String?
-    private var prompter: ChoicePrompter?
-    private var activePromptId: String?
-    private var promptText: String?
-    /// Choice-point prompts shown in the ride that just ended (or the running one)
-    public private(set) var choicePromptsShown = 0
-    public private(set) var choiceReplans = 0
     /// T-00 (prediction log, Q-E): the arrival time shown when the rider passed 25 / 50 / 75% of the followed route
     public private(set) var etaMarks: [EtaMark] = []
 
     public init() {}
 
     /// M2-06: the route this ride follows (Where to?), or nil. Set before the ride starts or while it runs.
-    /// `returnWarning` (Q9): one line shown once at ride start when the way back will not fit (it counts in the 2 start messages).
-    public mutating func follow(_ route: RouteFollower?, utcOffsetMin: Int = 0, returnWarning: String? = nil, prompts: ChoicePrompter? = nil) {
-        self.returnWarning = returnWarning
-        self.prompter = route == nil ? nil : prompts
-        activePromptId = nil
-        promptText = nil
-        choicePromptsShown = 0
-        choiceReplans = 0
+    public mutating func follow(_ route: RouteFollower?, utcOffsetMin: Int = 0) {
         etaMarks = []
-        if returnWarning != nil, Self.active(lastPhase) { banners.raise(.returnCheck, at: 0) }
         follower = route
         self.utcOffsetMin = utcOffsetMin
         arrivalDisplay = ArrivalDisplay()
     }
 
     public var isFollowing: Bool { follower != nil }
-    /// The path being followed (changes after a quiet re-plan, M6-02)
+    /// The path being followed
     public var followedPath: [GeoPoint]? { follower?.path }
-    /// Prompts shown so far in the running ride, or in the last one
-    public var promptsShownNow: Int { prompter?.shown ?? choicePromptsShown }
-    public var choiceReplansNow: Int { prompter?.replans ?? choiceReplans }
 
     private static func active(_ p: RidePhase) -> Bool { p == .starting || p == .riding }
 
@@ -120,71 +101,27 @@ public struct LiveScreenDriver: Sendable {
         let mode: LiveMode = input.phase == .riding ? .riding : (input.phase == .starting ? .starting : .ready)
         let active = Self.active(input.phase)
         if active && !Self.active(lastPhase) {
-            banners.beginRide(messages: returnWarning == nil ? [] : [.returnCheck])
+            banners.beginRide(messages: [])
             builder.reset()
-            sameRideWasOffered = false
         } else if !active && Self.active(lastPhase) {
             banners = BannerQueue()
             builder.reset()
             follower = nil
-            returnWarning = nil
-            choicePromptsShown = prompter?.shown ?? choicePromptsShown
-            choiceReplans = prompter?.replans ?? choiceReplans
-            prompter = nil
-            activePromptId = nil
-            promptText = nil
         }
         lastPhase = input.phase
 
         let tiles = builder.update(input)
-        // the follower first: the choice-point prompt (M6-02) needs where the rider is on the path
         var step: RouteFollower.Step?
-        var prompt: ChoicePrompt?
         if input.phase == .riding, var f = follower {
             let pos = (input.lat != nil && input.lon != nil) ? GeoPoint(lat: input.lat!, lon: input.lon!) : nil
             let fresh = input.secondsWithoutGps == 0
-            var s = f.update(position: pos, gpsFresh: fresh, rideDistanceM: input.rideDistanceM, elapsedS: input.rideElapsedS ?? 0)
-            if var p = prompter {
-                let u = p.update(position: pos, gpsFresh: fresh, alongM: s.alongM, offPath: s.offPath,
-                                 speedMps: Double(tiles.speedKmh ?? 0) / 3.6)
-                prompter = p
-                prompt = u.prompt
-                if let np = u.newPath, var nf = RouteFollower(destinationName: f.destinationName, path: np, todayS: f.todayS) {
-                    s = nf.update(position: pos, gpsFresh: fresh, rideDistanceM: input.rideDistanceM, elapsedS: input.rideElapsedS ?? 0)
-                    f = nf
-                }
-            }
+            step = f.update(position: pos, gpsFresh: fresh, rideDistanceM: input.rideDistanceM, elapsedS: input.rideElapsedS ?? 0)
             follower = f
-            step = s
         }
         var shown: BannerQueue.Shown?
         if active {
-            if let p = prompt {
-                if p.id != activePromptId {
-                    banners.clear(.choicePoint)
-                    banners.hold(.choicePoint, true)
-                    banners.raise(.choicePoint, at: t)
-                    activePromptId = p.id
-                }
-                promptText = p.text
-            } else if activePromptId != nil {
-                banners.hold(.choicePoint, false)
-                banners.clear(.choicePoint)
-                activePromptId = nil
-                promptText = nil
-            }
-            banners.setActive(.disconnected, input.phoneMode, at: t)
-            banners.setActive(.noGps, tiles.chips.contains(.noGps) && !input.phoneGpsOff, at: t)
-            banners.setActive(.phoneBatteryLow, input.phoneGpsOff, at: t)           // M6-06: phone battery < 10%, GPS off
-            if let temp = input.scooterTempC { banners.feedHeat(tempC: temp, at: t) }
-            if input.sameRideOffered && !sameRideWasOffered { banners.raise(.sameRide, at: t) }
-            sameRideWasOffered = input.sameRideOffered
+            LiveAlerts.feed(&banners, input: input, chips: tiles.chips, at: t)
             shown = banners.tick(at: t, speedKmh: Double(tiles.speedKmh ?? 0))
-            if shown?.banner == .sameRide && !input.sameRideOffered {
-                // answered (or the offer ran out): take it off the screen, whatever the speed
-                banners.dismissCurrent(speedKmh: 0)
-                shown = banners.tick(at: t, speedKmh: Double(tiles.speedKmh ?? 0))
-            }
         }
 
         var chips = tiles.chips
@@ -194,8 +131,6 @@ public struct LiveScreenDriver: Sendable {
             chips = chips.filter { $0 != .noGps }
         }
         let text: String? = shown.map { (s: BannerQueue.Shown) -> String in
-            if s.banner == .returnCheck, let w = returnWarning { return w }
-            if s.banner == .choicePoint, let pt = promptText { return pt }
             if s.banner == .noGps && input.locationDenied { return "No GPS \u{00B7} location is off for CorckieApp" }     // M6-06: permission revoked
             return (s.banner == .disconnected && input.formatChanged) ? "Scooter data format changed" : s.banner.text
         }
@@ -215,7 +150,6 @@ public struct LiveScreenDriver: Sendable {
             }
         }
         var state = LiveScreenState(mode: mode, tiles: tiles, banner: shown, bannerText: text,
-                               bannerIsSameRide: shown?.banner == .sameRide,
                                chips: chips, showClock: active, clockText: LiveScreenLogic.clock(input.rideElapsedS),
                                canClose: mode == .ready, showHoldToEnd: active, showNotRiding: mode == .starting,
                                dashedPath: active && input.phoneMode,
@@ -227,7 +161,7 @@ public struct LiveScreenDriver: Sendable {
         return state
     }
 
-    /// The rider taps a banner away (or answers it). Refused (false) at 5 km/h or more.
+    /// The rider taps a banner away. Refused (false) at 5 km/h or more.
     @discardableResult
     public mutating func tapBanner(speedKmh: Double) -> Bool {
         banners.dismissCurrent(speedKmh: speedKmh)

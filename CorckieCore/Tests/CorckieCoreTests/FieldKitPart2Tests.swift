@@ -136,18 +136,6 @@ final class FieldKitPart2Tests: XCTestCase {
         XCTAssertTrue(d[2].decision.contains("+15 s"))
     }
 
-    func test_shadow_slow_48Standard_45And51Kept() {
-        let d = ShadowCalc.slow(samples([40, 49, 47, 45, 50, 42, 46]))
-        XCTAssertEqual(d.map(\.variant), ["48 km/h", "45 km/h", "51 km/h"])
-        XCTAssertEqual(d.map(\.isStandard), [true, false, false])
-        XCTAssertEqual(d[0].decision, "2 warnings")
-        XCTAssertEqual(d[1].decision, "2 warnings", "45: on at 49, clears at 42, on at 46")
-        XCTAssertEqual(d[2].decision, "0 warnings")
-        XCTAssertFalse(d[0].differs)
-        XCTAssertFalse(d[1].differs)
-        XCTAssertTrue(d[2].differs)
-    }
-
     func test_shadow_different_90sWouldHaveCalledItUsual() {
         let d = ShadowCalc.different(thisTotalS: 700, thisUsedPct: nil, otherTotalS: [600, 610, 620, 630], otherUsedPct: [])
         XCTAssertEqual(d.map(\.decision), ["noticeably different", "noticeably different", "usual"])
@@ -174,14 +162,15 @@ final class FieldKitPart2Tests: XCTestCase {
     }
 
     func test_shadow_text_countsDifferences() {
-        let rows = [ShadowRow(startAt: start, rule: ShadowCalc.ruleSlow, variant: "45 km/h", decision: "2 warnings", differs: false, isStandard: true),
-                    ShadowRow(startAt: start, rule: ShadowCalc.ruleSlow, variant: "48 km/h", decision: "0 warnings", differs: true, isStandard: false),
-                    ShadowRow(startAt: start + 1, rule: ShadowCalc.ruleSlow, variant: "45 km/h", decision: "1 warning", differs: false, isStandard: true),
-                    ShadowRow(startAt: start + 1, rule: ShadowCalc.ruleSlow, variant: "48 km/h", decision: "1 warning", differs: false, isStandard: false)]
+        let rows = [ShadowRow(startAt: start, rule: ShadowCalc.ruleStart, variant: "2 km/h", decision: "first above the limit at +5 s", differs: false, isStandard: true),
+                    ShadowRow(startAt: start, rule: ShadowCalc.ruleStart, variant: "3 km/h", decision: "never above the limit", differs: true, isStandard: false),
+                    ShadowRow(startAt: start + 1, rule: ShadowCalc.ruleStart, variant: "2 km/h", decision: "first above the limit at +5 s", differs: false, isStandard: true),
+                    ShadowRow(startAt: start + 1, rule: ShadowCalc.ruleStart, variant: "3 km/h", decision: "first above the limit at +10 s", differs: false, isStandard: false)]
         let text = ShadowCalc.text(rows, now: "today")
-        XCTAssertTrue(text.contains("45 km/h (standard): 2 rides"))
-        XCTAssertTrue(text.contains("48 km/h: 2 rides, decided differently in 1"))
-        XCTAssertTrue(text.contains("0 warnings"))
+        XCTAssertTrue(text.contains("2 km/h (standard): 2 rides"))
+        XCTAssertTrue(text.contains("3 km/h: 2 rides, decided differently in 1"))
+        XCTAssertTrue(text.contains("never above the limit"))
+        XCTAssertFalse(text.contains("SLOW"), "the SLOW rule is gone (P-4)")
         XCTAssertTrue(text.contains("no rides yet"))          // the other rules have no rows
     }
 
