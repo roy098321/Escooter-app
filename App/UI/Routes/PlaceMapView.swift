@@ -103,12 +103,13 @@ struct PlaceMapView: View {
         }
         .onAppear(perform: reload)
         .task(id: placeId) { await lookUpStreet() }
+        .hidesTabBar()                // B28: the place screen has actions; nothing may sit under the bar
         .screen("Place")
     }
 
-    /// B19: a full map with the place's sheet docked on the tab bar (closed = "Name · street")
+    /// B29: a map of fixed height with the place's cards in a normal scroll view below it
     private func content(_ place: PlaceMapItem) -> some View {
-        MapSheet(initial: .half, summary: [place.row.title, street].compactMap { $0 }.joined(separator: " \u{00B7} ")) {
+        MapScreen {
             Map(initialPosition: .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: place.circleM * 8, longitudinalMeters: place.circleM * 8)),
                 interactionModes: [.pan, .zoom]) {
                 PlaceMarks(coordinate: place.coordinate, radiusM: place.circleM, colourId: place.colourId, name: place.row.hasName ? place.row.title : "")
@@ -121,7 +122,7 @@ struct PlaceMapView: View {
             } trailing: {
                 EmptyView()
             }
-        } sheet: {
+        } content: {
             VStack(spacing: 12) {
                 titleCard(place)
                 settingsCard(place)

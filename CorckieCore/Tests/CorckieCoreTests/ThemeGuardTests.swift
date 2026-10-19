@@ -79,17 +79,40 @@ final class ThemeGuardTests: XCTestCase {
         XCTAssertTrue(try text("UI/RootView.swift").contains(".floatingTabBar(selection: $tab"))
     }
 
-    /// B19: the map sheets dock on the bar; the task sheets stay standard iOS sheets
-    func test_B19_mapSheetsDockOnTheBar() throws {
-        let sheet = try text("UI/Shared/MapSheet.swift")
-        XCTAssertTrue(sheet.contains("TabBarVisibility.shared.pin()"), "a map sheet pins the bar")
-        XCTAssertTrue(sheet.contains(".padding(.bottom, d.barSpace)") && sheet.contains("d.contentHeight(at: current)"), "content cut at the bar's top")
+    /// B29 (P6-3): the docked sheets are retired. Map screens are a fixed map with a normal scroll view; Where to? is a standard iOS sheet;
+    /// nothing pins the tab bar; screens with a bottom action hide it (B28).
+    func test_B29_mapScreensAreAFixedMapWithAScrollView() throws {
+        let appRoot = appFolder
+        XCTAssertFalse(FileManager.default.fileExists(atPath: appRoot.appendingPathComponent("UI/Shared/MapSheet.swift").path), "MapSheet.swift is retired")
+        let screen = try text("UI/Shared/MapScreen.swift")
+        XCTAssertTrue(screen.contains("struct MapScreen<") && screen.contains("MapScreenLayout.mapHeight"), "the map has a fixed height from Core")
+        XCTAssertTrue(screen.contains("ScrollView {"), "the numbers sit in a normal scroll view")
+        for gone in ["DragGesture", "SheetDetent", "SheetDock", "DockedSheet", "MapSheet", "TabBarVisibility.shared.pin"] {
+            XCTAssertFalse(screen.contains(gone), "MapScreen must not contain \(gone)")
+        }
         for file in ["UI/Rides/RideDetailView.swift", "UI/Routes/RouteCardView.swift", "UI/Routes/PlaceMapView.swift"] {
-            XCTAssertTrue(try text(file).contains("MapSheet(initial:") && text(file).contains("summary:"), "\(file) docks its sheet with a summary line")
+            let source = try text(file)
+            XCTAssertTrue(source.contains("MapScreen {"), "\(file) is a fixed map with a scroll view below")
+            for gone in ["MapSheet", "SheetDetent", "DockedSheet"] { XCTAssertFalse(source.contains(gone), "\(file) must not contain \(gone)") }
         }
         let home = try text("UI/Home/HomeView.swift")
-        XCTAssertTrue(home.contains("DockedSheet(detent: $whereToDetent"), "Home's Where to? docks on the bar")
-        XCTAssertFalse(home.contains(".sheet("), "Where to? is no system sheet any more")
+        XCTAssertTrue(home.contains(".sheet(isPresented: $showWhereTo)") && home.contains(".glassPresentation(detents: [.medium])"), "Where to? is a standard half-height sheet")
+        for gone in ["DockedSheet", "SheetDock", "SheetDetent", "whereToDetent"] { XCTAssertFalse(home.contains(gone), "Home must not contain \(gone)") }
+        let bar = try text("UI/Shared/FloatingTabBar.swift")
+        XCTAssertFalse(bar.contains("func pin()") || bar.contains("func unpin()"), "nothing pins the tab bar any more")
+        XCTAssertTrue(bar.contains("func hold()") && bar.contains("func hidesTabBar()"), "screens with a bottom action hide the bar (B28)")
+    }
+
+    /// B28: Add a place saves from the top bar; the place screens hide the tab bar; so do the pushed forms with fields
+    func test_B28_saveInTheTopBar_andTheBarHidesOnScreensWithActions() throws {
+        let add = try text("UI/Routes/PlaceAddView.swift")
+        XCTAssertTrue(add.contains("ToolbarItem(placement: .topBarTrailing)") && add.contains("Button(\"Save\")"), "Save is in the top bar")
+        XCTAssertTrue(add.contains("PlaceAddRules.canSave(") && add.contains(".disabled(!canSave)"), "Save is on once the name is not empty")
+        XCTAssertTrue(add.contains(".onSubmit { if canSave { save() } }"), "Return on the name field saves")
+        XCTAssertFalse(add.contains("Button(\"Save place\")"), "no Save button under the tab bar")
+        for file in ["UI/Routes/PlaceAddView.swift", "UI/Routes/PlaceMapView.swift", "UI/Settings/PriceHistoryView.swift", "UI/Settings/SettingsView.swift"] {
+            XCTAssertTrue(try text(file).contains(".hidesTabBar()"), "\(file) hides the tab bar")
+        }
     }
 
     /// G3 small titles, G12 the settings button on Home only (prices stay in Settings)

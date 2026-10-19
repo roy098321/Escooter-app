@@ -2,7 +2,7 @@ import Charts
 import CorckieCore
 import SwiftUI
 
-/// M4-07 / P6-2: the Stats tab. One Week / Month / Year control, then clear sections: the period (distance with a change chip, rides,
+/// M4-07 / P6-2 / P6-3: the Stats tab. One Week / Month / Year control (and, F-16, a small Calendar / Rolling switch right of the title), then clear sections: the period (distance with a change chip, rides,
 /// time, per-day bars), Money (one net number), Overall (4 tiles), and below them What affects my rides, Past weeks and the recent
 /// insights. Explanations sit behind an ⓘ (G1). Numbers are made in CorckieCore (`StatsCalc`, unit tested); this view draws them.
 /// No records, goals or streaks (P-3).
@@ -10,10 +10,13 @@ struct StatsView: View {
     var preview: StatsModel?
 
     @AppStorage("stats.span") private var spanRaw = StatsSpan.week.rawValue
+    /// F-16: Calendar (this week / month / year) or Rolling (the last 7 / 30 / 365 days), remembered
+    @AppStorage("stats.mode") private var modeRaw = StatsMode.calendar.rawValue
     @State private var back = 0
     @State private var model: StatsModel?
 
     private var span: StatsSpan { StatsSpan(rawValue: spanRaw) ?? .week }
+    private var mode: StatsMode { StatsMode(rawValue: modeRaw) ?? .calendar }
 
     var body: some View {
         NavigationStack {
@@ -27,8 +30,12 @@ struct StatsView: View {
             .background { MapBackdrop().ignoresSafeArea() }
             .navigationTitle("Stats")
             .navigationBarTitleDisplayMode(.inline)   // G3: small title; G12: prices live in Settings only
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { modeSwitch }
+            }
             .onAppear(perform: load)
             .onChange(of: spanRaw) { _, _ in back = 0; load() }
+            .onChange(of: modeRaw) { _, _ in back = 0; load() }
             .onChange(of: back) { _, _ in load() }
             .screen("Stats")
         }
@@ -51,6 +58,39 @@ struct StatsView: View {
             recentSection(m)
         }
         .padding(16)
+    }
+
+    /// F-16: the compact Calendar / Rolling switch in the top bar, right of the "Stats" title
+    private var modeSwitch: some View {
+        let current = preview?.mode ?? mode
+        return HStack(spacing: 0) {
+            modeButton("Calendar", .calendar, current)
+            modeButton("Rolling", .rolling, current)
+        }
+        .padding(2)
+        .background(Theme.chip, in: Capsule())
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Calendar or rolling periods")
+    }
+
+    private func modeButton(_ title: String, _ value: StatsMode, _ current: StatsMode) -> some View {
+        let on = current == value
+        return Button {
+            if preview == nil { modeRaw = value.rawValue }
+        } label: {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 30)
+                .background(on ? Theme.accent : Color.clear, in: Capsule())
+                .foregroundStyle(on ? Theme.onAccent : Color.primary)
+                .frame(minHeight: DS.hit)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private func spanControl(_ m: StatsModel) -> some View {
@@ -145,7 +185,7 @@ struct StatsView: View {
                 .foregroundStyle(Theme.accent)
                 .cornerRadius(4)
         }
-        .chartXScale(domain: 0.4...(Double(max(data.values.count, 1)) + 0.6))      // all bars inside the plot, the last one too
+        .chartXScale(domain: 0.4...(Double(max(data.values.count, 1)) + (data.values.count > 12 ? 1.3 : 0.6)))      // all bars inside the plot, and room for the last label ("31") at the right edge
         .chartXAxis { barAxis(data.labels) }
         .chartYAxis(.hidden)
         .frame(height: 130)
@@ -164,24 +204,10 @@ struct StatsView: View {
         }
     }
 
-    /// The bars: a week and a month by day, a year by month; with the axis letters ("S M T W T F S", "1 6 11 ...", "J F M ...")
+    /// The bars with their axis letters (made in Core: `StatsCalc.chartBars`): calendar week "S M T W T F S", month "1 6 11 ...", year "J F M ...";
+    /// rolling windows are labelled with the days they really cover.
     static func barData(_ m: StatsModel) -> (values: [Double], labels: [String]) {
-        switch m.span {
-        case .week:
-            return (m.totals.barsKm, ["S", "M", "T", "W", "T", "F", "S"])
-        case .month:
-            return (m.totals.barsKm, m.totals.barsKm.indices.map { String($0 + 1) })
-        case .year:
-            var cal = Calendar(identifier: .gregorian)
-            cal.timeZone = TimeZone(identifier: "UTC") ?? .current
-            var months = [Double](repeating: 0, count: 12)
-            for (i, km) in m.totals.barsKm.enumerated() {
-                let date = Date(timeIntervalSince1970: Double(m.period.startMs) / 1000 + (Double(i) + 0.5) * 86_400)
-                let month = cal.component(.month, from: date) - 1
-                if months.indices.contains(month) { months[month] += km }
-            }
-            return (months, ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"])
-        }
+        StatsCalc.chartBars(barsKm: m.totals.barsKm, period: m.period, span: m.span, mode: m.mode, utcOffsetMin: m.utcOffsetMin)
     }
 
     private var factorsLink: some View {
@@ -239,7 +265,7 @@ struct StatsView: View {
 
     private func load() {
         guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
-        model = StatsLoader.load(db, span: span, mode: .calendar, back: back)
+        model = StatsLoader.load(db, span: span, mode: mode, back: back)
     }
 }
 
@@ -279,6 +305,7 @@ struct CostSettingsView: View {
         }
         .onChange(of: electricity) { _, v in save(StatsQueries.electricityKey, v, range: 0.01...10) }
         .onChange(of: fuelUse) { _, v in save(StatsQueries.fuelUseKey, v, range: 1...30) }
+        .hidesTabBar()
         .screen("Prices")
     }
 
@@ -295,16 +322,16 @@ struct CostSettingsView: View {
     }
 }
 
-/// F-01 / ST5: the Overall section of Stats, from the scooter's lifetime odometer. Four headline tiles; the rest behind the ⓘ.
+/// F-01 / ST5 / F-20: the Overall section of Stats, from the scooter's lifetime odometer. Four headline tiles, and one wide highlight tile
+/// ("0.77 ₪ / km saved") in the two free slots next to CO₂; the rest sits behind the ⓘ.
 struct OverallSection: View {
     let stats: OverallStats
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHeader("Overall") { InfoButton("Overall", text: OverallLoader.details(stats)) }
-            StatTileGrid {
-                ForEach(Array(OverallLoader.tiles(stats).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label) }
-            }
+            tiles
             if stats.usesUnverifiedPrice {
                 Label("Check the fuel price", systemImage: "exclamationmark.triangle")
                     .font(.footnote).foregroundStyle(Theme.accentInk)
@@ -312,6 +339,54 @@ struct OverallSection: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder private var tiles: some View {
+        let items = OverallLoader.tiles(stats)
+        let perKm = OverallCalc.savedPerKm(stats)
+        if typeSize.isAccessibilitySize || perKm == nil {
+            // big text: one tile per row; no fuel price: no money tile
+            StatTileGrid {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label) }
+            }
+            if let perKm { SavedPerKmTile(perKm: perKm, stats: stats).padding(.top, DS.Space.row) }
+        } else {
+            // three tiles on the first row; the fourth (CO₂) and the wide tile on the second
+            Grid(horizontalSpacing: DS.Space.row, verticalSpacing: DS.Space.row) {
+                GridRow {
+                    ForEach(Array(items.prefix(3).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label) }
+                }
+                GridRow {
+                    ForEach(Array(items.dropFirst(3).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label) }
+                    SavedPerKmTile(perKm: perKm ?? 0, stats: stats).gridCellColumns(2)
+                }
+            }
+        }
+    }
+}
+
+/// F-20: lifetime net saved ÷ lifetime km, a wide tile that stands out: orange value on a faint orange tint, a small label under it and
+/// an ⓘ with how it is worked out.
+struct SavedPerKmTile: View {
+    let perKm: Double
+    let stats: OverallStats
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(OverallCalc.perKmText(perKm))
+                    .scaledFont(28, weight: .semibold, mono: true, relativeTo: .title)
+                    .foregroundStyle(Theme.accentInk)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text("/ km saved").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accentInk).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+                InfoButton("Saved per km", text: OverallLoader.perKmInfo(stats))
+            }
+            Text("every km by scooter instead of car").font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .glassCard(radius: DS.Radius.tile, tint: Theme.accent, padding: 12)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -326,11 +401,12 @@ enum StatsPreview {
     }
 
     static func model(_ name: String) -> StatsModel {
-        let month = name == "stats-month"
+        let rolling = name == "stats-rolling"
+        let month = name == "stats-month" || rolling
         let empty = name == "stats-empty"
         let firstWeek = name == "stats-first-week"
         let now: Int64 = 1_790_000_000_000
-        let period = StatsCalc.period(span: month ? .month : .week, mode: .calendar, nowMs: now, utcOffsetMin: 180)
+        let period = StatsCalc.period(span: month ? .month : .week, mode: rolling ? .rolling : .calendar, nowMs: now, utcOffsetMin: 180)
         var t = StatsTotals()
         if !empty {
             t.rides = month ? 31 : 9
@@ -356,7 +432,7 @@ enum StatsPreview {
             Insight(type: .q15After, rideId: "p1", routeId: "A", text: "Tailwind saved you ~1.5 min and ~1% battery today.", basedOnN: 9, createdAt: now),
             Insight(type: .q4After, rideId: "p2", routeId: "A", text: "1:10 min slower than usual: headwind (~1:00 min).", basedOnN: 8, createdAt: now - 86_400_000),
         ]
-        var model = StatsModel(span: month ? .month : .week, mode: .calendar, period: period, totals: t, comparisonPct: empty || firstWeek ? nil : 12,
+        var model = StatsModel(span: month || rolling ? .month : .week, mode: rolling ? .rolling : .calendar, period: period, totals: t, comparisonPct: empty || firstWeek ? nil : 12,
                                holidayTagged: false, recent: insights, electricityIlsPerKwh: 0.64, fuelLPer100km: 7, fuelPriceIls: 8.27, packWh: 800,
                                lastWeek: week, pastWeeks: empty ? [] : WeekPreview.weeks())
         model.overall = empty ? nil : overall()

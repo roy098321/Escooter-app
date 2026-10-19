@@ -1,3 +1,4 @@
+import CorckieCore
 import CoreLocation
 import MapKit
 import Observation
@@ -37,6 +38,18 @@ final class MapSnapshotStore {
 
     func image(dark isDark: Bool) -> UIImage? { isDark ? dark : light }
 
+    /// The picture's size in pixels-at-1x and what it covers (V17: a pin for the parked scooter is placed on it)
+    static let pictureSize = CGSize(width: 430, height: 932)
+    static let spanLatM = 2500.0
+    static var spanLonM: Double { spanLatM * Double(pictureSize.width / pictureSize.height) }
+
+    /// Where a spot falls on the current picture, as a fraction of it; nil when there is no picture or the spot is outside it
+    func pinFraction(lat: Double, lon: Double) -> (x: Double, y: Double)? {
+        guard let c = centre else { return nil }
+        return ParkedPin.fraction(lat: lat, lon: lon, centreLat: c.coordinate.latitude, centreLon: c.coordinate.longitude,
+                                  spanLatM: Self.spanLatM, spanLonM: Self.spanLonM)
+    }
+
     /// On app open (force) and whenever the phone has moved: a new snapshot when none exists or the last one is over ~1 km away.
     func refresh(force: Bool = false) {
         guard !Self.disabled, !busy, let loc = PhoneSensors.shared.lastKnown, loc.horizontalAccuracy >= 0 else { return }
@@ -50,10 +63,10 @@ final class MapSnapshotStore {
     }
 
     private func take(at loc: CLLocation) async {
-        let size = CGSize(width: 430, height: 932)
+        let size = Self.pictureSize
         func shot(_ style: UIUserInterfaceStyle) async -> UIImage? {
             let o = MKMapSnapshotter.Options()
-            o.region = MKCoordinateRegion(center: loc.coordinate, latitudinalMeters: 2500, longitudinalMeters: 2500 * size.width / size.height)
+            o.region = MKCoordinateRegion(center: loc.coordinate, latitudinalMeters: Self.spanLatM, longitudinalMeters: Self.spanLatM * size.width / size.height)
             o.size = size
             o.scale = 2
             o.traitCollection = UITraitCollection(userInterfaceStyle: style)

@@ -1,3 +1,4 @@
+import CorckieCore
 import SwiftUI
 
 /// UI_PLAN 1.6 / F-15 theme v2: the page behind the tab screens.
@@ -8,11 +9,39 @@ import SwiftUI
 /// - Sunlight mode: always the plain page (high contrast). Ride and route maps are real `Map`s and stay normal (not this view).
 struct MapBackdrop: View {
     var map = false
+    /// V17: the last parked spot as a pin on the map picture (Home only)
+    var parked: ParkedSpot?
+    /// ui-shots: a made-up pin position as a fraction of the screen (the drawn map has no coordinates)
+    var parkedPreview: CGPoint?
     @Environment(\.colorScheme) private var scheme
     @Environment(\.sunlight) private var sunlight
     private let store = MapSnapshotStore.shared
 
     var body: some View {
+        base.overlay { pinLayer }
+    }
+
+    @ViewBuilder private var pinLayer: some View {
+        if map, !sunlight, parked != nil || parkedPreview != nil {
+            GeometryReader { geo in
+                if let p = pinPoint(in: geo.size) {
+                    ParkedPinMark().position(x: p.x, y: p.y - 17)
+                }
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    private func pinPoint(in size: CGSize) -> CGPoint? {
+        if let f = parkedPreview { return CGPoint(x: f.x * size.width, y: f.y * size.height) }
+        guard let spot = parked, store.image(dark: scheme == .dark) != nil, let f = store.pinFraction(lat: spot.lat, lon: spot.lon) else { return nil }
+        let aspect = Double(MapSnapshotStore.pictureSize.width / MapSnapshotStore.pictureSize.height)
+        let p = ParkedPin.inFilledView(f, imageAspect: aspect, viewWidth: Double(size.width), viewHeight: Double(size.height))
+        guard p.x >= 0, p.x <= Double(size.width), p.y >= 0, p.y <= Double(size.height) else { return nil }
+        return CGPoint(x: p.x, y: p.y)
+    }
+
+    @ViewBuilder private var base: some View {
         if sunlight || !map {
             Theme.background
         } else {
@@ -105,5 +134,25 @@ struct MapBackdrop: View {
         waterPath.addQuadCurve(to: CGPoint(x: 0, y: h * 0.10), control: CGPoint(x: w * 0.45, y: h * 0.02))
         waterPath.closeSubpath()
         ctx.fill(waterPath, with: .color(water))
+    }
+}
+
+/// V17: the pin for the parked scooter on Home's map: a small orange disc with the scooter, and a point down to the spot.
+struct ParkedPinMark: View {
+    var body: some View {
+        VStack(spacing: -2) {
+            Image(systemName: "scooter")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Theme.onAccent)
+                .frame(width: 34, height: 34)
+                .background(Theme.accent, in: Circle())
+                .overlay(Circle().strokeBorder(Theme.background, lineWidth: 2))
+                .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+            Image(systemName: "arrowtriangle.down.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(Theme.accent)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Parked scooter")
     }
 }

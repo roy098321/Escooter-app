@@ -34,3 +34,10 @@ public enum PlaceListBuilder {
                              subtitle: parts.joined(separator: " \u{00B7} "), canCharge: canCharge, radiusM: radiusM, hasName: !trimmed.isEmpty, colourId: colourId)
     }
 }
+
+/// B28: Add a place saves from the top bar. Save is on once a pin is dropped and the name isn't empty (Return on the name field saves too).
+public enum PlaceAddRules {
+    public static func canSave(pinned: Bool, name: String) -> Bool {
+        pinned && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}

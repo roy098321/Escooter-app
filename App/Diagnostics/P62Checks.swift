@@ -3,7 +3,8 @@ import SwiftUI
 import UIKit
 
 /// P6-2 chunk 1 checks (the redesign foundation), on made-up input, no screen needed: u61 theme v2 colours and contrast (F-15),
-/// u62 the flat tab bar's hide-on-scroll rule and layout (F-14), u63 the map sheets docked on the bar (B19).
+/// u62 the flat tab bar's hide-on-scroll rule and layout (F-14; since P6-3 a screen with a bottom action holds it away instead of a sheet
+/// pinning it). The docked map sheets (u63, B19) are gone with B29; the P6-3 checks are in P63Checks.swift.
 @MainActor
 enum P62Checks {
     private final class Expect {
@@ -19,7 +20,6 @@ enum P62Checks {
     static func run() {
         runTheme()
         runTabBar()
-        runDock()
         runDeclutter()
         runRides()
         runStats()
@@ -100,34 +100,24 @@ enum P62Checks {
         _ = bounce.step(y: 1300, top: 0, bottom: 1300)
         expect(bounce.hidden == before, "the bounce past the end changes nothing")
         let v = TabBarVisibility.shared
-        v.pin()
+        v.show()
         v.scrolled(y: 0, top: 0, bottom: 1300)
         v.scrolled(y: 200, top: 0, bottom: 1300)
         v.scrolled(y: 400, top: 0, bottom: 1300)
-        let pinned = !v.hidden
-        v.unpin()
+        let scrolledAway = v.hidden
         v.show()
-        expect(pinned, "a docked map sheet pins the bar")
+        v.hold()
+        let held = v.hidden
+        v.scrolled(y: 0, top: 0, bottom: 1300)
+        let stillHeld = v.hidden
+        v.release()
+        let given = !v.hidden
+        v.show()
+        expect(scrolledAway, "scrolling down hides the bar")
+        expect(held && stillHeld && given, "a screen with a bottom action (Add a place) holds the bar away and gives it back (B28)")
         let items = FloatingTabBar.items
         expect(items.count == 5 && items[2].title == "Home", "five icons, Home in the middle")
         expect(FloatingTabBar.clearance >= FloatingTabBar.barHeight + FloatingTabBar.bottomGap, "the bottom margin covers the bar (\(Int(FloatingTabBar.clearance)) pt)")
         CheckResults.shared.set("u62", expect.ok ? .pass : .fail, expect.line)
-    }
-
-    // MARK: u63
-
-    private static func runDock() {
-        let expect = Expect()
-        let d = SheetDock(total: 800, bottomInset: 34, hasBar: true)
-        let peek = d.height(.peek)
-        expect(peek == SheetDock.handle + SheetDock.summary + FloatingTabBar.barHeight, "closed = handle + one summary line + the bar")
-        expect(d.bottom == 34 + FloatingTabBar.bottomGap && d.bottomRadius == FloatingTabBar.radius, "the foot is the bar's bottom edge, same corner radius")
-        let above = [SheetDetent.peek, .half, .full].allSatisfy { d.contentHeight(at: d.height($0)) == d.height($0) - FloatingTabBar.barHeight }
-        expect(above && d.contentHeight(at: peek) == SheetDock.handle + SheetDock.summary, "the content stops at the bar's top edge")
-        expect(d.height(.half) > peek && d.height(.full) > d.height(.half) && d.height(.full) <= 800 - d.bottom, "half and full are taller, full fits")
-        expect(d.settle(from: .peek, predicted: -(d.height(.half) - peek)) == .half && d.settle(from: .full, predicted: 2000) == .peek, "a drag settles on the nearest height")
-        let free = SheetDock(total: 800, bottomInset: 34, hasBar: false)
-        expect(free.barSpace == 0 && free.height(.peek) < peek, "without a bar it sits just above the home indicator")
-        CheckResults.shared.set("u63", expect.ok ? .pass : .fail, expect.line)
     }
 }

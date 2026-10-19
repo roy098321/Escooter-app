@@ -113,7 +113,7 @@ public enum StatsCalc {
 
 
     /// The period `back` steps before the current one (0 = current). Calendar: week Sunday to Saturday, month = calendar month.
-    /// Rolling: the last 7 / 30 days ending now (each step back is a full 7 / 30 days earlier).
+    /// Rolling: the last 7 / 30 / 365 days ending now (each step back is a full 7 / 30 / 365 days earlier).
     public static func period(span: StatsSpan, mode: StatsMode, nowMs: Int64, utcOffsetMin: Int, back: Int = 0) -> StatsPeriod {
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")
@@ -136,8 +136,8 @@ public enum StatsCalc {
             let startMs = Int64(start.timeIntervalSince1970 * 1000), endMs = Int64(end.timeIntervalSince1970 * 1000)
             let n = Int(((endMs - startMs) / day))
             return StatsPeriod(startMs: startMs, endMs: endMs, label: back == 0 ? "This month" : df.string(from: start), isPartial: back == 0, dayCount: n)
-        case (.year, _):
-            // P6-2: Week / Month / Year; the year is always the calendar year
+        case (.year, .calendar):
+            // P6-2: Week / Month / Year; the calendar year
             let cal = calendar(utcOffsetMin)
             let comps = cal.dateComponents([.year], from: date(nowMs))
             let first = cal.date(from: comps)!
@@ -147,8 +147,9 @@ public enum StatsCalc {
             let startMs = Int64(start.timeIntervalSince1970 * 1000), endMs = Int64(end.timeIntervalSince1970 * 1000)
             return StatsPeriod(startMs: startMs, endMs: endMs, label: back == 0 ? "This year" : df.string(from: start), isPartial: back == 0,
                                dayCount: Int((endMs - startMs) / day))
-        case (.week, .rolling), (.month, .rolling):
-            let n = span == .week ? 7 : 30
+        case (.week, .rolling), (.month, .rolling), (.year, .rolling):
+            // F-16: Rolling = the last 7 / 30 / 365 days ending now
+            let n = span == .week ? 7 : (span == .month ? 30 : 365)
             let end = nowMs - Int64(back) * Int64(n) * day
             let start = end - Int64(n) * day
             let label = back == 0 ? "Last \(n) days" : "\(short(start)) – \(short(end))"
@@ -241,6 +242,48 @@ public enum StatsCalc {
         let b = rides(all, in: prevCut).filter { $0.kind == "ride" }.reduce(0.0) { $0 + $1.distanceM } / 1000
         guard b >= 1 else { return nil }
         return (a - b) / b * 100
+    }
+
+    // MARK: Chart bars
+
+    /// F-16: the bars of the period chart with their axis labels. Calendar: a week by day ("S M T W T F S"), a month by day ("1 2 3 ..."),
+    /// a year by month ("J F M ..."). Rolling: a week and a month by day with the labels of the days they really cover (weekday letters,
+    /// day numbers), a year as 12 blocks of about 30 days labelled by the month they start in.
+    public static func chartBars(barsKm: [Double], period p: StatsPeriod, span: StatsSpan, mode: StatsMode,
+                                 utcOffsetMin: Int) -> (values: [Double], labels: [String]) {
+        let cal = calendar(utcOffsetMin)
+        func local(_ ms: Int64) -> Date { Date(timeIntervalSince1970: Double(ms) / 1000) }
+        func middle(_ index: Double) -> Date { local(p.startMs + Int64(index * Double(day))) }
+        let weekdayLetters = ["S", "M", "T", "W", "T", "F", "S"]
+        let monthLetters = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
+        switch (span, mode) {
+        case (.week, .calendar):
+            return (barsKm, weekdayLetters)
+        case (.month, .calendar):
+            return (barsKm, barsKm.indices.map { String($0 + 1) })
+        case (.year, .calendar):
+            var months = [Double](repeating: 0, count: 12)
+            for (i, km) in barsKm.enumerated() {
+                let month = cal.component(.month, from: middle(Double(i) + 0.5)) - 1
+                if months.indices.contains(month) { months[month] += km }
+            }
+            return (months, monthLetters)
+        case (.week, .rolling):
+            return (barsKm, barsKm.indices.map { weekdayLetters[cal.component(.weekday, from: middle(Double($0) + 0.5)) - 1] })
+        case (.month, .rolling):
+            return (barsKm, barsKm.indices.map { String(cal.component(.day, from: middle(Double($0) + 0.5))) })
+        case (.year, .rolling):
+            let blocks = 12
+            var values = [Double](repeating: 0, count: blocks)
+            var labels: [String] = []
+            for b in 0..<blocks {
+                let from = barsKm.count * b / blocks
+                let to = barsKm.count * (b + 1) / blocks
+                if from < to { values[b] = barsKm[from..<to].reduce(0, +) }
+                labels.append(monthLetters[cal.component(.month, from: middle(Double(from + to) / 2)) - 1])
+            }
+            return (values, labels)
+        }
     }
 
     // MARK: Text

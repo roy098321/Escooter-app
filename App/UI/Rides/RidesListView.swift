@@ -210,13 +210,19 @@ struct RidesListView: View {
             HStack(alignment: .center, spacing: 10) {
                 placeStrip(ride)
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 8) {
-                        Text(timeLabel).font(.body.weight(.semibold)).lineLimit(1).fixedSize()
-                        if let route = routeText(ride) {
-                            Text(route).font(.body).lineLimit(1).truncationMode(.tail)
+                    if typeSize.isAccessibilitySize {
+                        // largest text: the time, the places and the numbers each get their own lines (two at most for the long ones)
+                        Text(timeLabel).font(.body.weight(.semibold)).lineLimit(2)
+                        if let route = routeText(ride) { Text(route).font(.body).lineLimit(2) }
+                    } else {
+                        HStack(spacing: 8) {
+                            Text(timeLabel).font(.body.weight(.semibold)).lineLimit(1).fixedSize()
+                            if let route = routeText(ride) {
+                                Text(route).font(.body).lineLimit(2).truncationMode(.tail)
+                            }
                         }
                     }
-                    Text(Self.figures(ride)).font(.footnote).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(Self.figures(ride)).font(.footnote).foregroundStyle(.secondary).lineLimit(2).minimumScaleFactor(0.8)
                 }
                 Spacer(minLength: 4)
                 Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)

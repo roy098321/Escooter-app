@@ -6,7 +6,9 @@ import UniformTypeIdentifiers
 /// "Connect your scooter" (never Start ride); connected shows the status card + Start ride; a failed connect
 /// says "Can't find the scooter" after 30 s with Try again; a ride in progress says so. The rules live in
 /// `HomeLogic` (CorckieCore, unit tested); this view only shows the model.
-/// UI overhaul (UI_PLAN 3.1): glass cards over the map backdrop, the 170 pt round Start / Connect disc, a Where to? sheet.
+/// UI overhaul (UI_PLAN 3.1) + P6-3: glass cards over the map backdrop, the big round Start / Connect disc (F-17: about 250 pt,
+/// centred in the free space between the status pill and the bottom rows), a compact Where to? row that opens a standard iOS
+/// half-height sheet (B29), the Load row below it, and the last parked spot as a pin on the map (V17).
 struct HomeView: View {
     /// ui-shots: a made-up input instead of the real app state
     var preview: HomeInput?
@@ -15,16 +17,20 @@ struct HomeView: View {
     var previewSelected: String?
     /// ui-shots: open the Where to? sheet straight away
     var previewSheet = false
+    /// ui-shots: a made-up parked pin (a fraction of the screen)
+    var previewParked: CGPoint?
 
-    /// the disc is 170 pt at normal text size and grows with Dynamic Type (capped at 270 pt)
-    @ScaledMetric(relativeTo: .title3) private var discSize: CGFloat = 170
+    /// F-17: the disc is 250 pt at normal text size and grows with Dynamic Type (capped at 300 pt)
+    @ScaledMetric(relativeTo: .title3) private var discSize: CGFloat = HomeView.discBase
     @State private var chips: [WhereToChip] = []
     @State private var now = Date()
     @State private var connectingSince: Date?
     @State private var discTap = 0
     @State private var showOnboarding = false
-    /// B19: the Where to? sheet docks on the tab bar (closed = one line "Where to? · Work")
-    @State private var whereToDetent: SheetDetent = .peek
+    /// B29: the Where to? list is a standard iOS sheet
+    @State private var showWhereTo = false
+    /// V17: where the scooter was last parked
+    @State private var parked: ParkedSpot?
     @State private var crashDismissed = false
     /// H7: the backup folder picker straight from the banner
     @State private var pickingBackup = false
@@ -56,7 +62,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             homeScreen(HomeLogic.model(input))
-                .background { MapBackdrop(map: true).ignoresSafeArea() }
+                .background { MapBackdrop(map: true, parked: parkedForMap, parkedPreview: previewParked).ignoresSafeArea() }
                 .navigationTitle("Home")
                 .navigationBarTitleDisplayMode(.inline)
                 .screen("Home")
@@ -78,7 +84,7 @@ struct HomeView: View {
         .onAppear {
             loadSelectorFromStore()
             reloadLastRide()
-            if previewSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { whereToDetent = .half } }
+            if previewSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showWhereTo = true } }
         }
         .onChange(of: ScreenSimulator.shared.active) { _, _ in lastRide = nil; reloadLastRide() }
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reloadLastRide() }
@@ -110,45 +116,57 @@ struct HomeView: View {
         .accessibilityAddTraits(.isHeader)
     }
 
-    /// The scroll content, with the Where to? sheet docked on the tab bar while there are routes to pick (B19)
+    /// F-17: status pill (and any cards) on top, the Start / Connect disc centred in the free space, the Where to? row and the Load row
+    /// compact at the bottom above the tab bar. At large text sizes it simply scrolls.
     private func homeScreen(_ m: HomeModel) -> some View {
-        let docked = !shownChips.isEmpty && m.state != .riding
-        return content(m, dockRoom: docked)
-            .overlay {
-                if docked {
-                    DockedSheet(detent: $whereToDetent, summary: whereToSummary) {
-                        WhereToSheet(chips: shownChips, selected: selectedRoute) { id in
-                            pickRoute(id)
-                            whereToDetent = .peek
-                        }
-                    }
+        GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: DS.Space.block) {
+                    topBlock(m)
+                    Spacer(minLength: DS.Space.block)
+                    startDisc(m)
+                    Spacer(minLength: DS.Space.block)
+                    bottomBlock(m)
                 }
+                .padding(.horizontal, DS.Space.gutter)
+                .padding(.bottom, DS.Space.row)
+                .frame(minHeight: max(0, geo.size.height - FloatingTabBar.clearance))
             }
+            .defaultScrollAnchor(UIShot.requested == "home-bottom" ? .bottom : nil)   // the ui-shot of the very bottom (B23)
+        }
+        .sheet(isPresented: $showWhereTo) {
+            WhereToSheet(chips: shownChips, selected: selectedRoute) { id in
+                pickRoute(id)
+                showWhereTo = false
+            }
+            .glassPresentation(detents: [.medium])
+        }
     }
 
-    private func content(_ m: HomeModel, dockRoom: Bool) -> some View {
-        ScrollView {
-            VStack(spacing: DS.Space.block) {
-                if m.showCrashBanner { crashCard }
-                if backupBannerShown { backupCard }
-                if let n = EdgeWatch.shared.expiryNotice { noticeCard(n, symbol: "clock.badge.exclamationmark") }
-                if let n = EdgeWatch.shared.storageNotice { noticeCard(n, symbol: "internaldrive") }
-                if m.batteryText != nil {
-                    NavigationLink { BatteryView() } label: { statusPill(m) }.buttonStyle(.plain)
-                } else {
-                    statusPill(m)
-                }
-                if m.showLocationCard { locationCard }
-                startDisc(m)
-                if m.state != .riding { loadRow }
-                // room for the docked Where to? line above the tab bar
-                if dockRoom { Color.clear.frame(height: SheetDock.handle + SheetDock.summary + 8) }
+    private func topBlock(_ m: HomeModel) -> some View {
+        VStack(spacing: DS.Space.block) {
+            if m.showCrashBanner { crashCard }
+            if backupBannerShown { backupCard }
+            if let n = EdgeWatch.shared.expiryNotice { noticeCard(n, symbol: "clock.badge.exclamationmark") }
+            if let n = EdgeWatch.shared.storageNotice { noticeCard(n, symbol: "internaldrive") }
+            if m.batteryText != nil {
+                NavigationLink { BatteryView() } label: { statusPill(m) }.buttonStyle(.plain)
+            } else {
+                statusPill(m)
             }
-            .padding(.horizontal, DS.Space.gutter)
-            .padding(.bottom, DS.Space.block)
+            if m.showLocationCard { locationCard }
         }
-        .defaultScrollAnchor(UIShot.requested == "home-bottom" ? .bottom : nil)   // the ui-shot of the very bottom (B23)
     }
+
+    private func bottomBlock(_ m: HomeModel) -> some View {
+        VStack(spacing: DS.Space.row) {
+            if !shownChips.isEmpty && m.state != .riding { whereToRow }
+            if m.state != .riding { loadRow }
+        }
+    }
+
+    /// V17: the pin is not drawn while a ride is on
+    private var parkedForMap: ParkedSpot? { input.rideActive ? nil : parked }
 
     // MARK: Load for the next ride (F-02)
 
@@ -173,7 +191,7 @@ struct HomeView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
+        .glassCard(padding: 10)
         .onChange(of: loadLevelRaw) { _, _ in saveLoad() }
         .onChange(of: exactKg) { _, _ in saveLoad() }
     }
@@ -201,7 +219,7 @@ struct HomeView: View {
             .opacity(m.greyed ? 0.7 : 1)
     }
 
-    /// The 170 pt round Start / Connect disc (amber for Connect and Try again, as before). The tap goes through `primaryTapped`, unchanged.
+    /// The big round Start / Connect disc (amber for Connect and Try again, as before). The tap goes through `primaryTapped`, unchanged.
     private func startDisc(_ m: HomeModel) -> some View {
         let amber = m.primary == .connect || m.primary == .tryAgain
         let tint: Color = amber ? Theme.accentSoft : Theme.accent
@@ -211,7 +229,7 @@ struct HomeView: View {
                 primaryTapped(m.primary)
             } label: {
                 ZStack {
-                    Circle().fill(tint.opacity(0.2)).frame(width: min(discSize, 270) + 24, height: min(discSize, 270) + 24)
+                    Circle().fill(tint.opacity(0.2)).frame(width: min(discSize, Self.discCap) + 24, height: min(discSize, Self.discCap) + 24)
                     VStack(spacing: 8) {
                         if m.state == .connecting {
                             ProgressView().controlSize(.large).tint(Theme.onAccent)
@@ -226,7 +244,7 @@ struct HomeView: View {
                     }
                     .foregroundStyle(Theme.onAccent)   // F-15: dark text on the orange (white is only 2.3:1)
                     .padding(20)
-                    .frame(width: min(discSize, 270), height: min(discSize, 270))
+                    .frame(width: min(discSize, Self.discCap), height: min(discSize, Self.discCap))
                     .background(tint, in: Circle())
                     .shadow(color: tint.opacity(0.35), radius: 14, y: 6)
                 }
@@ -239,8 +257,12 @@ struct HomeView: View {
             .accessibilityLabel(m.primaryTitle)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
     }
+
+    /// F-17: the disc at the normal text size (was 170 pt)
+    static let discBase: CGFloat = 250
+    /// the largest the disc grows with Dynamic Type (it must still fit the screen width with its halo)
+    static let discCap: CGFloat = 300
 
     private func discSymbol(_ p: HomePrimary) -> String {
         switch p {
@@ -265,10 +287,27 @@ struct HomeView: View {
         }
     }
 
-    /// the closed line of the docked sheet
+    /// B29: the compact row "Where to? · Work" that opens the standard sheet
     private var whereToSummary: String {
-        let chosen = shownChips.first(where: { $0.routeId == selectedRoute })
-        return "Where to? \u{00B7} \(chosen?.label ?? "No destination")"
+        HomeCopy.whereToLine(label: shownChips.first(where: { $0.routeId == selectedRoute })?.label)
+    }
+
+    private var whereToRow: some View {
+        Button { showWhereTo = true } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "mappin.and.ellipse").foregroundStyle(Theme.canyon).accessibilityHidden(true)
+                Text(whereToSummary).font(.subheadline.weight(.semibold)).lineLimit(2).multilineTextAlignment(.leading)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.up").font(.footnote.weight(.semibold)).foregroundStyle(.secondary).accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: DS.hit, alignment: .leading)
+            .padding(.horizontal, 14)
+            .glassCard(radius: 26, padding: 0)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(whereToSummary)
+        .accessibilityHint("Opens the list of destinations")
     }
 
     private var locationCard: some View {
@@ -357,6 +396,7 @@ struct HomeView: View {
         guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
         chips = RouteFollowLoader.chips(database: db)
         if let id = RouteFollowSelection.shared.routeId, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.routeId = nil }
+        parked = ParkedLoader.latest(database: db, simulated: ScreenSimulator.shared.active)
         oldestRideMs = try? RideQueries(db).rides().last?.startAt
         BackupWriter.shared.runIfDue()
         EdgeWatch.shared.refresh(database: db)
@@ -366,19 +406,24 @@ struct HomeView: View {
     }
 }
 
-/// The content of the docked Where to? sheet (B19): "No destination" or one of the saved routes; picking one closes the sheet
-/// back to its one-line state (the caller does that). UI only, the selection is `RouteFollowSelection`.
+/// The content of the Where to? sheet (B29, a standard iOS sheet at half height): "No destination" or one of the saved routes with its
+/// three chips; picking one closes the sheet (the caller does that). UI only, the selection is `RouteFollowSelection`.
 private struct WhereToSheet: View {
     let chips: [WhereToChip]
     let selected: String?
     let onPick: (String?) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Space.row) {
-            row("No destination", chip: nil, on: selected == nil) { onPick(nil) }
-            ForEach(chips, id: \.routeId) { c in
-                row(c.label, chip: c, on: c.routeId == selected) { onPick(c.routeId) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.Space.row) {
+                Text("Where to?").font(.headline).fontDesign(.rounded).padding(.top, 22).padding(.bottom, 4)
+                row("No destination", chip: nil, on: selected == nil) { onPick(nil) }
+                ForEach(chips, id: \.routeId) { c in
+                    row(c.label, chip: c, on: c.routeId == selected) { onPick(c.routeId) }
+                }
             }
+            .padding(.horizontal, DS.Space.gutter)
+            .padding(.bottom, DS.Space.block)
         }
     }
 
@@ -430,7 +475,7 @@ enum HomePreview {
             return HomeInput(paired: false, connected: false, nowS: now)
         case "home-notconnected":
             return HomeInput(paired: true, connected: false, nowS: now, lastSeenMs: seen, lastSeenPct: 58, lastRide: ride)
-        case "home-ready", "home-whereto", "home-whereto-sheet":
+        case "home-ready", "home-parked", "home-whereto", "home-whereto-sheet":
             return HomeInput(paired: true, connected: true, nowS: now, batteryPct: 91, lastRide: ride)
         case "home-cantfind":
             return HomeInput(paired: true, connected: false, connectingSinceS: now - 40, nowS: now, lastSeenMs: seen, lastSeenPct: 58)
@@ -446,8 +491,13 @@ enum HomePreview {
     }
 }
 
-/// The short Home words (H2, H3), kept apart so the automatic check u64 can test them.
+/// The short Home words (H2, H3), kept apart so the automatic checks u64 / u69 can test them.
 enum HomeCopy {
+    /// B29: the closed Where to? row: "Where to? · Work", or "Where to? · No destination"
+    static func whereToLine(label: String?) -> String {
+        "Where to? \u{00B7} \(label ?? "No destination")"
+    }
+
     /// H2: one word on the big button
     static func buttonWord(_ p: HomePrimary, connecting: Bool) -> String {
         if connecting { return "Connecting\u{2026}" }

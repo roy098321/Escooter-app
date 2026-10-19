@@ -61,7 +61,7 @@ extension View {
     }
 
     /// Task-sheet style (Compare picker, Merge, Trim, Replay, check guide): standard iOS sheet with detents and a drag indicator
-    /// on the page colour, radius 28. Map sheets do not use this: they dock on the tab bar (`MapSheet`, B19).
+    /// on the page colour, radius 28. Map screens do not use this: they are a fixed map with a normal scroll view below (`MapScreen`, B29).
     func glassPresentation(detents: Set<PresentationDetent> = [.medium, .large]) -> some View {
         self
             .presentationDetents(detents)

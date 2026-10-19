@@ -10,12 +10,16 @@ struct ScooterTabView: View {
         var lastSeenMs: Int64?
         var batteryPct: Int?
         var odometerKm: Double?
+        /// V17: a made-up parked spot for the ui-shot
+        var parked: ParkedSpot?
+        var nowMs: Int64?
     }
 
     var preview: Preview?
     @State private var record: ScooterRecord?
     @State private var odometerKm: Double?
     @State private var rows: [MaintenanceService.Row] = []
+    @State private var parked: ParkedSpot?
     @State private var confirmForget = false
     @State private var connectTap = 0
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -78,7 +82,8 @@ struct ScooterTabView: View {
         let livePct: Int? = preview != nil ? preview?.batteryPct : link.frame?.batteryPct
         let pct = connected ? (livePct ?? seenPct) : seenPct
         // S1 / S2 / S5: one status card: dot, name, odometer chip, the battery % (a clock when it is the last seen one), a small connect button
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        let stacked = typeSize.isAccessibilitySize
+        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
         layout {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
@@ -114,8 +119,10 @@ struct ScooterTabView: View {
                 .sensoryFeedback(.impact(weight: .medium), trigger: connectTap)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)      // P6-3: the card spans the full width when its content is stacked at big text sizes
         .padding(DS.Space.cardPad)
         .glassCard(radius: DS.Radius.hero, padding: 0)
+        parkedRow
         // S3: one row: what is due next
         NavigationLink { MaintenanceView() } label: {
             HStack {
@@ -140,6 +147,26 @@ struct ScooterTabView: View {
             .glassCard(padding: 0)
         }
         .buttonStyle(.plain)
+    }
+
+    /// V17: "Parked · Work · 2 h ago"; a tap opens the spot on a map
+    @ViewBuilder private var parkedRow: some View {
+        let spot = preview != nil ? preview?.parked : parked
+        if let spot {
+            let nowMs = preview?.nowMs ?? Int64(Date().timeIntervalSince1970 * 1000)
+            NavigationLink { ParkedMapView(spot: spot, nowMs: nowMs) } label: {
+                HStack {
+                    Label(ParkedText.line(spot, nowMs: nowMs), systemImage: "mappin.and.ellipse")
+                        .lineLimit(2)
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
+                }
+                .padding(DS.Space.cardPad)
+                .glassCard(padding: 0)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens a map")
+        }
     }
 
     /// What is due next: an item that is due, else the one with the fewest km left ("Tyres \u{00B7} 120 km left")
@@ -171,6 +198,7 @@ struct ScooterTabView: View {
         record = ScooterRecord.latest(in: db)
         odometerKm = (try? MaintenanceQueries(db).odometerKm()) ?? nil
         rows = MaintenanceService.rows(db)
+        parked = ParkedLoader.latest(database: db, simulated: false)
     }
 
     private func forget() {
@@ -184,7 +212,9 @@ enum ScooterPreview {
     static func make(_ name: String) -> ScooterTabView.Preview? {
         let rec = ScooterRecord(id: "preview", name: "Scooter", chip: "chip", firmware: "1.2.3", software: "4.5", firstSeenAt: 0)
         switch name {
-        case "scooter-tab": return .init(record: rec, connected: true, lastSeenMs: nil, batteryPct: 58, odometerKm: 412.3)
+        case "scooter-tab": return .init(record: rec, connected: true, lastSeenMs: nil, batteryPct: 58, odometerKm: 412.3,
+                                         parked: ParkedSpot(lat: 40.0, lon: -75.0, endedAtMs: 1_790_000_000_000 - 2 * 3_600_000, placeName: "Work"),
+                                         nowMs: 1_790_000_000_000)
         case "scooter-tab-off": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000, batteryPct: 58, odometerKm: 412.3)
         case "scooter-tab-none": return .init(record: nil, connected: false, lastSeenMs: nil, batteryPct: nil, odometerKm: nil)
         default: return nil

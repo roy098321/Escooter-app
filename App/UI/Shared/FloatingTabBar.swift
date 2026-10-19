@@ -6,7 +6,8 @@ import SwiftUI
 /// screens and never inside the live ride view (the ride cover has no tabs). Tapping the tab you are on goes back to its first screen.
 ///
 /// On list screens it slides away when you scroll down and comes back when you scroll up (`TabBarVisibility`, fed by the shared
-/// scroll hook in StiffBounce.swift); on map screens with a docked sheet (B19, `MapSheet`) it is pinned and always stays.
+/// scroll hook in StiffBounce.swift). B28: screens with a bottom action (Add a place, the place screen) hide it for as long as they
+/// are on screen (`hidesTabBar()`). Nothing pins it any more (B29: no docked sheets).
 struct FloatingTabBar: View {
     struct Item: Identifiable {
         let id: Int
@@ -76,36 +77,61 @@ struct FloatingTabBar: View {
     }
 }
 
-/// F-14: whether the floating bar is shown. List screens report their scrolling (`scrolled`); a docked map sheet pins the bar
-/// (`pin` / `unpin`), and switching tabs always brings it back. The decision is `TabBarHideRule` (pure, checked by u62).
+/// F-14: whether the floating bar is shown. List screens report their scrolling (`scrolled`); a screen with a bottom action holds the bar
+/// away (`hold` / `release`, B28), and switching tabs always brings a scroll-hidden bar back. The scroll decision is `TabBarHideRule`
+/// (pure, checked by u62).
 @MainActor
 @Observable
 final class TabBarVisibility {
     static let shared = TabBarVisibility()
-    private(set) var hidden = false
+    private(set) var scrollHidden = false
+    private(set) var holds = 0
     private var rule = TabBarHideRule()
-    private var pins = 0
     private init() {}
+
+    /// the bar is away: scrolled down, or a screen with a bottom action holds it
+    var hidden: Bool { scrollHidden || holds > 0 }
 
     /// A scroll view moved while the finger or its momentum drives it: y = content offset, top / bottom = its resting ends
     func scrolled(y: CGFloat, top: CGFloat, bottom: CGFloat) {
-        guard pins == 0 else { return }
         let next = rule.step(y: Double(y), top: Double(top), bottom: Double(bottom))
-        if next != hidden { hidden = next }
+        if next != scrollHidden { scrollHidden = next }
     }
 
     func show() {
         rule.reset()
-        if hidden { hidden = false }
+        if scrollHidden { scrollHidden = false }
     }
 
-    /// a map screen with a docked sheet is on screen: the bar stays
-    func pin() {
-        pins += 1
-        show()
-    }
+    /// a screen with a bottom action is on screen: the bar stays away until `release`
+    func hold() { holds += 1 }
 
-    func unpin() { pins = max(0, pins - 1) }
+    func release() { holds = max(0, holds - 1) }
+}
+
+extension View {
+    /// B28: hides the floating tab bar while this screen is shown (Add a place, the place screen: their actions must not sit under it)
+    func hidesTabBar() -> some View {
+        modifier(HidesTabBar())
+    }
+}
+
+private struct HidesTabBar: ViewModifier {
+    @State private var holding = false
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                guard !holding else { return }
+                holding = true
+                TabBarVisibility.shared.hold()
+            }
+            .onDisappear {
+                guard holding else { return }
+                holding = false
+                TabBarVisibility.shared.release()
+            }
+    }
 }
 
 /// The hide-on-scroll rule (F-14): hide after scrolling down 24 pt in one go, show again after scrolling up 12 pt, always shown
@@ -151,7 +177,7 @@ struct TabBarHideRule {
 
 extension View {
     /// Puts the floating tab bar over this view (the five tabs in `RootView`, and the ui-shots that show it). It slides away on
-    /// scroll (unless pinned) and honours Reduce Motion with a fade instead of the slide.
+    /// scroll (unless a screen holds it away) and honours Reduce Motion with a fade instead of the slide.
     func floatingTabBar(selection: Binding<Int>, onReselect: @escaping (Int) -> Void = { _ in }) -> some View {
         modifier(FloatingTabBarHost(selection: selection, onReselect: onReselect))
     }
@@ -182,7 +208,7 @@ private struct HasFloatingTabBarKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    /// true under the floating tab bar: map sheets dock on it (B19); false in the ride cover and the sheets
+    /// true under the floating tab bar (scroll areas leave room for it); false in the ride cover and the sheets
     var hasFloatingTabBar: Bool {
         get { self[HasFloatingTabBarKey.self] }
         set { self[HasFloatingTabBarKey.self] = newValue }

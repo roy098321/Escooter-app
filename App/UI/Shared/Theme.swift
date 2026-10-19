@@ -11,7 +11,7 @@ import UIKit
 ///   2.3:1, so orange TEXT (links, small values) uses `accentInk` (#B85A1E in light = 4.6:1, the same orange in dark = 8:1), and
 ///   text ON an orange fill uses `onAccent` (dark), never white.
 /// - Browns only for small labels: `sectionLabel` (rust #965530 in light = 5.8:1, canyon #C37F51 in dark), `muted` sparingly.
-/// - `danger` / `ok` keep their meaning (SLOW, errors / connected, done) and stay distinct from the orange.
+/// - `danger` / `ok` keep their meaning (errors, delete, the hot motor / connected, done) and stay distinct from the orange.
 /// - Speed colours on maps are not here: they come from Core `SpeedPalette` (colour-blind mode keeps its own set).
 enum Theme {
     // MARK: Surfaces
@@ -53,7 +53,7 @@ enum Theme {
 
     // MARK: Meaning
 
-    /// SLOW, danger, errors, delete
+    /// danger, errors, delete
     static let danger = dynamic(light: 0xE5484D, dark: 0xE5484D)
     /// connected, OK, done
     static let ok = dynamic(light: 0x3FA45B, dark: 0x3FA45B)

@@ -60,20 +60,14 @@ struct RouteCardView: View {
 
     // MARK: Layout
 
-    /// B19: the one line the docked sheet shows when closed: the first two stats ("~13 min · 6.1 km"), or the today line
     /// K1: the plain ride count as the subtitle
     static func subtitle(_ m: RouteCardModel) -> String {
         let rides = "\(m.totalRides) \(m.totalRides == 1 ? "ride" : "rides")"
         return m.saved ? rides : "Suggested \u{00B7} " + rides
     }
 
-    static func sheetSummary(_ m: RouteCardModel) -> String {
-        let values = m.stats.filter { !$0.filling && $0.value != "\u{2013}" }.prefix(2).map { $0.typical ?? $0.value }
-        return values.isEmpty ? m.today.headline : values.joined(separator: " \u{00B7} ")
-    }
-
     private func content(_ m: RouteCardModel) -> some View {
-        MapSheet(initial: m.saved ? .half : .full, summary: Self.sheetSummary(m)) {
+        MapScreen {
             if m.map.isEmpty {
                 MapBackdrop(map: true)
             } else {
@@ -93,7 +87,7 @@ struct RouteCardView: View {
             }
         } side: {
             EmptyView()
-        } sheet: {
+        } content: {
             VStack(alignment: .leading, spacing: 16) {
                 if !m.saved { suggestionCard }
                 todayCard(m.today)

@@ -52,7 +52,7 @@ final class InsightCatalogueTests: XCTestCase {
         XCTAssertEqual(text(.q19After), "With a load (Heavy): +2% battery, +30 s compared to usual (based on 4 loaded rides).")
         XCTAssertEqual(text(.q19After, ride: "r2", progress: true), "Load: 2 of 5 loaded rides")
         XCTAssertEqual(all.first { $0.type == .q22Weekly }?.text,
-                       "Last week: 20 km · 4 rides · 1 h 0 min · +1 short hop (1.4 km) · Battery used: ~0.4 full charges · ▲ 19% more than the week before")
+                       "Last week: 20 km · 4 rides · 1 h · +1 short hop · ~0.4 charges · ▲ 19% vs the week before")
         XCTAssertEqual(text(.firstRide), "Your first ride is in · Ride the same trip 3 times and you'll see how it compares")
         XCTAssertEqual(text(.unlockCalibration), "Battery calibrated from your last 5 rides: about 8.4 Wh per 1%.")
     }
@@ -330,7 +330,29 @@ final class InsightCatalogueTests: XCTestCase {
         b.startAt += day
         XCTAssertEqual(InsightCatalogue.q22Weekly(weekStart: 0, rides: [a, b], previousWeekKm: nil, nowMs: now).first?.text, "Last week: 10 km · 2 rides · 30 min")
         XCTAssertEqual(InsightCatalogue.q22Weekly(weekStart: 0, rides: [a, b], previousWeekKm: 20, nowMs: now).first?.text,
-                       "Last week: 10 km · 2 rides · 30 min · ▼ 50% less than the week before")
+                       "Last week: 10 km · 2 rides · 30 min · ▼ 50% vs the week before")
+    }
+
+    /// B30: no "~0.0 charges", no huge percentage from a tiny week, a short line
+    func test_weekly_B30_chargesPercentAndKm() {
+        func week(used: Double?, prevKm: Double?, km: Double = 10) -> String? {
+            let a = WeekRide(startAt: now, utcOffsetMin: 180, kind: "ride", distanceM: km * 500, totalS: 900, usedPct: used)
+            var b = a
+            b.startAt += day
+            return InsightCatalogue.q22Weekly(weekStart: 0, rides: [a, b], previousWeekKm: prevKm, nowMs: now).first?.text
+        }
+        XCTAssertEqual(week(used: nil, prevKm: nil), "Last week: 10 km · 2 rides · 30 min", "no battery data: the charges are left out")
+        XCTAssertEqual(week(used: 0.4, prevKm: nil), "Last week: 10 km · 2 rides · 30 min", "under 0.1 charges: left out, never ~0.0")
+        XCTAssertEqual(week(used: 5, prevKm: nil), "Last week: 10 km · 2 rides · 30 min · ~0.1 charges")
+        XCTAssertEqual(week(used: 22, prevKm: nil), "Last week: 10 km · 2 rides · 30 min · ~0.4 charges")
+        XCTAssertEqual(week(used: nil, prevKm: 2), "Last week: 10 km · 2 rides · 30 min · ▲ 8 km vs the week before", "a previous week under 10 km: km, not 400%")
+        XCTAssertEqual(week(used: nil, prevKm: 9.9), "Last week: 10 km · 2 rides · 30 min", "a 0.1 km difference says nothing")
+        XCTAssertEqual(week(used: nil, prevKm: 12), "Last week: 10 km · 2 rides · 30 min · ▼ 17% vs the week before")
+        XCTAssertEqual(week(used: nil, prevKm: 10), "Last week: 10 km · 2 rides · 30 min", "10 km exactly counts as a real week: no change, no line")
+        XCTAssertEqual(InsightCatalogue.weeklyChange(thisKm: 50, previousKm: 10.5), "▲ 376% vs the week before", "from 10 km up the percentage is allowed")
+        XCTAssertEqual(InsightCatalogue.weeklyChange(thisKm: 3, previousKm: 8), "▼ 5 km vs the week before")
+        XCTAssertNil(InsightCatalogue.weeklyChange(thisKm: 3, previousKm: nil))
+        XCTAssertNil(InsightCatalogue.weeklyChange(thisKm: 3, previousKm: 0))
     }
 
     func test_gate_firstAndUnlock_onceAtTheirCount() {

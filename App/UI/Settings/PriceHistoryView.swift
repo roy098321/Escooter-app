@@ -22,6 +22,7 @@ struct PriceHistoryView: View {
         }
         .glassList()
         .navigationTitle("Price history")
+        .hidesTabBar()                  // B28: the Add row and the keyboard must not meet the tab bar
         .screen("Price history")
         .onAppear(perform: load)
     }
@@ -129,6 +130,7 @@ struct PurchaseSettingsView: View {
         }
         .glassList()
         .navigationTitle("Purchase")
+        .hidesTabBar()
         .screen("Purchase")
         .onAppear {
             let db = AppModel.shared.displayDatabase

@@ -43,6 +43,7 @@ struct RideDetailView: View {
     @State private var replayDownload = false
     @State private var exportFile: ExportedFile?
     @State private var mergeInfo: MergeInfo?
+    @State private var sameRideAnswered = false
     @State private var isTrimmed = false
     @State private var canUndoMerge = false
     @State private var toast: String?
@@ -182,20 +183,8 @@ struct RideDetailView: View {
 
     // MARK: Layout
 
-    /// Sheet opens at half; the made-up shots that show more of the sheet open it full
-    private var startDetent: SheetDetent {
-        previewLayer != nil ? .half : (previewSeries != nil || previewPrompt != nil || previewInsights != nil || previewOffer != nil ? .full : .half)
-    }
-
-    /// B19: the one line the docked sheet shows when closed: "19.0 km · 29 min · 99% → 53%" (missing values left out)
-    static func sheetSummary(_ m: RideSummaryModel) -> String {
-        let order = ["Distance", "Time", "Battery"]
-        let values = order.compactMap { label in m.mainStats.first { $0.label == label }?.value }.filter { $0 != "\u{2013}" }
-        return values.isEmpty ? m.title : values.joined(separator: " \u{00B7} ")
-    }
-
     private func content(_ m: RideSummaryModel) -> some View {
-        MapSheet(initial: startDetent, summary: Self.sheetSummary(m)) {
+        MapScreen {
             mapLayer(m)
         } topBar: {
             topBar(m)
@@ -206,7 +195,7 @@ struct RideDetailView: View {
                     GradientLegend(layer: layer)
                 }
             }
-        } sheet: {
+        } content: {
             sheetContent(m)
         }
     }
@@ -255,7 +244,7 @@ struct RideDetailView: View {
         if m.noGps {
             ZStack {
                 MapBackdrop(map: true)
-                VStack { noGpsCard.padding(.horizontal, 40).padding(.top, 120); Spacer() }
+                VStack { noGpsCard.padding(.horizontal, 40).padding(.top, 96); Spacer() }
             }
         } else {
             mapView(m.path)
@@ -287,6 +276,7 @@ struct RideDetailView: View {
 
     private func sheetContent(_ m: RideSummaryModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
+            if onDone != nil, !sameRideAnswered, let info = mergeInfo { sameRideCard(info) }
             keyTiles(m)
             if let hot = m.hotPeakC { HStack { InfoChip("thermometer.high", "\(hot) \u{00B0}C", label: "Temperature"); Spacer(minLength: 0) } }
             if let r = previewInsights ?? ranked { insightCards(r) }
@@ -298,6 +288,20 @@ struct RideDetailView: View {
             moreSection(m)
         }
         .padding(.top, 2)
+    }
+
+    /// P-4: "Same ride?" is asked here, on the summary, and never during the ride. Yes opens the Merge sheet (it can be undone).
+    private func sameRideCard(_ info: MergeInfo) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Same ride as the one before?").font(.headline)
+            Text(info.offer.text).font(.footnote).foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Button("Yes, join them") { showMerge = true }.buttonStyle(.borderedProminent)
+                Button("No") { sameRideAnswered = true }.buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
     }
 
     private func detailRows(_ m: RideSummaryModel) -> [(String, String)] {

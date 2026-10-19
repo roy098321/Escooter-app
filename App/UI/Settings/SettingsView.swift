@@ -34,6 +34,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .hidesTabBar()                  // B28: the weight fields open the keyboard
         .screen("Settings")
     }
 

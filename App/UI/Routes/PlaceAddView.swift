@@ -61,6 +61,8 @@ struct PlaceAddView: View {
     @State private var existing: [String: String] = [:]
     @State private var errorText: String?
 
+    private var canSave: Bool { PlaceAddRules.canSave(pinned: pin != nil, name: name) }
+
     private var colour: String {
         chosenColour ?? PlaceColours.assign(places: [(id: "new", name: name)], existing: existing)["new"] ?? "orange"
     }
@@ -76,6 +78,15 @@ struct PlaceAddView: View {
         .background { MapBackdrop().ignoresSafeArea() }
         .navigationTitle("Add a place")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // B28: Save is always in the top bar, never under the tab bar
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Save") { save() }
+                    .fontWeight(.semibold)
+                    .disabled(!canSave)
+            }
+        }
+        .hidesTabBar()
         .alert("Could not save the place", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("OK") {}
         } message: {
@@ -161,16 +172,14 @@ struct PlaceAddView: View {
             } else {
                 TextField("Name (for example Gym)", text: $name)
                     .textFieldStyle(.roundedBorder)
+                    .submitLabel(.done)
+                    .onSubmit { if canSave { save() } }
                 Picker("Circle", selection: $radius) {
                     Text("Automatic").tag(0.0)
                     ForEach(PlaceListBuilder.radiusChoices, id: \.self) { r in Text("\(Int(r)) m").tag(r) }
                 }
                 PlaceColourPicker(selected: colour) { chosenColour = $0 }
-                HStack {
-                    Button("Move the pin") { pin = nil }.buttonStyle(.bordered)
-                    Spacer()
-                    Button("Save place") { save() }.buttonStyle(.borderedProminent)
-                }
+                Button("Move the pin") { pin = nil }.buttonStyle(.bordered)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -205,7 +214,7 @@ struct PlaceAddView: View {
 
     private func save() {
         guard !preview else { return }
-        guard let p = pin else { return }
+        guard canSave, let p = pin else { return }
         guard let db = AppModel.shared.database, !db.isReadOnly else {
             errorText = "The data is read-only in this build."
             return

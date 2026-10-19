@@ -55,6 +55,14 @@ enum OverallLoader {
         return out
     }
 
+    /// F-20: the ⓘ of the "saved per km" tile
+    static func perKmInfo(_ s: OverallStats) -> String {
+        let l100 = String(format: "%.0f", s.carLPer100km)
+        var text = "Every kilometre you ride instead of driving saves this much: the fuel a car would burn at your \(l100) L per 100 km, at each month's fuel price, minus the electricity of the scooter."
+        if s.totalKm > 0 { text += " Lifetime: \(StatsCalc.money(max(0, s.netSavedIls))) over \(OverallCalc.km(s.totalKm))." }
+        return text
+    }
+
     /// Everything else, for the ⓘ next to the Overall header
     static func details(_ s: OverallStats) -> String {
         var lines = [

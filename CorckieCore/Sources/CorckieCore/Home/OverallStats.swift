@@ -117,6 +117,8 @@ public struct OverallStats: Equatable, Sendable {
     public var hasFuelPrice = false
     /// An unverified placeholder price is in use
     public var usesUnverifiedPrice = false
+    /// the car's L per 100 km the fuel numbers used
+    public var carLPer100km = StatsPrices.defaultFuelLPer100km
 
     public init() {}
 }
@@ -154,6 +156,7 @@ public enum OverallCalc {
 
     public static func compute(_ input: OverallInput) -> OverallStats {
         var out = OverallStats()
+        out.carLPer100km = input.carLPer100km
         let logged = input.rides.reduce(0.0) { $0 + max(0, $1.km) }
         out.kmWithApp = logged
         let rideDays = input.rides.compactMap { dayNumber($0.day) }
@@ -214,6 +217,17 @@ public enum OverallCalc {
         out.fullCharges = usableWh > 0 ? out.lifetimeKwh * 1000 / usableWh : 0
         return out
     }
+
+    // MARK: saved per km (F-20)
+
+    /// F-20: lifetime net saved (fuel money minus electricity) divided by the lifetime km, ILS per km. nil without a fuel price or km.
+    /// Never negative: a scooter that cost more than the car would is shown as 0.
+    public static func savedPerKm(_ s: OverallStats) -> Double? {
+        guard s.hasFuelPrice, s.totalKm > 0 else { return nil }
+        return max(0, s.netSavedIls) / s.totalKm
+    }
+
+    public static func perKmText(_ v: Double) -> String { String(format: "%.2f \u{20AA}", v) }
 
     // MARK: text
 

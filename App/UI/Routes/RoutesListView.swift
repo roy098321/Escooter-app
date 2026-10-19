@@ -108,10 +108,7 @@ struct RoutesListView: View {
         Button { selected = RouteRef(id: r.routeId) } label: {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Text(r.title).font(.body.weight(.semibold))
-                        if let chip = r.fit.chip { chipView(chip, greyed: r.fit.greyed) }
-                    }
+                    titleLine(r)
                     facts(r)
                     if let detail = r.fit.detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
                     if typeSize.isAccessibilitySize, r.state == .suggested { savePill(r) }   // big text: Save sits under the name
@@ -141,13 +138,35 @@ struct RoutesListView: View {
         }
     }
 
-    /// T4: labelled by an icon, one typical number each ("timer 19 min", "battery 11%"); a route still filling up shows its ride count
-    private func facts(_ r: RouteListRow) -> some View {
-        HStack(spacing: 6) {
-            if let t = r.timeText { InfoChip("timer", t, label: "Time") }
-            if let b = r.batteryText { InfoChip("battery.50percent", b, label: "Battery") }
-            if r.timeText == nil { InfoChip("repeat", "\(r.rideCount) \(r.rideCount == 1 ? "ride" : "rides")") }
+    /// The name and the fit chip on one line; at the largest text sizes the chip goes under the name, so the first row never leaves the screen
+    @ViewBuilder private func titleLine(_ r: RouteListRow) -> some View {
+        let name = Text(r.title).font(.body.weight(.semibold))
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 4) {
+                name.fixedSize(horizontal: false, vertical: true)
+                if let chip = r.fit.chip { chipView(chip, greyed: r.fit.greyed) }
+            }
+        } else {
+            HStack(spacing: 8) {
+                name.lineLimit(2)
+                if let chip = r.fit.chip { chipView(chip, greyed: r.fit.greyed) }
+            }
         }
+    }
+
+    /// T4: labelled by an icon, one typical number each ("timer 19 min", "battery 11%"); a route still filling up shows its ride count.
+    /// The chips sit side by side when they fit and stack when they do not (big text).
+    private func facts(_ r: RouteListRow) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) { factChips(r) }
+            VStack(alignment: .leading, spacing: 6) { factChips(r) }
+        }
+    }
+
+    @ViewBuilder private func factChips(_ r: RouteListRow) -> some View {
+        if let t = r.timeText { InfoChip("timer", t, label: "Time") }
+        if let b = r.batteryText { InfoChip("battery.50percent", b, label: "Battery") }
+        if r.timeText == nil { InfoChip("repeat", "\(r.rideCount) \(r.rideCount == 1 ? "ride" : "rides")") }
     }
 
     private func chipView(_ text: String, greyed: Bool) -> some View {

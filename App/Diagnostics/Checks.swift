@@ -528,14 +528,12 @@ enum CheckList {
           "Each place has its own colour (Home green, Work blue, then others), editable on the place map screen; the pins on the maps use it; Rides rows that end at a place have a thin strip of that colour on their left, grey when the ride has no saved destination", manual: true)
     ]
 
-    /// P6-2 redesign chunk 1 (foundation): theme v2, the flat tab bar, sheets docked on the bar.
+    /// P6-2 redesign chunk 1 (foundation): theme v2, the flat tab bar (the docked sheets of B19 were retired in P6-3, B29).
     private static let p62New: [CheckItem] = [
         m("u61", p6M, "Theme v2 colours and contrast (F-15)", "Nothing to do · Run all automatic marks it",
           "Every theme token has its light and dark value (white / #121212 pages, sand / #1F1F1F cards, orange #F89355), small orange text uses the darker ink (4.5:1 on white or more), section labels and muted text pass 4.5:1, text on orange is dark, and the danger red and OK green stay apart from the orange"),
         m("u62", p6M, "Tab bar hides on scroll down, comes back on scroll up (F-14)", "Nothing to do · Run all automatic marks it",
-          "A made-up scroll: 30 pt down past the top hides the bar, 15 pt back up shows it, the first 40 pt and the bounce past the end never hide it, a docked map sheet pins it; five icons with Home in the middle, and the bottom margin covers the bar"),
-        m("u63", p6M, "Map sheets dock on the tab bar (B19)", "Nothing to do · Run all automatic marks it",
-          "Closed, the sheet is the handle and one summary line on the bar (its foot is the bar's bottom edge, same corner radius), its content stops at the bar's top edge at every height, half and full are taller, a drag settles on the nearest height, and without a bar the sheet sits just above the home indicator"),
+          "A made-up scroll: 30 pt down past the top hides the bar, 15 pt back up shows it, the first 40 pt and the bounce past the end never hide it, a screen with a bottom action (Add a place) holds it away until it closes; five icons with Home in the middle, and the bottom margin covers the bar"),
         m("u64", p6M, "Home and live view are decluttered (H1-H8, L3, L4)", "Nothing to do · Run all automatic marks it",
           "The big Home button says one word (Connect, Start, Try again, Live view), the status pill is short (state, seen time, battery), the arrival strip is a flag and \"18:13 · 5 min\", the ready line is just \"Ready\", and none of the deleted sentences are left in the Home or live view text"),
         m("u65", p6M, "Rides list sorts into bubbles; ride detail is decluttered (R1-R6, D1-D10, C1-C4)", "Nothing to do · Run all automatic marks it",
@@ -545,9 +543,33 @@ enum CheckList {
         m("ui8", p6M, "Theme v2 look: white, sand cards, orange (F-15)", "Look at Home, Rides, Stats, Settings, a ride; then switch the iPhone to dark mode",
           "White pages, faint sand cards, orange for the Start button, the open tab and links, small brown section labels, no iOS blue anywhere; numbers and titles rounded; the Home map faint and warm, ride and route maps normal; dark mode neutral dark grey; the live screen dark; sunlight mode still heavier and high contrast", manual: true),
         m("ui9", p6M, "Flat tab bar, hides on scroll (F-14)", "Scroll Rides, Stats and Settings down and up; open a ride",
-          "Icons only, Home a normal icon in the middle, the open tab a filled icon on an orange pill; the bar slides away as you scroll down a list and comes back as you scroll up (with Reduce Motion it fades); on a ride or route map it stays; VoiceOver reads the tab names", manual: true),
-        m("ui10", p6M, "Sheets on the bar, no version tag, settings on Home only (B19 / G3 / G4 / G12)", "Open a ride, a route, a place and the Where to? line on Home",
-          "Closed, each sheet is one line sitting on the tab bar (same width, rounded like the bar); drag it up and back; nothing shows under the bar. Titles are small; the version tag is only in Settings → About; the settings gear only on Home", manual: true)
+          "Icons only, Home a normal icon in the middle, the open tab a filled icon on an orange pill; the bar slides away as you scroll down a list and comes back as you scroll up (with Reduce Motion it fades); on a ride or route map it slides away like on every list; VoiceOver reads the tab names", manual: true),
+        m("ui10", p6M, "Small titles, no version tag, settings on Home only (G3 / G4 / G12)", "Look at Rides, Routes, Stats, Scooter and Home",
+          "Titles are small; the version tag is only in Settings → About; the settings gear only on Home", manual: true),
+        m("u67", p6M, "Add a place saves from the top bar; screens with actions hide the tab bar (B28)", "Nothing to do · Run all automatic marks it",
+          "Save is off until a pin is dropped and the name is not empty, on with both; a place named Gym is written to a temporary database through the same service the Save button uses, with its colour; a screen with a bottom action holds the tab bar away and gives it back"),
+        m("u68", p6M, "Map screens: a fixed map and a normal scroll view (B29)", "Nothing to do · Run all automatic marks it",
+          "The map height is a share of the screen between 280 and 400 pt and always leaves 300 pt for the scroll area; nothing pins the tab bar any more; the old draggable sheet types are gone from the source"),
+        m("u69", p6M, "Home: bigger centred button, Where to? row and sheet (F-17 / B29)", "Nothing to do · Run all automatic marks it",
+          "The Start / Connect disc is 250 pt (300 pt at most with big text, so it and its halo still fit the narrowest iPhone), the Where to? row reads \"Where to? · Work\" or \"Where to? · No destination\" and opens a half-height iOS sheet"),
+        m("u70", p6M, "Stats: Calendar / Rolling (F-16)", "Nothing to do · Run all automatic marks it",
+          "On made-up rides: Rolling is the last 7 / 30 / 365 days (\"Last 30 days\"), the change chip compares with the previous window of the same length (+50% for 30 km against 20 km), the bars are labelled with the days they cover, a month ends with its 31 label, a year is 12 bars"),
+        m("u71", p6M, "Saved per km tile (F-20) and the weekly line (B30)", "Nothing to do · Run all automatic marks it",
+          "809.65 ₪ saved over 1054 km reads 0.77 ₪ / km; none without a fuel price; the weekly line never says ~0.0 charges, shows km (not a huge percentage) when the week before was under 10 km, and is one short line"),
+        m("u72", p6M, "Last parked location (V17)", "Nothing to do · Run all automatic marks it",
+          "On made-up rides in a temporary database the parked spot is the last GPS point of the newest real ride (the end place if there is no GPS), with the saved place's name; the line reads \"Parked · Work · 2 h ago\"; the pin lands inside the Home map picture only when the spot is inside it"),
+        m("u73", p6M, "The live view does not interrupt the rider (P-4)", "Nothing to do · Run all automatic marks it",
+          "At 52 km/h nothing shows (no SLOW, no red tile); no Same ride?, insight, prompt or choice-point banner can be raised; the only interruption is the hot motor; the arrival time, speed, battery and hold-to-end are still there"),
+        m("ui11", p6M, "Add a place: Save in the top bar, no tab bar (B28)", "Routes → Places → Add a place; drop a pin, type a name, tap Save (or Return)",
+          "Save sits in the top bar, off until the name is typed; Return on the name field saves too; the tab bar is not on screen, here or on a place; Price history, Purchase and Settings also have no bar under their fields", manual: true),
+        m("ui12", p6M, "Where to? sheet and map screens (B29)", "Home → Where to? row; open a ride, a route and a place",
+          "The Where to? row opens a normal half-height sheet with No destination and the routes with their three chips, swipe down closes it, picking a route closes it; ride, route and place are a map on top and a normal scroll below (nothing to drag); the tab bar slides away as you scroll, never pinned", manual: true),
+        m("ui13", p6M, "Home layout and the parked pin (F-17 / V17)", "Look at Home, then ride somewhere, park and come back",
+          "The Start / Connect button is big and centred between the status pill and the bottom rows; the Where to? and Load rows are compact above the tab bar; after a ride the parked scooter shows as a pin on the Home map and as \"Parked · place · time ago\" on the Scooter tab, which opens a map", manual: true),
+        m("ui14", p6M, "Stats: Calendar / Rolling and the saved per km tile (F-16 / F-20)", "Stats tab → Calendar / Rolling at the top, Week / Month / Year; scroll to Overall",
+          "The small Calendar / Rolling switch sits right of the title and is remembered; Rolling reads LAST 30 DAYS and compares with the 30 days before; the month chart shows its last label whole; Overall has one wide orange tile \"0.77 ₪ / km saved\" next to CO₂ with an ⓘ", manual: true),
+        m("ui15", p6M, "Largest text: Scooter card, Routes list, Rides list", "Settings app → Larger Text (largest); open Scooter, Routes and Rides",
+          "The Scooter status card spans the full width, the first Routes row stays on the screen (the chip goes under the name), Rides rows wrap to two lines instead of cutting the text", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

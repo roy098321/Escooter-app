@@ -25,6 +25,8 @@ struct StatsModel {
     var firstWeekNote: String?
     /// F-01: lifetime numbers (odometer based)
     var overall: OverallStats?
+    /// the phone's offset when the model was made (the chart labels the days in local time)
+    var utcOffsetMin = 0
 }
 
 enum StatsLoader {
@@ -48,9 +50,10 @@ enum StatsLoader {
         let prev = StatsCalc.period(span: span, mode: mode, nowMs: nowMs, utcOffsetMin: utcOffsetMin, back: back + 1)
         let rides = (try? q.rides(from: prev.startMs, to: p.endMs)) ?? []
         let prices = prices(db)
-        let tagged = span == .week && StatsCalc.holidayTagged(p, dayOffDates: (try? q.dayOffDates()) ?? [], utcOffsetMin: utcOffsetMin)
+        let tagged = span == .week && mode == .calendar && StatsCalc.holidayTagged(p, dayOffDates: (try? q.dayOffDates()) ?? [], utcOffsetMin: utcOffsetMin)
         let totals = StatsCalc.totals(rides, period: p, prices: prices, utcOffsetMin: utcOffsetMin)
-        let pct = back == 0 && p.isPartial
+        // F-16: a running calendar period is compared at the same point of the previous one; a rolling window with the previous window of the same length
+        let pct = back == 0 && (p.isPartial || mode == .rolling)
             ? StatsCalc.comparisonPct(rides, span: span, mode: mode, nowMs: nowMs, utcOffsetMin: utcOffsetMin, holidayTagged: tagged) : nil
         var week: (last: [Insight], now: [Insight], past: [InsightRunner.PastWeek]) = ([], [], [])
         if back == 0 {
@@ -65,6 +68,7 @@ enum StatsLoader {
                           fuelLPer100km: prices.fuelLPer100km, fuelPriceIls: prices.fuelFallbackIls, packWh: prices.packWh,
                           lastWeek: week.last, thisWeek: week.now, pastWeeks: week.past)
         model.overall = OverallLoader.load(db, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+        model.utcOffsetMin = utcOffsetMin
         model.firstWeekNote = StatsCalc.firstWeekNote(firstRideMs: q.firstRideMs(), period: p, span: span, mode: mode, utcOffsetMin: utcOffsetMin)
         return model
     }

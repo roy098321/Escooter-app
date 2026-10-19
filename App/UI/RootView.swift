@@ -177,12 +177,12 @@ enum UIShot {
         "ride-detail", "ride-nogps", "ride-gap", "ride-walk", "ride-detail-full", "ride-layer-speed", "ride-layer-hills", "ride-layer-wind", "ride-save-route", "ride-prompt", "ride-insights", "replay",
         "ride-compare", "ride-merge", "ride-trim", "routes-empty", "routes-list", "routes-greyed", "route-card", "route-card-sparse", "places", "places-map", "place-detail", "place-add", "rides-colours",
         "rides-sort-destination", "rides-sort-dayofweek", "rides-sort-timeofday", "rides-sort-distance", "rides-sort-duration", "rides-sort-battery",
-        "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-empty", "week-card", "factors", "factors-sparse",
+        "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-rolling", "stats-empty", "week-card", "factors", "factors-sparse",
         "scooter-tab", "scooter-tab-off", "scooter-tab-none", "battery-page", "battery-page-empty", "battery-page-calibrated",
         "onboarding1", "onboarding2", "onboarding3",
         "live-riding", "live-ready", "live-starting", "live-fast", "live-gps", "live-nogps", "live-offline", "live-banner",
         "live-arrival", "live-routegps",
-        "home-first", "home-notconnected", "home-ready", "home-cantfind", "home-riding", "home-location", "home-crash", "home-whereto",
+        "home-first", "home-notconnected", "home-ready", "home-parked", "home-cantfind", "home-riding", "home-location", "home-crash", "home-whereto",
         "ride-missing", "replay-missing", "data-failed", "home-simulated", "home-readonly", "stats-first-week", "export-empty", "stats-overall", "price-history", "purchase"
     ]
 
@@ -264,7 +264,7 @@ enum UIShot {
             case "home-readonly":
                 VStack(spacing: 0) { Banner(text: "Install the newest build \u{00B7} your data is from a newer version (read-only)"); HomeView() }
             case "export-empty": ExportEverythingView(previewEmpty: true)
-            case "stats-week", "stats-month", "stats-empty", "week-card", "stats-first-week":
+            case "stats-week", "stats-month", "stats-rolling", "stats-empty", "week-card", "stats-first-week":
                 StatsView(preview: StatsPreview.model(name))
             case "price-history": PriceHistoryView()
             case "purchase": PurchaseSettingsView()
@@ -290,7 +290,8 @@ enum UIShot {
                 } else if let input = HomePreview.input(name) {
                     // the shots show the floating tab bar too (as in the real app)
                     HomeView(preview: input, previewChips: HomePreview.chips(name),
-                             previewSelected: name.hasPrefix("home-whereto") ? "a" : nil, previewSheet: name == "home-whereto-sheet")
+                             previewSelected: name.hasPrefix("home-whereto") ? "a" : nil, previewSheet: name == "home-whereto-sheet",
+                             previewParked: name == "home-parked" ? CGPoint(x: 0.76, y: 0.36) : nil)
                         .floatingTabBar(selection: .constant(2))
                 } else {
                     HomeView()

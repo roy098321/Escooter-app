@@ -744,6 +744,11 @@ public enum InsightCatalogue {
 
     // MARK: Q22-weekly (C22: >= 2 riding days)
 
+    /// A previous week shorter than this (km) gives no percentage: "+378%" from a tiny week means nothing, so the km difference is shown (B30)
+    public static let weeklyPercentMinPreviousKm = 10.0
+
+    /// B30: the short weekly line, in the declutter style. "~0.4 charges" only when the battery data says at least 0.1 (never "~0.0"),
+    /// the change against the week before as a percentage, or in km when that week was under 10 km.
     /// `label` "Last week" for the finished week (the Sunday notification), "This week so far" for the running one.
     public static func q22Weekly(weekStart: Int64, rides: [WeekRide], previousWeekKm: Double?, label: String = "Last week", nowMs: Int64) -> [Insight] {
         let days = Set(rides.map(\.localDay))
@@ -754,20 +759,26 @@ public enum InsightCatalogue {
         let seconds = real.reduce(0.0) { $0 + $1.totalS }
         let h = Int(seconds) / 3600, m = (Int(seconds) % 3600) / 60
         var parts = ["\(label): \(Int(km.rounded())) km", "\(real.count) \(real.count == 1 ? "ride" : "rides")",
-                     h > 0 ? "\(h) h \(m) min" : "\(m) min"]
-        if !hops.isEmpty {
-            let hk = hops.reduce(0.0) { $0 + $1.distanceM } / 1000
-            parts.append("+\(hops.count) short \(hops.count == 1 ? "hop" : "hops") (\(String(format: "%.1f", hk)) km)")
-        }
-        let used = rides.compactMap(\.usedPct).reduce(0, +)
-        if used > 0 { parts.append("Battery used: ~\(String(format: "%.1f", used / 100)) full charges") }
-        if let prev = previousWeekKm, prev > 0 {
-            let total = (real + hops).reduce(0.0) { $0 + $1.distanceM } / 1000
-            let change = (total - prev) / prev * 100
-            if abs(change) >= 1 { parts.append(change > 0 ? "▲ \(Int(change.rounded()))% more than the week before" : "▼ \(Int((-change).rounded()))% less than the week before") }
-        }
+                     h > 0 ? (m > 0 ? "\(h) h \(m) min" : "\(h) h") : "\(m) min"]
+        if !hops.isEmpty { parts.append("+\(hops.count) short \(hops.count == 1 ? "hop" : "hops")") }
+        let charges = rides.compactMap(\.usedPct).reduce(0, +) / 100
+        if (charges * 10).rounded() / 10 >= 0.1 { parts.append("~\(String(format: "%.1f", charges)) charges") }
+        if let change = weeklyChange(thisKm: (real + hops).reduce(0.0) { $0 + $1.distanceM } / 1000, previousKm: previousWeekKm) { parts.append(change) }
         return [Insight(type: .q22Weekly, weekStart: weekStart, subject: "w\(weekStart)", text: parts.joined(separator: " · "),
                         basedOnN: rides.count, createdAt: nowMs)]
+    }
+
+    /// "▲ 19% vs the week before", or "▲ 8 km vs the week before" when that week was under 10 km; nil when nothing changed (under 1% / 1 km) or unknown
+    public static func weeklyChange(thisKm: Double, previousKm: Double?) -> String? {
+        guard let prev = previousKm, prev > 0 else { return nil }
+        if prev < weeklyPercentMinPreviousKm {
+            let diff = thisKm - prev
+            guard abs(diff) >= 1 else { return nil }
+            return (diff > 0 ? "▲ " : "▼ ") + "\(Int(abs(diff).rounded())) km vs the week before"
+        }
+        let change = (thisKm - prev) / prev * 100
+        guard abs(change) >= 1 else { return nil }
+        return (change > 0 ? "▲ " : "▼ ") + "\(Int(abs(change).rounded()))% vs the week before"
     }
 
     // MARK: First / unlock (STATES step 4 S2: one quiet after-ride card each)
