@@ -6,7 +6,6 @@ import SwiftUI
 /// All numbers, labels and notes are made in CorckieCore (`RideSummaryBuilder`, unit tested); this view draws them.
 /// No records, badges or comparisons (CONCEPT P-3): only this ride's own numbers.
 struct RideDetailView: View {
-    @ScaledMetric(relativeTo: .body) private var tileMin: CGFloat = 100
     var rideId: String?
     var preview: RideSummaryModel?
     /// Summary after a ride: a Done button closes it. Nil = pushed from the Rides list (back button).
@@ -27,7 +26,8 @@ struct RideDetailView: View {
     @State private var missing = false
     @State private var prompt: SmartPromptCard?
     @State private var ranked: RankedInsights?
-    @State private var showMore = false
+    @State private var moreOpen = false
+    @State private var placeNames: (start: String, end: String)?
     @State private var loadLabel = "Not set"
     @State private var showKgField = false
     @State private var kgText = ""
@@ -63,6 +63,15 @@ struct RideDetailView: View {
         var offer: MergeOffer
     }
 
+    /// D9: "Home → Work" when both ends are saved places
+    private var placesTitle: String? {
+        if preview != nil {
+            let pins = RideDetailPreview.pins
+            return pins.count >= 2 ? "\(pins[0].name) \u{2192} \(pins[1].name)" : nil
+        }
+        return placeNames.map { "\($0.start) \u{2192} \($0.end)" }
+    }
+
     /// The ride shown: after a merge this ride is the earlier one
     private var activeId: String? { switched ?? rideId }
 
@@ -79,7 +88,10 @@ struct RideDetailView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .stiffBounce()
-        .onAppear { if let l = previewLayer { layer = l } }
+        .onAppear {
+            if let l = previewLayer { layer = l }
+            if previewSeries != nil { moreOpen = true }
+        }
         .confirmationDialog("Delete this ride?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete ride", role: .destructive) { delete() }
             Button("Keep it", role: .cancel) {}
@@ -200,44 +212,43 @@ struct RideDetailView: View {
     }
 
     private func topBar(_ m: RideSummaryModel) -> some View {
-        GlassTopBar(title: m.title, subtitle: m.subtitle) {
+        // D9: the title is "from → to"; the date moves to the subtitle
+        let places = placesTitle
+        let title = places ?? m.title
+        let subtitle = [places == nil ? nil : m.title, m.subtitle.isEmpty ? nil : m.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        return GlassTopBar(title: title, subtitle: subtitle) {
             GlassIconButton(symbol: onDone != nil ? "xmark" : "chevron.left", label: onDone != nil ? "Done" : "Back") {
                 if let onDone { onDone() } else { dismiss() }
             }
         } trailing: {
-            if preview != nil || activeId != nil {
-                Menu { shareItems } label: { GlassIcon(symbol: "square.and.arrow.up") }
-                    .accessibilityLabel("Share")
-            }
             Menu { moreItems } label: { GlassIcon(symbol: "ellipsis") }
                 .accessibilityLabel("More")
         }
     }
 
-    /// Share = the existing export and replay actions only
-    @ViewBuilder private var shareItems: some View {
-        let needsGps = (preview ?? model)?.noGps == true
-        Button { replayDownload = false; showReplay = true } label: { Label(needsGps ? "Ride Replay \u{00B7} needs GPS" : "Ride Replay", systemImage: "play.circle") }
-            .disabled(needsGps)
-        Button { replayDownload = true; showReplay = true } label: { Label("Download Ride Replay", systemImage: "square.and.arrow.down") }
-            .disabled(needsGps)
-        Button { exportRide(.csv) } label: { Label("Export CSV (one line per reading)", systemImage: "tablecells") }
-        Button { exportRide(.gpx) } label: { Label("Export GPX (Strava, Komoot)", systemImage: "map") }
-    }
-
+    /// D10: one menu, short labels; the exports sit in a submenu
     @ViewBuilder private var moreItems: some View {
+        let needsGps = (preview ?? model)?.noGps == true
         if preview == nil, activeId != nil {
-            Button { showCompare = true } label: { Label("Compare with another ride", systemImage: "arrow.left.arrow.right") }
+            Button { showCompare = true } label: { Label("Compare", systemImage: "arrow.left.arrow.right") }
             if mergeInfo != nil {
-                Button { showMerge = true } label: { Label("Merge with previous ride", systemImage: "arrow.triangle.merge") }
+                Button { showMerge = true } label: { Label("Merge", systemImage: "arrow.triangle.merge") }
             }
-            Button { showTrim = true } label: { Label(isTrimmed ? "Trim again or reset" : "Trim start / end", systemImage: "scissors") }
+            Button { showTrim = true } label: { Label(isTrimmed ? "Trim again" : "Trim", systemImage: "scissors") }
             if canUndoMerge {
-                Button { undoMerge() } label: { Label("Undo last merge", systemImage: "arrow.uturn.backward") }
+                Button { undoMerge() } label: { Label("Undo merge", systemImage: "arrow.uturn.backward") }
             }
-            Divider()
         }
-        Button(role: .destructive) { confirmDelete = true } label: { Label("Delete ride", systemImage: "trash") }
+        Button { replayDownload = false; showReplay = true } label: { Label("Replay", systemImage: "play.circle") }
+            .disabled(needsGps)
+        Menu {
+            Button { replayDownload = true; showReplay = true } label: { Label("Replay file", systemImage: "square.and.arrow.down") }
+                .disabled(needsGps)
+            Button { exportRide(.csv) } label: { Label("CSV", systemImage: "tablecells") }
+            Button { exportRide(.gpx) } label: { Label("GPX", systemImage: "map") }
+        } label: { Label("Export", systemImage: "square.and.arrow.up") }
+        Divider()
+        Button(role: .destructive) { confirmDelete = true } label: { Label("Delete", systemImage: "trash") }
     }
 
     @ViewBuilder private func mapLayer(_ m: RideSummaryModel) -> some View {
@@ -251,39 +262,70 @@ struct RideDetailView: View {
         }
     }
 
+    private func stat(_ m: RideSummaryModel, _ label: String) -> String {
+        (m.mainStats + m.scooterStats).first { $0.label == label }?.value ?? "\u{2013}"
+    }
+
+    /// D1: the climb tile shows only the way up ("+38 m") from "~+38 m / −35 m"
+    private func climbText(_ m: RideSummaryModel) -> String {
+        let v = stat(m, "Elevation")
+        guard let first = v.components(separatedBy: " / ").first, first.contains("+") else { return "\u{2013}" }
+        return first.replacingOccurrences(of: "~", with: "")
+    }
+
+    /// D1: six key tiles
+    private func keyTiles(_ m: RideSummaryModel) -> some View {
+        StatTileGrid {
+            StatTile(value: stat(m, "Time"), label: "Time")
+            StatTile(value: stat(m, "Distance"), label: "Distance")
+            StatTile(value: stat(m, "Avg. speed"), label: "Avg")
+            StatTile(value: stat(m, "Battery"), label: "Battery")
+            StatTile(value: stat(m, "Top speed"), label: "Top")
+            StatTile(value: climbText(m), label: "Climb")
+        }
+    }
+
     private func sheetContent(_ m: RideSummaryModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMin), spacing: DS.Space.row)], spacing: DS.Space.row) {
-                ForEach(Array(m.mainStats.enumerated()), id: \.offset) { _, s in tile(s) }
-            }
-            VStack(spacing: 0) {
-                ForEach(Array(m.scooterStats.enumerated()), id: \.offset) { i, s in
-                    if i > 0 { Divider() }
-                    HStack {
-                        Text(s.label)
-                        Spacer()
-                        Text(s.value).foregroundStyle(.secondary).monospacedDigit()
-                    }
-                    .padding(.vertical, 10)
-                }
-            }
-            .padding(.horizontal, 16)
-            .glassCard(padding: 0)
-            if let s = previewSeries ?? series { RideSeriesPanels(series: s) }
+            keyTiles(m)
+            if let hot = m.hotPeakC { HStack { InfoChip("thermometer.high", "\(hot) \u{00B0}C", label: "Temperature"); Spacer(minLength: 0) } }
             if let r = previewInsights ?? ranked { insightCards(r) }
-            if preview == nil, activeId != nil {
-                Button { showCompare = true } label: {
-                    HStack {
-                        Image(systemName: "arrow.left.arrow.right").foregroundStyle(.tint)
-                        Text("Compare with another ride")
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
-                    }
-                    .padding(14)
-                    .glassCard(padding: 0)
-                }
-                .buttonStyle(.plain)
+            ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in
+                if n.kind != .heat { note(n) }
             }
+            if previewPrompt == nil, prompt == nil, let o = previewOffer ?? offer { offerCard(o) }
+            if let p = previewPrompt ?? prompt { promptCard(p) }
+            moreSection(m)
+        }
+        .padding(.top, 2)
+    }
+
+    private func detailRows(_ m: RideSummaryModel) -> [(String, String)] {
+        var rows = [("Moving time", stat(m, "Moving time")), ("Energy", stat(m, "Energy")), ("Stops", stat(m, "Stops")),
+                    ("Battery per km", stat(m, "Battery per km"))]
+        if m.hotPeakC == nil, stat(m, "Temperature") != "\u{2013}" { rows.append(("Temperature", stat(m, "Temperature"))) }
+        if let full = m.scooterStats.first(where: { $0.label == "To full" }) { rows.append(("To full", full.value)) }
+        return rows
+    }
+
+    private func rowsCard(_ rows: [(String, String)]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { i, r in
+                if i > 0 { Divider() }
+                HStack {
+                    Text(r.0)
+                    Spacer()
+                    Text(r.1).foregroundStyle(.secondary).monospacedDigit()
+                }
+                .padding(.vertical, 10)
+            }
+        }
+        .padding(.horizontal, 16)
+        .glassCard(padding: 0)
+    }
+
+    private var fieldKitRows: some View {
+        VStack(spacing: 12) {
             if let id = activeId, preview == nil {
                 VStack(spacing: 0) {
                     ThumbsRow(kind: "start", subjectId: id, label: "Right? Start")
@@ -293,27 +335,24 @@ struct RideDetailView: View {
                 .padding(.horizontal, 16)
                 .glassCard(padding: 0)
             }
-            ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in note(n) }
-            if previewPrompt == nil, prompt == nil, let o = previewOffer ?? offer { offerCard(o) }
-            if let p = previewPrompt ?? prompt { promptCard(p) }
             if (activeId != nil && preview == nil) || previewPrompt != nil { loadedRow }
             if let id = activeId, preview == nil { RideNoteCard(rideId: id) }
-            if !m.infoLines.isEmpty {
-                DisclosureGroup("More info") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(m.infoLines, id: \.self) { Text($0).font(.footnote).foregroundStyle(.secondary) }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 6)
-                }
-                .padding(.horizontal, 4)
-            }
         }
-        .padding(.top, 2)
     }
 
-    private func tile(_ s: SummaryStat) -> some View {
-        StatTile(value: s.value, label: s.label)
+    /// D1-D3: everything that is not a key tile sits under one "More"
+    private func moreSection(_ m: RideSummaryModel) -> some View {
+        DisclosureGroup("More", isExpanded: $moreOpen) {
+            VStack(alignment: .leading, spacing: 12) {
+                rowsCard(detailRows(m))
+                if let s = previewSeries ?? series { RideSeriesPanels(series: s) }
+                fieldKitRows
+                ForEach(m.infoLines, id: \.self) { Text($0).font(.footnote).foregroundStyle(.secondary) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
+        }
+        .padding(.horizontal, 4)
     }
 
     private func note(_ n: SummaryNote) -> some View {
@@ -337,14 +376,13 @@ struct RideDetailView: View {
         .glassCard(padding: 0)
     }
 
-    /// M2-01: "Save as route?" after the same trip twice, or the ride's route once saved
+    /// D7: "Save as route?" and two buttons, no explanation
     private func offerCard(_ o: RouteOfferModel) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Image(systemName: "point.topleft.down.to.point.bottomright.curvepath").foregroundStyle(.tint).frame(width: 24)
-                Text(o.headline).font(.headline)
+                Text(o.saved ? o.headline : "Save as route?").font(.headline)
             }
-            Text(o.detail).font(.subheadline).foregroundStyle(.secondary)
             if !o.saved {
                 HStack(spacing: 12) {
                     Button("Save route") { saveTap += 1; routeAction(o.routeId, save: true) }.buttonStyle(.borderedProminent)
@@ -376,9 +414,7 @@ struct RideDetailView: View {
     private var noGpsCard: some View {
         VStack(spacing: 8) {
             Image(systemName: "location.slash").font(.largeTitle).foregroundStyle(.secondary)
-            Text("No GPS on this ride").font(.headline)
-            Text("The numbers below come from the scooter, so they are complete. There is no path to show.")
-                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Text("No GPS").font(.headline)
         }
         .frame(maxWidth: .infinity)
         .padding(20)
@@ -458,6 +494,7 @@ struct RideDetailView: View {
         model = withExtras
         series = RideSeriesLoader.load(db, rideId: id)
         pins = PlaceMapLoader.pins(rideId: id, database: db)
+        placeNames = Self.names(db, rideId: id)
         refreshTools(id, db)
         offer = RouteService.offer(rideId: id, database: db)
         refreshSmart(id, db)
@@ -605,26 +642,39 @@ extension RideDetailView {
         refreshInsights(id, db)
     }
 
+    /// D6: "+4% battery. Why?" and four chips (Load, Tyres, Riding, Skip)
     fileprivate func promptCard(_ p: SmartPromptCard) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
+            HStack(spacing: 10) {
                 Image(systemName: "questionmark.bubble").foregroundStyle(.secondary).frame(width: 24)
-                Text(p.text).font(.subheadline)
+                Text("+\(Int(p.extraPct.rounded()))% battery. Why?").font(.headline)
                 Spacer(minLength: 0)
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 8)], alignment: .leading, spacing: 8) {
-                ForEach(p.answers, id: \.self) { a in
-                    Button(a.title) { answer(a) }
-                        .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity)
-                }
+            HStack(spacing: 8) {
+                Menu {
+                    Button("Light") { answer(.light) }
+                    Button("Heavy") { answer(.heavy) }
+                } label: { promptChip("Load") }
+                Button { answer(.tyresSoft) } label: { promptChip("Tyres") }
+                Button { answer(.rodeDifferently) } label: { promptChip("Riding") }
+                Button { dismissPrompt() } label: { promptChip("Skip") }
+                Spacer(minLength: 0)
             }
-            Button("Not now") { dismissPrompt() }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            .buttonStyle(.plain)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .glassCard(padding: 0)
+    }
+
+    private func promptChip(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.primary)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 40)
+            .background(Theme.chip, in: Capsule())
+            .contentShape(Capsule())
     }
 
     fileprivate var loadedRow: some View {
@@ -674,45 +724,17 @@ extension RideDetailView {
         refreshInsights(id, db)
     }
 
+    /// D5: one short line with an icon and the thumbs; no "more", no progress lines
     @ViewBuilder fileprivate func insightCards(_ r: RankedInsights) -> some View {
         if let top = r.top {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
-                    Text(top.text).font(.subheadline)
-                    Spacer(minLength: 0)
-                    ThumbsRow(kind: "insight", subjectId: top.id, subjectText: top.text).fixedSize()
-                    Button { dismissInsight(top) } label: { Image(systemName: "xmark").font(.caption).frame(minWidth: 44, minHeight: 44) }
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("Dismiss")
-                }
-                if let more = r.moreText {
-                    Button(showMore ? "Show less" : more) { showMore.toggle() }
-                        .font(.footnote)
-                    if showMore {
-                        ForEach(Array(r.more.enumerated()), id: \.offset) { item in
-                            Divider()
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
-                                Text(item.element.text).font(.subheadline)
-                                Spacer(minLength: 0)
-                                ThumbsRow(kind: "insight", subjectId: item.element.id, subjectText: item.element.text).fixedSize()
-                            }
-                        }
-                    }
-                }
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
+                Text(top.text).font(.subheadline).lineLimit(2)
+                Spacer(minLength: 0)
+                ThumbsRow(kind: "insight", subjectId: top.id, subjectText: top.text).fixedSize()
             }
             .padding(16)
             .glassCard(padding: 0)
-        }
-        ForEach(Array(r.progress.enumerated()), id: \.offset) { item in
-            HStack(spacing: 6) {
-                Image(systemName: "hourglass").font(.footnote)
-                Text(item.element.text).font(.footnote)
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 4)
         }
     }
 }
@@ -723,4 +745,14 @@ extension RideDetailPreview {
         PlacePin(id: "p1", name: "Home", lat: 40.0, lon: -75.0, colourId: "green"),
         PlacePin(id: "p2", name: "Work", lat: 40.0106, lon: -74.9870, colourId: "blue")
     ]
+}
+
+extension RideDetailView {
+    /// D9: the names of the saved places the ride started and ended at (both needed)
+    fileprivate static func names(_ db: AppDatabase, rideId: String) -> (start: String, end: String)? {
+        let q = RouteQueries(db)
+        guard let link = try? q.link(rideId: rideId), let s = link.startPlaceId, let e = link.endPlaceId,
+              let a = (try? q.place(id: s))?.name, let b = (try? q.place(id: e))?.name, !a.isEmpty, !b.isEmpty else { return nil }
+        return (a, b)
+    }
 }

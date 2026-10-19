@@ -253,3 +253,19 @@ extension RouteQueries {
         return out
     }
 }
+
+extension RouteQueries {
+    /// rideId to the place the ride started at (only rides that have one)
+    func startPlaceIds() throws -> [String: String] {
+        let rows = try database.writer.read { db in
+            try Row.fetchAll(db, sql: "SELECT id, startPlaceId FROM ride WHERE startPlaceId IS NOT NULL")
+        }
+        var out: [String: String] = [:]
+        for r in rows {
+            let id: String = r["id"]
+            let place: String = r["startPlaceId"]
+            out[id] = place
+        }
+        return out
+    }
+}

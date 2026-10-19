@@ -21,6 +21,7 @@ enum P62Checks {
         runTabBar()
         runDock()
         runDeclutter()
+        runRides()
     }
 
     // MARK: u64

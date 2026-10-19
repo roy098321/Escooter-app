@@ -202,6 +202,8 @@ public struct RideSummaryModel: Equatable, Sendable {
     public var path: RidePathModel
     /// The "more info" lines: odometer, end reason
     public var infoLines: [String]
+    /// D4: the peak temperature in whole degrees, only when the scooter got hot (T47); nil otherwise
+    public var hotPeakC: Int? = nil
 }
 
 public enum RideSummaryBuilder {
@@ -275,7 +277,8 @@ public enum RideSummaryBuilder {
 
         return RideSummaryModel(title: title(startAt: input.startAt, utcOffsetMin: offset), subtitle: subtitle,
                                 mainStats: main, scooterStats: scooter, notes: notes, noGps: noGps, path: path,
-                                infoLines: info)
+                                infoLines: info,
+                                hotPeakC: input.tempPeakC.flatMap { $0 >= T.t47HotC ? Int($0.rounded()) : nil })
     }
 
     // MARK: Formatting

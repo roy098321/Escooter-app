@@ -80,7 +80,6 @@ struct CompareMapView: View {
             .frame(width: 34, height: 10)
             Image(systemName: shape).foregroundStyle(colour).font(.caption)
             Text("\(name) \u{00B7} \(title)").lineLimit(1)
-            Text(dashed ? "dashed" : "solid").foregroundStyle(.secondary)
         }
     }
 
@@ -172,27 +171,20 @@ struct CompareMapView: View {
     private var readout: some View {
         VStack(alignment: .leading, spacing: 8) {
             if showDots {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(liveDelta.map { CompareAlign.clock($0) } ?? "\u{2013}")
-                        .font(.title2.weight(.semibold)).monospacedDigit()
-                    Text(CompareAlign.differenceText(liveDelta)).font(.footnote).foregroundStyle(.secondary)
-                }
-                .accessibilityElement(children: .combine)
+                Text(CompareAlign.differenceText(liveDelta)).font(.subheadline.weight(.semibold))
             }
             if let t = tap {
                 let a = pathA.readout(nearLat: t.latitude, lon: t.longitude)
                 let b = pathB.readout(nearLat: t.latitude, lon: t.longitude)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("At the tapped point").font(.footnote.weight(.semibold))
                     readoutRow("A", Self.colourA, a)
                     readoutRow("B", Self.colourB, b)
-                    if let a, let b {
+                    if !showDots, let a, let b {
                         Text("\(CompareAlign.differenceText(b.timeS - a.timeS))").font(.footnote).foregroundStyle(.secondary)
                     }
                 }
             } else if !showDots {
-                Text("Tap the map for both rides' speed and time at that point, or press play to run both rides on one clock.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                Text("Tap the map, or press play.").font(.footnote).foregroundStyle(.secondary)
             }
         }
     }
@@ -201,9 +193,8 @@ struct CompareMapView: View {
         HStack {
             Text(name).font(.subheadline.weight(.bold)).foregroundStyle(colour).frame(width: 20, alignment: .leading)
             if let r {
-                Text("\(CompareAlign.timeFromStart(r.timeS)) from the start").monospacedDigit()
+                Text("\(CompareAlign.timeFromStart(r.timeS)) \u{00B7} \(r.speedKmh.map { "\(Int($0.rounded())) km/h" } ?? "\u{2013}")").monospacedDigit()
                 Spacer()
-                Text(r.speedKmh.map { "\(Int($0.rounded())) km/h" } ?? "\u{2013}").monospacedDigit()
             } else {
                 Text("Not on this ride's line").foregroundStyle(.secondary)
                 Spacer()

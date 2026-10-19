@@ -28,10 +28,6 @@ struct CompareSheet: View {
                             CompareMapView(pathA: p.0, pathB: p.1, titleA: a.title, titleB: b.title,
                                            initialTime: preview != nil ? 40 : nil, initialTap: preview != nil ? CompareMapPreview.tapPoint : nil)
                                 .id("\(a.id)-\(b.id)")
-                        } header: {
-                            Text("Both rides on one map").textCase(nil)
-                        } footer: {
-                            Text("Shows where time is won or lost on the road. It compares the two rides; it does not rank them.")
                         }
                             .glassRows()
                     }
@@ -39,8 +35,6 @@ struct CompareSheet: View {
                         Text(RideCompareBuilder.relation(a, b)).font(.subheadline).foregroundStyle(.secondary)
                         header(a, b)
                         ForEach(Array(RideCompareBuilder.rows(a, b).enumerated()), id: \.offset) { _, row in line(row) }
-                    } footer: {
-                        Text("The last column is this ride minus the other one.")
                     }
                         .glassRows()
                 }
