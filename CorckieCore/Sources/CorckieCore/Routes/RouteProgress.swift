@@ -150,6 +150,15 @@ public struct ArrivalStrip: Equatable, Sendable {
     public var text: String
     public var offRoute: Bool
     public var deadReckoned: Bool
+    /// L3: "18:13 \u{00B7} 5 min" (the strip shows a flag icon in front of it)
+    public var short: String = ""
+
+    public static func shortText(arrivalS: Double, nowS: Double, utcOffsetMin: Int) -> String {
+        let local = Int64(arrivalS) + Int64(utcOffsetMin) * 60
+        let minute = Int((((local % 86_400) + 86_400) % 86_400) / 60)
+        let left = max(1, Int(((arrivalS - nowS) / 60).rounded()))
+        return "\(DayClock.clockText(minuteOfDay: minute)) \u{00B7} \(left) min"
+    }
 
     public static func text(destination: String, arrivalS: Double, nowS: Double, utcOffsetMin: Int) -> String {
         let local = Int64(arrivalS) + Int64(utcOffsetMin) * 60
@@ -179,6 +188,10 @@ public struct WhereToChip: Equatable, Sendable {
     public var label: String
     /// "Work · usual 12 min · today ~13 min · leave now, arrive ~8:56 · uses about 11%" (honest numbers, no margin)
     public var detail: String
+    /// H5: the three facts for the chips ("13 min", "8:56", "11%"); nil while there is no estimate yet
+    public var timeText: String?
+    public var arriveText: String?
+    public var usedText: String?
 
     public init(routeId: String, label: String, detail: String) {
         self.routeId = routeId
@@ -198,7 +211,16 @@ public enum WhereTo {
             let label = label(toName: i.toName, title: i.title)
             let result = TodayEstimator.estimate(rides: i.rides, nowMs: nowMs, utcOffsetMin: utcOffsetMin,
                                                  departureMinute: DayClock.minuteOfDay(startAtMs: nowMs, utcOffsetMin: utcOffsetMin))
-            return WhereToChip(routeId: i.routeId, label: label, detail: detail(label: label, result: result, nowMs: nowMs, utcOffsetMin: utcOffsetMin))
+            var chip = WhereToChip(routeId: i.routeId, label: label, detail: detail(label: label, result: result, nowMs: nowMs, utcOffsetMin: utcOffsetMin))
+            if case .estimate(let e) = result {
+                let arrive = Double(nowMs) / 1000 + e.timeS
+                let local = Int64(arrive) + Int64(utcOffsetMin) * 60
+                let minute = Int((((local % 86_400) + 86_400) % 86_400) / 60)
+                chip.timeText = "\(RouteCardBuilder.minutes(e.timeS)) min"
+                chip.arriveText = DayClock.clockText(minuteOfDay: minute)
+                chip.usedText = e.usedPct.map { "\(Int($0.rounded()))%" }
+            }
+            return chip
         }
     }
 

@@ -544,6 +544,8 @@ enum CheckList {
           "A made-up scroll: 30 pt down past the top hides the bar, 15 pt back up shows it, the first 40 pt and the bounce past the end never hide it, a docked map sheet pins it; five icons with Home in the middle, and the bottom margin covers the bar"),
         m("u63", p6M, "Map sheets dock on the tab bar (B19)", "Nothing to do · Run all automatic marks it",
           "Closed, the sheet is the handle and one summary line on the bar (its foot is the bar's bottom edge, same corner radius), its content stops at the bar's top edge at every height, half and full are taller, a drag settles on the nearest height, and without a bar the sheet sits just above the home indicator"),
+        m("u64", p6M, "Home and live view are decluttered (H1-H8, L3, L4)", "Nothing to do · Run all automatic marks it",
+          "The big Home button says one word (Connect, Start, Try again, Live view), the status pill is short (state, seen time, battery), the arrival strip is a flag and \"18:13 · 5 min\", the ready line is just \"Ready\", and none of the deleted sentences are left in the Home or live view text"),
         m("ui8", p6M, "Theme v2 look: white, sand cards, orange (F-15)", "Look at Home, Rides, Stats, Settings, a ride; then switch the iPhone to dark mode",
           "White pages, faint sand cards, orange for the Start button, the open tab and links, small brown section labels, no iOS blue anywhere; numbers and titles rounded; the Home map faint and warm, ride and route maps normal; dark mode neutral dark grey; the live screen dark; sunlight mode still heavier and high contrast", manual: true),
         m("ui9", p6M, "Flat tab bar, hides on scroll (F-14)", "Scroll Rides, Stats and Settings down and up; open a ride",

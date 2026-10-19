@@ -1,5 +1,6 @@
 import CorckieCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// M1-11 Home (IA: Home tab). States per STATES S1 / S2: first use and not connected show the amber
 /// "Connect your scooter" (never Start ride); connected shows the status card + Start ride; a failed connect
@@ -25,6 +26,8 @@ struct HomeView: View {
     /// B19: the Where to? sheet docks on the tab bar (closed = one line "Where to? · Work")
     @State private var whereToDetent: SheetDetent = .peek
     @State private var crashDismissed = false
+    /// H7: the backup folder picker straight from the banner
+    @State private var pickingBackup = false
     @State private var lastRide: RideListItem?
     @State private var oldestRideMs: Int64?
     /// F-02: the Load for the next ride (None / Light / Heavy / Exact), kept until the next ride starts
@@ -131,13 +134,13 @@ struct HomeView: View {
                 if let n = EdgeWatch.shared.expiryNotice { noticeCard(n, symbol: "clock.badge.exclamationmark") }
                 if let n = EdgeWatch.shared.storageNotice { noticeCard(n, symbol: "internaldrive") }
                 if m.batteryText != nil {
-                    NavigationLink { BatteryView() } label: { statusCard(m) }.buttonStyle(.plain)
+                    NavigationLink { BatteryView() } label: { statusPill(m) }.buttonStyle(.plain)
                 } else {
-                    statusCard(m)
+                    statusPill(m)
                 }
                 if m.showLocationCard { locationCard }
                 startDisc(m)
-                if m.state != .riding { loadSelector }
+                if m.state != .riding { loadRow }
                 // room for the docked Where to? line above the tab bar
                 if dockRoom { Color.clear.frame(height: SheetDock.handle + SheetDock.summary + 8) }
             }
@@ -152,21 +155,22 @@ struct HomeView: View {
     private var lightKg: Int { Int((RiderSettings.kg(AppModel.shared.database, .light) ?? 5).rounded()) }
     private var heavyKg: Int { Int((RiderSettings.kg(AppModel.shared.database, .heavy) ?? 15).rounded()) }
 
-    private var loadSelector: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Load for the next ride").font(.subheadline.weight(.semibold))
-            GlassSegmented(options: [(LoadLevel.none.rawValue, "None"), (LoadLevel.light.rawValue, "Light \(lightKg) kg"),
-                                     (LoadLevel.heavy.rawValue, "Heavy \(heavyKg) kg"), (LoadLevel.custom.rawValue, "Exact")],
-                           selection: $loadLevelRaw)
-                .accessibilityLabel("Load for the next ride")
+    /// H4: one compact row, a load icon and None / +5 / +15 / kg
+    private var loadRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "bag.fill").foregroundStyle(Theme.canyon).accessibilityHidden(true)
+                GlassSegmented(options: [(LoadLevel.none.rawValue, "None"), (LoadLevel.light.rawValue, "+\(lightKg)"),
+                                         (LoadLevel.heavy.rawValue, "+\(heavyKg)"), (LoadLevel.custom.rawValue, "kg")],
+                               selection: $loadLevelRaw)
+                    .accessibilityLabel("Load for the next ride")
+            }
             if loadLevelRaw == LoadLevel.custom.rawValue {
                 TextField("kg", text: $exactKg)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityLabel("Exact load in kilograms")
             }
-            Text("Goes onto the next ride when it starts, then resets to None. You can change it on the ride summary.")
-                .font(.footnote).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
@@ -189,33 +193,18 @@ struct HomeView: View {
         PendingLoad.set(AppModel.shared.database, LoadChoice(level: level, customKg: min(max(kg, 0), LoadChoice.maxKg)))
     }
 
-    private func statusCard(_ m: HomeModel) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Image(systemName: m.state == .ready || m.state == .riding ? "scooter" : "wifi.slash")
-                    Text(m.title).font(.headline)
-                }
-                Text(m.detail).font(.subheadline).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 8)
-            if let battery = m.batteryText {
-                Text(battery)
-                    .scaledFont(40, weight: .bold, mono: true, relativeTo: .largeTitle)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .opacity(m.greyed ? 0.7 : 1)
-        .glassCard(radius: DS.Radius.hero, padding: 18)
-        .accessibilityElement(children: .combine)
+    /// H3: one small pill, icon + short state + battery % (and "seen 16:33" when the scooter is not connected)
+    private func statusPill(_ m: HomeModel) -> some View {
+        let on = m.state == .ready || m.state == .riding
+        return StatusPill(symbol: on ? "scooter" : "wifi.slash", text: HomeCopy.statusText(m), tint: on ? Theme.ok : Theme.canyon,
+                          value: m.batteryText)
+            .opacity(m.greyed ? 0.7 : 1)
     }
 
     /// The 170 pt round Start / Connect disc (amber for Connect and Try again, as before). The tap goes through `primaryTapped`, unchanged.
     private func startDisc(_ m: HomeModel) -> some View {
         let amber = m.primary == .connect || m.primary == .tryAgain
-        let tint: Color = amber ? .orange : Theme.accent
+        let tint: Color = amber ? Theme.accentSoft : Theme.accent
         return VStack(spacing: 14) {
             Button {
                 discTap += 1
@@ -229,7 +218,7 @@ struct HomeView: View {
                         } else {
                             Image(systemName: discSymbol(m.primary)).font(.system(size: 40, weight: .semibold))
                         }
-                        Text(m.primaryTitle)
+                        Text(HomeCopy.buttonWord(m.primary, connecting: m.state == .connecting))
                             .font(.title3.weight(.semibold))
                             .multilineTextAlignment(.center)
                             .minimumScaleFactor(0.7)
@@ -248,12 +237,6 @@ struct HomeView: View {
             .sensoryFeedback(.impact(weight: .heavy), trigger: discTap)
             .opacity(m.primaryEnabled ? 1 : 0.6)
             .accessibilityLabel(m.primaryTitle)
-            if m.state == .ready || m.state == .notConnected || m.state == .cantFind {
-                Text(m.state == .ready ? "Rides also start on their own as soon as the wheel turns." : "Rides start only once the scooter is connected.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
@@ -308,15 +291,24 @@ struct HomeView: View {
                                       nowMs: Int64(now.timeIntervalSince1970 * 1000))
     }
 
+    /// H7: one line and a button that opens the folder picker right here
     private var backupCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(BackupPlan.bannerText(hasFolder: BackupFolder.shared.hasFolder), systemImage: "externaldrive.badge.exclamationmark")
+        HStack(spacing: 10) {
+            Label("Not backed up", systemImage: "externaldrive.badge.exclamationmark")
                 .font(.subheadline.weight(.semibold))
-            NavigationLink("Backup folder") { BackupView() }
+            Spacer(minLength: 8)
+            Button("Choose folder") { pickingBackup = true }
                 .font(.footnote.weight(.semibold))
+                .frame(minHeight: DS.hit)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard(tint: .orange)
+        .fileImporter(isPresented: $pickingBackup, allowedContentTypes: [.folder]) { result in
+            switch result {
+            case .success(let url): BackupFolder.shared.remember(url)
+            case .failure(let error): Log.error(source: "backup", "Pick failed: \(error.localizedDescription)")
+            }
+        }
     }
 
     /// M6-06 (C28): the 7-day expiry and phone storage
@@ -383,21 +375,27 @@ private struct WhereToSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.row) {
-            row("No destination", detail: nil, on: selected == nil) { onPick(nil) }
+            row("No destination", chip: nil, on: selected == nil) { onPick(nil) }
             ForEach(chips, id: \.routeId) { c in
-                row(c.label, detail: c.routeId == selected ? c.detail : nil, on: c.routeId == selected) { onPick(c.routeId) }
+                row(c.label, chip: c, on: c.routeId == selected) { onPick(c.routeId) }
             }
         }
     }
 
-    private func row(_ title: String, detail: String?, on: Bool, action: @escaping () -> Void) -> some View {
+    private func row(_ title: String, chip: WhereToChip?, on: Bool, action: @escaping () -> Void) -> some View {
         Button {
             action()
         } label: {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.body.weight(on ? .semibold : .regular))
-                    if let detail { Text(detail).font(.footnote).foregroundStyle(.secondary) }
+                    if let c = chip, let t = c.timeText, let a = c.arriveText {
+                        HStack(spacing: 6) {
+                            InfoChip("timer", t, label: "Time")
+                            InfoChip("flag.checkered", a, label: "Arrive")
+                            if let u = c.usedText { InfoChip("battery.50percent", u, label: "Battery used") }
+                        }
+                    }
                 }
                 Spacer(minLength: 8)
                 if on { Image(systemName: "checkmark").foregroundStyle(Theme.accentInk) }
@@ -416,8 +414,11 @@ enum HomePreview {
     /// M2-06: made-up chips (no real place names)
     static func chips(_ name: String) -> [WhereToChip]? {
         guard name == "home-whereto" || name == "home-whereto-sheet" else { return nil }
-        return [WhereToChip(routeId: "a", label: "Work", detail: "Work \u{00B7} today ~13 min \u{00B7} leave now, arrive ~8:56 \u{00B7} uses about 11%"),
-                WhereToChip(routeId: "b", label: "Home", detail: "Home \u{00B7} today ~14 min")]
+        var work = WhereToChip(routeId: "a", label: "Work", detail: "Work")
+        work.timeText = "13 min"; work.arriveText = "8:56"; work.usedText = "11%"
+        var home = WhereToChip(routeId: "b", label: "Home", detail: "Home")
+        home.timeText = "14 min"; home.arriveText = "9:02"; home.usedText = "12%"
+        return [work, home]
     }
 
     static func input(_ name: String) -> HomeInput? {
@@ -441,6 +442,34 @@ enum HomePreview {
             return HomeInput(paired: true, connected: true, nowS: now, batteryPct: 91, lastRunCrashed: true)
         default:
             return nil
+        }
+    }
+}
+
+/// The short Home words (H2, H3), kept apart so the automatic check u64 can test them.
+enum HomeCopy {
+    /// H2: one word on the big button
+    static func buttonWord(_ p: HomePrimary, connecting: Bool) -> String {
+        if connecting { return "Connecting\u{2026}" }
+        switch p {
+        case .connect: return "Connect"
+        case .startRide: return "Start"
+        case .tryAgain: return "Try again"
+        case .openRide: return "Live view"
+        }
+    }
+
+    /// H3: the state in two or three words, "seen 16:33" when the scooter is not connected
+    static func statusText(_ m: HomeModel) -> String {
+        switch m.state {
+        case .noScooter: return "No scooter"
+        case .notConnected:
+            let seen = m.detail.hasPrefix("last seen") ? " \u{00B7} " + String(m.detail.dropFirst(5)) : ""
+            return "Not connected" + seen
+        case .connecting: return "Connecting\u{2026}"
+        case .cantFind: return "Can't find it"
+        case .ready: return "Connected"
+        case .riding: return "Riding"
         }
     }
 }

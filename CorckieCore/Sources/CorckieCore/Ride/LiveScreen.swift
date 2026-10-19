@@ -204,7 +204,8 @@ public struct LiveScreenDriver: Sendable {
         if let step = step, let f = follower {
             let shown = arrivalDisplay.show(remainingS: step.remainingS, nowS: t)
             arrival = ArrivalStrip(text: ArrivalStrip.text(destination: f.destinationName, arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin),
-                                   offRoute: step.offPath, deadReckoned: step.deadReckoned)
+                                   offRoute: step.offPath, deadReckoned: step.deadReckoned,
+                                   short: ArrivalStrip.shortText(arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin))
             if step.deadReckoned, let d = step.dot { dotOverride = LivePath.Coord(lat: d.lat, lon: d.lon) }
             if !step.offPath {
                 let done = f.totalM > 0 ? step.alongM / f.totalM * 100 : 0

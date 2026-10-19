@@ -1,3 +1,4 @@
+import CorckieCore
 import SwiftUI
 import UIKit
 
@@ -19,6 +20,24 @@ enum P62Checks {
         runTheme()
         runTabBar()
         runDock()
+        runDeclutter()
+    }
+
+    // MARK: u64
+
+    private static func runDeclutter() {
+        let expect = Expect()
+        let words = [HomePrimary.connect, .startRide, .tryAgain, .openRide].map { HomeCopy.buttonWord($0, connecting: false) }
+        expect(words == ["Connect", "Start", "Try again", "Live view"] && !words.contains { $0.lowercased().contains("scooter") }, "the big button is one short word")
+        let now = Date().timeIntervalSince1970
+        let ready = HomeLogic.model(HomeInput(paired: true, connected: true, nowS: now, batteryPct: 91))
+        let away = HomeLogic.model(HomeInput(paired: true, connected: false, nowS: now, lastSeenMs: Int64((now - 600) * 1000), lastSeenPct: 58))
+        let readyText = HomeCopy.statusText(ready), awayText = HomeCopy.statusText(away)
+        expect(readyText == "Connected" && ready.batteryText == "91%", "ready pill: Connected + battery")
+        expect(awayText.hasPrefix("Not connected \u{00B7} seen ") && !awayText.contains("last"), "away pill: Not connected, seen time")
+        let strip = ArrivalStrip.shortText(arrivalS: 1_000_300, nowS: 1_000_000, utcOffsetMin: 0)
+        expect(strip.hasSuffix("5 min") && !strip.contains("left") && !strip.contains("arrive"), "arrival strip: time and minutes only")
+        CheckResults.shared.set("u64", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u61

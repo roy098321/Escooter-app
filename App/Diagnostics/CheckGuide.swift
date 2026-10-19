@@ -634,6 +634,8 @@ struct CheckGuide {
                           steps: ["Developer → Checks → Run all automatic (a made-up scroll, no screen needed).", "Result: hide, show, top, bounce, pin and layout each say ok. How it feels is check ui9."], place: .noScooter),
         "u63": CheckGuide(proves: "The map sheets (ride, route, place, Where to?) sit on the tab bar when closed and slide up out of it, and nothing of their content is drawn under the bar.",
                           steps: ["Developer → Checks → Run all automatic.", "Result: closed line, foot on the bar, content above the bar, heights, settle and no bar each say ok. How it looks is check ui10."], place: .noScooter),
+        "u64": CheckGuide(proves: "Home and the live view show short words instead of sentences: one word on the big button, a one-line status pill, a flag and \"18:13 · 5 min\" on the arrival strip, and just \"Ready\" before a ride.",
+                          steps: ["Developer → Checks → Run all automatic.", "Result: button words, status pill, arrival strip and the ready line each say ok. The deleted sentences are also guarded by a build-time test."], place: .noScooter),
         "ui8": CheckGuide(proves: "The new colours look right on the phone: white and sand with orange accents, no iOS blue, rounded numbers, a neutral dark mode and a dark live screen.",
                           steps: ["Look at Home, Rides, Stats, Settings and a ride in light mode: white pages, sand cards, orange Start button, open tab and links, small brown section labels.",
                                   "The Home background map is faint and warm; a ride or route map has its normal colours.",

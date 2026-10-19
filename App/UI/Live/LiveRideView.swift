@@ -179,7 +179,7 @@ struct LiveRideView: View {
             }
             if let a = s.arrival {
                 // M2-06 arrival strip (M28); under the banner, never over the speed and battery tiles
-                Text(a.text)
+                Label(a.short, systemImage: "flag.checkered")
                     .font(.headline.monospacedDigit())
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
@@ -313,8 +313,8 @@ struct LiveRideView: View {
     @ViewBuilder private func controls(_ s: LiveScreenState) -> some View {
         if s.canClose {
             VStack(spacing: 10) {
-                Text("Ready \u{00B7} the ride starts when you move")
-                    .font(.subheadline)
+                Label("Ready", systemImage: "checkmark.circle")
+                    .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .sunPanel(Capsule())
