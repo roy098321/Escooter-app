@@ -194,8 +194,8 @@ struct RidesListView: View {
         let b = ride.endPlaceId.flatMap { placeNames[$0] }.flatMap { $0.isEmpty ? nil : $0 }
         switch (a, b) {
         case let (a?, b?): return "\(a) \u{2192} \(b)"
-        case let (a?, nil): return "\(a) \u{2192}"
-        case let (nil, b?): return "\u{2192} \(b)"
+        case let (a?, nil): return "\(a) \u{2192} elsewhere"
+        case let (nil, b?): return "elsewhere \u{2192} \(b)"
         default: return nil
         }
     }

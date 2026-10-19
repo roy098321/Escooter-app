@@ -8,7 +8,7 @@ struct StatsModel {
     var mode: StatsMode
     var period: StatsPeriod
     var totals: StatsTotals
-    /// km against the same point of the previous period (in %); nil for a holiday week / no base
+    /// km change against the previous period (in %); nil for a holiday week / no base
     var comparisonPct: Double?
     var holidayTagged: Bool
     /// Recent insights (the last 10 by time)
