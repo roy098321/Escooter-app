@@ -193,7 +193,10 @@ enum RouteService {
         guard let route = try? store.route(id: routeId) else { return "Route" }
         let from = route.fromPlaceId.flatMap { try? store.place(id: $0) }?.name
         let to = route.toPlaceId.flatMap { try? store.place(id: $0) }?.name
-        return RouteLabels.title(customName: route.name, fromName: from, toName: to, ordinal: (try? store.ordinal(ofRoute: routeId)) ?? 1)
+        let variants = (try? store.variants(routeId: routeId)) ?? []
+        let variantName = (variants.first { $0.isReference } ?? variants.first)?.name
+        return RouteLabels.title(customName: route.name, fromName: from, toName: to, ordinal: (try? store.ordinal(ofRoute: routeId)) ?? 1,
+                                 variantName: variantName)
     }
 
     /// What the ride summary shows about the ride's route (nil: not on a route, or the route was dismissed).

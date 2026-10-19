@@ -145,6 +145,7 @@ struct StatsView: View {
                 .foregroundStyle(Theme.accent)
                 .cornerRadius(4)
         }
+        .chartXScale(domain: 0.4...(Double(max(data.values.count, 1)) + 0.6))      // all bars inside the plot, the last one too
         .chartXAxis { barAxis(data.labels) }
         .chartYAxis(.hidden)
         .frame(height: 130)
@@ -156,7 +157,7 @@ struct StatsView: View {
     }
 
     private func barAxis(_ labels: [String]) -> some AxisContent {
-        AxisMarks(values: .stride(by: labels.count > 12 ? 5.0 : 1.0)) { value in
+        AxisMarks(values: Array(stride(from: 1, through: labels.count, by: labels.count > 12 ? 5 : 1))) { value in
             AxisValueLabel {
                 if let i = value.as(Int.self), i >= 1, i <= labels.count { Text(labels[i - 1]).font(.caption2) }
             }

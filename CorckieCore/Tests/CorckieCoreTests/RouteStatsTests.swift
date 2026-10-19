@@ -310,6 +310,8 @@ final class RouteStatsTests: XCTestCase {
         XCTAssertEqual(RouteLabels.title(customName: "Commute", fromName: "A", toName: "B", ordinal: 2), "Commute")
         XCTAssertEqual(RouteLabels.title(customName: "  ", fromName: "Home", toName: "Work", ordinal: 2), "Home \u{2192} Work")
         XCTAssertEqual(RouteLabels.title(customName: nil, fromName: nil, toName: "Work", ordinal: 3), "Route 3")
+        XCTAssertEqual(RouteLabels.title(customName: nil, fromName: nil, toName: nil, ordinal: 3, variantName: "via Ha'prahim St"), "Via Ha'prahim St")
+        XCTAssertEqual(RouteLabels.title(customName: nil, fromName: nil, toName: nil, ordinal: 3, variantName: "Variant 1"), "Route 3")
         XCTAssertEqual(RouteLabels.place(nil), "Unnamed place")
         XCTAssertEqual(RouteLabels.place(""), "Unnamed place")
     }

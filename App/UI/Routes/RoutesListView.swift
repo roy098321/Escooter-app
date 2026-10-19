@@ -13,6 +13,7 @@ struct RoutesListView: View {
     @State private var errorText: String?
     @State private var selected: RouteRef?
     @State private var showPlaces = false
+    @Environment(.dynamicTypeSize) private var typeSize
 
     struct RouteRef: Hashable, Identifiable {
         let id: String
@@ -92,6 +93,17 @@ struct RoutesListView: View {
             .listRowSeparator(.hidden)
     }
 
+    private func savePill(_ r: RouteListRow) -> some View {
+        Button("Save") { decide(r.routeId, save: true) }
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .frame(minHeight: DS.hit)
+            .foregroundStyle(Theme.accentInk)
+            .background(Theme.chip, in: Capsule())
+            .buttonStyle(.plain)
+            .accessibilityLabel("Save \(r.title)")
+    }
+
     private func row(_ r: RouteListRow) -> some View {
         Button { selected = RouteRef(id: r.routeId) } label: {
             HStack(alignment: .center, spacing: 10) {
@@ -102,18 +114,10 @@ struct RoutesListView: View {
                     }
                     facts(r)
                     if let detail = r.fit.detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
+                    if typeSize.isAccessibilitySize, r.state == .suggested { savePill(r) }   // big text: Save sits under the name
                 }
                 Spacer(minLength: 8)
-                if r.state == .suggested {
-                    Button("Save") { decide(r.routeId, save: true) }
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: DS.hit)
-                        .foregroundStyle(Theme.accentInk)
-                        .background(Theme.chip, in: Capsule())
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Save \(r.title)")
-                }
+                if !typeSize.isAccessibilitySize, r.state == .suggested { savePill(r) }
                 Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
             }
             .opacity(r.fit.greyed ? 0.55 : 1)

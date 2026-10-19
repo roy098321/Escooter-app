@@ -112,7 +112,7 @@ struct GlassSegmented<T: Hashable>: View {
             ForEach(options.indices, id: \.self) { i in
                 let on = options[i].0 == selection
                 Button { selection = options[i].0 } label: {
-                    Text(options[i].1)
+                    Text(options[i].1).lineLimit(1).minimumScaleFactor(0.5)
                         .font(.subheadline.weight(on ? .semibold : .regular))
                         .frame(maxWidth: .infinity, minHeight: 36)
                         .background(on ? Theme.background : Color.clear, in: Capsule())
@@ -231,4 +231,36 @@ extension Label where Title == Text, Icon == Image {
 enum Haptics {
     @MainActor static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
     @MainActor static func warning() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
+}
+
+// MARK: Chip flow
+
+/// Chips in a row that wrap onto the next line instead of running off the edge (big text sizes).
+struct ChipFlow: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(width: proposal.width ?? .infinity, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = arrange(width: bounds.width, subviews: subviews)
+        for (i, origin) in result.origins.enumerated() {
+            subviews[i].place(at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y), proposal: ProposedViewSize(width: bounds.width, height: nil))
+        }
+    }
+
+    private func arrange(width: CGFloat, subviews: Subviews) -> (size: CGSize, origins: [CGPoint]) {
+        var origins: [CGPoint] = []
+        var x: CGFloat = 0, y: CGFloat = 0, rowH: CGFloat = 0, maxW: CGFloat = 0
+        for s in subviews {
+            let size = s.sizeThatFits(ProposedViewSize(width: width, height: nil))
+            if x > 0, x + size.width > width { x = 0; y += rowH + spacing; rowH = 0 }
+            origins.append(CGPoint(x: x, y: y))
+            x += size.width + spacing
+            rowH = max(rowH, size.height)
+            maxW = max(maxW, x - spacing)
+        }
+        return (CGSize(width: maxW, height: y + rowH), origins)
+    }
 }

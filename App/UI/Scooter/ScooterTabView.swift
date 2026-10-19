@@ -18,6 +18,7 @@ struct ScooterTabView: View {
     @State private var rows: [MaintenanceService.Row] = []
     @State private var confirmForget = false
     @State private var connectTap = 0
+    @Environment(.dynamicTypeSize) private var typeSize
     private let link = AppModel.shared.scooter
 
     private var connected: Bool { preview?.connected ?? link.connected }
@@ -77,11 +78,11 @@ struct ScooterTabView: View {
         let livePct: Int? = preview != nil ? preview?.batteryPct : link.frame?.batteryPct
         let pct = connected ? (livePct ?? seenPct) : seenPct
         // S1 / S2 / S5: one status card: dot, name, odometer chip, the battery % (a clock when it is the last seen one), a small connect button
-        HStack(alignment: .center, spacing: 12) {
+        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Circle().fill(connected ? Theme.ok : Theme.accent).frame(width: 9, height: 9)
-                    Text(rec?.name ?? "Scooter").font(.title3.weight(.semibold)).lineLimit(1)
+                    Text(rec?.name ?? "Scooter").font(.title3.weight(.semibold)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
                 }
                 if let odo {
                     InfoChip("gauge.with.dots.needle.67percent", String(format: "%.1f km", odo), label: "Odometer")

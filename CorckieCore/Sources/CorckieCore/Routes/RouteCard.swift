@@ -5,9 +5,12 @@ import Foundation
 /// they are (pattern D).
 public enum RouteLabels {
     /// A route's own name, else "Start → End" when both places have a name, else "Route 3" (creation order).
-    public static func title(customName: String?, fromName: String?, toName: String?, ordinal: Int) -> String {
+    public static func title(customName: String?, fromName: String?, toName: String?, ordinal: Int, variantName: String? = nil) -> String {
         if let n = customName?.trimmingCharacters(in: .whitespacesAndNewlines), !n.isEmpty { return n }
         if let f = fromName, let t = toName, !f.isEmpty, !t.isEmpty { return "\(f) \u{2192} \(t)" }
+        if let v = variantName?.trimmingCharacters(in: .whitespacesAndNewlines), v.lowercased().hasPrefix("via "), v.count > 4 {
+            return "Via " + v.dropFirst(4)          // T3: the street the app already found for the variant
+        }
         return "Route \(ordinal)"
     }
 
@@ -130,7 +133,8 @@ public enum RouteCardBuilder {
     static let dash = "\u{2013}"
 
     public static func build(_ input: RouteCardInput) -> RouteCardModel {
-        let title = RouteLabels.title(customName: input.customName, fromName: input.fromName, toName: input.toName, ordinal: input.ordinal)
+        let title = RouteLabels.title(customName: input.customName, fromName: input.fromName, toName: input.toName, ordinal: input.ordinal,
+                                  variantName: (input.variants.first { $0.isReference } ?? input.variants.first)?.name)
         let selected = UsualRange.select(input.rides, nowMs: input.nowMs)
         let total = input.rides.count
         let kind = input.state == .saved ? "Saved route" : "Suggested route"

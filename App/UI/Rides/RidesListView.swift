@@ -20,6 +20,7 @@ struct RidesListView: View {
     @State private var placeNames: [String: String] = [:]
     @State private var filter: RideDateFilter = .allTime
     @State private var query = ""
+    @Environment(.dynamicTypeSize) private var typeSize
     @AppStorage("rides.sort") private var sortRaw = RideSort.date.rawValue
     @State private var hopsOpen = false
     @State private var pendingDelete: RideListItem?
@@ -166,7 +167,7 @@ struct RidesListView: View {
     private func pillLabel(symbol: String, text: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: symbol)
-            Text(text).lineLimit(1)
+            if !typeSize.isAccessibilitySize { Text(text).lineLimit(1) }     // big text: icon-only pills (the buttons keep their labels)
             Image(systemName: "chevron.down").font(.caption2)
         }
         .font(.subheadline.weight(.semibold))

@@ -168,7 +168,7 @@ struct RouteCardView: View {
                     Text("Today").font(.subheadline).foregroundStyle(.secondary)
                     Text(time).scaledFont(30, weight: .bold, mono: true, relativeTo: .title)
                 }
-                HStack(spacing: 6) {
+                ChipFlow(spacing: 6) {
                     if let d = t.departure { InfoChip("clock", d, label: "Leaving") }
                     if let b = t.batteryText { InfoChip("battery.50percent", b, label: "Battery") }
                     if t.rushHour { Pill(text: "Rush hour") }
