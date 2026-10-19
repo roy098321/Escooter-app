@@ -34,13 +34,15 @@ struct StatTile: View {
                     .foregroundStyle(highlighted ? Theme.accentInk : Color.primary)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
+            }
+            HStack(spacing: 6) {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 if let trend { TrendChip(trend: trend) }
             }
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
             if let note {
                 Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
             }
