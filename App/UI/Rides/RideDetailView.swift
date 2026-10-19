@@ -87,10 +87,14 @@ struct RideDetailView: View {
             } else if missing {
                 ContentUnavailableView("Ride not found", systemImage: "questionmark.circle",
                                        description: Text("This ride is no longer stored."))
+            } else if let skeleton = RideDetailPreview.model("ride-nogps") {
+                // A8: the final layout as grey shapes (made-up numbers, redacted), then it cross-fades into the ride; no spinner
+                content(skeleton).redacted(reason: .placeholder).allowsHitTesting(false).accessibilityHidden(true).transition(.opacity)
             } else {
                 ProgressView()
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: model == nil)
         .toolbar(.hidden, for: .navigationBar)
         .stiffBounce()
         .onAppear {

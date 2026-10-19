@@ -4,6 +4,7 @@ import SwiftUI
 /// Tab bar per IA.md (Routes · Rides · Home · Stats · Scooter); screens arrive in P5.
 struct RootView: View {
     @State private var tab = 2
+    @State private var coverShown = false
     @Environment(\.scenePhase) private var scenePhase
     private let model = AppModel.shared
 
@@ -32,12 +33,18 @@ struct RootView: View {
                 .dynamicTypeSize(UIShot.bigType ? DynamicTypeSize.accessibility3 : DynamicTypeSize.large)
         } else {
             tabs
-                .overlay { StartTransitionOverlay() }       // A3: Start grows into the live view
-                .fullScreenCover(isPresented: .constant(liveCoverShown || summaryShown)) {
+                .fullScreenCover(isPresented: Binding(get: { coverShown }, set: { _ in })) {
                     // M1-12: no tab bar, no navigation, no swipe-down while a ride is on.
                     // M1-13: when the ride is over the same cover turns into its summary.
                     RideCover()
                         .environment(\.hasFloatingTabBar, false)
+                        .presentationBackground(StartTransition.shared.visible ? Color.clear : Color(.systemBackground))   // A3: the Home disc shows until the reveal
+                }
+                .onChange(of: liveCoverShown || summaryShown, initial: true) { _, shown in
+                    // A3: while Start plays the cover appears without its slide-up; the live view reveals itself through the circle
+                    var t = Transaction()
+                    t.disablesAnimations = shown && StartTransition.shared.visible
+                    withTransaction(t) { coverShown = shown }
                 }
                 .safeAreaInset(edge: .top) {
                     VStack(spacing: 0) {
@@ -315,7 +322,7 @@ struct RideCover: View {
     @ViewBuilder private var cover: some View {
         let service = RecorderService.shared
         if service.rideActive || service.readyRequested {
-            LiveRideView().liveDark()
+            LiveRideView().liveDark().startReveal()   // A3
         } else if let id = service.summaryRideId {
             NavigationStack {
                 RideDetailView(rideId: id, onDone: { RecorderService.shared.dismissSummary() })

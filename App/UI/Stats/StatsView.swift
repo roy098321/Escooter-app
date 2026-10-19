@@ -10,8 +10,9 @@ struct StatsView: View {
     var preview: StatsModel?
 
     @AppStorage("stats.span") private var spanRaw = StatsSpan.week.rawValue
-    /// A7: the bars grow from the baseline on first show and when the span changes
-    @State private var barsGrown = true
+    /// A7: the bars grow from the baseline on first show and when the span changes, each 30 ms after the one before (nil = all grown)
+    @State private var grownBars: Set<Int>?
+    @State private var replayToken = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// F-16: Calendar (this week / month / year) or Rolling (the last 7 / 30 / 365 days), remembered
     @AppStorage("stats.mode") private var modeRaw = StatsMode.calendar.rawValue
@@ -27,9 +28,12 @@ struct StatsView: View {
                 if let m = preview ?? model {
                     content(m)
                 } else {
-                    ProgressView().padding(.top, 40)
+                    // A8: the final layout as grey shapes, then it cross-fades into the real numbers (no spinner)
+                    content(StatsPreview.model("stats-week")).redacted(reason: .placeholder)
+                        .allowsHitTesting(false).accessibilityHidden(true).transition(.opacity)
                 }
             }
+            .animation(.easeInOut(duration: 0.25), value: model == nil)
             .background { MapBackdrop().ignoresSafeArea() }
             .navigationTitle("Stats")
             .navigationBarTitleDisplayMode(.inline)   // G3: small title; G12: prices live in Settings only
@@ -37,7 +41,7 @@ struct StatsView: View {
                 ToolbarItem(placement: .topBarTrailing) { modeSwitch }
             }
             .onAppear(perform: load)
-            .onChange(of: spanRaw) { _, _ in back = 0; load(); Haptics.tick(); replayBars() }
+            .onChange(of: spanRaw) { _, _ in back = 0; load(); Haptics.tick(); replayBars(model.map { Self.barData($0).values.count } ?? 0) }
             .onChange(of: modeRaw) { _, _ in back = 0; load() }
             .onChange(of: back) { _, _ in load() }
             .screen("Stats")
@@ -184,12 +188,12 @@ struct StatsView: View {
     private func bars(_ m: StatsModel) -> some View {
         let data = Self.barData(m)
         return Chart(Array(data.values.enumerated()), id: \.offset) { item in
-            BarMark(x: .value("Day", item.offset + 1), y: .value("km", item.element * (barsGrown ? 1 : 0)))
+            BarMark(x: .value("Day", item.offset + 1), y: .value("km", item.element * (grownBars?.contains(item.offset) ?? true ? 1 : 0)))
                 .foregroundStyle(Theme.accent)
                 .cornerRadius(4)
         }
         .chartYScale(domain: 0...max(data.values.max() ?? 1, 0.001))
-        .onAppear { replayBars() }
+        .onAppear { replayBars(data.values.count) }
         .chartXScale(domain: 0.4...(Double(max(data.values.count, 1)) + (data.values.count > 12 ? 1.3 : 0.6)))      // all bars inside the plot, and room for the last label ("31") at the right edge
         .chartXAxis { barAxis(data.labels) }
         .chartYAxis(.hidden)
@@ -201,10 +205,18 @@ struct StatsView: View {
         .accessibilityLabel("Distance per day, bar chart")
     }
 
-    private func replayBars() {
-        guard !reduceMotion else { return }
-        barsGrown = false
-        DispatchQueue.main.async { withAnimation(.easeOut(duration: 0.5)) { barsGrown = true } }
+    private func replayBars(_ count: Int) {
+        guard !reduceMotion, count > 0 else { return }   // Reduce Motion: no growth, no stagger
+        grownBars = []
+        replayToken += 1
+        let token = replayToken
+        for i in 0..<count {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.03 * Double(i) + 0.02) {
+                guard token == replayToken else { return }
+                withAnimation(.easeOut(duration: 0.4)) { grownBars?.insert(i) }
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03 * Double(count) + 0.5) { if token == replayToken { grownBars = nil } }
     }
 
     private func barAxis(_ labels: [String]) -> some AxisContent {
