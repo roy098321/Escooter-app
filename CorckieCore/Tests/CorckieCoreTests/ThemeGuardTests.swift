@@ -61,7 +61,7 @@ final class ThemeGuardTests: XCTestCase {
         // owner answer 2: only Home has a (muted) map behind it
         let backdrop = try text("UI/Shared/MapBackdrop.swift")
         XCTAssertTrue(backdrop.contains("if sunlight || !map") && backdrop.contains(".saturation("))
-        XCTAssertTrue(try text("UI/Home/HomeView.swift").contains("MapBackdrop(map: true)"))
+        XCTAssertTrue(try text("UI/Home/HomeView.swift").contains("MapBackdrop(map: true"))
         // the live screen stays dark (except sunlight mode)
         let root = try text("UI/RootView.swift")
         XCTAssertTrue(root.contains("LiveRideView().liveDark()"))
