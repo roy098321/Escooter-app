@@ -21,6 +21,9 @@ struct ScooterTabView: View {
     @State private var rows: [MaintenanceService.Row] = []
     @State private var parked: ParkedSpot?
     @State private var confirmForget = false
+    @State private var customName: String?
+    @State private var renaming = false
+    @State private var nameText = ""
     @State private var connectTap = 0
     @Environment(\.dynamicTypeSize) private var typeSize
     private let link = AppModel.shared.scooter
@@ -55,6 +58,7 @@ struct ScooterTabView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         // S4: Forget scooter lives behind the dots, not as a big red button on the page
                         Menu {
+                            Button { nameText = customName ?? record?.name ?? ""; renaming = true } label: { Label("Rename scooter", systemImage: "pencil") }
                             Button(role: .destructive) { confirmForget = true } label: { Label("Forget scooter", systemImage: "trash") }
                         } label: {
                             Image(systemName: "ellipsis.circle")
@@ -64,6 +68,13 @@ struct ScooterTabView: View {
                 }
             }
             .onAppear(perform: reload)
+            .alert("Rename scooter", isPresented: $renaming) {
+                TextField("Name", text: $nameText)
+                Button("Cancel", role: .cancel) {}
+                Button("Save") { saveName() }
+            } message: {
+                Text("Only this app shows the name. An empty name goes back to the Bluetooth name.")
+            }
             .confirmationDialog("Forget this scooter?", isPresented: $confirmForget, titleVisibility: .visible) {
                 Button("Forget scooter", role: .destructive, action: forget)
                 Button("Cancel", role: .cancel) {}
@@ -84,11 +95,12 @@ struct ScooterTabView: View {
         // S1 / S2 / S5: one status card: dot, name, odometer chip, the battery % (a clock when it is the last seen one), a small connect button
         let stacked = typeSize.isAccessibilitySize
         let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        VStack(alignment: .leading, spacing: 8) {
         layout {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Circle().fill(connected ? Theme.ok : Theme.accent).frame(width: 9, height: 9)
-                    Text(rec?.name ?? "Scooter").font(.title3.weight(.semibold)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                    Text(customName ?? rec?.name ?? "Scooter").font(.title3.weight(.semibold)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
                 }
                 if let odo {
                     InfoChip("gauge.with.dots.needle.67percent", String(format: "%.1f km", odo), label: "Odometer")
@@ -117,6 +129,12 @@ struct ScooterTabView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Connect")
                 .sensoryFeedback(.impact(weight: .medium), trigger: connectTap)
+            }
+        }
+            if !connected, let seenMs {
+                // the big % is the value from the last connection: say so, and when
+                Text(Self.lastConnectedCaption(seenMs, nowMs: preview?.nowMs ?? Int64(Date().timeIntervalSince1970 * 1000)))
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)      // P6-3: the card spans the full width when its content is stacked at big text sizes
@@ -180,6 +198,12 @@ struct ScooterTabView: View {
         return ("\(best.0) \u{00B7} \(Int(best.1.rounded())) km left", false)
     }
 
+    /// "When last connected · 6 h ago"; older than a day: the day and clock time
+    static func lastConnectedCaption(_ ms: Int64, nowMs: Int64) -> String {
+        let when = nowMs - ms < 24 * 3_600_000 ? ParkedText.ago(endedAtMs: ms, nowMs: nowMs) : lastSeenText(ms)
+        return "When last connected {00B7} (when)"
+    }
+
     static func lastSeenText(_ ms: Int64?) -> String {
         guard let ms else { return "Not yet" }
         let date = Date(timeIntervalSince1970: Double(ms) / 1000)
@@ -196,10 +220,20 @@ struct ScooterTabView: View {
     private func reload() {
         guard preview == nil, let db = AppModel.shared.database else { return }
         record = ScooterRecord.latest(in: db)
+        customName = SettingsValue.text(db, Self.nameKey)
         odometerKm = (try? MaintenanceQueries(db).odometerKm()) ?? nil
         rows = MaintenanceService.rows(db)
         parked = ParkedLoader.latest(database: db, simulated: false)
     }
+
+    private func saveName() {
+        let t = String(nameText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(24))
+        guard preview == nil, let db = AppModel.shared.database else { return }
+        if t.isEmpty { SettingsValue.clear(db, Self.nameKey); customName = nil } else { SettingsValue.set(db, Self.nameKey, t); customName = t }
+    }
+
+    /// app-only name; the scooter itself is never written to
+    static let nameKey = "scooter.customName"
 
     private func forget() {
         link.forget()

@@ -87,14 +87,74 @@ struct TrendChip: View {
 }
 
 /// Adaptive grid of tiles: 3 columns at normal size, fewer at large Dynamic Type.
+/// `weighted: true` makes one row whose tiles share the width by `.tileWeight(_:)` (default: their own content width), so a tile with a
+/// long value ("4 h 5 min") gets room and one with a short value ("9") stays narrow; at accessibility sizes it wraps like the plain grid.
 struct StatTileGrid<Content: View>: View {
     @ScaledMetric(relativeTo: .body) private var minTile: CGFloat = 100
+    @Environment(\.dynamicTypeSize) private var typeSize
+    private let weighted: Bool
     private let content: Content
-    init(@ViewBuilder content: () -> Content) { self.content = content() }
+    init(weighted: Bool = false, @ViewBuilder content: () -> Content) {
+        self.weighted = weighted
+        self.content = content()
+    }
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: minTile), spacing: DS.Space.row)], spacing: DS.Space.row) {
-            content
+        if weighted && !typeSize.isAccessibilitySize {
+            WeightedTileRow(spacing: DS.Space.row) { content }
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: minTile), spacing: DS.Space.row)], spacing: DS.Space.row) {
+                content
+            }
+        }
+    }
+}
+
+private struct TileWeightKey: LayoutValueKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+extension View {
+    /// Share of the row width for this tile in a weighted `StatTileGrid` (nil = its content width)
+    func tileWeight(_ weight: CGFloat) -> some View { layoutValue(key: TileWeightKey.self, value: weight) }
+}
+
+/// One row; each tile gets its weighted share of the width, but never less than its content needs while the others have room to give.
+private struct WeightedTileRow: Layout {
+    var spacing: CGFloat
+
+    private func widths(_ subviews: Subviews, _ total: CGFloat) -> [CGFloat] {
+        guard !subviews.isEmpty else { return [] }
+        let ideal = subviews.map { $0.sizeThatFits(.unspecified).width }
+        let weights = zip(subviews, ideal).map { $0.0[TileWeightKey.self] ?? $0.1 }
+        let avail = max(total - spacing * CGFloat(subviews.count - 1), 0)
+        let sum = max(weights.reduce(0, +), 0.001)
+        var w = weights.map { avail * $0 / sum }
+        let deficit = zip(w, ideal).reduce(CGFloat(0)) { $0 + max(0, $1.1 - $1.0) }
+        let slack = zip(w, ideal).reduce(CGFloat(0)) { $0 + max(0, $1.0 - $1.1) }
+        if deficit > 0, slack > 0 {
+            let take = min(deficit, slack)
+            for i in w.indices {
+                if ideal[i] > w[i] { w[i] += (ideal[i] - w[i]) * take / deficit }
+                else { w[i] -= (w[i] - ideal[i]) * take / slack }
+            }
+        }
+        return w
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let total = proposal.width ?? subviews.map { $0.sizeThatFits(.unspecified).width }.reduce(0, +) + spacing * CGFloat(max(subviews.count - 1, 0))
+        let w = widths(subviews, total)
+        let h = zip(subviews, w).map { $0.0.sizeThatFits(ProposedViewSize(width: $0.1, height: nil)).height }.max() ?? 0
+        return CGSize(width: total, height: h)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let w = widths(subviews, bounds.width)
+        var x = bounds.minX
+        for (s, width) in zip(subviews, w) {
+            s.place(at: CGPoint(x: x, y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: width, height: bounds.height))
+            x += width + spacing
         }
     }
 }

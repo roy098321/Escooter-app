@@ -41,8 +41,10 @@ struct HomeView: View {
     @State private var lastRide: RideListItem?
     @State private var oldestRideMs: Int64?
     /// F-02: the Load for the next ride (None / Light / Heavy / Exact), kept until the next ride starts
-    @State private var loadLevelRaw = LoadLevel.none.rawValue
-    @State private var exactKg = ""
+    @State private var loadSel = "none"
+    @State private var customKg = 0
+    @State private var askKg = false
+    @State private var kgText = ""
     @State private var loadReady = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -180,45 +182,67 @@ struct HomeView: View {
 
     // MARK: Load for the next ride (F-02)
 
-    private var lightKg: Int { Int((RiderSettings.kg(AppModel.shared.database, .light) ?? 5).rounded()) }
-    private var heavyKg: Int { Int((RiderSettings.kg(AppModel.shared.database, .heavy) ?? 15).rounded()) }
+    /// Owner: Unloaded (0), 5 kg, 10 kg or Custom (a whole number, 0 to 50 kg). The segment ids:
+    private static let loadNone = "none", loadFive = "5", loadTen = "10", loadCustom = "custom"
+    private static let maxCustomKg = 50
 
-    /// H4: one compact row, a load icon and None / +5 / +15 / kg
+    private var loadCustomLabel: String { customKg > 0 && loadSel == Self.loadCustom ? "Custom \(customKg)" : "Custom" }
+
+    /// H4: one compact row, a load icon and Unloaded / 5 kg / 10 kg / Custom; the pill slides like the tab bar's (A5)
     private var loadRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: "bag.fill").foregroundStyle(Theme.canyon).accessibilityHidden(true)
-                GlassSegmented(options: [(LoadLevel.none.rawValue, "None"), (LoadLevel.light.rawValue, "+\(lightKg)"),
-                                         (LoadLevel.heavy.rawValue, "+\(heavyKg)"), (LoadLevel.custom.rawValue, "kg")],
-                               selection: $loadLevelRaw)
-                    .accessibilityLabel("Load for the next ride")
-            }
-            if loadLevelRaw == LoadLevel.custom.rawValue {
-                TextField("kg", text: $exactKg)
-                    .keyboardType(.decimalPad)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityLabel("Exact load in kilograms")
-            }
+        HStack(spacing: 10) {
+            Image(systemName: "bag.fill").foregroundStyle(Theme.canyon).accessibilityHidden(true)
+            GlassSegmented(options: [(Self.loadNone, "Unloaded"), (Self.loadFive, "5 kg"), (Self.loadTen, "10 kg"), (Self.loadCustom, loadCustomLabel)],
+                           selection: Binding(get: { loadSel }, set: { _ in }), slidingPill: true, onSelect: { id in
+                               if id == Self.loadCustom {
+                                   kgText = customKg > 0 ? String(customKg) : ""
+                                   askKg = true
+                               } else {
+                                   loadSel = id
+                                   saveLoad()
+                               }
+                           })
+                .accessibilityLabel("Load for the next ride")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard(padding: 10)
-        .onChange(of: loadLevelRaw) { _, _ in saveLoad() }
-        .onChange(of: exactKg) { _, _ in saveLoad() }
+        .alert("Custom load", isPresented: $askKg) {
+            TextField("kg", text: $kgText).keyboardType(.numberPad)
+            Button("Cancel", role: .cancel) {}
+            Button("OK") {
+                let kg = min(max(Int(kgText.trimmingCharacters(in: .whitespaces)) ?? 0, 0), Self.maxCustomKg)
+                withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.3)) {
+                    customKg = kg
+                    loadSel = kg == 0 ? Self.loadNone : Self.loadCustom
+                }
+                saveLoad()
+            }
+        } message: {
+            Text("Kilograms carried on the next ride, 0 to \(Self.maxCustomKg).")
+        }
     }
 
     private func loadSelectorFromStore() {
         guard preview == nil else { return }
         let c = PendingLoad.get(AppModel.shared.database)
-        loadLevelRaw = c.level.rawValue
-        exactKg = c.level == .custom ? String(c.customKg) : ""
+        // an older choice (Light / Heavy / Exact) shows as the number it was: 5 and 10 are their own segments, anything else is Custom
+        let kg = Int(c.attachment(lightKg: RiderSettings.kg(AppModel.shared.database, .light) ?? 5,
+                                  heavyKg: RiderSettings.kg(AppModel.shared.database, .heavy) ?? 15)?.kg.rounded() ?? 0)
+        customKg = kg
+        loadSel = kg == 0 ? Self.loadNone : (kg == 5 ? Self.loadFive : (kg == 10 ? Self.loadTen : Self.loadCustom))
         DispatchQueue.main.async { loadReady = true }
     }
 
     private func saveLoad() {
         guard preview == nil, loadReady else { return }
-        let level = LoadLevel(rawValue: loadLevelRaw) ?? .none
-        let kg = Double(exactKg.replacingOccurrences(of: ",", with: ".")) ?? 0
-        PendingLoad.set(AppModel.shared.database, LoadChoice(level: level, customKg: min(max(kg, 0), LoadChoice.maxKg)))
+        let kg: Int
+        switch loadSel {
+        case Self.loadFive: kg = 5
+        case Self.loadTen: kg = 10
+        case Self.loadCustom: kg = customKg
+        default: kg = 0
+        }
+        PendingLoad.set(AppModel.shared.database, kg == 0 ? .empty : LoadChoice(level: .custom, customKg: Double(kg)))
     }
 
     /// H3: one small pill, icon + short state + battery % (and "seen 16:33" when the scooter is not connected)

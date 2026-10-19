@@ -142,10 +142,10 @@ struct StatsView: View {
     /// ST3 / ST4: Distance (with the change chip), Rides, Time; labels only
     private func periodTiles(_ m: StatsModel) -> some View {
         let t = m.totals
-        return StatTileGrid {
-            StatTile(value: StatsCalc.km(t.km), label: "Distance", trend: Self.trend(m))
-            StatTile(value: "\(t.rides)", label: "Rides")
-            StatTile(value: StatsCalc.duration(t.seconds), label: "Time")
+        return StatTileGrid(weighted: true) {   // Distance 2 : Rides 1 : Time 2
+            StatTile(value: StatsCalc.km(t.km), label: "Distance", trend: Self.trend(m)).tileWeight(2)
+            StatTile(value: "\(t.rides)", label: "Rides").tileWeight(1)
+            StatTile(value: StatsCalc.duration(t.seconds), label: "Time").tileWeight(2)
         }
     }
 
@@ -375,13 +375,14 @@ struct OverallSection: View {
             if let perKm { SavedPerKmTile(perKm: perKm, stats: stats).padding(.top, DS.Space.row) }
         } else {
             // three tiles on the first row; the fourth (CO₂) and the wide tile on the second
-            Grid(horizontalSpacing: DS.Space.row, verticalSpacing: DS.Space.row) {
-                GridRow {
+            VStack(spacing: DS.Space.row) {
+                // each tile gets room for its own value (a short number stays narrow)
+                StatTileGrid(weighted: true) {
                     ForEach(Array(items.prefix(3).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label) }
                 }
-                GridRow {
-                    ForEach(Array(items.dropFirst(3).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label) }
-                    SavedPerKmTile(perKm: perKm ?? 0, stats: stats).gridCellColumns(2)
+                StatTileGrid(weighted: true) {
+                    ForEach(Array(items.dropFirst(3).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label).tileWeight(1) }
+                    SavedPerKmTile(perKm: perKm ?? 0, stats: stats).tileWeight(2)
                 }
             }
         }

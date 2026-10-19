@@ -106,16 +106,30 @@ struct GlassIconButton: View {
 struct GlassSegmented<T: Hashable>: View {
     let options: [(T, String)]
     @Binding var selection: T
+    /// true = the chosen pill slides to the new option with a tick (like the tab bar, A5); Reduce Motion = a plain fade
+    var slidingPill = false
+    /// when set, a tap calls this instead of writing `selection` (the caller decides what a tap does)
+    var onSelect: ((T) -> Void)?
+    @Namespace private var pillSpace
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(options.indices, id: \.self) { i in
                 let on = options[i].0 == selection
-                Button { selection = options[i].0 } label: {
+                Button { tapped(options[i].0) } label: {
                     Text(options[i].1).lineLimit(1).minimumScaleFactor(0.5)
                         .font(.subheadline.weight(on ? .semibold : .regular))
                         .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(on ? Theme.background : Color.clear, in: Capsule())
+                        .background {
+                            if on {
+                                if slidingPill && !reduceMotion {
+                                    Capsule().fill(Theme.background).matchedGeometryEffect(id: "pill", in: pillSpace)
+                                } else {
+                                    Capsule().fill(Theme.background)
+                                }
+                            }
+                        }
                         .foregroundStyle(.primary)
                 }
                 .buttonStyle(.plain)
@@ -124,6 +138,17 @@ struct GlassSegmented<T: Hashable>: View {
         }
         .padding(3)
         .background(Theme.chip, in: Capsule())
+    }
+
+    private func tapped(_ value: T) {
+        guard slidingPill else {
+            if let onSelect { onSelect(value) } else { selection = value }
+            return
+        }
+        if value != selection { Haptics.tick() }
+        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.3)) {
+            if let onSelect { onSelect(value) } else { selection = value }
+        }
     }
 }
 
