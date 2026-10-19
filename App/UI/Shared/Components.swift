@@ -12,6 +12,22 @@ import SwiftUI
 ///
 ///     StatTile(value: "58 km", label: "Distance")
 ///     StatTile(value: "9", label: "Rides", trend: .up("2"))
+/// A1 (F-19): a number that changes rolls its changed digits (Apple numericText, smooth). Reduce Motion: a plain cross-fade.
+struct AliveNumber: ViewModifier {
+    let value: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .contentTransition(reduceMotion ? .opacity : .numericText())
+            .animation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth, value: value)
+    }
+}
+
+extension View {
+    func aliveNumber(_ value: String) -> some View { modifier(AliveNumber(value: value)) }
+}
+
 struct StatTile: View {
     enum Trend: Equatable {
         case up(String)
@@ -34,6 +50,7 @@ struct StatTile: View {
                     .foregroundStyle(highlighted ? Theme.accentInk : Color.primary)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
+                    .aliveNumber(value)
             }
             HStack(spacing: 6) {
                 Text(label)
@@ -153,6 +170,7 @@ struct StatusPill: View {
                     .scaledFont(24, weight: .bold, mono: true, relativeTo: .title2)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
+                    .aliveNumber(value)
             }
         }
         .padding(.horizontal, 16)

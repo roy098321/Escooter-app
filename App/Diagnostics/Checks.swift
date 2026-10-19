@@ -580,6 +580,8 @@ enum CheckList {
           "Soft tick when the scooter connects, firm tap on Start, light ticks while holding to end and a strong tap at the end, ticks on tab changes, Sort by and Week / Month / Year, a soft tap when the ride summary path has been drawn; list rows are silent", manual: true),
         m("ui21", p6M, "Animations (A1 to A8)", "Use the app; then switch Reduce Motion on and look again",
           "Numbers roll to new values, the Connect icon breathes while connecting and turns into Start, Start grows into the live view, the summary path draws itself and the tiles fade in one by one, the tab pill slides, re-sorted rows move, chart bars grow, placeholders fade into content; with Reduce Motion everything is a plain fade", manual: true),
+        m("ui22", p6M, "Home disc: Pillowed depth", "Home: look at the Connect / Start disc, press and hold it, then press Start",
+          "The disc has a soft halo ring, a shadow below, light on top and shade at the bottom; while pressed it shrinks a little, the halo tightens and the light and shade swap; it is a perfect circle all the time; the icon and word fade on top without the depth changing; with Reduce Motion it looks pressed without shrinking", manual: true),
         m("ui11", p6M, "Add a place: Save in the top bar, no tab bar (B28)", "Routes → Places → Add a place; drop a pin, type a name, tap Save (or Return)",
           "Save sits in the top bar, off until the name is typed; Return on the name field saves too; the tab bar is not on screen, here or on a place; Price history, Purchase and Settings also have no bar under their fields", manual: true),
         m("ui12", p6M, "Where to? sheet and map screens (B29)", "Home → Where to? row; open a ride, a route and a place",

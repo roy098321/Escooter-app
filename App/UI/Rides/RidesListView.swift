@@ -152,7 +152,10 @@ struct RidesListView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Date: \(filter.rawValue)")
             Menu {
-                Picker("Sort by", selection: Binding(get: { sort }, set: { sortRaw = $0.rawValue })) {
+                Picker("Sort by", selection: Binding(get: { sort }, set: { v in
+                    Haptics.tick()
+                    withAnimation(.smooth(duration: 0.35)) { sortRaw = v.rawValue }
+                })) {
                     ForEach(RideSort.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
             } label: {

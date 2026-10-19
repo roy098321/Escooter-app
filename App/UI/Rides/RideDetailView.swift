@@ -51,6 +51,10 @@ struct RideDetailView: View {
     @State private var series: RideSeries?
     @State private var pins: [PlacePin] = []
     @State private var layer: MapLayer = .speed
+    /// A4: right after a ride the path draws itself (about 1 s) and the six tiles fade in one by one after it (60 ms apart)
+    @State private var pathReveal = 1.0
+    @State private var tilesShown = 99
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dismiss) private var dismiss
 
     struct ExportedFile: Identifiable {
@@ -92,6 +96,13 @@ struct RideDetailView: View {
         .onAppear {
             if let l = previewLayer { layer = l }
             if previewSeries != nil { moreOpen = true }
+            if onDone != nil, preview == nil, !reduceMotion, model == nil {
+                pathReveal = 0
+                tilesShown = 0
+            }
+        }
+        .onChange(of: model == nil) { _, isNil in
+            if !isNil { playSummaryReveal() }
         }
         .confirmationDialog("Delete this ride?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete ride", role: .destructive) { delete() }
@@ -262,15 +273,33 @@ struct RideDetailView: View {
         return first.replacingOccurrences(of: "~", with: "")
     }
 
+    /// A4: the path draws itself, then a soft tap and the tiles fade in one by one
+    private func playSummaryReveal() {
+        guard onDone != nil, preview == nil, !reduceMotion, pathReveal < 1 else { return }
+        Task { @MainActor in
+            let steps = 30
+            for i in 1...steps {
+                try? await Task.sleep(nanoseconds: 33_000_000)
+                pathReveal = Double(i) / Double(steps)
+            }
+            Haptics.soft()
+            for n in 1...6 {
+                withAnimation(.easeOut(duration: 0.25)) { tilesShown = n }
+                try? await Task.sleep(nanoseconds: 60_000_000)
+            }
+            tilesShown = 99
+        }
+    }
+
     /// D1: six key tiles
     private func keyTiles(_ m: RideSummaryModel) -> some View {
         StatTileGrid {
-            StatTile(value: stat(m, "Time"), label: "Time")
-            StatTile(value: stat(m, "Distance"), label: "Distance")
-            StatTile(value: stat(m, "Avg. speed"), label: "Avg")
-            StatTile(value: stat(m, "Battery"), label: "Battery")
-            StatTile(value: stat(m, "Top speed"), label: "Top")
-            StatTile(value: climbText(m), label: "Climb")
+            StatTile(value: stat(m, "Time"), label: "Time").opacity(tilesShown >= 1 ? 1 : 0)
+            StatTile(value: stat(m, "Distance"), label: "Distance").opacity(tilesShown >= 2 ? 1 : 0)
+            StatTile(value: stat(m, "Avg. speed"), label: "Avg").opacity(tilesShown >= 3 ? 1 : 0)
+            StatTile(value: stat(m, "Battery"), label: "Battery").opacity(tilesShown >= 4 ? 1 : 0)
+            StatTile(value: stat(m, "Top speed"), label: "Top").opacity(tilesShown >= 5 ? 1 : 0)
+            StatTile(value: climbText(m), label: "Climb").opacity(tilesShown >= 6 ? 1 : 0)
         }
     }
 
@@ -426,15 +455,16 @@ struct RideDetailView: View {
     }
 
     private func mapView(_ path: RidePathModel) -> some View {
-        let gradient = (previewSeries ?? series)?.values(layer) ?? []   // F-04: continuous gradient when the readings are there
+        let fullGradient = (previewSeries ?? series)?.values(layer) ?? []   // F-04: continuous gradient when the readings are there
+        let gradient = pathReveal >= 1 ? fullGradient : Array(fullGradient.prefix(Int(Double(fullGradient.count) * pathReveal)))
         return Map(initialPosition: Self.position(path, sheet: true), interactionModes: [.pan, .zoom]) {
             GradientPath.lines(gradient, layer: layer)
             PlacePinMarks(pins: preview != nil ? RideDetailPreview.pins : pins)
-            ForEach(Array((gradient.isEmpty ? layerSegments : []).enumerated()), id: \.offset) { _, seg in
+            ForEach(Array((fullGradient.isEmpty ? layerSegments : []).enumerated()), id: \.offset) { _, seg in
                 MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(MapLayer.color(level: seg.level), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             }
-            ForEach(Array((layer == .speed && gradient.isEmpty ? path.segments : []).enumerated()), id: \.offset) { _, seg in
+            ForEach(Array((layer == .speed && fullGradient.isEmpty ? path.segments : []).enumerated()), id: \.offset) { _, seg in
                 MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(LiveRideView.color(seg.bucket),
                             style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round, dash: seg.dashed ? [2, 9] : []))

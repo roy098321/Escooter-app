@@ -10,6 +10,9 @@ struct StatsView: View {
     var preview: StatsModel?
 
     @AppStorage("stats.span") private var spanRaw = StatsSpan.week.rawValue
+    /// A7: the bars grow from the baseline on first show and when the span changes
+    @State private var barsGrown = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// F-16: Calendar (this week / month / year) or Rolling (the last 7 / 30 / 365 days), remembered
     @AppStorage("stats.mode") private var modeRaw = StatsMode.calendar.rawValue
     @State private var back = 0
@@ -34,7 +37,7 @@ struct StatsView: View {
                 ToolbarItem(placement: .topBarTrailing) { modeSwitch }
             }
             .onAppear(perform: load)
-            .onChange(of: spanRaw) { _, _ in back = 0; load() }
+            .onChange(of: spanRaw) { _, _ in back = 0; load(); Haptics.tick(); replayBars() }
             .onChange(of: modeRaw) { _, _ in back = 0; load() }
             .onChange(of: back) { _, _ in load() }
             .screen("Stats")
@@ -181,10 +184,12 @@ struct StatsView: View {
     private func bars(_ m: StatsModel) -> some View {
         let data = Self.barData(m)
         return Chart(Array(data.values.enumerated()), id: \.offset) { item in
-            BarMark(x: .value("Day", item.offset + 1), y: .value("km", item.element))
+            BarMark(x: .value("Day", item.offset + 1), y: .value("km", item.element * (barsGrown ? 1 : 0)))
                 .foregroundStyle(Theme.accent)
                 .cornerRadius(4)
         }
+        .chartYScale(domain: 0...max(data.values.max() ?? 1, 0.001))
+        .onAppear { replayBars() }
         .chartXScale(domain: 0.4...(Double(max(data.values.count, 1)) + (data.values.count > 12 ? 1.3 : 0.6)))      // all bars inside the plot, and room for the last label ("31") at the right edge
         .chartXAxis { barAxis(data.labels) }
         .chartYAxis(.hidden)
@@ -194,6 +199,12 @@ struct StatsView: View {
         .glassCard(padding: 0)
         .padding(.top, DS.Space.row)
         .accessibilityLabel("Distance per day, bar chart")
+    }
+
+    private func replayBars() {
+        guard !reduceMotion else { return }
+        barsGrown = false
+        DispatchQueue.main.async { withAnimation(.easeOut(duration: 0.5)) { barsGrown = true } }
     }
 
     private func barAxis(_ labels: [String]) -> some AxisContent {

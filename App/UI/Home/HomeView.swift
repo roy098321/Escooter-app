@@ -239,7 +239,6 @@ struct HomeView: View {
                 primaryTapped(m.primary)
             } label: {
                 ZStack {
-                    Circle().fill(tint.opacity(0.2)).frame(width: min(discSize, Self.discCap) + 24, height: min(discSize, Self.discCap) + 24)
                     VStack(spacing: 8) {
                         // A2: the Connect icon breathes while connecting (no spinner) and cross-fades into Start (0.3 s)
                         Image(systemName: discSymbol(m.primary))
@@ -256,15 +255,12 @@ struct HomeView: View {
                     .foregroundStyle(Theme.onAccent)   // F-15: dark text on the orange (white is only 2.3:1)
                     .padding(20)
                     .frame(width: min(discSize, Self.discCap), height: min(discSize, Self.discCap))
-                    .background(tint, in: Circle())
-                    .shadow(color: tint.opacity(0.35), radius: 14, y: 6)
-                    .scaleEffect(discPressed ? 0.94 : 1)           // A3: Start presses in (0.16 s) before it grows into the live view
                     .background(GeometryReader { g in Color.clear.preference(key: DiscFrameKey.self, value: g.frame(in: .global)) })
                     .onPreferenceChange(DiscFrameKey.self) { discFrame = $0 }
                 }
                 .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PillowDiscStyle(tint: tint, diameter: min(discSize, Self.discCap), forcedPress: discPressed, reduceMotion: reduceMotion))
             .disabled(!m.primaryEnabled)
             .opacity(m.primaryEnabled ? 1 : 0.6)
             .accessibilityLabel(m.primaryTitle)
@@ -324,7 +320,7 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity, minHeight: DS.hit, alignment: .leading)
             .padding(.horizontal, 14)
-            .glassCard(radius: 26, padding: 0, tint: warning == nil ? nil : Theme.accent)
+            .glassCard(radius: 26, tint: warning == nil ? nil : Theme.accent, padding: 0)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -432,6 +428,41 @@ struct HomeView: View {
         guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
         lastRide = RideListItem(id: r.id, startAt: r.startAt, utcOffsetMin: r.utcOffsetMin, kind: r.kind,
                                 distanceM: r.distanceM, totalS: r.totalS)
+    }
+}
+
+/// "C . Pillowed" (owner): the Home disc has depth. Rest: halo ring, drop shadow, light on top, shade at the bottom. Pressed (finger down, and
+/// A3's 0.16 s press-in): scale 0.97, halo tightens, shadow shrinks, light and shade swap. Always a perfect circle: every layer is a concentric
+/// circle and the only transform is one uniform scale. Reduce Motion: the pressed look without the scale. The icon and word on top are
+/// the button label, so A2 only cross-fades those and the disc keeps its depth.
+private struct PillowDiscStyle: ButtonStyle {
+    let tint: Color
+    let diameter: CGFloat
+    var forcedPress = false
+    var reduceMotion = false
+    @Environment(\.colorScheme) private var scheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        let p = configuration.isPressed || forcedPress
+        let halo: CGFloat = p ? 6 : 10
+        return ZStack {
+            Circle().fill(tint.opacity(p ? 0.22 : 0.16)).frame(width: diameter + halo * 2, height: diameter + halo * 2)
+            Circle().fill(tint).frame(width: diameter, height: diameter)
+                .shadow(color: Color.black.opacity(scheme == .dark ? 0.6 : 0.25), radius: p ? 6 : 15, y: p ? 6 : 18)
+            // inner light (top at rest) and inner shade (bottom at rest); swapped while pressed
+            Circle().strokeBorder(Color.white.opacity(p ? 0.12 : 0.45), lineWidth: 20)
+                .frame(width: diameter, height: diameter)
+                .blur(radius: 9).offset(y: p ? -10 : 10)
+                .mask(Circle().frame(width: diameter, height: diameter))
+            Circle().strokeBorder(Theme.accentInk.opacity(0.35), lineWidth: 20)
+                .frame(width: diameter, height: diameter)
+                .blur(radius: 9).offset(y: p ? 10 : -10)
+                .mask(Circle().frame(width: diameter, height: diameter))
+            configuration.label
+        }
+        .frame(width: diameter + 24, height: diameter + 24)
+        .scaleEffect(p && !reduceMotion ? 0.97 : 1)
+        .animation(.easeOut(duration: reduceMotion ? 0 : 0.16), value: p)
     }
 }
 

@@ -26,6 +26,9 @@ struct FloatingTabBar: View {
     @Binding var selection: Int
     var onReselect: (Int) -> Void = { _ in }
     @Environment(\.sunlight) private var sunlight
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// A5: the orange pill slides to the chosen tab
+    @Namespace private var pillSpace
 
     /// the capsule's height
     static let barHeight: CGFloat = 60
@@ -60,14 +63,19 @@ struct FloatingTabBar: View {
     private func cell(_ item: Item) -> some View {
         let on = selection == item.id
         return Button {
-            if on { onReselect(item.id) } else { selection = item.id }
+            if on {
+                onReselect(item.id)
+            } else {
+                Haptics.tick()
+                withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.3)) { selection = item.id }
+            }
         } label: {
             Image(systemName: item.symbol)
                 .symbolVariant(on ? .fill : .none)
                 .font(.system(size: 20, weight: on ? .semibold : .regular))
                 .foregroundStyle(on ? Theme.onAccent : Color.secondary)
                 .frame(width: Self.pillWidth, height: Self.pillHeight)
-                .background { if on { Capsule().fill(Theme.accent) } }
+                .background { if on { Capsule().fill(Theme.accent).matchedGeometryEffect(id: "pill", in: pillSpace) } }
                 .frame(maxWidth: .infinity, minHeight: Self.barHeight)
                 .contentShape(Rectangle())
         }
