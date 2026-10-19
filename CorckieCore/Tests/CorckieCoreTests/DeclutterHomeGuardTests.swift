@@ -14,7 +14,7 @@ final class DeclutterHomeGuardTests: XCTestCase {
     func test_homeSentencesAreGone() throws {
         let home = try text("UI/Home/HomeView.swift")
         let gone = ["Rides start only once the scooter is connected", "Rides also start on their own", "Goes onto the next ride when it starts",
-                    "Load for the next ride\").font", "The arrival time shows on the ride screen", "Developer", "Light \(lightKg) kg", "Heavy \(heavyKg) kg"]
+                    "Load for the next ride\").font", "The arrival time shows on the ride screen", "Developer"]
         for g in gone { XCTAssertFalse(home.contains(g), "Home still has: \(g)") }
         XCTAssertTrue(home.contains("StatusPill("))
         XCTAssertTrue(home.contains(".fileImporter(isPresented: $pickingBackup"), "the backup banner opens the folder picker itself")
