@@ -2,20 +2,18 @@ import Charts
 import CorckieCore
 import SwiftUI
 
-/// M4-07: the Stats tab (IA: Stats). Recent insights on top, Week / Month with Calendar / Rolling, totals, full charges used and
-/// electricity cost (M35), fuel money saved (M35b, manual fuel price), km per day. Numbers are made in CorckieCore (`StatsCalc`,
-/// unit tested); this view draws them. No records, goals or streaks (P-3).
+/// M4-07 / P6-2: the Stats tab. One Week / Month / Year control, then clear sections: the period (distance with a change chip, rides,
+/// time, per-day bars), Money (one net number), Overall (4 tiles), and below them What affects my rides, Past weeks and the recent
+/// insights. Explanations sit behind an ⓘ (G1). Numbers are made in CorckieCore (`StatsCalc`, unit tested); this view draws them.
+/// No records, goals or streaks (P-3).
 struct StatsView: View {
-    @ScaledMetric(relativeTo: .body) private var tileMin: CGFloat = 150
     var preview: StatsModel?
 
     @AppStorage("stats.span") private var spanRaw = StatsSpan.week.rawValue
-    @AppStorage("stats.mode") private var modeRaw = StatsMode.calendar.rawValue
     @State private var back = 0
     @State private var model: StatsModel?
 
     private var span: StatsSpan { StatsSpan(rawValue: spanRaw) ?? .week }
-    private var mode: StatsMode { StatsMode(rawValue: modeRaw) ?? .calendar }
 
     var body: some View {
         NavigationStack {
@@ -31,95 +29,202 @@ struct StatsView: View {
             .navigationBarTitleDisplayMode(.inline)   // G3: small title; G12: prices live in Settings only
             .onAppear(perform: load)
             .onChange(of: spanRaw) { _, _ in back = 0; load() }
-            .onChange(of: modeRaw) { _, _ in back = 0; load() }
             .onChange(of: back) { _, _ in load() }
             .screen("Stats")
         }
     }
 
     private func content(_ m: StatsModel) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            recentCard(m)
-            weekCards(m)
-            if preview == nil {
-                GlassSegmented(options: StatsSpan.allCases.map { ($0.rawValue, $0.title) }, selection: $spanRaw)
-                    .accessibilityLabel("Span")
-                GlassSegmented(options: StatsMode.allCases.map { ($0.rawValue, $0.title) }, selection: $modeRaw)
-                    .accessibilityLabel("Mode")
-            } else {
-                GlassSegmented(options: StatsSpan.allCases.map { ($0.rawValue, $0.title) }, selection: .constant(m.span.rawValue))
-                GlassSegmented(options: StatsMode.allCases.map { ($0.rawValue, $0.title) }, selection: .constant(m.mode.rawValue))
-            }
+        VStack(alignment: .leading, spacing: 0) {
+            spanControl(m)
             periodHeader(m)
             if m.totals.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "chart.bar").font(.largeTitle).foregroundStyle(.secondary)
-                    Text("No rides in this period").font(.headline)
-                    Text("Totals, charges and costs appear after your first ride.")
-                        .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(24)
-                .glassCard(radius: DS.Radius.hero, padding: 0)
+                emptyCard
             } else {
-                if let text = StatsLoader.comparisonText(m) {
-                    Text(text).font(.subheadline).foregroundStyle(.secondary)
-                }
-                StatTileGrid {
-                    ForEach(Array(StatsLoader.tiles(m).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label, note: t.note) }
-                }
+                periodTiles(m)
                 bars(m)
+                moneySection(m)
             }
             if let overall = m.overall { OverallSection(stats: overall) }
-            if preview == nil {
-                NavigationLink { FactorsView() } label: {
-                    HStack {
-                        Label("What affects my rides", systemImage: "wind")
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
-                    }
-                    .padding(16)
-                    .glassCard(padding: 0)
-                }
-                .buttonStyle(.plain)
-            }
+            if preview == nil { factorsLink }
+            pastWeeksLink(m)
+            recentSection(m)
         }
         .padding(16)
     }
 
+    private func spanControl(_ m: StatsModel) -> some View {
+        Group {
+            if preview == nil {
+                GlassSegmented(options: StatsSpan.allCases.map { ($0.rawValue, $0.title) }, selection: $spanRaw)
+                    .accessibilityLabel("Span")
+            } else {
+                GlassSegmented(options: StatsSpan.allCases.map { ($0.rawValue, $0.title) }, selection: .constant(m.span.rawValue))
+            }
+        }
+    }
+
+    private var emptyCard: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "chart.bar").font(.largeTitle).foregroundStyle(.secondary)
+            Text("No rides yet").font(.headline)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .glassCard(radius: DS.Radius.hero, padding: 0)
+    }
+
+    /// The section label of the period ("THIS WEEK") with the earlier / later arrows on the right
     private func periodHeader(_ m: StatsModel) -> some View {
-        HStack {
-            if m.mode == .calendar || m.period.dayCount > 0 {
-                Button { back += 1 } label: { Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44) }
-                    .accessibilityLabel("Earlier")
-                    .disabled(preview != nil)
+        HStack(spacing: 0) {
+            SectionHeader(m.period.label) {
+                if m.holidayTagged { Image(systemName: "party.popper").font(.caption).foregroundStyle(Theme.canyon).accessibilityLabel("Holiday week") }
+                if let note = m.firstWeekNote { InfoButton("First week", text: note) }
             }
-            Spacer()
-            VStack(spacing: 2) {
-                Text(m.period.label).font(.headline)
-                if m.holidayTagged { Text("Holiday week").font(.caption).foregroundStyle(.secondary) }
-                if let note = m.firstWeekNote { Text(note).font(.caption).foregroundStyle(.secondary) }
-            }
-            Spacer()
+            Spacer(minLength: 0)
+            Button { back += 1 } label: { Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44) }
+                .accessibilityLabel("Earlier")
+                .disabled(preview != nil)
             Button { back = max(0, back - 1) } label: { Image(systemName: "chevron.right").frame(minWidth: 44, minHeight: 44) }
                 .accessibilityLabel("Later")
                 .disabled(back == 0 || preview != nil)
         }
+        .foregroundStyle(Theme.canyon)
     }
 
-    private func recentCard(_ m: StatsModel) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Recent insights").font(.headline).padding(.horizontal, 4)
-            if m.recent.isEmpty {
-                Text("Nothing yet. Insights appear after rides on the same route.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(DS.Space.cardPad)
-                    .glassCard(padding: 0)
-            } else {
+    /// ST3 / ST4: Distance (with the change chip), Rides, Time; labels only
+    private func periodTiles(_ m: StatsModel) -> some View {
+        let t = m.totals
+        return StatTileGrid {
+            StatTile(value: StatsCalc.km(t.km), label: "Distance", trend: Self.trend(m))
+            StatTile(value: "\(t.rides)", label: "Rides")
+            StatTile(value: StatsCalc.duration(t.seconds), label: "Time")
+        }
+    }
+
+    /// ST6: Money is ONE number, the net saved; the way it is made sits behind the ⓘ
+    @ViewBuilder private func moneySection(_ m: StatsModel) -> some View {
+        if let saved = m.totals.fuelSavedIls {
+            SectionHeader("Money") { InfoButton("Money", text: Self.moneyInfo(m)) }
+            HStack {
+                Text(StatsCalc.money(max(0, saved)))
+                    .scaledFont(28, weight: .semibold, mono: true, relativeTo: .title)
+                    .foregroundStyle(Theme.accentInk)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text("saved").font(.subheadline).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+            .padding(DS.Space.cardPad)
+            .glassCard(padding: 0)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// ST3: the km change as a small chip value ("12%"); nil without a base or in a holiday week
+    static func trend(_ m: StatsModel) -> StatTile.Trend? {
+        guard !m.holidayTagged, let pct = m.comparisonPct else { return nil }
+        let text = "\(Int(abs(pct).rounded()))%"
+        return pct >= 0 ? .up(text) : .down(text)
+    }
+
+    static func moneyInfo(_ m: StatsModel) -> String {
+        let t = m.totals
+        let net = max(0, t.fuelSavedIls ?? 0)
+        let gross = StatsCalc.money(net + t.electricityIls)
+        let l100 = String(format: "%.0f", m.fuelLPer100km)
+        let rate = String(format: "%.2f", m.electricityIlsPerKwh)
+        let first = "Saved is the fuel money you did not spend, \(gross) for the same distance by car at \(l100) L per 100 km, "
+        let second = "minus the electricity of your rides, \(StatsCalc.money(t.electricityIls)) at \(rate) \u{20AA} per kWh."
+        return first + second + " You used \(StatsCalc.charges(t.charges)) full charges."
+    }
+
+    private func bars(_ m: StatsModel) -> some View {
+        let data = Self.barData(m)
+        return Chart(Array(data.values.enumerated()), id: \.offset) { item in
+            BarMark(x: .value("Day", item.offset + 1), y: .value("km", item.element))
+                .foregroundStyle(Theme.accent)
+                .cornerRadius(4)
+        }
+        .chartXAxis { barAxis(data.labels) }
+        .chartYAxis(.hidden)
+        .frame(height: 130)
+        .padding(.horizontal, DS.Space.cardPad)
+        .padding(.vertical, 12)
+        .glassCard(padding: 0)
+        .padding(.top, DS.Space.row)
+        .accessibilityLabel("Distance per day, bar chart")
+    }
+
+    private func barAxis(_ labels: [String]) -> some AxisContent {
+        AxisMarks(values: .stride(by: labels.count > 12 ? 5.0 : 1.0)) { value in
+            AxisValueLabel {
+                if let i = value.as(Int.self), i >= 1, i <= labels.count { Text(labels[i - 1]).font(.caption2) }
+            }
+        }
+    }
+
+    /// The bars: a week and a month by day, a year by month; with the axis letters ("S M T W T F S", "1 6 11 ...", "J F M ...")
+    static func barData(_ m: StatsModel) -> (values: [Double], labels: [String]) {
+        switch m.span {
+        case .week:
+            return (m.totals.barsKm, ["S", "M", "T", "W", "T", "F", "S"])
+        case .month:
+            return (m.totals.barsKm, m.totals.barsKm.indices.map { String($0 + 1) })
+        case .year:
+            var cal = Calendar(identifier: .gregorian)
+            cal.timeZone = TimeZone(identifier: "UTC") ?? .current
+            var months = [Double](repeating: 0, count: 12)
+            for (i, km) in m.totals.barsKm.enumerated() {
+                let date = Date(timeIntervalSince1970: Double(m.period.startMs) / 1000 + (Double(i) + 0.5) * 86_400)
+                let month = cal.component(.month, from: date) - 1
+                if months.indices.contains(month) { months[month] += km }
+            }
+            return (months, ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"])
+        }
+    }
+
+    private var factorsLink: some View {
+        NavigationLink { FactorsView() } label: {
+            HStack {
+                Label("What affects my rides", systemImage: "wind")
+                Spacer()
+                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
+            }
+            .padding(DS.Space.cardPad)
+            .glassCard(padding: 0)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, DS.Space.block)
+    }
+
+    /// ST10: the finished weeks as a small bar chart; a tap opens the compact table
+    @ViewBuilder private func pastWeeksLink(_ m: StatsModel) -> some View {
+        if !m.pastWeeks.isEmpty {
+            NavigationLink { PastWeeksView(weeks: m.pastWeeks) } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Label("Past weeks", systemImage: "calendar")
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
+                    }
+                    PastWeeksChart(weeks: m.pastWeeks, height: 60)
+                }
+                .padding(DS.Space.cardPad)
+                .glassCard(padding: 0)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, DS.Space.row)
+        }
+    }
+
+    /// ST8: the recent insights sit at the bottom, and are not drawn when there are none
+    @ViewBuilder private func recentSection(_ m: StatsModel) -> some View {
+        if !m.recent.isEmpty {
+            SectionHeader("Recent insights")
+            VStack(spacing: DS.Space.row) {
                 ForEach(Array(m.recent.enumerated()), id: \.offset) { item in
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
+                        Image(systemName: "lightbulb").foregroundStyle(Theme.canyon).frame(width: 24)
                         Text(item.element.text).font(.subheadline)
                         Spacer(minLength: 0)
                     }
@@ -131,25 +236,9 @@ struct StatsView: View {
         }
     }
 
-    private func bars(_ m: StatsModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Distance per day").font(.footnote).foregroundStyle(.secondary)
-            Chart(Array(m.totals.barsKm.enumerated()), id: \.offset) { item in
-                BarMark(x: .value("Day", item.offset + 1), y: .value("km", item.element))
-                    .foregroundStyle(.tint)
-                    .cornerRadius(4)
-            }
-            .chartXAxis { AxisMarks(values: .automatic(desiredCount: 7)) }
-            .frame(height: 140)
-            .accessibilityLabel("Distance per day, bar chart")
-        }
-        .padding(16)
-        .glassCard(padding: 0)
-    }
-
     private func load() {
         guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
-        model = StatsLoader.load(db, span: span, mode: mode, back: back)
+        model = StatsLoader.load(db, span: span, mode: .calendar, back: back)
     }
 }
 
@@ -163,17 +252,19 @@ struct CostSettingsView: View {
             Section {
                 TextField("0.64", text: $electricity).keyboardType(.decimalPad)
             } header: {
-                Text("Electricity price (\u{20AA} per kWh)").textCase(nil)
-            } footer: {
-                Text("Used for \"Electricity\" on Stats: full charges used x battery size x this price. Default 0.64.")
+                HStack(spacing: 4) {
+                    Text("Electricity price (\u{20AA} per kWh)").textCase(nil)
+                    InfoButton("Electricity price", text: "Full charges used times the battery size times this price. Default 0.64.")
+                }
             }
             .glassRows()
             Section {
                 TextField("7", text: $fuelUse).keyboardType(.decimalPad)
             } header: {
-                Text("Car fuel use (L per 100 km)").textCase(nil)
-            } footer: {
-                Text("\"Fuel saved\" = the same distance by car at this use and the fuel price (Settings \u{2192} Costs) minus the electricity of the ride. Default 7.")
+                HStack(spacing: 4) {
+                    Text("Car fuel use (L per 100 km)").textCase(nil)
+                    InfoButton("Car fuel use", text: "Saved is the same distance by car at this use and the fuel price, minus the electricity of the ride. Default 7.")
+                }
             }
             .glassRows()
         }
@@ -203,26 +294,21 @@ struct CostSettingsView: View {
     }
 }
 
-/// F-01: the Overall section of Stats, from the scooter's lifetime odometer. Pre-app km are labelled as an estimate.
+/// F-01 / ST5: the Overall section of Stats, from the scooter's lifetime odometer. Four headline tiles; the rest behind the ⓘ.
 struct OverallSection: View {
     let stats: OverallStats
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Overall").font(.headline).padding(.horizontal, 4)
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader("Overall") { InfoButton("Overall", text: OverallLoader.details(stats)) }
             StatTileGrid {
-                ForEach(Array(OverallLoader.tiles(stats).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label, note: t.note) }
-            }
-            if stats.kmBefore > 0 {
-                Text("\(OverallCalc.km(stats.kmBefore)) ridden \(OverallCalc.beforeLabel).")
-                    .font(.footnote).foregroundStyle(.secondary)
+                ForEach(Array(OverallLoader.tiles(stats).enumerated()), id: \.offset) { _, t in StatTile(value: t.value, label: t.label) }
             }
             if stats.usesUnverifiedPrice {
-                Text("The September fuel price is unverified. Please check it in Settings, Costs, Price history.")
-                    .font(.footnote).foregroundStyle(.orange)
+                Label("Check the fuel price", systemImage: "exclamationmark.triangle")
+                    .font(.footnote).foregroundStyle(Theme.accentInk)
+                    .padding(.top, 6)
             }
-            Text("Money is counted month by month at the price valid then. A later price never changes past months.")
-                .font(.footnote).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .contain)
     }
@@ -271,48 +357,36 @@ enum StatsPreview {
         ]
         var model = StatsModel(span: month ? .month : .week, mode: .calendar, period: period, totals: t, comparisonPct: empty || firstWeek ? nil : 12,
                                holidayTagged: false, recent: insights, electricityIlsPerKwh: 0.64, fuelLPer100km: 7, fuelPriceIls: 8.27, packWh: 800,
-                               lastWeek: week, pastWeeks: name == "week-card" ? WeekPreview.weeks() : [])
+                               lastWeek: week, pastWeeks: empty ? [] : WeekPreview.weeks())
         model.overall = empty ? nil : overall()
         if firstWeek { model.firstWeekNote = "First week \u{00B7} from Wed 7 Oct" }
         return model
     }
 }
 
-// MARK: M4-09: week card + past weeks
+// MARK: Past weeks
 
-extension StatsView {
-    fileprivate func weekCards(_ m: StatsModel) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !m.lastWeek.isEmpty || !m.thisWeek.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Weekly summary").font(.headline)
-                    ForEach(Array((m.lastWeek + m.thisWeek).enumerated()), id: \.offset) { item in
-                        if item.offset > 0 { Divider() }
-                        Text(item.element.text).font(.subheadline)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .glassCard(padding: 0)
-            }
-            if !m.pastWeeks.isEmpty {
-                NavigationLink { PastWeeksView(weeks: m.pastWeeks) } label: {
-                    HStack {
-                        Label("Past weeks", systemImage: "calendar")
-                        Spacer()
-                        Text("\(m.pastWeeks.count)").foregroundStyle(.secondary)
-                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
-                    }
-                    .padding(16)
-                    .glassCard(padding: 0)
-                }
-                .buttonStyle(.plain)
-            }
+/// ST10: km per finished week as a small bar chart (oldest on the left)
+struct PastWeeksChart: View {
+    let weeks: [InsightRunner.PastWeek]
+    var height: CGFloat = 120
+
+    var body: some View {
+        let ordered = Array(weeks.sorted { $0.start < $1.start }.enumerated())
+        Chart(ordered, id: \.offset) { item in
+            BarMark(x: .value("Week", item.offset), y: .value("km", item.element.km))
+                .foregroundStyle(Theme.accent)
+                .cornerRadius(3)
         }
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .frame(height: height)
+        .accessibilityLabel("Distance per past week, bar chart")
     }
 }
 
-/// The finished weeks before the last one, newest first (made live from the rides; weeks under 2 riding days have no summary).
+/// The finished weeks before the last one, newest first, as a compact table (made live from the rides; weeks under 2 riding days
+/// have no summary).
 struct PastWeeksView: View {
     var weeks: [InsightRunner.PastWeek]
 
@@ -320,23 +394,18 @@ struct PastWeeksView: View {
         ScrollView {
             VStack(spacing: DS.Space.row) {
                 if weeks.isEmpty {
-                    Text("No past weeks yet. A week needs rides on 2 different days.")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(spacing: 8) {
+                        Image(systemName: "calendar").font(.largeTitle).foregroundStyle(.secondary)
+                        Text("No weeks yet").font(.headline)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(24)
+                    .glassCard(radius: DS.Radius.hero, padding: 0)
+                } else {
+                    PastWeeksChart(weeks: weeks)
                         .padding(DS.Space.cardPad)
                         .glassCard(padding: 0)
-                }
-                ForEach(weeks) { w in
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(Array(w.lines.enumerated()), id: \.offset) { item in
-                            Text(item.element).font(item.offset == 0 ? .subheadline.weight(.semibold) : .footnote)
-                                .foregroundStyle(item.offset == 0 ? .primary : .secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(DS.Space.cardPad)
-                    .glassCard(padding: 0)
-                    .accessibilityElement(children: .combine)
+                    table
                 }
             }
             .padding(DS.Space.gutter)
@@ -346,12 +415,30 @@ struct PastWeeksView: View {
         .navigationBarTitleDisplayMode(.inline)
         .screen("Past weeks")
     }
+
+    private var table: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(weeks.enumerated()), id: \.element.id) { i, w in
+                if i > 0 { Divider() }
+                HStack {
+                    Text(w.title.replacingOccurrences(of: "Week of ", with: ""))
+                    Spacer()
+                    Text("\(StatsCalc.km(w.km)) \u{00B7} \(w.rides) rides").foregroundStyle(.secondary).monospacedDigit()
+                }
+                .font(.subheadline)
+                .padding(.vertical, 12)
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(.horizontal, DS.Space.cardPad)
+        .glassCard(padding: 0)
+    }
 }
 
 enum WeekPreview {
     static func weeks() -> [InsightRunner.PastWeek] {
-        [InsightRunner.PastWeek(start: 1, title: "Week of 20 Sep", lines: ["Week of 20 Sep: 61 km, 8 rides, 3 h 2 min, +6 km more than the week before.", "Wind cost you about 4 min over the week."]),
-         InsightRunner.PastWeek(start: 2, title: "Week of 13 Sep", lines: ["Week of 13 Sep: 40 km, 6 rides, 2 h 10 min."]),
-         InsightRunner.PastWeek(start: 3, title: "Week of 6 Sep", lines: ["Week of 6 Sep: 22 km, 3 rides, 1 h 5 min."])]
+        [InsightRunner.PastWeek(start: 1, title: "Week of 20 Sep", lines: [], km: 61, rides: 8),
+         InsightRunner.PastWeek(start: 2, title: "Week of 13 Sep", lines: [], km: 40, rides: 6),
+         InsightRunner.PastWeek(start: 3, title: "Week of 6 Sep", lines: [], km: 22, rides: 3)]
     }
 }

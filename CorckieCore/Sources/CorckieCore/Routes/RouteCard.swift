@@ -58,6 +58,8 @@ public struct RouteStatRow: Equatable, Sendable {
     public var label: String
     /// "12-15 min", "~13 min", or "2 of 5 rides" while the stat is filling up
     public var value: String
+    /// P6-2 (G11): one typical number ("13 min"), the range stays in `value`; nil while the stat is filling up
+    public var typical: String? = nil
     /// "based on 3 rides" under 5 rides, the rush-hour split line, or nil
     public var note: String?
     /// pattern D (not enough rides yet)
@@ -68,6 +70,11 @@ public struct RouteTodayStrip: Equatable, Sendable {
     public var headline: String
     public var detail: String
     public var filling: Bool
+    /// P6-2 (K3): the big number ("19 min") and the chips (leaving time, battery) of the Today strip; nil while filling up
+    public var timeText: String? = nil
+    public var departure: String? = nil
+    public var batteryText: String? = nil
+    public var rushHour: Bool = false
 }
 
 public struct RouteVariantRow: Equatable, Sendable {
@@ -147,7 +154,9 @@ public enum RouteCardBuilder {
                     let factorText = s.factor.prefix(1).uppercased() + String(s.factor.dropFirst())
                     note = "\(factorText) \(rangeText(.time, s.with)), otherwise \(rangeText(.time, s.without))"
                 }
-                stats.append(RouteStatRow(label: label, value: rangeText(metric, r), note: note, filling: false))
+                var row = RouteStatRow(label: label, value: rangeText(metric, r), note: note, filling: false)
+                row.typical = typicalText(metric, r)
+                stats.append(row)
             } else {
                 let p = UsualRange.progress(of: metric, rides: selected)
                 if metric == .elevation && p.have == 0 { continue }      // no barometer data at all: hide (S9)
@@ -170,7 +179,12 @@ public enum RouteCardBuilder {
             var detail = "Based on \(e.basedOn) rides \u{00B7} leaving \(DayClock.clockText(minuteOfDay: e.departureMinute))"
             if e.rushHour { detail += " (rush hour)" }
             if let u = e.usedPct { detail += " \u{00B7} ~\(Int(u.rounded()))% battery" }
-            today = RouteTodayStrip(headline: head, detail: detail, filling: false)
+            var strip = RouteTodayStrip(headline: head, detail: detail, filling: false)
+            strip.timeText = "\(minutes(e.timeS)) min"
+            strip.departure = DayClock.clockText(minuteOfDay: e.departureMinute)
+            strip.batteryText = e.usedPct.map { "\(Int($0.rounded()))%" }
+            strip.rushHour = e.rushHour
+            today = strip
         }
 
         // variants: shown from two on (S9)
@@ -256,6 +270,13 @@ public enum RouteCardBuilder {
 
     static func elevText(up: Double, down: Double) -> String {
         "~+\(Int(up.rounded())) m / \u{2212}\(Int(down.rounded())) m"
+    }
+
+    /// P6-2 (G11): the middle of the usual range as one number without "~": "13 min", "6.1 km", "9%"
+    public static func typicalText(_ metric: RouteMetric, _ r: UsualRangeValue) -> String {
+        if metric == .time, r.median >= 3_600 { return RideSummaryBuilder.duration(r.median) }
+        let mid = UsualRangeValue(lo: r.median, hi: r.median, median: r.median, n: r.n, full: r.full)
+        return rangeText(metric, mid).replacingOccurrences(of: "~", with: "")
     }
 
     /// "12\u{2013}15 min", or "~13 min" when both ends round to the same number

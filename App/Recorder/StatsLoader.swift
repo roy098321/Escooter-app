@@ -69,26 +69,19 @@ enum StatsLoader {
         return model
     }
 
-    /// Texts of the tiles, in one place (the view draws them; the ui-shot preview and the check use the same)
+    /// Texts of the tiles, in one place (the view draws them; the ui-shot preview and the check use the same). No notes under them (G1).
     static func tiles(_ m: StatsModel) -> [(label: String, value: String, note: String?)] {
         let t = m.totals
         var out: [(label: String, value: String, note: String?)] = [
-            ("Rides", "\(t.rides)", t.shortHops > 0 ? "+\(t.shortHops) short \(t.shortHops == 1 ? "hop" : "hops") (\(StatsCalc.km(t.shortHopKm)))" : nil),
+            ("Rides", "\(t.rides)", nil),
             ("Distance", StatsCalc.km(t.km), nil),
             ("Riding time", StatsCalc.duration(t.seconds), nil),
-            ("Full charges", StatsCalc.charges(t.charges), "of the battery used"),
-            ("Electricity", StatsCalc.money(t.electricityIls), String(format: "at %.2f \u{20AA}/kWh", m.electricityIlsPerKwh)),
+            ("Full charges", StatsCalc.charges(t.charges), nil),
+            ("Electricity", StatsCalc.money(t.electricityIls), nil),
         ]
         if let saved = t.fuelSavedIls {
-            out.append(("Fuel saved", StatsCalc.money(max(0, saved)), "for the same distance, \(String(format: "%.0f", m.fuelLPer100km)) L/100 km"))
+            out.append(("Fuel saved", StatsCalc.money(max(0, saved)), nil))
         }
         return out
-    }
-
-    static func comparisonText(_ m: StatsModel) -> String? {
-        if m.holidayTagged { return "Holiday week: no comparison" }
-        guard let pct = m.comparisonPct else { return nil }
-        let sign = pct >= 0 ? "+" : "\u{2212}"
-        return "\(sign)\(Int(abs(pct).rounded()))% km against the same point of the previous \(m.span == .week ? "week" : "month")"
     }
 }

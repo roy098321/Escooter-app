@@ -25,9 +25,15 @@ public struct StatsRide: Equatable, Sendable {
 }
 
 public enum StatsSpan: String, CaseIterable, Sendable {
-    case week, month
+    case week, month, year
 
-    public var title: String { self == .week ? "Week" : "Month" }
+    public var title: String {
+        switch self {
+        case .week: return "Week"
+        case .month: return "Month"
+        case .year: return "Year"
+        }
+    }
 }
 
 public enum StatsMode: String, CaseIterable, Sendable {
@@ -130,6 +136,17 @@ public enum StatsCalc {
             let startMs = Int64(start.timeIntervalSince1970 * 1000), endMs = Int64(end.timeIntervalSince1970 * 1000)
             let n = Int(((endMs - startMs) / day))
             return StatsPeriod(startMs: startMs, endMs: endMs, label: back == 0 ? "This month" : df.string(from: start), isPartial: back == 0, dayCount: n)
+        case (.year, _):
+            // P6-2: Week / Month / Year; the year is always the calendar year
+            let cal = calendar(utcOffsetMin)
+            let comps = cal.dateComponents([.year], from: date(nowMs))
+            let first = cal.date(from: comps)!
+            let start = cal.date(byAdding: .year, value: -back, to: first)!
+            let end = cal.date(byAdding: .year, value: 1, to: start)!
+            df.dateFormat = "yyyy"
+            let startMs = Int64(start.timeIntervalSince1970 * 1000), endMs = Int64(end.timeIntervalSince1970 * 1000)
+            return StatsPeriod(startMs: startMs, endMs: endMs, label: back == 0 ? "This year" : df.string(from: start), isPartial: back == 0,
+                               dayCount: Int((endMs - startMs) / day))
         case (.week, .rolling), (.month, .rolling):
             let n = span == .week ? 7 : 30
             let end = nowMs - Int64(back) * Int64(n) * day

@@ -46,8 +46,6 @@ struct RoutesListView: View {
             VStack(spacing: 8) {
                 Image(systemName: "point.topleft.down.to.point.bottomright.curvepath").font(.largeTitle).foregroundStyle(.secondary)
                 Text("No routes yet").font(.headline)
-                Text("Ride the same trip twice and you'll be asked to save it.")
-                    .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
             .padding(24)
@@ -58,22 +56,16 @@ struct RoutesListView: View {
         } else {
             List {
                 if !m.saved.isEmpty {
-                    header("Routes")
                     ForEach(m.saved, id: \.routeId) { row($0) }
-                    if m.saved.contains(where: { $0.fit.status != .noData }) {
-                        footer("Greyed routes need more battery than you have, with a safety margin. They can still be opened.")
-                    }
                 }
                 if !m.suggested.isEmpty {
-                    header("Suggested routes")
+                    header("Suggested")
                     ForEach(m.suggested, id: \.routeId) { row($0) }
-                    footer("Trips you rode more than once. Save one with the pill or a swipe right, or open it first.")
                 }
                 if placeCount > 0 || preview != nil {
-                    header("Places")
                     Button { showPlaces = true } label: {
                         HStack {
-                            Image(systemName: "mappin.and.ellipse").foregroundStyle(.tint).frame(width: 28)
+                            Image(systemName: "mappin.and.ellipse").foregroundStyle(Theme.canyon).frame(width: 28)
                             Text("Places").font(.body.weight(.semibold))
                             Spacer()
                             if placeCount > 0 { Text("\(placeCount)").foregroundStyle(.secondary).monospacedDigit() }
@@ -100,24 +92,15 @@ struct RoutesListView: View {
             .listRowSeparator(.hidden)
     }
 
-    private func footer(_ text: String) -> some View {
-        Text(text)
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter + 4, bottom: 8, trailing: DS.Space.gutter))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-    }
-
     private func row(_ r: RouteListRow) -> some View {
         Button { selected = RouteRef(id: r.routeId) } label: {
             HStack(alignment: .center, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Text(r.title).font(.body.weight(.semibold))
                         if let chip = r.fit.chip { chipView(chip, greyed: r.fit.greyed) }
                     }
-                    Text(r.summary).font(.footnote).foregroundStyle(.secondary)
+                    facts(r)
                     if let detail = r.fit.detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
                 }
                 Spacer(minLength: 8)
@@ -154,8 +137,17 @@ struct RoutesListView: View {
         }
     }
 
+    /// T4: labelled by an icon, one typical number each ("timer 19 min", "battery 11%"); a route still filling up shows its ride count
+    private func facts(_ r: RouteListRow) -> some View {
+        HStack(spacing: 6) {
+            if let t = r.timeText { InfoChip("timer", t, label: "Time") }
+            if let b = r.batteryText { InfoChip("battery.50percent", b, label: "Battery") }
+            if r.timeText == nil { InfoChip("repeat", "\(r.rideCount) \(r.rideCount == 1 ? "ride" : "rides")") }
+        }
+    }
+
     private func chipView(_ text: String, greyed: Bool) -> some View {
-        Pill(text: text, tint: greyed ? .secondary : .orange)
+        Pill(text: text, tint: greyed ? Color.secondary : Theme.accentInk)
     }
 
     private func decide(_ routeId: String, save: Bool) {

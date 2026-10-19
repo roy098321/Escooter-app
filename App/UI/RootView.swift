@@ -191,7 +191,7 @@ enum UIShot {
             switch name {
             case "settings": SettingsView()
             case "settings-full": SettingsView()
-            case "settings-data": SettingsView(startAt: "Data and backup")
+            case "settings-data": SettingsView(startAt: "Data & backup")
             case "export": ExportEverythingView()
             case "restore": RestoreView()
             case "developer": DeveloperView()

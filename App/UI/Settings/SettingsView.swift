@@ -1,40 +1,26 @@
 import CorckieCore
 import SwiftUI
 
-/// Settings (FEATURES.md → Settings, the final C23 list): Battery and charging · Units and display · Costs · Rider · Voice and
-/// notifications · Places · Data and backup · Help · Developer. The groups, rows and defaults come from `SettingsCatalog`
-/// (Core, tested against the real constants); the values live in the `setting` table (`SettingsStore.swift`).
+/// Settings (P6-2, SE1-SE9): five groups, Scooter & battery, Rider & load, Costs, Places, Data & backup, then Help, Developer and
+/// About. No grey footers (G1) and no developer notes (G8). The values live in the `setting` table (`SettingsStore.swift`); the
+/// defaults come from `SettingsCatalog` (Core, tested against the real constants).
 struct SettingsView: View {
     /// ui-shot only: scroll to a group
     var startAt: String?
 
-    @State private var packAh = T.t42DefaultPackAh
-    @State private var chargerA = T.t46ChargerA
-    @State private var confirmRecalibrate = false
-    @State private var recalibrated = false
-    @State private var sunlight = DisplaySettings.Sunlight.auto
-    @State private var colourBlind = false
     @State private var weight = ""
     @State private var light = ""
     @State private var heavy = ""
-    @State private var notify: [NotifyKind: Bool] = [:]
     @State private var loaded = false
 
     private var db: AppDatabase? { AppModel.shared.database }
 
-    private func footer(_ title: String) -> Text {
-        Text(SettingsCatalog.groups.first { $0.title == title }?.footer ?? "")
-    }
-
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                batterySection
                 scooterSection
-                displaySection
-                costsSection
                 riderSection
-                notifySection
+                costsSection
                 placesSection
                 dataSection
                 helpSection
@@ -51,102 +37,43 @@ struct SettingsView: View {
         .screen("Settings")
     }
 
-    // MARK: Groups
-
-    private var batterySection: some View {
+    /// A group with the small brown label (the same look as `SectionHeader`); the title is also the scroll id
+    private func group<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
         Section {
-            SegmentedRow(title: "Battery size", options: SettingsCatalog.packChoices.map { ($0, SettingsCatalog.ah($0)) }, selection: $packAh)
-            .onChange(of: packAh) { _, v in
-                guard loaded, let db else { return }
-                BatterySettings.setPackAh(db, v)
-            }
-            Picker("Charger", selection: $chargerA) {
-                ForEach(SettingsCatalog.chargerChoices, id: \.self) { Text(String(format: "%.1f A", $0)).tag($0) }
-            }
-            .onChange(of: chargerA) { _, v in
-                guard loaded, let db else { return }
-                BatterySettings.setChargerA(db, v)
-            }
-            Button("Recalibrate battery") { confirmRecalibrate = true }
-                .confirmationDialog("Recalibrate the battery?", isPresented: $confirmRecalibrate, titleVisibility: .visible) {
-                    Button("Start over") {
-                        if let db { BatterySettings.recalibrate(db) }
-                        recalibrated = true
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("The app learns the battery again from your next 5 qualifying rides. Old rides stay.")
-                }
-            if recalibrated { Text("Started. It learns from your next rides.").font(.footnote).foregroundStyle(.secondary) }
+            content()
         } header: {
-            Text("Battery and charging").id("Battery and charging").textCase(nil)
-        } footer: {
-            footer("Battery and charging")
+            Text(title.uppercased())
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.sectionLabel)
+                .id(title)
         }
         .glassRows()
     }
 
+    // MARK: Groups
+
     private var scooterSection: some View {
-        GlassSection("Scooter") {
+        group("Scooter & battery") {
             NavigationLink {
                 MaintenanceView()
             } label: {
-                Label("Maintenance", systemImage: "wrench.and.screwdriver").squircle(.orange)
+                Label("Maintenance", systemImage: "wrench.and.screwdriver").squircle(Theme.accent)
+            }
+            NavigationLink {
+                BatterySettingsView()
+            } label: {
+                Label("Battery", systemImage: "battery.75percent").squircle(Theme.ok)
+            }
+            NavigationLink {
+                NotifySettingsView()
+            } label: {
+                Label("Notifications", systemImage: "bell").squircle(Theme.danger)
             }
         }
-        .glassRows()
-    }
-
-    private var displaySection: some View {
-        Section {
-            SegmentedRow(title: "Sunlight mode", options: DisplaySettings.Sunlight.allCases.map { ($0, $0.rawValue) }, selection: $sunlight)
-            .onChange(of: sunlight) { _, v in
-                if loaded {
-                    DisplaySettings.setSunlight(db, v)
-                    SunlightMonitor.shared.refresh()
-                }
-            }
-            LabeledContent("Units", value: "km \u{00B7} \u{00B0}C")
-            Toggle("Colour-blind friendly speed colours", isOn: $colourBlind)
-                .onChange(of: colourBlind) { _, on in
-                    if loaded { DisplaySettings.setColourBlind(db, on) }
-                }
-        } header: {
-            Text("Units and display").id("Units and display").textCase(nil)
-        } footer: {
-            footer("Units and display")
-        }
-        .glassRows()
-    }
-
-    private var costsSection: some View {
-        GlassSection("Costs") {
-            NavigationLink {
-                FuelPriceView()
-            } label: {
-                LabeledContent("Fuel price", value: FuelPriceSetting.load(db).map(FuelPriceSetting.text) ?? "\u{2014}")
-            }
-            NavigationLink {
-                CostSettingsView()
-            } label: {
-                Text("Electricity and fuel use")
-            }
-            NavigationLink {
-                PriceHistoryView()
-            } label: {
-                Text("Price history")
-            }
-            NavigationLink {
-                PurchaseSettingsView()
-            } label: {
-                Text("Purchase date and odometer")
-            }
-        }
-        .glassRows()
     }
 
     private var riderSection: some View {
-        Section {
+        group("Rider & load") {
             HStack {
                 Text("Rider weight")
                 Spacer()
@@ -177,75 +104,74 @@ struct SettingsView: View {
                     .onChange(of: heavy) { _, v in saveLoad(RiderSettings.heavyKey, v) }
                 Text("kg").foregroundStyle(.secondary)
             }
-        } header: {
-            Text("Rider").id("Rider").textCase(nil)
-        } footer: {
-            Text("Optional. Light and Heavy are what the Loaded tag means in kg (defaults 5 and 15).")
+            NavigationLink {
+                DisplaySettingsView()
+            } label: {
+                Label("Display", systemImage: "sun.max").squircle(Theme.canyon)
+            }
         }
-        .glassRows()
     }
 
-    private var notifySection: some View {
-        Section {
-            ForEach(NotifyKind.allCases, id: \.self) { kind in
-                Toggle(kind.title, isOn: Binding(
-                    get: { notify[kind] ?? true },
-                    set: { on in
-                        notify[kind] = on
-                        NotifyPrefs.set(db, kind, on)
-                        if kind == .weekly { BudgetedNotifier.refreshWeekly(db) }
-                    }))
+    private var costsSection: some View {
+        group("Costs") {
+            NavigationLink {
+                FuelPriceView()
+            } label: {
+                LabeledContent("Fuel price", value: FuelPriceSetting.load(db).map(FuelPriceSetting.text) ?? "\u{2014}")
             }
-        } header: {
-            Text("Voice and notifications").id("Voice and notifications").textCase(nil)
-        } footer: {
-            footer("Voice and notifications")
+            NavigationLink {
+                CostSettingsView()
+            } label: {
+                Text("Electricity and fuel use")
+            }
+            NavigationLink {
+                PriceHistoryView()
+            } label: {
+                Text("Price history")
+            }
+            NavigationLink {
+                PurchaseSettingsView()
+            } label: {
+                Text("Purchase date and odometer")
+            }
         }
-        .glassRows()
     }
 
     private var placesSection: some View {
-        GlassSection("Places") {
+        group("Places") {
             NavigationLink {
                 PlacesView()
             } label: {
-                Label("Places", systemImage: "mappin.and.ellipse").squircle(.red)
+                Label("Places", systemImage: "mappin.and.ellipse").squircle(Theme.danger)
             }
         }
-        .glassRows()
     }
 
     private var dataSection: some View {
-        Section {
+        group("Data & backup") {
             DataSettingsRows()
             let writer = BackupWriter.shared
             NavigationLink {
                 BackupView()
             } label: {
-                LabeledContent("Backup folder \u{00B7} Last backup", value: BackupPlan.lastBackupText(
+                LabeledContent("Backup", value: BackupPlan.lastBackupText(
                     lastMs: writer.lastBackupMs, nowMs: Int64(Date().timeIntervalSince1970 * 1000),
                     utcOffsetMin: TimeZone.current.secondsFromGMT() / 60))
             }
             if let error = writer.lastError {
-                Text("Last backup failed: \(error)").font(.footnote).foregroundStyle(.red)
+                Text("Last backup failed: \(error)").font(.footnote).foregroundStyle(Theme.danger)
             }
-        } header: {
-            Text("Data and backup").id("Data and backup").textCase(nil)
-        } footer: {
-            footer("Data and backup")
         }
-        .glassRows()
     }
 
     private var helpSection: some View {
-        GlassSection("Help") {
+        group("Help") {
             NavigationLink {
                 ReportProblemView()
             } label: {
                 Label("Report a problem", systemImage: "exclamationmark.bubble").squircle(.pink)
             }
         }
-        .glassRows()
     }
 
     private var developerSection: some View {
@@ -255,32 +181,23 @@ struct SettingsView: View {
             } label: {
                 Label("Developer", systemImage: "hammer").squircle(.gray)
             }
-        } footer: {
-            Text("Checks, results and the test tools of this build.")
         }
         .glassRows()
     }
 
     private var aboutSection: some View {
-        GlassSection("About") {
+        group("About") {
             LabeledContent("Version") { VersionLabel() }   // G4: the only place the version tag shows
-            LabeledContent("App ID", value: AppInfo.bundleID)
         }
-        .glassRows()
     }
 
     // MARK: Values
 
     private func loadValues() {
         loaded = false
-        packAh = BatterySettings.packAh(db)
-        chargerA = BatterySettings.chargerA(db)
-        sunlight = DisplaySettings.sunlight(db)
-        colourBlind = DisplaySettings.colourBlind
         weight = RiderSettings.weightKg(db).map { Self.short($0) } ?? ""
         light = SettingsValue.number(db, RiderSettings.lightKey).map { Self.short($0) } ?? ""
         heavy = SettingsValue.number(db, RiderSettings.heavyKey).map { Self.short($0) } ?? ""
-        for kind in NotifyKind.allCases { notify[kind] = NotifyPrefs.isOn(db, kind) }
         DispatchQueue.main.async { loaded = true }
     }
 
@@ -304,6 +221,127 @@ struct SettingsView: View {
         } else if let v = parse(text), (0...100).contains(v) {
             SettingsValue.set(db, key, String(v))
         }
+    }
+}
+
+// MARK: Pushed settings screens
+
+/// SE3: battery size, charger and Recalibrate, one tap down from Scooter & battery
+struct BatterySettingsView: View {
+    @State private var packAh = T.t42DefaultPackAh
+    @State private var chargerA = T.t46ChargerA
+    @State private var confirmRecalibrate = false
+    @State private var recalibrated = false
+    @State private var loaded = false
+
+    private var db: AppDatabase? { AppModel.shared.database }
+
+    var body: some View {
+        List {
+            Section {
+                SegmentedRow(title: "Battery size", options: SettingsCatalog.packChoices.map { ($0, SettingsCatalog.ah($0)) }, selection: $packAh)
+                    .onChange(of: packAh) { _, v in
+                        guard loaded, let db else { return }
+                        BatterySettings.setPackAh(db, v)
+                    }
+                Picker("Charger", selection: $chargerA) {
+                    ForEach(SettingsCatalog.chargerChoices, id: \.self) { Text(String(format: "%.1f A", $0)).tag($0) }
+                }
+                .onChange(of: chargerA) { _, v in
+                    guard loaded, let db else { return }
+                    BatterySettings.setChargerA(db, v)
+                }
+                Button("Recalibrate battery") { confirmRecalibrate = true }
+                    .confirmationDialog("Recalibrate the battery?", isPresented: $confirmRecalibrate, titleVisibility: .visible) {
+                        Button("Start over") {
+                            if let db { BatterySettings.recalibrate(db) }
+                            recalibrated = true
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("The app learns the battery again from your next 5 qualifying rides. Old rides stay.")
+                    }
+                if recalibrated { Label("Started", systemImage: "checkmark").font(.footnote).foregroundStyle(.secondary) }
+            }
+            .glassRows()
+        }
+        .glassList()
+        .navigationTitle("Battery")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            loaded = false
+            packAh = BatterySettings.packAh(db)
+            chargerA = BatterySettings.chargerA(db)
+            DispatchQueue.main.async { loaded = true }
+        }
+        .screen("Battery settings")
+    }
+}
+
+/// Sunlight mode and the colour-blind speed colours (SE2: the fixed unit row is gone)
+struct DisplaySettingsView: View {
+    @State private var sunlight = DisplaySettings.Sunlight.auto
+    @State private var colourBlind = false
+    @State private var loaded = false
+
+    private var db: AppDatabase? { AppModel.shared.database }
+
+    var body: some View {
+        List {
+            Section {
+                SegmentedRow(title: "Sunlight mode", options: DisplaySettings.Sunlight.allCases.map { ($0, $0.rawValue) }, selection: $sunlight)
+                    .onChange(of: sunlight) { _, v in
+                        if loaded {
+                            DisplaySettings.setSunlight(db, v)
+                            SunlightMonitor.shared.refresh()
+                        }
+                    }
+                Toggle("Colour-blind friendly speed colours", isOn: $colourBlind)
+                    .onChange(of: colourBlind) { _, on in
+                        if loaded { DisplaySettings.setColourBlind(db, on) }
+                    }
+            }
+            .glassRows()
+        }
+        .glassList()
+        .navigationTitle("Display")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            loaded = false
+            sunlight = DisplaySettings.sunlight(db)
+            colourBlind = DisplaySettings.colourBlind
+            DispatchQueue.main.async { loaded = true }
+        }
+        .screen("Display settings")
+    }
+}
+
+/// The notification switches
+struct NotifySettingsView: View {
+    @State private var notify: [NotifyKind: Bool] = [:]
+
+    private var db: AppDatabase? { AppModel.shared.database }
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(NotifyKind.allCases, id: \.self) { kind in
+                    Toggle(kind.title, isOn: Binding(
+                        get: { notify[kind] ?? true },
+                        set: { on in
+                            notify[kind] = on
+                            NotifyPrefs.set(db, kind, on)
+                            if kind == .weekly { BudgetedNotifier.refreshWeekly(db) }
+                        }))
+                }
+            }
+            .glassRows()
+        }
+        .glassList()
+        .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { for kind in NotifyKind.allCases { notify[kind] = NotifyPrefs.isOn(db, kind) } }
+        .screen("Notification settings")
     }
 }
 

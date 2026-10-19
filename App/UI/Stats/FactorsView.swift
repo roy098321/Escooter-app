@@ -28,28 +28,26 @@ struct FactorsView: View {
                     .pickerStyle(.segmented)
                     if perTrip {
                         if routes.isEmpty {
-                            Text("No saved routes yet").foregroundStyle(.secondary)
+                            Label("No saved routes", systemImage: "point.topleft.down.to.point.bottomright.curvepath").foregroundStyle(.secondary)
                         } else {
                             Picker("Route", selection: $routeId) {
                                 ForEach(routes) { Text($0.name).tag(Optional($0.id)) }
                             }
                         }
                     }
-                } footer: {
-                    Text(perTrip ? "What each factor costs on this route, per trip." : "What each factor costs on every route together, per km of riding.")
                 }
-                    .glassRows()
+                .glassRows()
             }
             Section {
                 let shown = preview ?? rows
                 if shown.isEmpty {
-                    Text(FactorsPage.emptyText).font(.subheadline).foregroundStyle(.secondary)
+                    Label("No effects yet", systemImage: "wind").foregroundStyle(.secondary)
                 }
-                ForEach(shown) { row in rowView(row) }
+                ForEach(shown) { row in rowView(row, scale: BarScale(shown)) }
             }
-                .glassRows()
+            .glassRows()
         }
-            .glassList()
+        .glassList()
         .navigationTitle("What affects my rides")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: load)
@@ -58,22 +56,46 @@ struct FactorsView: View {
         .screen("Factors")
     }
 
-    private func rowView(_ row: FactorsRow) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(row.title).font(.headline)
-            if let t = row.timeText { Text(t).font(.subheadline) }
-            if let b = row.batteryText { Text(b).font(.subheadline) }
-            if let n = row.basedOn { Text(n).font(.footnote).foregroundStyle(.secondary) }
-            if let p = row.progress {
-                HStack(spacing: 6) {
-                    Image(systemName: "hourglass").font(.footnote)
-                    Text(p).font(.footnote)
-                }
-                .foregroundStyle(.secondary)
+    /// The biggest effect on the page, so the bars of all rows share one scale
+    struct BarScale {
+        var time: Double
+        var used: Double
+        init(_ rows: [FactorsRow]) {
+            time = max(1, rows.compactMap { $0.timeS.map(abs) }.max() ?? 1)
+            used = max(0.01, rows.compactMap { $0.usedPct.map(abs) }.max() ?? 0.01)
+        }
+    }
+
+    /// ST11: one row per factor, two small bars (time, battery); no "based on N"
+    private func rowView(_ row: FactorsRow, scale: BarScale) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(row.title).font(.headline)
+                if row.uncertain { Image(systemName: "questionmark.circle").foregroundStyle(Theme.accentInk).accessibilityLabel("Uncertain") }
             }
-            if row.uncertain { Text("Uncertain: outside what physics allows").font(.footnote).foregroundStyle(.orange) }
+            if let t = row.timeText { barLine("timer", t, row.timeS, scale.time) }
+            if let b = row.batteryText { barLine("battery.50percent", b, row.usedPct, scale.used) }
+            if let p = row.progress {
+                Label(p, systemImage: "hourglass").font(.footnote).foregroundStyle(.secondary)
+            } else if !row.hasEffect, let n = row.basedOn {
+                Text(n).font(.footnote).foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 2)
+    }
+
+    private func barLine(_ symbol: String, _ text: String, _ value: Double?, _ scale: Double) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol).font(.caption).foregroundStyle(Theme.canyon).frame(width: 18)
+            GeometryReader { geo in
+                let width = geo.size.width * min(1, abs(value ?? 0) / scale)
+                Capsule().fill(Theme.chip)
+                    .overlay(alignment: .leading) { Capsule().fill((value ?? 0) < 0 ? Theme.ok : Theme.accent).frame(width: max(4, width)) }
+            }
+            .frame(height: 6)
+            Text(text).font(.footnote).monospacedDigit().foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8).frame(width: 130, alignment: .trailing)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func load() {

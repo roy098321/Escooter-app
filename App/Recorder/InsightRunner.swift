@@ -249,6 +249,9 @@ enum InsightRunner {
         var start: Int64
         var title: String
         var lines: [String]
+        /// P6-2: the week's distance and ride count, for the small bar chart
+        var km: Double = 0
+        var rides: Int = 0
         var id: Int64 { start }
     }
 
@@ -268,7 +271,8 @@ enum InsightRunner {
             let title = "Week of " + df.string(from: Date(timeIntervalSince1970: Double(start) / 1000))
             guard let found = try? weekCandidates(database, start: start, label: title, nowMs: nowMs), !found.isEmpty else { continue }
             let lines = found.sorted { (order.firstIndex(of: $0.type) ?? 9) < (order.firstIndex(of: $1.type) ?? 9) }.map(\.text)
-            out.append(PastWeek(start: start, title: title, lines: lines))
+            let weekRides = ((try? StatsQueries(database).rides(from: start, to: start + week)) ?? []).filter { $0.kind == "ride" }
+            out.append(PastWeek(start: start, title: title, lines: lines, km: weekRides.reduce(0) { $0 + $1.distanceM } / 1000, rides: weekRides.count))
         }
         return out
     }

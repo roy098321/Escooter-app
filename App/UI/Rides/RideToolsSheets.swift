@@ -167,8 +167,6 @@ struct MergeSheet: View {
                     Button("Merge into one ride") { merge() }
                         .fontWeight(.semibold)
                         .disabled(preview != nil)
-                } footer: {
-                    Text("The two rides become one. The stop counts as a stop, not as missing data. You can undo it right after, and later from the ... menu until the next merge.")
                 }
                     .glassRows()
             }
@@ -273,8 +271,6 @@ struct TrimSheet: View {
                         if isTrimmed {
                             Button("Reset trim", role: .destructive) { reset() }
                         }
-                    } footer: {
-                        Text("Nothing is deleted. The ride keeps all its readings; only the numbers use the part you keep. At least one minute stays. Reset trim brings the original numbers back.")
                     }
                         .glassRows()
                 } else {

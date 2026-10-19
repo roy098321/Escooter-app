@@ -22,15 +22,11 @@ struct ExportEverythingView: View {
 
     var body: some View {
         List {
-            if previewEmpty || rideCount == 0 {
-                Section {
-                    Label("No rides yet. The file will hold your settings only; it fills up as you ride.", systemImage: "tray")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                }
-                    .glassRows()
-            }
             Section {
-                Text("One file with every ride and all its readings, your places and routes, charges, battery calibration, maintenance and settings. Simulated rides are left out. Restore reads it back and never doubles a ride.")
+                if previewEmpty || rideCount == 0 {
+                    Label("No rides yet", systemImage: "tray").font(.subheadline).foregroundStyle(.secondary)
+                }
+                Text("One file with everything. Restore reads it back.")
                     .font(.subheadline)
                 Button {
                     Task { await make() }
@@ -44,11 +40,6 @@ struct ExportEverythingView: View {
                 .disabled(working)
             } footer: {
                 if !summary.isEmpty { Text(summary) }
-            }
-                .glassRows()
-            Section {
-                Text("Everything stays on this phone unless you share the file yourself (Files, AirDrop, mail). A ride can also be exported on its own from its ... menu (CSV, GPX, Ride Replay).")
-                    .font(.footnote).foregroundStyle(.secondary)
             }
                 .glassRows()
         }
@@ -104,7 +95,7 @@ struct RestoreView: View {
             } header: {
                 Text("Restore").textCase(nil)
             } footer: {
-                Text("Pick an export file, a ride file or a full backup (full-....corckie). Rides already on this phone are skipped, so restoring twice changes nothing and nothing here is overwritten.")
+                Text("Rides already here are skipped.")
             }
                 .glassRows()
             if working {
@@ -180,7 +171,7 @@ struct ImportRideLogsView: View {
             } header: {
                 Text("Import ride logs").textCase(nil)
             } footer: {
-                Text("Pick the files of one or more rides together (.csv or .txt). They are recognised by their first line, so the names do not matter: the 0.4 set c8-scooter-packets.csv with c8-location.csv and c8-barometer.csv, or an nRF Connect log export with the Sensor Logger Location.csv and Barometer.csv of the same ride. Each ride is replayed through the recorder and stored as a normal ride with its real date; rides already on this phone are skipped.")
+                Text("Pick the .csv or .txt files of one or more rides together. Rides already here are skipped.")
             }
                 .glassRows()
             if working {
@@ -230,22 +221,47 @@ struct ImportRideLogsView: View {
     }
 }
 
-/// Settings → Data and backup, as rows of the Settings list (the caller puts them in a Section).
-struct DataSettingsRows: View {
+/// SE4: the raw-data setting and Import ride logs, in Settings → Developer
+struct DeveloperDataRows: View {
     @State private var retention = RawRetention.default
     @State private var usage = "\u{2013}"
+
+    var body: some View {
+        Group {
+            SegmentedRow(title: "Keep raw data", options: RawRetention.allCases.map { ($0, $0.rawValue) }, selection: $retention)
+                .onChange(of: retention) { _, v in
+                    guard let db = AppModel.shared.database else { return }
+                    RetentionService.set(db, v)
+                    refreshUsage()
+                }
+            LabeledContent("Raw data on this phone", value: usage).font(.footnote)
+            NavigationLink {
+                ImportRideLogsView()
+            } label: {
+                Label("Import ride logs", systemImage: "square.and.arrow.down.on.square")
+            }
+        }
+        .onAppear {
+            guard let db = AppModel.shared.database else { return }
+            retention = RetentionService.current(db)
+            refreshUsage()
+        }
+    }
+
+    private func refreshUsage() {
+        guard let db = AppModel.shared.database else { return }
+        let u = RetentionService.usage(db)
+        usage = u.chunks == 0 ? "none" : "\(u.chunks) chunks, " + String(format: "%.1f MB", Double(u.bytes) / 1_000_000)
+    }
+}
+
+/// Settings → Data & backup, as rows of the Settings list (the caller puts them in a Section).
+struct DataSettingsRows: View {
     @State private var confirmDelete = false
     @State private var errorText: String?
 
     var body: some View {
         Group {
-            SegmentedRow(title: "Keep raw data", options: RawRetention.allCases.map { ($0, $0.rawValue) }, selection: $retention)
-            .onChange(of: retention) { _, v in
-                guard let db = AppModel.shared.database else { return }
-                RetentionService.set(db, v)
-                refreshUsage()
-            }
-            LabeledContent("Raw data on this phone", value: usage).font(.footnote)
             NavigationLink {
                 ExportEverythingView()
             } label: {
@@ -256,17 +272,7 @@ struct DataSettingsRows: View {
             } label: {
                 Label("Restore", systemImage: "arrow.counterclockwise")
             }
-            NavigationLink {
-                ImportRideLogsView()
-            } label: {
-                Label("Import ride logs", systemImage: "square.and.arrow.down.on.square")
-            }
             Button(role: .destructive) { confirmDelete = true } label: { Label("Delete all data", systemImage: "trash") }
-        }
-        .onAppear {
-            guard let db = AppModel.shared.database else { return }
-            retention = RetentionService.current(db)
-            refreshUsage()
         }
         .confirmationDialog("Delete all data?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete all data", role: .destructive) { deleteAll() }
@@ -281,17 +287,10 @@ struct DataSettingsRows: View {
         }
     }
 
-    private func refreshUsage() {
-        guard let db = AppModel.shared.database else { return }
-        let u = RetentionService.usage(db)
-        usage = u.chunks == 0 ? "none" : "\(u.chunks) chunks, " + String(format: "%.1f MB", Double(u.bytes) / 1_000_000)
-    }
-
     private func deleteAll() {
         guard let db = AppModel.shared.database else { return }
         do {
             try DeleteAllData.run(db)
-            refreshUsage()
         } catch {
             errorText = error.localizedDescription
         }

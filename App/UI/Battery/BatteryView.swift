@@ -20,15 +20,12 @@ struct BatteryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Space.block) {
                 if let o = overview {
+                    rangeCard(o)
                     tiles(o)
-                    nowSection(o)
-                    chargingSection(o)
-                    calibrationSection(o.calibration)
+                    calibrationRow(o.calibration)
                     chargeLogSection(o)
-                    healthSection(o)
                 } else {
-                    Text("Battery data is not available yet.").foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity).padding(DS.Space.cardPad).glassCard(padding: 0)
+                    emptyState("bolt.slash", "No battery data")
                 }
             }
             .padding(DS.Space.gutter)
@@ -41,87 +38,101 @@ struct BatteryView: View {
         .screen("Battery")
     }
 
-    /// Prototype order: three tiles first (health, cycles, to full), then the range card
+    private func emptyState(_ symbol: String, _ text: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: symbol).font(.title2).foregroundStyle(.secondary)
+            Text(text).font(.subheadline).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(DS.Space.cardPad)
+        .glassCard(padding: 0)
+    }
+
+    /// B1 / B5: one big range, the safe range small beside it, the battery % with a clock when it is the last seen one
+    private func rangeCard(_ o: BatteryOverview) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                if let r = o.range {
+                    Text(RealRangeCalc.kmText(r.rangeKm))
+                        .scaledFont(40, weight: .bold, mono: true, relativeTo: .largeTitle)
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                    InfoChip("shield", "safe " + RealRangeCalc.kmText(r.decisionRangeKm), label: "Safe range")
+                } else {
+                    Image(systemName: "gauge.with.needle").font(.title).foregroundStyle(.secondary)
+                    Text("after a ride").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 8)
+            HStack(spacing: 4) {
+                if !o.connected && o.currentPct != nil { Image(systemName: "clock").font(.footnote).foregroundStyle(.secondary) }
+                Text(o.currentPct.map { "\(Int($0.rounded()))%" } ?? "\u{2013}")
+                    .scaledFont(28, weight: .semibold, mono: true, relativeTo: .title)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Self.batteryText(o.currentPct, live: o.connected))
+        }
+        .padding(DS.Space.cardPad)
+        .glassCard(radius: DS.Radius.hero, padding: 0)
+    }
+
+    /// B4: a tile that has nothing to show yet is not drawn
     private func tiles(_ o: BatteryOverview) -> some View {
         StatTileGrid {
-            StatTile(value: Self.healthTile(o.health), label: "Health")
+            if let h = Self.healthTile(o.health) { StatTile(value: h, label: "Health") }
             StatTile(value: BatteryText.cyclesText(o.cycles), label: "Charge cycles")
-            StatTile(value: o.chargeHours.map { ChargeTime.text(hours: $0) } ?? "\u{2013}", label: "To full")
+            if let h = o.chargeHours {
+                StatTile(value: ChargeTime.text(hours: h), label: "To full")
+            } else if let s = o.sinceLastRide {
+                StatTile(value: Self.timeText(s.fullAtMs), label: "Full at")
+            }
         }
     }
 
-    /// the tile shows the percentage only; the words ("Baseline forming") stay in the Cycles and health card
-    static func healthTile(_ h: BatteryHealth.State) -> String {
+    /// the tile shows the percentage only; nil (hidden) while it is still gathering data
+    static func healthTile(_ h: BatteryHealth.State) -> String? {
         let t = BatteryText.healthTitle(h)
-        return t.count <= 6 ? t : "\u{2013}"
+        return t.count <= 6 ? t : nil
     }
 
-    /// One glass card with a small header and a footer line
-    private func card<Content: View>(_ title: String, footer: String? = nil, @ViewBuilder _ content: () -> Content) -> some View {
+    /// One glass card with a small header (and an optional ⓘ)
+    private func card<Content: View>(_ title: String, info: String? = nil, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionHeader(title)
+            if let info {
+                SectionHeader(title) { InfoButton(title, text: info) }
+            } else {
+                SectionHeader(title)
+            }
             VStack(alignment: .leading, spacing: 10) { content() }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(DS.Space.cardPad)
                 .glassCard(padding: 0)
-            if let footer {
-                Text(footer).font(.footnote).foregroundStyle(.secondary).padding(.horizontal, 4).padding(.top, 6)
-            }
         }
-    }
-
-    private func line(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label)
-            Spacer(minLength: 12)
-            Text(value).foregroundStyle(.secondary).monospacedDigit().multilineTextAlignment(.trailing)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     // MARK: Sections
 
-    @ViewBuilder private func nowSection(_ o: BatteryOverview) -> some View {
-        card("Range", footer: "The range above is the honest number. The safety margin line is what the app uses when it decides something for you.") {
-            line("Battery", Self.batteryText(o.currentPct, live: o.connected))
-            if let r = o.range {
-                Text(r.text).font(.subheadline)
-                line("Reserve kept", "\(Int(o.reservePct.rounded()))%")
-                line("With the 10% safety margin", (r.lowBattery ? "~" : "") + RealRangeCalc.kmText(r.decisionRangeKm))
-            } else if o.currentPct == nil {
-                Text("The range appears once the scooter has been seen.").foregroundStyle(.secondary)
-            } else {
-                Text("The range appears after your first ride (it uses how much battery a kilometre costs you).").foregroundStyle(.secondary)
-            }
+    /// B3: calibration is one row, the energy figures and the explanation behind the ⓘ
+    @ViewBuilder private func calibrationRow(_ cal: BatteryCalibration) -> some View {
+        HStack {
+            Label(BatteryText.calibrationStatus(cal), systemImage: cal.checkSuggested ? "exclamationmark.triangle" : "gauge.with.dots.needle.33percent")
+                .font(.subheadline)
+                .foregroundStyle(cal.checkSuggested ? Theme.danger : Color.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: 4)
+            InfoButton("Calibration", text: BatteryText.calibrationValue(cal) + ". Learned from your own rides: the energy the scooter reports divided by how much the battery % dropped. It is calibrated after 5 good rides.")
         }
-    }
-
-    @ViewBuilder private func chargingSection(_ o: BatteryOverview) -> some View {
-        card("Charging", footer: "About 2 A: steady up to 85%, then about an hour for the rest.") {
-            if let h = o.chargeHours {
-                line("Full from now", ChargeTime.text(hours: h))
-            } else if let s = o.sinceLastRide {
-                line("Full if charged from the last ride (\(Int(s.endPct.rounded()))%)", Self.timeText(s.fullAtMs))
-            } else {
-                Text("Shown while the scooter is connected. It switches off while it charges.").foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    @ViewBuilder private func calibrationSection(_ cal: BatteryCalibration) -> some View {
-        card("Calibration", footer: "Learned from your own rides: the energy the scooter reports divided by how much the battery % dropped. It starts from the 16 Ah pack and is calibrated after 5 good rides.") {
-            line("Status", BatteryText.calibrationStatus(cal))
-            line("Energy", BatteryText.calibrationValue(cal))
-            if cal.checkSuggested {
-                Label("Check battery calibration", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
-            }
-        }
+        .padding(.leading, DS.Space.cardPad)
+        .padding(.trailing, 4)
+        .frame(minHeight: DS.hit)
+        .glassCard(padding: 0)
     }
 
     @ViewBuilder private func chargeLogSection(_ o: BatteryOverview) -> some View {
-        card("Charge log", footer: "The scooter switches off while charging, so a charge is found when the battery % is higher at the next ride than where the last ride ended.") {
+        card("Charge log", info: "The scooter switches off while charging, so a charge is found when the battery % is higher at the next ride than where the last ride ended. Charge cycles are the battery used, added up, in full charges.") {
             if o.charges.isEmpty {
-                Text("No charge seen yet. A charge shows here after the first ride that follows it.").foregroundStyle(.secondary)
+                Label("No charge yet", systemImage: "bolt.slash").font(.subheadline).foregroundStyle(.secondary)
             }
             ForEach(o.charges, id: \.id) { c in
                 Text(BatteryText.chargeLine(fromPct: c.fromPct ?? 0, toPct: c.toPct ?? 0, away: c.inferredWhileAway,
@@ -131,20 +142,12 @@ struct BatteryView: View {
         }
     }
 
-    @ViewBuilder private func healthSection(_ o: BatteryOverview) -> some View {
-        card("Cycles and health") {
-            line("Charge cycles", BatteryText.cyclesText(o.cycles))
-            line("Health", BatteryText.healthTitle(o.health))
-            Text(BatteryText.healthDetail(o.health)).font(.footnote).foregroundStyle(.secondary)
-        }
-    }
-
     // MARK: Words
 
     static func batteryText(_ pct: Double?, live: Bool) -> String {
         guard let pct else { return "Unknown" }
         let n = Int(pct.rounded())
-        return live ? "\(n) %" : "\(n) % (when last seen)"
+        return live ? "\(n)%" : "\(n)%, last seen"
     }
 
     static func dayText(_ ms: Int64?) -> String {

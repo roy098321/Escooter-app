@@ -3,7 +3,7 @@ import CorckieCore
 import MapKit
 import SwiftUI
 
-/// M2-04: the route card (CONCEPT: saved route view). Top to bottom: title and "based on N rides", the map with the usual path (other
+/// M2-04: the route card (CONCEPT: saved route view). Top to bottom: title and the ride count, the map with the usual path (other
 /// variants dashed), six stats as ranges, the Today strip, variants, elevation both ways, the rides on this route. Sections with
 /// nothing to show are left out (STATES S9). All text comes from CorckieCore (`RouteCardBuilder`); this view only draws it.
 /// Later milestones add: Arrive by and there-and-back (M2-07 / M2-09), choice points and the fastest combination (M6), factors (M4).
@@ -61,8 +61,14 @@ struct RouteCardView: View {
     // MARK: Layout
 
     /// B19: the one line the docked sheet shows when closed: the first two stats ("~13 min · 6.1 km"), or the today line
+    /// K1: the plain ride count as the subtitle
+    static func subtitle(_ m: RouteCardModel) -> String {
+        let rides = "\(m.totalRides) \(m.totalRides == 1 ? "ride" : "rides")"
+        return m.saved ? rides : "Suggested \u{00B7} " + rides
+    }
+
     static func sheetSummary(_ m: RouteCardModel) -> String {
-        let values = m.stats.filter { !$0.filling && $0.value != "\u{2013}" }.prefix(2).map(\.value)
+        let values = m.stats.filter { !$0.filling && $0.value != "\u{2013}" }.prefix(2).map { $0.typical ?? $0.value }
         return values.isEmpty ? m.today.headline : values.joined(separator: " \u{00B7} ")
     }
 
@@ -74,7 +80,7 @@ struct RouteCardView: View {
                 mapView(m.map, highlight: followingCombination ? m.fastest?.path : nil)
             }
         } topBar: {
-            GlassTopBar(title: m.title, subtitle: m.subtitle) {
+            GlassTopBar(title: m.title, subtitle: Self.subtitle(m)) {
                 GlassIconButton(symbol: "chevron.left", label: "Back") { dismiss() }
             } trailing: {
                 Menu {
@@ -86,14 +92,12 @@ struct RouteCardView: View {
                 .accessibilityLabel("More")
             }
         } side: {
-            if m.map.count > 1 { Pill(text: "\(m.map.count) variants", tint: .orange) }
+            EmptyView()
         } sheet: {
             VStack(alignment: .leading, spacing: 16) {
                 if !m.saved { suggestionCard }
-                StatTileGrid {
-                    ForEach(Array(m.stats.enumerated()), id: \.offset) { _, s in tile(s) }
-                }
                 todayCard(m.today)
+                statTiles(m)
                 if m.saved { arriveBy(m) }
                 if let t = m.thereAndBack { thereAndBackCard(t) }
                 if !m.variants.isEmpty { variantsCard(m.variants) }
@@ -127,8 +131,6 @@ struct RouteCardView: View {
     private var suggestionCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Save as route?").font(.headline)
-            Text("You have ridden this same trip more than once. Save it to keep your usual time and today's estimate in the Routes list.")
-                .font(.subheadline).foregroundStyle(.secondary)
             HStack(spacing: 12) {
                 Button("Save route") { saveTap += 1; setSaved(true) }.buttonStyle(.borderedProminent)
                     .sensoryFeedback(.success, trigger: saveTap)
@@ -158,37 +160,63 @@ struct RouteCardView: View {
         .accessibilityLabel("Map of the route")
     }
 
-    private func todayCard(_ t: RouteTodayStrip) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(t.headline).scaledFont(22, weight: .semibold).foregroundStyle(t.filling ? Color.secondary : Color.primary)
-            Text(t.detail).font(.footnote).foregroundStyle(.secondary)
+    /// K3: today's time as one big number, the leaving time and the battery as two chips
+    @ViewBuilder private func todayCard(_ t: RouteTodayStrip) -> some View {
+        if let time = t.timeText {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Today").font(.subheadline).foregroundStyle(.secondary)
+                    Text(time).scaledFont(30, weight: .bold, mono: true, relativeTo: .title)
+                }
+                HStack(spacing: 6) {
+                    if let d = t.departure { InfoChip("clock", d, label: "Leaving") }
+                    if let b = t.batteryText { InfoChip("battery.50percent", b, label: "Battery") }
+                    if t.rushHour { Pill(text: "Rush hour") }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(DS.Space.cardPad)
+            .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
+            .accessibilityElement(children: .combine)
+        } else {
+            Label("Not enough rides", systemImage: "hourglass")
+                .font(.subheadline).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(DS.Space.cardPad)
+                .glassCard(padding: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(DS.Space.cardPad)
-        .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
-        .accessibilityElement(children: .combine)
     }
 
-    private func tile(_ s: RouteStatRow) -> some View {
-        VStack(spacing: 2) {
-            Text(s.value)
-                .scaledFont(s.filling ? 17 : 22, weight: .semibold, mono: true)
-                .foregroundStyle(s.filling ? Color.secondary : Color.primary)
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
-            Text(s.label).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            if let note = s.note {
-                Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
+    /// K2 / G5 / G11: one typical number per tile, labels only; a stat that is still filling up is not drawn; the ranges sit behind the ⓘ
+    @ViewBuilder private func statTiles(_ m: RouteCardModel) -> some View {
+        let ready = m.stats.filter { !$0.filling }
+        if !ready.isEmpty {
+            SectionHeader("Usual") {
+                InfoButton("Usual range", text: ready.map { "\($0.label): \($0.value)" }.joined(separator: "\n") + "\nBased on \(m.totalRides) \(m.totalRides == 1 ? "ride" : "rides").")
+            }
+            StatTileGrid {
+                ForEach(Array(ready.enumerated()), id: \.offset) { _, s in
+                    StatTile(value: (s.typical ?? s.value).replacingOccurrences(of: "~", with: ""), label: s.label)
+                }
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 72)
-        .glassCard(radius: DS.Radius.tile, padding: 10)
-        .accessibilityElement(children: .combine)
     }
 
+    /// K4: Variants is folded
     private func variantsCard(_ rows: [RouteVariantRow]) -> some View {
+        DisclosureGroup {
+            variantRows(rows).padding(.top, 8)
+        } label: {
+            Text("Variants \u{00B7} \(rows.count)").font(.headline)
+        }
+        .tint(Theme.canyon)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .glassCard(padding: 0)
+    }
+
+    private func variantRows(_ rows: [RouteVariantRow]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Variants").font(.headline).padding(.bottom, 8)
             ForEach(Array(rows.enumerated()), id: \.offset) { i, v in
                 if i > 0 { Divider() }
                 HStack {
@@ -205,9 +233,6 @@ struct RouteCardView: View {
                 .padding(.vertical, 8)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .glassCard(padding: 0)
     }
 
     /// M6-01 (Q23): the next ride follows the combination of this route (Home's Where to? shows the route selected)
@@ -250,13 +275,20 @@ struct RouteCardView: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// K4 / G5: Elevation is folded, no "~", no footer
     private func elevationCard(_ e: RouteElevationModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(e.thisWay.replacingOccurrences(of: "~", with: "")).font(.subheadline).monospacedDigit()
+                Text(e.otherWay.replacingOccurrences(of: "~", with: "")).font(.subheadline)
+                    .foregroundStyle(e.otherIsEstimate ? Color.secondary : Color.primary).monospacedDigit()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
+        } label: {
             Text("Elevation").font(.headline)
-            Text(e.thisWay).font(.subheadline).monospacedDigit()
-            Text(e.otherWay).font(.subheadline).foregroundStyle(e.otherIsEstimate ? Color.secondary : Color.primary).monospacedDigit()
-            Text("From the phone's barometer, so the numbers are approximate.").font(.caption).foregroundStyle(.secondary)
         }
+        .tint(Theme.canyon)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .glassCard(padding: 0)
@@ -287,10 +319,6 @@ struct RouteCardView: View {
                     .padding(.vertical, 6)
                 }
                 .buttonStyle(.plain)
-            }
-            if m.totalRides > m.rides.count {
-                Text("\(m.totalRides) rides in all. The newest \(m.rides.count) are listed here; all of them are in Rides.")
-                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

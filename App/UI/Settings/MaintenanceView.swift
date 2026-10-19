@@ -28,8 +28,6 @@ struct MaintenanceView: View {
                     }
                     .padding(.vertical, 4)
                 }
-            } footer: {
-                Text("Counted in scooter kilometres. You get one reminder when an item is due, and again after 3 days if it is not marked done. Never during a ride or between 22:00 and 07:00.")
             }
                 .glassRows()
         }

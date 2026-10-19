@@ -34,6 +34,9 @@ public struct RouteListRow: Equatable, Sendable {
     public var rideCount: Int
     /// "14 rides · 12–15 min · 9–11%", or "2 rides · filling up"
     public var summary: String
+    /// P6-2 (T4 / G11): one typical number each, "19 min" and "11%"; nil while the route is still filling up
+    public var timeText: String? = nil
+    public var batteryText: String? = nil
     /// Newest ride, for ordering
     public var lastRideAt: Int64
     /// M2-05: the battery check (grey, chip, one honest line); `.silent` for suggested routes and without data
@@ -56,15 +59,24 @@ public enum RouteListBuilder {
         let n = input.rides.count
         var parts = ["\(n) \(n == 1 ? "ride" : "rides")"]
         let selected = UsualRange.select(input.rides, nowMs: input.nowMs)
+        var typicalTime: String?
+        var typicalBattery: String?
         if let t = UsualRange.range(of: .time, rides: selected) {
             parts.append(RouteCardBuilder.rangeText(.time, t))
-            if let b = UsualRange.range(of: .battery, rides: selected) { parts.append(RouteCardBuilder.rangeText(.battery, b)) }
+            typicalTime = RouteCardBuilder.typicalText(.time, t)
+            if let b = UsualRange.range(of: .battery, rides: selected) {
+                parts.append(RouteCardBuilder.rangeText(.battery, b))
+                typicalBattery = RouteCardBuilder.typicalText(.battery, b)
+            }
         } else {
             parts.append("filling up")
         }
-        return RouteListRow(routeId: input.routeId, title: input.title, state: input.state, rideCount: n,
-                            summary: parts.joined(separator: " \u{00B7} "), lastRideAt: input.rides.map { $0.startAt }.max() ?? 0,
-                            fit: fit(input))
+        var row = RouteListRow(routeId: input.routeId, title: input.title, state: input.state, rideCount: n,
+                               summary: parts.joined(separator: " \u{00B7} "), lastRideAt: input.rides.map { $0.startAt }.max() ?? 0,
+                               fit: fit(input))
+        row.timeText = typicalTime
+        row.batteryText = typicalBattery
+        return row
     }
 
     /// M27 / G2: only saved routes are judged. Both legs use `neededPct` (the 10% margin), the way back at its usual time.

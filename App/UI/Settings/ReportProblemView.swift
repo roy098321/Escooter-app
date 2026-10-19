@@ -33,8 +33,6 @@ struct ReportProblemView: View {
                 if let error {
                     Text(error).font(.footnote).foregroundStyle(.red)
                 }
-            } footer: {
-                Text("One .zip with the last 15 minutes of logs, the error log, Bluetooth events, check results, your ride notes and thumbs. It stays on your phone until you share it.")
             }
                 .glassRows()
         }

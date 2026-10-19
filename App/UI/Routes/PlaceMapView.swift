@@ -134,7 +134,6 @@ struct PlaceMapView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(place.row.title).font(.title3.weight(.semibold)).foregroundStyle(place.row.hasName ? Color.primary : Color.secondary)
                 Text(street ?? "Looking for the street name").font(.subheadline).foregroundStyle(.secondary)
-                Text(place.row.subtitle).font(.footnote).foregroundStyle(.secondary)
             }
             Spacer()
             Button("Rename") {
@@ -151,8 +150,11 @@ struct PlaceMapView: View {
 
     private func settingsCard(_ place: PlaceMapItem) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle("I can charge here", isOn: Binding(get: { place.row.canCharge },
-                                                      set: { on in save { try PlaceService.setCanCharge(placeId: $0.id, canCharge: on, database: $1) } }))
+            Toggle(isOn: Binding(get: { place.row.canCharge },
+                                 set: { on in save { try PlaceService.setCanCharge(placeId: $0.id, canCharge: on, database: $1) } })) {
+                Image(systemName: "powerplug").foregroundStyle(Theme.canyon)
+                    .accessibilityLabel("I can charge here")
+            }
             HStack {
                 Text("Circle")
                 Spacer()

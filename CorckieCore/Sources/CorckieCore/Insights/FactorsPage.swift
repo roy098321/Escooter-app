@@ -19,6 +19,10 @@ public struct FactorsRow: Equatable, Sendable, Identifiable {
     /// L1 outside the physics range
     public var uncertain: Bool
 
+    /// The numbers behind the texts (seconds / battery % per km or trip), for the small bars; nil when the gate is not met
+    public var timeS: Double? = nil
+    public var usedPct: Double? = nil
+
     public var hasEffect: Bool { timeText != nil || batteryText != nil }
 }
 
@@ -41,6 +45,8 @@ public enum FactorsPage {
             let unit = pooled ? (perKg ? "per km per kg" : "per km") : "per trip"
             var timeText: String?
             var batteryText: String?
+            let timeS = time?.timeEffectS
+            let usedPct = used?.usedEffectPct
             if let s = time?.timeEffectS {
                 let amount = abs(s) < 60 ? "\(Int(abs(s).rounded())) s" : InsightText.minutes(s)
                 timeText = (s < 0 ? "\u{2212}" : "+") + amount + " \(unit)"
@@ -59,7 +65,7 @@ public enum FactorsPage {
             }
             let title = InsightText.capitalised(InsightText.factorLabel(factorId: first.factorId, level: first.level.hasPrefix("perKg") ? "" : first.level))
             out.append(FactorsRow(id: key, title: title, timeText: timeText, batteryText: batteryText, basedOn: basedOn, progress: progress,
-                                  uncertain: first.uncertain && (time?.passesGate == true || used?.passesGate == true)))
+                                  uncertain: first.uncertain && (time?.passesGate == true || used?.passesGate == true), timeS: timeS, usedPct: usedPct))
         }
         // rows with an effect first (largest time effect first), then the progress lines
         return out.enumerated().sorted { a, b in

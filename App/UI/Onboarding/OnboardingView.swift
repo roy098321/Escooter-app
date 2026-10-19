@@ -25,9 +25,7 @@ struct OnboardingView: View {
             heroIcon
             Spacer(minLength: 24)
             VStack(spacing: 14) {
-                Text(flow.step == .done ? "Done" : "Step \(flow.stepText)")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                stepDots
                 switch flow.step {
                 case .connect: connectStep
                 case .location: locationStep
@@ -73,14 +71,27 @@ struct OnboardingView: View {
             .accessibilityHidden(true)
     }
 
+    /// O1: three dots instead of "Step 1 of 3"
+    private var stepDots: some View {
+        HStack(spacing: 8) {
+            ForEach(1...OnboardingFlow.stepCount, id: \.self) { i in
+                Circle()
+                    .fill(i <= flow.step.rawValue ? Theme.accent : Theme.chip)
+                    .frame(width: 9, height: 9)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(flow.step == .done ? "Done" : "Step \(flow.stepText)")
+    }
+
     private var connectStep: some View {
         VStack(spacing: 14) {
             Text("Connect your scooter").font(.title2.bold()).multilineTextAlignment(.center)
             if flow.scooterFound {
-                Text("Found your scooter (\(ScooterGatt.advertisedName)).").foregroundStyle(.secondary)
+                Label("Found", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.ok)
             } else {
                 VStack(spacing: 8) {
-                    Text("Looking for your scooter. Switch it on and keep the phone close.")
+                    Text("Switch it on, keep it close.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                     ProgressView()
@@ -96,7 +107,7 @@ struct OnboardingView: View {
     private var locationStep: some View {
         VStack(spacing: 14) {
             Text("Let rides start on their own").font(.title2.bold()).multilineTextAlignment(.center)
-            Text("Allow location (choose Always) and motion, so a ride is recorded with the phone locked in your pocket.")
+            Text("Choose Always, so rides record with the phone locked.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             bigButton(busy ? "Asking\u{2026}" : "Allow", enabled: !busy) { allowLocation() }
@@ -109,8 +120,8 @@ struct OnboardingView: View {
 
     private var notificationsStep: some View {
         VStack(spacing: 14) {
-            Text("Weekly summary and reminders").font(.title2.bold()).multilineTextAlignment(.center)
-            Text("At most 2 notifications a day, never during a ride. Allow them with sound for the \"Going for a ride?\" chime and the weekly summary.")
+            Text("Reminders").font(.title2.bold()).multilineTextAlignment(.center)
+            Text("Allow sound, two a day at most.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             bigButton("Allow", enabled: !busy) { allowNotifications() }

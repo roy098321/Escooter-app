@@ -16,9 +16,9 @@ struct PriceHistoryView: View {
     var body: some View {
         Form {
             section(title: "Fuel price (\u{20AA} per litre)", rows: fuel, value: $fuelValue, date: $fuelDate, kind: PriceHistoryQueries.fuel,
-                    footer: "95 octane, self-service. Israel sets it on the 1st of the month. A new price counts from its date on; earlier months keep their price.")
+                    info: "95 octane, self-service. A new price counts from its date on.")
             section(title: "Electricity rate (\u{20AA} per kWh)", rows: electricity, value: $electricityValue, date: $electricityDate,
-                    kind: PriceHistoryQueries.electricity, footer: "A new rate counts from its date on; earlier rides keep the rate they had.")
+                    kind: PriceHistoryQueries.electricity, info: "A new rate counts from its date on.")
         }
         .glassList()
         .navigationTitle("Price history")
@@ -26,7 +26,7 @@ struct PriceHistoryView: View {
         .onAppear(perform: load)
     }
 
-    private func section(title: String, rows: [PriceRow], value: Binding<String>, date: Binding<Date>, kind: String, footer: String) -> some View {
+    private func section(title: String, rows: [PriceRow], value: Binding<String>, date: Binding<Date>, kind: String, info: String) -> some View {
         Section {
             ForEach(rows.reversed(), id: \.validFrom) { row in
                 HStack {
@@ -48,9 +48,10 @@ struct PriceHistoryView: View {
                     .disabled(Double(value.wrappedValue.replacingOccurrences(of: ",", with: ".")) == nil)
             }
         } header: {
-            Text(title).textCase(nil)
-        } footer: {
-            Text(footer)
+            HStack(spacing: 4) {
+                Text(title).textCase(nil)
+                InfoButton(title, text: info)
+            }
         }
         .glassRows()
     }
@@ -109,11 +110,20 @@ struct PurchaseSettingsView: View {
         Form {
             Section {
                 DatePicker("Purchase date", selection: $date, displayedComponents: .date)
-                TextField("0", text: $odometer).keyboardType(.decimalPad)
+                HStack {
+                    Text("Odometer at purchase")
+                    Spacer()
+                    TextField("0", text: $odometer)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 90)
+                    Text("km").foregroundStyle(.secondary)
+                }
             } header: {
-                Text("Before CorckieApp").textCase(nil)
-            } footer: {
-                Text("Overall stats estimate the km ridden before the first logged ride: the odometer at that ride minus the odometer at purchase, spread evenly over the days since the purchase date. Odometer at purchase is 0 for a new scooter.")
+                HStack(spacing: 4) {
+                    Text("Before CorckieApp").textCase(nil)
+                    InfoButton("Before the app", text: "Overall stats estimate the km ridden before the first logged ride from the odometer at that ride minus the odometer at purchase. Use 0 for a new scooter.")
+                }
             }
             .glassRows()
         }

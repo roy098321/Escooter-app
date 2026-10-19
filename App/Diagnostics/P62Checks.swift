@@ -22,6 +22,7 @@ enum P62Checks {
         runDock()
         runDeclutter()
         runRides()
+        runStats()
     }
 
     // MARK: u64

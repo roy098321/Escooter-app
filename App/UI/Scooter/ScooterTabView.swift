@@ -33,8 +33,6 @@ struct ScooterTabView: View {
                         VStack(spacing: 8) {
                             Image(systemName: "scooter").font(.largeTitle).foregroundStyle(.secondary)
                             Text("No scooter paired").font(.headline)
-                            Text("It is found again by itself next time it is on and near.")
-                                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(24)
@@ -47,6 +45,19 @@ struct ScooterTabView: View {
             .background { MapBackdrop().ignoresSafeArea() }
             .navigationTitle("Scooter")
             .navigationBarTitleDisplayMode(.inline)   // G3
+            .toolbar {
+                if paired {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        // S4: Forget scooter lives behind the dots, not as a big red button on the page
+                        Menu {
+                            Button(role: .destructive) { confirmForget = true } label: { Label("Forget scooter", systemImage: "trash") }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                        .accessibilityLabel("More")
+                    }
+                }
+            }
             .onAppear(perform: reload)
             .confirmationDialog("Forget this scooter?", isPresented: $confirmForget, titleVisibility: .visible) {
                 Button("Forget scooter", role: .destructive, action: forget)
@@ -65,73 +76,58 @@ struct ScooterTabView: View {
         let odo = preview != nil ? preview?.odometerKm : odometerKm
         let livePct: Int? = preview != nil ? preview?.batteryPct : link.frame?.batteryPct
         let pct = connected ? (livePct ?? seenPct) : seenPct
-        // hero card: name, connection line, battery
+        // S1 / S2 / S5: one status card: dot, name, odometer chip, the battery % (a clock when it is the last seen one), a small connect button
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(rec?.name ?? "Scooter").font(.title3.weight(.semibold))
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    Circle().fill(connected ? Color.green : Color.orange).frame(width: 8, height: 8)
-                    Text(connected ? "Connected" : "Not connected").font(.subheadline)
+                    Circle().fill(connected ? Theme.ok : Theme.accent).frame(width: 9, height: 9)
+                    Text(rec?.name ?? "Scooter").font(.title3.weight(.semibold)).lineLimit(1)
                 }
-                if !connected {
-                    Text("Last seen \(Self.lastSeenText(seenMs))").font(.footnote).foregroundStyle(.secondary)
+                if let odo {
+                    InfoChip("gauge.with.dots.needle.67percent", String(format: "%.1f km", odo), label: "Odometer")
                 }
             }
             Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 0) {
+            HStack(spacing: 4) {
+                if !connected { Image(systemName: "clock").font(.footnote).foregroundStyle(.secondary) }
                 Text(pct.map { "\($0)%" } ?? "\u{2013}").scaledFont(36, weight: .semibold, mono: true, relativeTo: .largeTitle)
                     .minimumScaleFactor(0.6)
-                Text(connected ? "battery" : "when last seen").font(.caption).foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(connected ? "Battery \(pct ?? 0)%" : "Battery \(pct ?? 0)%, last seen \(Self.lastSeenText(seenMs))")
+            if !connected {
+                Button {
+                    connectTap += 1
+                    if preview == nil { link.start() }
+                } label: {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.headline)
+                        .foregroundStyle(Theme.onAccent)
+                        .frame(width: DS.hit, height: DS.hit)
+                        .background(Theme.accent, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Connect")
+                .sensoryFeedback(.impact(weight: .medium), trigger: connectTap)
             }
         }
         .padding(DS.Space.cardPad)
         .glassCard(radius: DS.Radius.hero, padding: 0)
-        .opacity(connected ? 1 : 0.8)
-        .accessibilityElement(children: .combine)
-        if !connected {
-            Button {
-                connectTap += 1
-                if preview == nil { link.start() }
-            } label: {
-                Label("Connect", systemImage: "antenna.radiowaves.left.and.right")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: DS.hit)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.orange)
-            .sensoryFeedback(.impact(weight: .medium), trigger: connectTap)
-        }
-        StatTileGrid {
-            StatTile(value: odo.map { String(format: "%.1f", $0) } ?? "\u{2013}", label: odo == nil ? "km total (after the first ride)" : "km total")
-        }
-        SectionHeader("Maintenance")
-        VStack(spacing: 0) {
-            if rows.isEmpty {
-                Text("Tyres, brakes and bolts, counted in scooter kilometres.").font(.subheadline).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
-            }
-            ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                if i > 0 { Divider() }
-                HStack {
-                    Text(row.item.name)
-                    Spacer()
-                    if row.status.isDue {
-                        Pill(text: Maintenance.statusText(row.status), tint: .orange)
-                    } else {
-                        Text(Maintenance.statusText(row.status)).font(.subheadline).foregroundStyle(.secondary)
-                    }
+        // S3: one row: what is due next
+        NavigationLink { MaintenanceView() } label: {
+            HStack {
+                Label("Maintenance", systemImage: "wrench.and.screwdriver")
+                Spacer()
+                if let next = Self.nextDue(rows) {
+                    Text(next.text).font(.subheadline).foregroundStyle(next.due ? Theme.accentInk : Color.secondary)
                 }
-                .padding(.vertical, 12)
+                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
             }
-            Divider()
-            NavigationLink { MaintenanceView() } label: {
-                HStack { Text("Open maintenance"); Spacer(); Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary) }
-                    .padding(.vertical, 12)
-            }
-            .buttonStyle(.plain)
+            .padding(DS.Space.cardPad)
+            .glassCard(padding: 0)
         }
-        .padding(.horizontal, DS.Space.cardPad)
-        .glassCard(padding: 0)
+        .buttonStyle(.plain)
         NavigationLink { BatteryView() } label: {
             HStack {
                 Label("Battery", systemImage: "battery.75percent")
@@ -142,13 +138,17 @@ struct ScooterTabView: View {
             .glassCard(padding: 0)
         }
         .buttonStyle(.plain)
-        Button(role: .destructive) { confirmForget = true } label: {
-            Text("Forget scooter").frame(maxWidth: .infinity, minHeight: DS.hit)
+    }
+
+    /// What is due next: an item that is due, else the one with the fewest km left ("Tyres \u{00B7} 120 km left")
+    static func nextDue(_ rows: [MaintenanceService.Row]) -> (text: String, due: Bool)? {
+        if let r = rows.first(where: { $0.status.isDue }) { return ("\(r.item.name) \u{00B7} \(Maintenance.statusText(r.status))", true) }
+        let left: [(String, Double)] = rows.compactMap { r in
+            if case .ok(let km) = r.status, let km { return (r.item.name, km) }
+            return nil
         }
-        .buttonStyle(.bordered)
-        .padding(.top, 8)
-        Text("Removes the pairing only. Rides and routes are never deleted.")
-            .font(.footnote).foregroundStyle(.secondary)
+        guard let best = left.min(by: { $0.1 < $1.1 }) else { return nil }
+        return ("\(best.0) \u{00B7} \(Int(best.1.rounded())) km left", false)
     }
 
     static func lastSeenText(_ ms: Int64?) -> String {
