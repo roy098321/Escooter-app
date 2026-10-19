@@ -83,7 +83,7 @@ final class Notifier: NSObject, NotificationSending, MessageLogging {
             content.title = title
             content.body = body
             content.sound = UNNotificationSound(named: UNNotificationSoundName(soundName))
-            content.interruptionLevel = .passive
+            content.interruptionLevel = .active   // B36: passive is delivered silently
             let request = UNNotificationRequest(identifier: id, content: content, trigger: nil)
             let soundsOn = settings.soundSetting == .enabled
             center.add(request) { error in
