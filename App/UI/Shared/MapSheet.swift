@@ -182,7 +182,7 @@ private struct SheetLayer<Content: View>: View {
         let shape = UnevenRoundedRectangle(topLeadingRadius: DS.Radius.hero, bottomLeadingRadius: d.bottomRadius,
                                            bottomTrailingRadius: d.bottomRadius, topTrailingRadius: DS.Radius.hero, style: .continuous)
         return shape
-            .fill(sunlight ? Theme.row : Theme.bar)
+            .fill(sunlight ? Theme.row : Theme.background)   // white / #121212, so the sand / #1F1F1F tiles stand out
             .overlay { shape.strokeBorder(sunlight ? Color(.separator) : Theme.line, lineWidth: sunlight ? 1 : 0.5) }
             .frame(height: height)
             .shadow(color: .black.opacity(sunlight ? 0 : 0.12), radius: 12, y: -2)

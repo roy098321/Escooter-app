@@ -225,7 +225,7 @@ struct HomeView: View {
                     Circle().fill(tint.opacity(0.2)).frame(width: min(discSize, 270) + 24, height: min(discSize, 270) + 24)
                     VStack(spacing: 8) {
                         if m.state == .connecting {
-                            ProgressView().controlSize(.large).tint(.white)
+                            ProgressView().controlSize(.large).tint(Theme.onAccent)
                         } else {
                             Image(systemName: discSymbol(m.primary)).font(.system(size: 40, weight: .semibold))
                         }
@@ -235,7 +235,7 @@ struct HomeView: View {
                             .minimumScaleFactor(0.7)
                             .lineLimit(3)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onAccent)   // F-15: dark text on the orange (white is only 2.3:1)
                     .padding(20)
                     .frame(width: min(discSize, 270), height: min(discSize, 270))
                     .background(tint, in: Circle())
