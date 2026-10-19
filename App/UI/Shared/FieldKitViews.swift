@@ -57,7 +57,6 @@ struct ThumbsRow: View {
             WhatWasWrongSheet(kind: kind) { reason, note in
                 save(-1, reason: reason, note: note)
             }
-            .v1Label()
             .glassPresentation()
         }
     }

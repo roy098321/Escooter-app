@@ -22,7 +22,8 @@ struct HomeView: View {
     @State private var connectingSince: Date?
     @State private var discTap = 0
     @State private var showOnboarding = false
-    @State private var showWhereTo = false
+    /// B19: the Where to? sheet docks on the tab bar (closed = one line "Where to? · Work")
+    @State private var whereToDetent: SheetDetent = .peek
     @State private var crashDismissed = false
     @State private var lastRide: RideListItem?
     @State private var oldestRideMs: Int64?
@@ -51,11 +52,16 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            content(HomeLogic.model(input))
-                .background { MapBackdrop().ignoresSafeArea() }
+            homeScreen(HomeLogic.model(input))
+                .background { MapBackdrop(map: true).ignoresSafeArea() }
                 .navigationTitle("Home")
+                .navigationBarTitleDisplayMode(.inline)
                 .screen("Home")
                 .toolbar {
+                    // G3: no page title on Home, the app mark + name small (theme v2 mock-up)
+                    ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
+                    ToolbarItem(placement: .topBarLeading) { brand }
+                    // G12: the only settings button of the app
                     ToolbarItem(placement: .topBarTrailing) {
                         NavigationLink {
                             SettingsView()
@@ -69,7 +75,7 @@ struct HomeView: View {
         .onAppear {
             loadSelectorFromStore()
             reloadLastRide()
-            if previewSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showWhereTo = true } }
+            if previewSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { whereToDetent = .half } }
         }
         .onChange(of: ScreenSimulator.shared.active) { _, _ in lastRide = nil; reloadLastRide() }
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reloadLastRide() }
@@ -83,16 +89,41 @@ struct HomeView: View {
                 showOnboarding = false
                 reloadLastRide()
             })
-            .v1Label()
-        }
-        .sheet(isPresented: $showWhereTo) {
-            WhereToSheet(chips: shownChips, selected: selectedRoute, onPick: pickRoute)
-                .glassPresentation(detents: [.medium])
-                .v1Label()
         }
     }
 
-    private func content(_ m: HomeModel) -> some View {
+    private var brand: some View {
+        HStack(spacing: 8) {
+            Image("AppMark")
+                .resizable()
+                .frame(width: 30, height: 30)
+                .clipShape(Circle())
+                .accessibilityHidden(true)
+            Text("CorckieApp")
+                .font(.headline)
+                .fontDesign(.rounded)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    /// The scroll content, with the Where to? sheet docked on the tab bar while there are routes to pick (B19)
+    private func homeScreen(_ m: HomeModel) -> some View {
+        let docked = !shownChips.isEmpty && m.state != .riding
+        return content(m, dockRoom: docked)
+            .overlay {
+                if docked {
+                    DockedSheet(detent: $whereToDetent, summary: whereToSummary) {
+                        WhereToSheet(chips: shownChips, selected: selectedRoute) { id in
+                            pickRoute(id)
+                            whereToDetent = .peek
+                        }
+                    }
+                }
+            }
+    }
+
+    private func content(_ m: HomeModel, dockRoom: Bool) -> some View {
         ScrollView {
             VStack(spacing: DS.Space.block) {
                 if m.showCrashBanner { crashCard }
@@ -104,10 +135,11 @@ struct HomeView: View {
                 } else {
                     statusCard(m)
                 }
-                if m.state != .riding { whereTo }
                 if m.showLocationCard { locationCard }
                 startDisc(m)
                 if m.state != .riding { loadSelector }
+                // room for the docked Where to? line above the tab bar
+                if dockRoom { Color.clear.frame(height: SheetDock.handle + SheetDock.summary + 8) }
             }
             .padding(.horizontal, DS.Space.gutter)
             .padding(.bottom, DS.Space.block)
@@ -183,7 +215,7 @@ struct HomeView: View {
     /// The 170 pt round Start / Connect disc (amber for Connect and Try again, as before). The tap goes through `primaryTapped`, unchanged.
     private func startDisc(_ m: HomeModel) -> some View {
         let amber = m.primary == .connect || m.primary == .tryAgain
-        let tint: Color = amber ? .orange : .accentColor
+        let tint: Color = amber ? .orange : Theme.accent
         return VStack(spacing: 14) {
             Button {
                 discTap += 1
@@ -250,33 +282,10 @@ struct HomeView: View {
         }
     }
 
-    @ViewBuilder private var whereTo: some View {
-        let list = shownChips
-        if !list.isEmpty {
-            let chosen = list.first(where: { $0.routeId == selectedRoute })
-            Button { showWhereTo = true } label: {
-                HStack {
-                    Text("Where to?").font(.body)
-                    Spacer(minLength: 8)
-                    Text(chosen?.label ?? "No destination").foregroundStyle(.secondary)
-                    Image(systemName: "chevron.up.chevron.down").font(.footnote).foregroundStyle(.secondary)
-                }
-                .frame(minHeight: 28)
-                .glassCard()
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Where to?")
-            .accessibilityValue(chosen?.label ?? "No destination")
-            .accessibilityAddTraits(.isButton)
-            if let chosen {
-                Text(chosen.detail)
-                    .font(.footnote).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 6)
-            }
-        }
+    /// the closed line of the docked sheet
+    private var whereToSummary: String {
+        let chosen = shownChips.first(where: { $0.routeId == selectedRoute })
+        return "Where to? \u{00B7} \(chosen?.label ?? "No destination")"
     }
 
     private var locationCard: some View {
@@ -365,39 +374,25 @@ struct HomeView: View {
     }
 }
 
-/// The Where to? sheet: "No destination" or one of the saved routes; picking one closes it. UI only, the selection is `RouteFollowSelection`.
+/// The content of the docked Where to? sheet (B19): "No destination" or one of the saved routes; picking one closes the sheet
+/// back to its one-line state (the caller does that). UI only, the selection is `RouteFollowSelection`.
 private struct WhereToSheet: View {
     let chips: [WhereToChip]
     let selected: String?
     let onPick: (String?) -> Void
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DS.Space.row) {
-                Text("Where to?")
-                    .font(.title2.weight(.semibold))
-                    .padding(.top, 20)
-                    .padding(.bottom, 4)
-                row("No destination", detail: nil, on: selected == nil) { onPick(nil) }
-                ForEach(chips, id: \.routeId) { c in
-                    row(c.label, detail: c.routeId == selected ? c.detail : nil, on: c.routeId == selected) { onPick(c.routeId) }
-                }
-                if selected != nil {
-                    Text("The arrival time shows on the ride screen.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                        .padding(.horizontal, 6)
-                }
+        VStack(alignment: .leading, spacing: DS.Space.row) {
+            row("No destination", detail: nil, on: selected == nil) { onPick(nil) }
+            ForEach(chips, id: \.routeId) { c in
+                row(c.label, detail: c.routeId == selected ? c.detail : nil, on: c.routeId == selected) { onPick(c.routeId) }
             }
-            .padding(.horizontal, DS.Space.gutter)
-            .padding(.bottom, 24)
         }
     }
 
     private func row(_ title: String, detail: String?, on: Bool, action: @escaping () -> Void) -> some View {
         Button {
             action()
-            dismiss()
         } label: {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -405,7 +400,7 @@ private struct WhereToSheet: View {
                     if let detail { Text(detail).font(.footnote).foregroundStyle(.secondary) }
                 }
                 Spacer(minLength: 8)
-                if on { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                if on { Image(systemName: "checkmark").foregroundStyle(Theme.accentInk) }
             }
             .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
             .glassCard()

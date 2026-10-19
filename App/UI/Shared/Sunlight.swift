@@ -50,7 +50,7 @@ private struct SunlightRoot: ViewModifier {
         content
             .environment(\.sunlight, monitor.on)
             .environment(\.legibilityWeight, monitor.on ? LegibilityWeight.bold : nil)
-            .preferredColorScheme(monitor.on ? .light : nil)
+            .preferredColorScheme(monitor.on ? .light : (UIShot.dark ? .dark : nil))
             .onAppear { monitor.refresh() }
             .onChange(of: phase) { _, p in if p == .active { monitor.refresh() } }
             .onReceive(ticker) { _ in monitor.refresh() }
@@ -85,7 +85,19 @@ struct SunPanel<S: InsettableShape>: ViewModifier {
     }
 }
 
+private struct LiveDark: ViewModifier {
+    @Environment(\.sunlight) private var sunlight
+
+    func body(content: Content) -> some View {
+        content.environment(\.colorScheme, sunlight ? .light : .dark)
+    }
+}
+
 extension View {
+    /// F-15: the live ride screen is always dark (mock-up "Live ride, always dark"), except in sunlight mode, which stays light
+    /// for contrast in the sun (C30).
+    func liveDark() -> some View { modifier(LiveDark()) }
+
     /// Applies the sunlight style to the whole app (once, at the root).
     func sunlightRoot() -> some View { modifier(SunlightRoot()) }
 

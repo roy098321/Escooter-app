@@ -22,9 +22,9 @@ struct RideSeriesPanels: View {
                 Chart {
                     ForEach(Array(series.profile.enumerated()), id: \.offset) { _, p in
                         AreaMark(x: .value("Distance", p.distM / 1000), y: .value("Altitude", p.altM))
-                            .foregroundStyle(Color.accentColor.opacity(0.25))
+                            .foregroundStyle(Theme.accent.opacity(0.25))
                         LineMark(x: .value("Distance", p.distM / 1000), y: .value("Altitude", p.altM))
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(Theme.accent)
                     }
                 }
                 .chartYScale(domain: .automatic(includesZero: false))

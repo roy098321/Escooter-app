@@ -58,7 +58,7 @@ struct ExportEverythingView: View {
             guard !previewEmpty, let db = AppModel.shared.displayDatabase else { return }
             rideCount = (try? RideQueries(db).rides())?.count
         }
-        .sheet(item: $share) { item in ShareSheet(url: item.url).v1Label() }
+        .sheet(item: $share) { item in ShareSheet(url: item.url) }
         .alert("Could not export", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("OK") {}
         } message: {

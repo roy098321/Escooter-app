@@ -1,33 +1,36 @@
 import SwiftUI
 
-/// UI_PLAN 1.6: a static, made-up street map behind the tab screens (land, blocks, park, water, roads, a veil).
-/// B14: on the phone a real Apple map snapshot (`MapSnapshotStore`) replaces it. This drawn one stays for the CI shots and previews:
-/// no MapKit, no network, no location, the same picture in every CI shot. It is a generic
-/// pattern, not a real area. In sunlight mode it is plain (a solid page), like the glass cards.
+/// UI_PLAN 1.6 / F-15 theme v2: the page behind the tab screens.
+/// - Default: the plain theme page (white / #121212). Owner answer 2: only Home keeps a map behind it.
+/// - `MapBackdrop(map: true)` (Home): the map muted with a slight warm tint. On the phone a real Apple map snapshot
+///   (`MapSnapshotStore`, B14), almost without colour under a white / dark veil and a sand wash; in the CI shots and previews a
+///   drawn, made-up street pattern in the same muted sand tones (no MapKit, no network, no location, not a real area).
+/// - Sunlight mode: always the plain page (high contrast). Ride and route maps are real `Map`s and stay normal (not this view).
 struct MapBackdrop: View {
+    var map = false
     @Environment(\.colorScheme) private var scheme
     @Environment(\.sunlight) private var sunlight
     private let store = MapSnapshotStore.shared
 
     var body: some View {
-        if sunlight {
-            Color(.systemBackground)
+        if sunlight || !map {
+            Theme.background
         } else {
             let dark = scheme == .dark
             if let image = store.image(dark: dark) {
-                // B14: the real map as a picture, blurred under the glass; same veil as the drawn one
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .blur(radius: 6)
-                    .overlay(Color(.systemBackground).opacity(dark ? 0.45 : 0.55))
+                    .saturation(0.15)
+                    .blur(radius: 3)
+                    .overlay(Theme.background.opacity(dark ? 0.62 : 0.72))
+                    .overlay(Theme.chip.opacity(dark ? 0.10 : 0.30))
                     .clipped()
                     .accessibilityHidden(true)
             } else {
                 Canvas { ctx, size in
                     Self.draw(ctx, size: size, dark: dark)
                 }
-                .overlay(Color(.systemBackground).opacity(dark ? 0.5 : 0.66))
                 .accessibilityHidden(true)
             }
         }
@@ -37,12 +40,13 @@ struct MapBackdrop: View {
         var ctx = context
         let w = size.width
         let h = size.height
-        let land = dark ? Color(red: 0.11, green: 0.13, blue: 0.12) : Color(red: 0.90, green: 0.93, blue: 0.89)
-        let block = dark ? Color(red: 0.14, green: 0.16, blue: 0.15) : Color(red: 0.93, green: 0.95, blue: 0.92)
-        let water = dark ? Color(red: 0.10, green: 0.17, blue: 0.22) : Color(red: 0.78, green: 0.87, blue: 0.92)
-        let park = dark ? Color(red: 0.12, green: 0.21, blue: 0.14) : Color(red: 0.80, green: 0.90, blue: 0.79)
-        let road = dark ? Color(red: 0.20, green: 0.22, blue: 0.21) : Color.white.opacity(0.85)
-        let avenue = dark ? Color(red: 0.26, green: 0.25, blue: 0.19) : Color(red: 0.96, green: 0.94, blue: 0.84)
+        // F-15: muted, slightly warm (sand) tones; dark = neutral greys
+        let land = dark ? Color(white: 0.085) : Color(red: 0.992, green: 0.984, blue: 0.969)
+        let block = dark ? Color(white: 0.11) : Color(red: 0.972, green: 0.953, blue: 0.922)
+        let water = dark ? Color(white: 0.10) : Color(red: 0.957, green: 0.937, blue: 0.906)
+        let park = dark ? Color(white: 0.115) : Color(red: 0.953, green: 0.929, blue: 0.890)
+        let road = dark ? Color(white: 0.14) : Color.white
+        let avenue = dark ? Color(white: 0.16) : Color(red: 0.953, green: 0.906, blue: 0.827)
 
         ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(land))
 

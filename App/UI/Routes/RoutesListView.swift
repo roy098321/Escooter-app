@@ -25,17 +25,8 @@ struct RoutesListView: View {
             content
                 .background { MapBackdrop().ignoresSafeArea() }
                 .navigationTitle("Routes")
+                .navigationBarTitleDisplayMode(.inline)   // G3: small title; G12: Settings only on Home
                 .screen("Routes")
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        NavigationLink {
-                            SettingsView()
-                        } label: {
-                            GlassIcon(symbol: "gearshape")
-                        }
-                        .accessibilityLabel("Settings")
-                    }
-                }
                 .navigationDestination(item: $selected) { RouteCardView(routeId: $0.id) }
                 .navigationDestination(isPresented: $showPlaces) { PlacesView() }
         }
@@ -135,8 +126,8 @@ struct RoutesListView: View {
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 12)
                         .frame(minHeight: DS.hit)
-                        .foregroundStyle(Color.accentColor)
-                        .background(Color.accentColor.opacity(0.15), in: Capsule())
+                        .foregroundStyle(Theme.accentInk)
+                        .background(Theme.chip, in: Capsule())
                         .buttonStyle(.plain)
                         .accessibilityLabel("Save \(r.title)")
                 }

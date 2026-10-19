@@ -7,9 +7,13 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     private let model = AppModel.shared
 
+    init() {
+        Theme.applyRoundedTitles()   // F-15: rounded navigation titles, before the first bar is made
+    }
+
     var body: some View {
-        // v1 on every tab and pushed screen (owner, P4 D3); sheets add their own `.v1Label()`.
-        content.v1Label().sunlightRoot()
+        // G4 (P6-2): the version shows only in Settings → About now, no longer on every screen.
+        content.themeRoot().sunlightRoot()
             .onAppear { MapSnapshotStore.shared.refresh() }
             .onChange(of: scenePhase) { _, p in if p == .active { MapSnapshotStore.shared.refresh() } }
             .onChange(of: PhoneSensors.shared.roundedLocation.map { "\($0.lat),\($0.lon)" }) { _, _ in MapSnapshotStore.shared.refresh() }
@@ -32,7 +36,7 @@ struct RootView: View {
                     // M1-12: no tab bar, no navigation, no swipe-down while a ride is on.
                     // M1-13: when the ride is over the same cover turns into its summary.
                     RideCover()
-                        .v1Label()
+                        .environment(\.hasFloatingTabBar, false)
                 }
                 .safeAreaInset(edge: .top) {
                     VStack(spacing: 0) {
@@ -51,7 +55,7 @@ struct RootView: View {
     @State private var rootTokens = [0, 0, 0, 0, 0]
 
     private var tabs: some View {
-        // The system tab bar is hidden: the floating glass bar below replaces it (owner Q1 S). TabView stays
+        // The system tab bar is hidden: the flat floating bar over it replaces it (owner Q1 S, F-14). TabView stays
         // underneath, so every tab keeps its own stack and its on-appear refresh.
         TabView(selection: $tab) {
             RoutesListView()
@@ -85,9 +89,7 @@ struct RootView: View {
                 .toolbar(.hidden, for: .tabBar)
                 .tag(4)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            FloatingTabBar(selection: $tab, onReselect: { rootTokens[$0] += 1 })
-        }
+        .floatingTabBar(selection: $tab, onReselect: { rootTokens[$0] += 1 })
         .onChange(of: model.requestedTab) { _, v in
             if let v { tab = v; model.requestedTab = nil }
         }
@@ -147,7 +149,8 @@ struct Banner: View {
 
 /// CI ui-shots: `-uiShot <screen>` opens one screen straight away (TESTING §7).
 enum UIShot {
-    /// What was asked for, as typed: `sun-<screen>` = the sunlight style, `xxl-<screen>` = the largest accessibility text size (M6-03 / M6-04)
+    /// What was asked for, as typed: `sun-<screen>` = the sunlight style, `xxl-<screen>` = the largest accessibility text size (M6-03 / M6-04),
+    /// `dark-<screen>` = dark mode (P6-2, theme v2)
     static var raw: String? {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-uiShot"), i + 1 < args.count else { return nil }
@@ -156,7 +159,7 @@ enum UIShot {
 
     static var requested: String? {
         guard let r = raw else { return nil }
-        for p in ["sun-", "xxl-"] where r.hasPrefix(p) { return String(r.dropFirst(p.count)) }
+        for p in ["sun-", "xxl-", "dark-"] where r.hasPrefix(p) { return String(r.dropFirst(p.count)) }
         return r
     }
 
@@ -164,6 +167,9 @@ enum UIShot {
 
     /// `sun-...` forces the sunlight style
     static var sunlight: Bool { raw?.hasPrefix("sun-") == true }
+
+    /// `dark-...` forces dark mode
+    static var dark: Bool { raw?.hasPrefix("dark-") == true }
 
     /// Every screen name the ui-shots and the check u44 open (M6-05). New states are added here and to the ui-shots list in ci.yml.
     static let allNames: [String] = [
@@ -196,19 +202,19 @@ enum UIShot {
             case "rides-long":
                 RidesListView(preview: RidesPreview.long())
                     .tabBarClearance()
-                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }
+                    .floatingTabBar(selection: .constant(1))
             case "home-bottom":
                 HomeView(preview: HomePreview.input("home-ready"))
                     .tabBarClearance()
-                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(2)) }
+                    .floatingTabBar(selection: .constant(2))
             case "ride-detail", "ride-nogps", "ride-gap", "ride-walk":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model(name))
-                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }
+                    .floatingTabBar(selection: .constant(1))
             case "routes-empty", "routes-list", "routes-greyed":
                 RoutesListView(preview: RoutesPreview.list(name))
             case "route-card", "route-card-sparse":
                 RouteCardView(preview: RoutesPreview.card(name))
-                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(0)) }
+                    .floatingTabBar(selection: .constant(0))
             case "places", "places-map":
                 PlacesView(preview: RoutesPreview.places())
             case "place-detail":
@@ -220,10 +226,10 @@ enum UIShot {
             case "ride-layer-speed", "ride-layer-hills", "ride-layer-wind":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"), previewSeries: RideDetailPreview.series(),
                                previewLayer: name == "ride-layer-hills" ? .hills : (name == "ride-layer-wind" ? .wind : .speed))
-                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }
+                    .floatingTabBar(selection: .constant(1))
             case "ride-detail-full":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"), previewSeries: RideDetailPreview.series())
-                    .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(1)) }
+                    .floatingTabBar(selection: .constant(1))
             case "ride-save-route":
                 RideDetailView(rideId: nil, preview: RideDetailPreview.model("ride-detail"),
                                previewOffer: RouteOfferModel.make(routeId: "preview", state: .suggested, title: "Route 1", ridesOnRoute: 2))
@@ -277,12 +283,12 @@ enum UIShot {
             case "onboarding3": OnboardingView(startAt: .notifications, previewFound: true) { _ in }
             default:
                 if let live = LivePreview.make(name) {
-                    LiveRideView(preview: live)
+                    LiveRideView(preview: live).liveDark()
                 } else if let input = HomePreview.input(name) {
                     // the shots show the floating tab bar too (as in the real app)
                     HomeView(preview: input, previewChips: HomePreview.chips(name),
                              previewSelected: name.hasPrefix("home-whereto") ? "a" : nil, previewSheet: name == "home-whereto-sheet")
-                        .safeAreaInset(edge: .bottom, spacing: 0) { FloatingTabBar(selection: .constant(2)) }
+                        .floatingTabBar(selection: .constant(2))
                 } else {
                     HomeView()
                 }
@@ -304,7 +310,7 @@ struct RideCover: View {
     @ViewBuilder private var cover: some View {
         let service = RecorderService.shared
         if service.rideActive || service.readyRequested {
-            LiveRideView()
+            LiveRideView().liveDark()
         } else if let id = service.summaryRideId {
             NavigationStack {
                 RideDetailView(rideId: id, onDone: { RecorderService.shared.dismissSummary() })

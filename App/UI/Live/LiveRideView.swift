@@ -104,9 +104,9 @@ struct LiveRideView: View {
     private func dotView(_ s: LiveScreenState) -> some View {
         // M2-08: hollow while the dot moves by wheel distance (no GPS, known route)
         Circle()
-            .fill(s.dotHollow ? Color.white.opacity(0.6) : (s.dotGreyed ? Color.gray : Color.blue))
+            .fill(s.dotHollow ? Color.white.opacity(0.6) : (s.dotGreyed ? Color.gray : Theme.accent))
             .frame(width: 20, height: 20)
-            .overlay(Circle().stroke(s.dotHollow ? Color.blue : Color.white, lineWidth: 3))
+            .overlay(Circle().stroke(s.dotHollow ? Theme.accent : Color.white, lineWidth: 3))
     }
 
     private func mapContent(_ s: LiveScreenState) -> some View {

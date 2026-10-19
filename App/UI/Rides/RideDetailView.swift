@@ -93,7 +93,7 @@ struct RideDetailView: View {
         }
         .onAppear(perform: load)
         .sheet(isPresented: $showCompare) {
-            if let id = activeId { CompareSheet(rideId: id).v1Label().glassPresentation() }
+            if let id = activeId { CompareSheet(rideId: id).glassPresentation() }
         }
         .sheet(isPresented: $showMerge) {
             if let id = activeId, let info = mergeInfo {
@@ -102,17 +102,16 @@ struct RideDetailView: View {
                     toast = "Rides merged into one."
                     load()
                 })
-                .v1Label()
                 .glassPresentation()
             }
         }
         .sheet(isPresented: $showTrim) {
-            if let id = activeId { TrimSheet(rideId: id, onChanged: { toast = "Trim saved."; load() }).v1Label().glassPresentation() }
+            if let id = activeId { TrimSheet(rideId: id, onChanged: { toast = "Trim saved."; load() }).glassPresentation() }
         }
         .sheet(isPresented: $showReplay) {
-            if let id = activeId { NavigationStack { ReplayView(rideId: id, startDownload: replayDownload) }.v1Label().glassPresentation(detents: [.large]) }
+            if let id = activeId { NavigationStack { ReplayView(rideId: id, startDownload: replayDownload) }.glassPresentation(detents: [.large]) }
         }
-        .sheet(item: $exportFile) { file in ShareSheet(url: file.url).v1Label() }
+        .sheet(item: $exportFile) { file in ShareSheet(url: file.url) }
         .overlay(alignment: .bottom) { toastBar }
         .task(id: toast) {
             guard toast != nil else { return }
@@ -176,8 +175,15 @@ struct RideDetailView: View {
         previewLayer != nil ? .half : (previewSeries != nil || previewPrompt != nil || previewInsights != nil || previewOffer != nil ? .full : .half)
     }
 
+    /// B19: the one line the docked sheet shows when closed: "19.0 km · 29 min · 99% → 53%" (missing values left out)
+    static func sheetSummary(_ m: RideSummaryModel) -> String {
+        let order = ["Distance", "Time", "Battery"]
+        let values = order.compactMap { label in m.mainStats.first { $0.label == label }?.value }.filter { $0 != "\u{2013}" }
+        return values.isEmpty ? m.title : values.joined(separator: " \u{00B7} ")
+    }
+
     private func content(_ m: RideSummaryModel) -> some View {
-        MapSheet(initial: startDetent) {
+        MapSheet(initial: startDetent, summary: Self.sheetSummary(m)) {
             mapLayer(m)
         } topBar: {
             topBar(m)
@@ -237,7 +243,7 @@ struct RideDetailView: View {
     @ViewBuilder private func mapLayer(_ m: RideSummaryModel) -> some View {
         if m.noGps {
             ZStack {
-                MapBackdrop()
+                MapBackdrop(map: true)
                 VStack { noGpsCard.padding(.horizontal, 40).padding(.top, 120); Spacer() }
             }
         } else {

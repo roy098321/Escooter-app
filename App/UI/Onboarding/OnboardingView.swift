@@ -56,7 +56,7 @@ struct OnboardingView: View {
     /// the big round icon above the card
     private var heroIcon: some View {
         let symbol: String
-        var tint = Color.accentColor
+        var tint = Theme.accent
         switch flow.step {
         case .connect:
             symbol = flow.scooterFound ? "checkmark" : "scooter"
@@ -209,7 +209,6 @@ struct ShowOnboardingRow: View {
         }
         .fullScreenCover(isPresented: $show) {
             OnboardingView { _ in show = false }
-                .v1Label()
         }
     }
 }

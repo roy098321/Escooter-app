@@ -5,7 +5,8 @@ import UIKit
 /// B20 / B23 (owner, 13 Oct): "not a wall, a slight elasticity, stiffer than stock iOS". iOS has no stiffness setting, so this
 /// one shared helper finds the UIScrollView behind a SwiftUI `ScrollView` / `List` and remaps its overscroll: the stock rubber band
 /// is damped by `resistance` and capped at about `capPt`, and the spring back therefore also covers only that short distance.
-/// Tune the feel here, nowhere else. Fallback if it ever misbehaves: set `enabled` to false (stock bounce, nothing else changes).
+/// Tune the feel here, nowhere else. Fallback if it ever misbehaves: set `enabled` to false (stock bounce, nothing else changes;
+/// the tab bar then simply stays, because this hook is also what reports list scrolling to `TabBarVisibility`, F-14).
 enum StiffBounce {
     /// the most a scroll view may be pulled past its end, in points (owner: about 30 to 40)
     static let capPt: CGFloat = 35
@@ -33,7 +34,7 @@ extension View {
         background { if StiffBounce.enabled { StiffBounceInstaller().frame(width: 0, height: 0).accessibilityHidden(true) } }
     }
 
-    /// B20 / B23: room under the content for the floating tab bar and the raised Home disc, so the last item scrolls fully above it
+    /// B20 / B23: room under the content for the floating tab bar, so the last item scrolls fully above it (F-14: no raised disc)
     func tabBarClearance() -> some View {
         contentMargins(.bottom, FloatingTabBar.clearance, for: .scrollContent)
     }
@@ -106,7 +107,20 @@ private struct StiffBounceInstaller: UIViewRepresentable {
             objc_setAssociatedObject(s, Self.hookedKey, true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)   // one hook per scroll view, or the damping would compound
             scrollView = s
             s.bounces = true
-            observation = s.observe(\.contentOffset, options: [.new]) { [weak self] sv, _ in self?.remap(sv) }
+            observation = s.observe(\.contentOffset, options: [.new]) { [weak self] sv, _ in
+                self?.remap(sv)
+                Self.report(sv)
+            }
+        }
+
+        /// F-14: list scrolling moves the floating tab bar (only scrolling the finger or its momentum drives, not layout changes)
+        private static func report(_ s: UIScrollView) {
+            guard s.isTracking || s.isDecelerating else { return }
+            let inset = s.adjustedContentInset
+            let y = s.contentOffset.y
+            let top = -inset.top
+            let bottom = s.contentSize.height - s.bounds.height + inset.bottom
+            MainActor.assumeIsolated { TabBarVisibility.shared.scrolled(y: y, top: top, bottom: bottom) }
         }
 
         private func remap(_ s: UIScrollView) {

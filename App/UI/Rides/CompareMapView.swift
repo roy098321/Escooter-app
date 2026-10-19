@@ -138,7 +138,7 @@ struct CompareMapView: View {
                 } label: {
                     Image(systemName: playback.playing ? "pause.fill" : "play.fill")
                         .frame(width: 44, height: 44)
-                        .background(Circle().fill(Color.accentColor.opacity(0.15)))
+                        .background(Circle().fill(Theme.accent.opacity(0.15)))
                 }
                 .accessibilityLabel(playback.playing ? "Pause" : "Play both rides")
                 Slider(value: Binding(get: { playback.time }, set: { playback.scrub(to: $0) }),

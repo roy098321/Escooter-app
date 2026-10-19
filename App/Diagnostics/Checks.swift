@@ -232,6 +232,7 @@ enum CheckList {
         list.insert(contentsOf: m6New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         list.insert(contentsOf: p6New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         list.insert(contentsOf: p61New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
+        list.insert(contentsOf: p62New, at: list.firstIndex { $0.id == "g1" } ?? list.count)
         return list
     }()
 
@@ -506,7 +507,7 @@ enum CheckList {
         m("u54", p6M, "\"Scooter on\" uses a live battery % (B27)", "Nothing to do · Run all automatic marks it",
           "With packets but no live battery reading within 2 s the notification says Scooter on without a %; a frame left from before the switch-off gives no %; a new connection starts with no frame"),
         m("u55", p6M, "Short stiff bounce and room under the floating bar (B20 / B23)", "Nothing to do · Run all automatic marks it",
-          "The shared scroll helper caps the overscroll at its limit (35 pt) with strong resistance at both ends, leaves the inside of the list alone, and the bottom margin covers the bar plus the raised Home disc"),
+          "The shared scroll helper caps the overscroll at its limit (35 pt) with strong resistance at both ends, leaves the inside of the list alone, and the bottom margin covers the floating bar"),
         m("u56", p6M, "Live tile sizes and the camera glide (B21 / B22 / F-10)", "Nothing to do · Run all automatic marks it",
           "Speed 88 pt, battery and ride time 60 pt (safety minimums 76 / 60); the camera heads along the course, aims at most 1.5 s ahead of the fix and holds its heading below 5 km/h"),
         m("u57", p6M, "The way back of a saved route is saved at once (B24)", "Nothing to do · Run all automatic marks it",
@@ -533,6 +534,22 @@ enum CheckList {
           "Press and hold on the map drops a pin (or use the button for the middle of the map, or search an address); name it, pick the circle size and colour, Save place: it appears in Places like the learned ones", manual: true),
         m("ui7", p6M, "Place colours (F-08)", "Rides, Places and a ride map",
           "Each place has its own colour (Home green, Work blue, then others), editable on the place map screen; the pins on the maps use it; Rides rows that end at a place have a thin strip of that colour on their left, grey when the ride has no saved destination", manual: true)
+    ]
+
+    /// P6-2 redesign chunk 1 (foundation): theme v2, the flat tab bar, sheets docked on the bar.
+    private static let p62New: [CheckItem] = [
+        m("u61", p6M, "Theme v2 colours and contrast (F-15)", "Nothing to do · Run all automatic marks it",
+          "Every theme token has its light and dark value (white / #121212 pages, sand / #1F1F1F cards, orange #F89355), small orange text uses the darker ink (4.5:1 on white or more), section labels and muted text pass 4.5:1, text on orange is dark, and the danger red and OK green stay apart from the orange"),
+        m("u62", p6M, "Tab bar hides on scroll down, comes back on scroll up (F-14)", "Nothing to do · Run all automatic marks it",
+          "A made-up scroll: 30 pt down past the top hides the bar, 15 pt back up shows it, the first 40 pt and the bounce past the end never hide it, a docked map sheet pins it; five icons with Home in the middle, and the bottom margin covers the bar"),
+        m("u63", p6M, "Map sheets dock on the tab bar (B19)", "Nothing to do · Run all automatic marks it",
+          "Closed, the sheet is the handle and one summary line on the bar (its foot is the bar's bottom edge, same corner radius), its content stops at the bar's top edge at every height, half and full are taller, a drag settles on the nearest height, and without a bar the sheet sits just above the home indicator"),
+        m("ui8", p6M, "Theme v2 look: white, sand cards, orange (F-15)", "Look at Home, Rides, Stats, Settings, a ride; then switch the iPhone to dark mode",
+          "White pages, faint sand cards, orange for the Start button, the open tab and links, small brown section labels, no iOS blue anywhere; numbers and titles rounded; the Home map faint and warm, ride and route maps normal; dark mode neutral dark grey; the live screen dark; sunlight mode still heavier and high contrast", manual: true),
+        m("ui9", p6M, "Flat tab bar, hides on scroll (F-14)", "Scroll Rides, Stats and Settings down and up; open a ride",
+          "Icons only, Home a normal icon in the middle, the open tab a filled icon on an orange pill; the bar slides away as you scroll down a list and comes back as you scroll up (with Reduce Motion it fades); on a ride or route map it stays; VoiceOver reads the tab names", manual: true),
+        m("ui10", p6M, "Sheets on the bar, no version tag, settings on Home only (B19 / G3 / G4 / G12)", "Open a ride, a route, a place and the Where to? line on Home",
+          "Closed, each sheet is one line sitting on the tab bar (same width, rounded like the bar); drag it up and back; nothing shows under the bar. Titles are small; the version tag is only in Settings → About; the settings gear only on Home", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

@@ -28,12 +28,7 @@ struct StatsView: View {
             }
             .background { MapBackdrop().ignoresSafeArea() }
             .navigationTitle("Stats")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { CostSettingsView() } label: { GlassIcon(symbol: "slider.horizontal.3") }
-                        .accessibilityLabel("Prices")
-                }
-            }
+            .navigationBarTitleDisplayMode(.inline)   // G3: small title; G12: prices live in Settings only
             .onAppear(perform: load)
             .onChange(of: spanRaw) { _, _ in back = 0; load() }
             .onChange(of: modeRaw) { _, _ in back = 0; load() }

@@ -36,6 +36,7 @@ struct BatteryView: View {
         .background { MapBackdrop().ignoresSafeArea() }
         .stiffBounce()
         .navigationTitle("Battery")
+        .navigationBarTitleDisplayMode(.inline)   // G3
         .onAppear(perform: reload)
         .screen("Battery")
     }

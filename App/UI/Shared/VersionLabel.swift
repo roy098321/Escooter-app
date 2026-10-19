@@ -1,41 +1,14 @@
 import SwiftUI
 
-/// "v1 · 0.5 (13)" on every screen (owner, P4_DILEMMAS D3). The Home Screen name is just
-/// "CorckieApp"; inside the app the product version is always visible for future reference.
+/// "v1 · 1.0 (183)": the product version (owner, P4_DILEMMAS D3; the Home Screen name is just "CorckieApp").
 ///
-/// One label, placed once: `RootView` applies `.v1Label()` to the whole app, so every tab and
-/// every pushed screen has it. Sheets and full-screen covers are separate windows, so their
-/// content must call `.v1Label()` too — `VersionLabelGuardTests` (Linux CI) fails the build if
-/// a file presents one without it.
-///
-/// Where: bottom-right corner, in the home-indicator strip below the tab bar, small caption,
-/// secondary colour, never takes touches. It sits outside every tile, so on the live ride it
-/// can't compete with the speed and battery numbers.
+/// G4 (P6-2 declutter, owner approved 18 Oct): the tag no longer sits on every screen (it was on the live view too). It is shown
+/// in one place only, Settings → About, as this label. `VersionLabelGuardTests` (Linux CI) fails the build if it shows up anywhere else.
 struct VersionLabel: View {
     var body: some View {
         Text(AppInfo.v1Line)
-            .font(.caption2.monospacedDigit())
+            .font(.footnote.monospacedDigit())
             .foregroundStyle(.secondary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .sunPanel(Capsule())
-            .allowsHitTesting(false)
             .accessibilityLabel("Version 1, build \(AppInfo.versionLine)")
-    }
-}
-
-extension View {
-    /// Puts the v1 label in the bottom-right corner of this screen (see `VersionLabel`).
-    func v1Label() -> some View {
-        overlay {
-            // A flexible frame that reaches the screen edge, so the label lands in the
-            // home-indicator strip (right of the indicator), below the tab bar and all content.
-            VersionLabel()
-                .padding(.trailing, 18)
-                .padding(.bottom, 6)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .ignoresSafeArea(.container, edges: .bottom)
-                .allowsHitTesting(false)
-        }
     }
 }

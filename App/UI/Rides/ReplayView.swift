@@ -64,7 +64,7 @@ struct ReplayView: View {
             }
         }
         .sheet(item: $shareItem) { item in
-            ShareSheet(url: item.url).v1Label()
+            ShareSheet(url: item.url)
         }
         .alert("Could not make the file", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("OK") {}

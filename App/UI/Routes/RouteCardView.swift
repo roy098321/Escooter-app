@@ -60,10 +60,16 @@ struct RouteCardView: View {
 
     // MARK: Layout
 
+    /// B19: the one line the docked sheet shows when closed: the first two stats ("~13 min · 6.1 km"), or the today line
+    static func sheetSummary(_ m: RouteCardModel) -> String {
+        let values = m.stats.filter { !$0.filling && $0.value != "\u{2013}" }.prefix(2).map(\.value)
+        return values.isEmpty ? m.today.headline : values.joined(separator: " \u{00B7} ")
+    }
+
     private func content(_ m: RouteCardModel) -> some View {
-        MapSheet(initial: m.saved ? .half : .full) {
+        MapSheet(initial: m.saved ? .half : .full, summary: Self.sheetSummary(m)) {
             if m.map.isEmpty {
-                MapBackdrop()
+                MapBackdrop(map: true)
             } else {
                 mapView(m.map, highlight: followingCombination ? m.fastest?.path : nil)
             }
@@ -138,7 +144,7 @@ struct RouteCardView: View {
         Map(initialPosition: Self.position(lines, sheet: true), interactionModes: [.pan, .zoom]) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, l in
                 MapPolyline(coordinates: l.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
-                    .stroke(l.dashed ? Color.orange : Color.blue,
+                    .stroke(l.dashed ? Theme.canyon : Theme.accent,
                             style: StrokeStyle(lineWidth: l.dashed ? 4 : 5, lineCap: .round, lineJoin: .round, dash: l.dashed ? [2, 8] : []))
             }
             PlacePinMarks(pins: preview != nil ? RoutesPreview.pins : pins)
@@ -159,7 +165,7 @@ struct RouteCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DS.Space.cardPad)
-        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
+        .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 
@@ -233,7 +239,7 @@ struct RouteCardView: View {
                           systemImage: followingCombination ? "checkmark.circle.fill" : "point.topleft.down.to.point.bottomright.curvepath")
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(followingCombination ? .green : .accentColor)
+                .tint(followingCombination ? Theme.ok : Theme.accentInk)
                 .padding(.top, 4)
                 .accessibilityHint("The next ride follows this combination. Only ways you have ridden before.")
             }

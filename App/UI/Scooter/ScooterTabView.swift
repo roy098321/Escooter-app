@@ -46,6 +46,7 @@ struct ScooterTabView: View {
             }
             .background { MapBackdrop().ignoresSafeArea() }
             .navigationTitle("Scooter")
+            .navigationBarTitleDisplayMode(.inline)   // G3
             .onAppear(perform: reload)
             .confirmationDialog("Forget this scooter?", isPresented: $confirmForget, titleVisibility: .visible) {
                 Button("Forget scooter", role: .destructive, action: forget)

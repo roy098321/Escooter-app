@@ -36,6 +36,7 @@ struct RidesListView: View {
                 .background { MapBackdrop().ignoresSafeArea() }
                 .onAppear(perform: reload)
                 .navigationTitle("Rides")
+                .navigationBarTitleDisplayMode(.inline)   // G3: small title; G12: Settings only on Home
                 .screen("Rides")
                 .toolbar {
                     ToolbarItemGroup(placement: .topBarTrailing) {
@@ -52,12 +53,6 @@ struct RidesListView: View {
                             .buttonStyle(.plain)
                             .accessibilityHint("Compare your latest ride with another one")
                         }
-                        NavigationLink {
-                            SettingsView()
-                        } label: {
-                            GlassIcon(symbol: "gearshape")
-                        }
-                        .accessibilityLabel("Settings")
                     }
                 }
                 .navigationDestination(item: $selected) { RideDetailView(rideId: $0.id) }
@@ -67,7 +62,7 @@ struct RidesListView: View {
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reload() }
         .sheet(isPresented: $showCompare) {
             if let id = model.latest?.id ?? model.days.first?.rides.first?.id {
-                CompareSheet(rideId: id).v1Label().glassPresentation()
+                CompareSheet(rideId: id).glassPresentation()
             }
         }
         .confirmationDialog("Delete this ride?",

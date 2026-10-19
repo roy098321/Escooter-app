@@ -4,7 +4,7 @@ import SwiftUI
 /// (same app, same bundle ID: no extra app ID, TESTING §5).
 struct DeveloperView: View {
     private let results = CheckResults.shared
-    private static let palette: [Color] = [.blue, .orange, .green, .purple, .red, .teal, .indigo, .pink]
+    private static let palette: [Color] = [Theme.accent, Theme.canyon, Theme.ok, .purple, Theme.danger, Theme.muted, .brown, .pink]
 
     var body: some View {
         List {
@@ -17,7 +17,7 @@ struct DeveloperView: View {
                 NavigationLink {
                     ResultsView()
                 } label: {
-                    Label("Results and export", systemImage: "square.and.arrow.up").squircle(.blue)
+                    Label("Results and export", systemImage: "square.and.arrow.up").squircle(Theme.accent)
                 }
                 CountsRow()
             } footer: {

@@ -32,7 +32,7 @@ enum P61UiChecks {
         expect(StiffBounce.clamped(y: -500, top: 0, bottom: 1_000) >= -cap - 0.01 && StiffBounce.clamped(y: 1_900, top: 0, bottom: 1_000) <= 1_000 + cap + 0.01,
                "both ends capped")
         expect(StiffBounce.clamped(y: 400, top: 0, bottom: 1_000) == 400, "inside the content nothing changes")
-        expect(FloatingTabBar.clearance >= FloatingTabBar.barHeight + 24, "bottom margin covers the bar and the raised Home disc")
+        expect(FloatingTabBar.clearance >= FloatingTabBar.barHeight + FloatingTabBar.bottomGap, "bottom margin covers the floating bar (F-14: no raised disc any more)")
         CheckResults.shared.set("u55", expect.ok ? .pass : .fail, expect.line)
     }
 

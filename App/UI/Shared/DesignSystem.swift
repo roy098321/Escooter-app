@@ -1,9 +1,9 @@
 import SwiftUI
 import UIKit
 
-/// UI overhaul (UI_PLAN section 1): the shared tokens and small components every screen is built from.
-/// Colours stay the system colours (C29); the glass is the material fallback (`sunPanel`), so sunlight mode
-/// and Reduce Transparency keep turning it into a solid panel with a black edge (C30).
+/// UI overhaul (UI_PLAN section 1), theme v2 (F-15): spacing, radii, the card, the grouped-list look and the small controls.
+/// Colours come from `Theme` (Theme.swift); the reusable building blocks for the screens (StatTile, InfoChip, StatusPill,
+/// SectionHeader, InfoButton) are in Components.swift. Sunlight mode turns cards into white panels with a hairline (C30).
 /// The live ride view keeps its own `GlassCard` and fixed sizes; nothing here changes its numbers.
 enum DS {
     enum Space {
@@ -27,7 +27,7 @@ enum DS {
     static let hit: CGFloat = 44
 }
 
-// MARK: Glass card
+// MARK: Card
 
 private struct GlassCardStyle: ViewModifier {
     @Environment(\.sunlight) private var sunlight
@@ -41,123 +41,33 @@ private struct GlassCardStyle: ViewModifier {
         content
             .padding(padding)
             .background {
-                if let tint { shape.fill(tint.opacity(sunlight ? 0.2 : 0.14)) }
+                ZStack {
+                    // F-15: a matte sand card (dark grey in dark mode), no frosted glass; white with a hairline in sunlight
+                    shape.fill(sunlight ? Theme.row : Theme.card)
+                    if let tint { shape.fill(tint.opacity(sunlight ? 0.2 : 0.14)) }
+                }
             }
-            .sunPanel(shape, thin: thin)
             .overlay {
-                if !sunlight { shape.strokeBorder(.white.opacity(0.35), lineWidth: 1) }
+                if sunlight { shape.strokeBorder(Color(.separator), lineWidth: 0.5) }
             }
     }
 }
 
 extension View {
-    /// The card of the new look: frosted material, thin white edge, optional tint; solid with a black edge in sunlight.
+    /// The card of theme v2: faint sand (#F8F3EB) / dark grey (#1F1F1F), optional tint; white with a hairline in sunlight.
+    /// (The name stays from the glass look so the screens did not change; `thin` is kept for call-site compatibility.)
     func glassCard(radius: CGFloat = DS.Radius.card, tint: Color? = nil, padding: CGFloat = DS.Space.cardPad, thin: Bool = false) -> some View {
         modifier(GlassCardStyle(radius: radius, tint: tint, padding: padding, thin: thin))
     }
 
-    /// Sheet style: detents, drag indicator, frosted background, radius 28. (Every file that presents one still carries the version label.)
+    /// Task-sheet style (Compare picker, Merge, Trim, Replay, check guide): standard iOS sheet with detents and a drag indicator
+    /// on the page colour, radius 28. Map sheets do not use this: they dock on the tab bar (`MapSheet`, B19).
     func glassPresentation(detents: Set<PresentationDetent> = [.medium, .large]) -> some View {
         self
             .presentationDetents(detents)
             .presentationDragIndicator(.visible)
-            .presentationBackground(.ultraThinMaterial)
+            .presentationBackground(Theme.background)
             .presentationCornerRadius(DS.Radius.hero)
-    }
-}
-
-// MARK: Stat tile
-
-/// A squircle tile with a centred number and a small label (prototype 3 x 2 grid).
-struct StatTile: View {
-    let value: String
-    let label: String
-    var tint: Color?
-    var note: String?
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .scaledFont(24, weight: .semibold, mono: true, relativeTo: .title2)
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            if let note {
-                Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 72)
-        .glassCard(radius: DS.Radius.tile, tint: tint, padding: 10)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(note.map { "\(label), \(value), \($0)" } ?? "\(label), \(value)")
-    }
-}
-
-/// Adaptive grid of tiles: 3 columns at normal size, fewer at large Dynamic Type.
-struct StatTileGrid<Content: View>: View {
-    @ScaledMetric(relativeTo: .body) private var minTile: CGFloat = 100
-    private let content: Content
-    init(@ViewBuilder content: () -> Content) { self.content = content() }
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: minTile), spacing: DS.Space.row)], spacing: DS.Space.row) {
-            content
-        }
-    }
-}
-
-// MARK: Section header, info box, pill
-
-struct SectionHeader: View {
-    let title: String
-    init(_ title: String) { self.title = title }
-
-    var body: some View {
-        Text(title)
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 16)
-            .padding(.bottom, 6)
-            .accessibilityAddTraits(.isHeader)
-    }
-}
-
-/// The tinted explanation box (accent 12 %).
-struct InfoBox: View {
-    let text: String
-    var symbol: String?
-    var tint: Color = .accentColor
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            if let symbol { Image(systemName: symbol).foregroundStyle(tint) }
-            Text(text).font(.subheadline)
-            Spacer(minLength: 0)
-        }
-        .padding(DS.Space.cardPad)
-        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
-        .accessibilityElement(children: .combine)
-    }
-}
-
-struct Pill: View {
-    let text: String
-    var tint: Color = .accentColor
-    var filled = false
-
-    var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(filled ? tint : tint.opacity(0.15), in: Capsule())
-            .foregroundStyle(filled ? Color.white : tint)
     }
 }
 
@@ -205,7 +115,7 @@ struct GlassSegmented<T: Hashable>: View {
                     Text(options[i].1)
                         .font(.subheadline.weight(on ? .semibold : .regular))
                         .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(on ? Color(.systemBackground) : Color.clear, in: Capsule())
+                        .background(on ? Theme.background : Color.clear, in: Capsule())
                         .foregroundStyle(.primary)
                 }
                 .buttonStyle(.plain)
@@ -213,51 +123,35 @@ struct GlassSegmented<T: Hashable>: View {
             }
         }
         .padding(3)
-        .background(Color.primary.opacity(0.08), in: Capsule())
+        .background(Theme.chip, in: Capsule())
     }
 }
 
-// MARK: Glass list (Settings, Developer and the other list screens)
+// MARK: Grouped list (Settings, Developer and the other list screens)
 
-/// Row background of the list screens. Light mode and sunlight = Apple's own inset-grouped look (white rows on the
-/// grouped grey page); dark mode keeps the frosted rows over the map backdrop.
+/// Row background of the list screens (F-15, owner answer 1): Apple's inset-grouped layout in theme colours, white rows on a very
+/// light warm page in light mode, #1F1F1F rows on #121212 in dark mode. No frosted glass, no grey #F2F2F7.
 private struct GlassRowBackground: View {
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        if scheme == .light {
-            Color(.secondarySystemGroupedBackground)
-        } else {
-            Rectangle().fill(.ultraThinMaterial)
-        }
-    }
+    var body: some View { Theme.row }
 }
 
 private struct GlassListLook: ViewModifier {
-    @Environment(\.colorScheme) private var scheme
     @Environment(\.sunlight) private var sunlight
 
     func body(content: Content) -> some View {
-        if scheme == .light {
-            // B13 / B16: the grouped grey page; sunlight is the same with heavier text (bold legibility is set at the root)
-            content
-                .scrollContentBackground(.hidden)
-                .background(Color(.systemGroupedBackground).ignoresSafeArea())
-                .navigationBarTitleDisplayMode(.large)
-                .fontWeight(sunlight ? .semibold : nil)
-                .stiffBounce()
-        } else {
-            content
-                .scrollContentBackground(.hidden)
-                .background { MapBackdrop().ignoresSafeArea() }
-                .textCase(nil)
-                .stiffBounce()
-        }
+        // G3: small inline titles; sunlight is the same look with heavier text (bold legibility is set at the root)
+        content
+            .scrollContentBackground(.hidden)
+            .background(Theme.groupedBackground.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .fontWeight(sunlight ? .semibold : nil)
+            .textCase(nil)
+            .stiffBounce()
     }
 }
 
 extension View {
-    /// A standard `List` / `Form` of a list screen: native inset-grouped in light mode, glass over the backdrop in dark.
+    /// A standard `List` / `Form` of a list screen: Apple inset-grouped in the theme colours, small inline title.
     func glassList() -> some View {
         modifier(GlassListLook())
     }
@@ -283,9 +177,8 @@ struct SegmentedRow<T: Hashable>: View {
     }
 }
 
-/// A `Section` with a sentence-case header in dark mode; same text case in both looks.
+/// A `Section` with a small uppercase section label in the theme's brown (same as `SectionHeader`).
 struct GlassSection<Content: View>: View {
-    @Environment(\.colorScheme) private var scheme
     let title: String
     private let content: Content
     init(_ title: String, @ViewBuilder content: () -> Content) {
@@ -297,13 +190,17 @@ struct GlassSection<Content: View>: View {
         Section {
             content
         } header: {
-            Text(title).textCase(nil)
+            Text(title.uppercased())
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.sectionLabel)
         }
     }
 }
 
 // MARK: Coloured icon squircle (the Apple Settings row icon)
 
+/// F-15: every row icon is drawn the same way, the accent on a sand squircle (the per-row colours of the Apple look made the
+/// list screens loud and blue). `tint` is kept for the call sites only.
 struct SquircleLabelStyle: LabelStyle {
     let tint: Color
 
@@ -311,9 +208,9 @@ struct SquircleLabelStyle: LabelStyle {
         HStack(spacing: 12) {
             configuration.icon
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.accentInk)
                 .frame(width: 29, height: 29)
-                .background(tint, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .background(Theme.chip, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .accessibilityHidden(true)
             configuration.title
         }

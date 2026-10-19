@@ -263,7 +263,7 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         GlassSection("About") {
-            LabeledContent("Version", value: AppInfo.versionLine)
+            LabeledContent("Version") { VersionLabel() }   // G4: the only place the version tag shows
             LabeledContent("App ID", value: AppInfo.bundleID)
         }
         .glassRows()
@@ -313,7 +313,7 @@ enum AppInfo {
     static let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
     static let displayName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "?"
     static var versionLine: String { "\(version) (\(build))" }
-    /// Owner, P4 D3: "v1" is shown inside the app on every screen (the Home Screen name is just "CorckieApp").
+    /// Owner, P4 D3: "v1" is the product version (the Home Screen name is just "CorckieApp"); G4: shown in Settings → About only.
     static let productVersion = "v1"
     static var v1Line: String { "\(productVersion) · \(versionLine)" }
 }

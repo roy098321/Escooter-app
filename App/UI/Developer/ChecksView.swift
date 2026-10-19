@@ -188,7 +188,7 @@ struct CheckRow: View {
             LiveCheckBlock(id: item.id)
             let ownerNote = results.ownerNote(item.id)
             if !ownerNote.isEmpty {
-                Label(ownerNote, systemImage: "note.text").font(.caption).foregroundStyle(.blue)
+                Label(ownerNote, systemImage: "note.text").font(.caption).foregroundStyle(Theme.accentInk)
             }
             if item.id == "c6b" && !PermissionsCheck.shared.soundsOn {
                 // B09: the chime can't play without notification sounds — don't let the test start
@@ -214,12 +214,10 @@ struct CheckRow: View {
         .padding(.vertical, 2)
         .sheet(isPresented: $showGuide) {
             CheckGuideSheet(item: item)
-                .v1Label()
                 .glassPresentation()
         }
         .sheet(isPresented: $editingNote) {
             CheckNoteSheet(item: item)
-                .v1Label()
                 .glassPresentation()
         }
     }
@@ -232,7 +230,7 @@ extension CheckRow {
         switch kind {
         case .onARide:
             Label("On a ride", systemImage: "figure.outdoor.cycle")
-                .font(.caption.weight(.semibold)).foregroundStyle(.blue)
+                .font(.caption.weight(.semibold)).foregroundStyle(Theme.accentInk)
         case .automatic:
             Label("Automatic", systemImage: "gearshape")
                 .font(.caption).foregroundStyle(.secondary)

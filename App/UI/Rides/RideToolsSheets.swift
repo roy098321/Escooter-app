@@ -305,7 +305,7 @@ struct TrimSheet: View {
         Chart {
             ForEach(Array(samples.enumerated()), id: \.offset) { _, s in
                 AreaMark(x: .value("Time", s.t), y: .value("km/h", s.speedKmh ?? s.gpsSpeedKmh ?? 0))
-                    .foregroundStyle(Color.accentColor.opacity(0.35))
+                    .foregroundStyle(Theme.accent.opacity(0.35))
             }
             RuleMark(x: .value("Start", startS)).foregroundStyle(.green)
             RuleMark(x: .value("End", endS)).foregroundStyle(.red)

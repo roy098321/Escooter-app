@@ -73,6 +73,7 @@ struct PlaceMapView: View {
     @State private var renaming = false
     @State private var nameDraft = ""
     @State private var errorText: String?
+    @Environment(\.dismiss) private var dismiss
 
     private var shown: PlaceMapItem? { preview ?? item }
 
@@ -84,9 +85,10 @@ struct PlaceMapView: View {
                 ContentUnavailableView("Place not found", systemImage: "mappin.slash")
             }
         }
-        .background { MapBackdrop().ignoresSafeArea() }
+        .background { Theme.background.ignoresSafeArea() }
         .navigationTitle(shown?.row.title ?? "Place")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(shown == nil ? .automatic : .hidden, for: .navigationBar)   // the bar over the map replaces it
         .alert("Rename place", isPresented: $renaming) {
             TextField("Name", text: $nameDraft)
             Button("Save") { let draft = nameDraft; save { try PlaceService.rename(placeId: $0.id, name: draft, database: $1) } }
@@ -104,22 +106,26 @@ struct PlaceMapView: View {
         .screen("Place")
     }
 
+    /// B19: a full map with the place's sheet docked on the tab bar (closed = "Name · street")
     private func content(_ place: PlaceMapItem) -> some View {
-        ScrollView {
+        MapSheet(initial: .half, summary: [place.row.title, street].compactMap { $0 }.joined(separator: " \u{00B7} ")) {
+            Map(initialPosition: .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: place.circleM * 8, longitudinalMeters: place.circleM * 8)),
+                interactionModes: [.pan, .zoom]) {
+                PlaceMarks(coordinate: place.coordinate, radiusM: place.circleM, colourId: place.colourId, name: place.row.hasName ? place.row.title : "")
+            }
+            .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+            .accessibilityLabel("Map of \(place.row.title)")
+        } topBar: {
+            GlassTopBar(title: place.row.title, subtitle: street) {
+                GlassIconButton(symbol: "chevron.left", label: "Back") { dismiss() }
+            } trailing: {
+                EmptyView()
+            }
+        } sheet: {
             VStack(spacing: 12) {
-                Map(initialPosition: .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: place.circleM * 5, longitudinalMeters: place.circleM * 5)),
-                    interactionModes: [.pan, .zoom]) {
-                    PlaceMarks(coordinate: place.coordinate, radiusM: place.circleM, colourId: place.colourId, name: place.row.hasName ? place.row.title : "")
-                }
-                .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
-                .frame(height: 300)
-                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
-                .accessibilityLabel("Map of \(place.row.title)")
                 titleCard(place)
                 settingsCard(place)
             }
-            .padding(.horizontal, DS.Space.gutter)
-            .padding(.bottom, 24)
         }
     }
 
