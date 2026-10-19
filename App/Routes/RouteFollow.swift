@@ -79,6 +79,11 @@ enum RouteFollowLoader {
 }
 
 extension RouteFollowLoader {
+    /// F-22: the route's usual battery use per km (median of its rides), nil without data
+    static func usualPctPerKm(routeId: String, database: AppDatabase) -> Double? {
+        DestinationRules.usualPctPerKm(rides: RouteCardLoader.stats((try? RouteQueries(database).routeRides(routeId: routeId)) ?? []))
+    }
+
     /// M2-09 (Q9): the one line shown at ride start when the way back will not fit, from `neededPct` (with the margin) of both legs.
     /// nil = it fits, or not enough data, or no battery reading.
     static func returnWarning(routeId: String, database: AppDatabase, battery: BatteryNow) -> String? {

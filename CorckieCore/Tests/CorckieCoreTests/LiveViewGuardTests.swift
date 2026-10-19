@@ -91,9 +91,10 @@ final class LiveViewGuardTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: appFolder.deletingLastPathComponent()
             .appendingPathComponent("CorckieCore/Sources/CorckieCore/Ride/SpeedWarning.swift").path), "SpeedWarning is deleted")
         XCTAssertTrue(screen.contains("LiveAlerts.feed(&banners"), "the driver raises banners only through LiveAlerts")
-        let alerts = try core("Ride/LiveAlerts.swift")
-        XCTAssertEqual(alerts.components(separatedBy: "\n").filter { $0.hasPrefix("    case ") }.count, 1, "LiveAlert has one case for now (motorHot)")
-        XCTAssertTrue(alerts.contains("case motorHot"))
+        let alerts = try core("Ride/LiveWarnings.swift")
+        let kinds = alerts.components(separatedBy: "public enum LiveAlertKind")[1].components(separatedBy: "public enum LiveAlert:")[0]
+        XCTAssertEqual(kinds.components(separatedBy: "\n").filter { $0.hasPrefix("    case ") }.count, 3, "three kinds of interruption: battery, destination, motorHot")
+        XCTAssertTrue(alerts.contains("case battery(level: Int, kmLeft: Int?)") && alerts.contains("case motorHot"))
         XCTAssertTrue(live.contains("Hold to end") && live.contains("a.short") && live.contains("batteryTile(s)"), "numbers, arrival chip and hold-to-end stay")
     }
 }

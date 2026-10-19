@@ -192,6 +192,8 @@ public struct WhereToChip: Equatable, Sendable {
     public var timeText: String?
     public var arriveText: String?
     public var usedText: String?
+    /// F-22: the route's usual battery need, % (today's estimate), for the pre-ride check
+    public var usualNeedPct: Double?
 
     public init(routeId: String, label: String, detail: String) {
         self.routeId = routeId
@@ -219,6 +221,7 @@ public enum WhereTo {
                 chip.timeText = "\(RouteCardBuilder.minutes(e.timeS)) min"
                 chip.arriveText = DayClock.clockText(minuteOfDay: minute)
                 chip.usedText = e.usedPct.map { "\(Int($0.rounded()))%" }
+                chip.usualNeedPct = e.usedPct
             }
             return chip
         }

@@ -32,6 +32,7 @@ struct RootView: View {
                 .dynamicTypeSize(UIShot.bigType ? DynamicTypeSize.accessibility3 : DynamicTypeSize.large)
         } else {
             tabs
+                .overlay { StartTransitionOverlay() }       // A3: Start grows into the live view
                 .fullScreenCover(isPresented: .constant(liveCoverShown || summaryShown)) {
                     // M1-12: no tab bar, no navigation, no swipe-down while a ride is on.
                     // M1-13: when the ride is over the same cover turns into its summary.

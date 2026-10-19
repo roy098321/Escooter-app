@@ -163,7 +163,7 @@ enum P63Checks {
         var d = LiveScreenDriver()
         let fast = (0..<10).map { d.update(LiveInput(scooterSpeedKmh: 52, scooterBatteryPct: 40, phase: .riding, scooterTempC: 50, rideElapsedS: Double($0)), at: Double($0)) }
         expect(fast.allSatisfy { $0.banner == nil } && fast.allSatisfy { $0.tiles.speedKmh == 52 }, "52 km/h is shown and nothing interrupts")
-        expect(LiveAlerts.interruptions == [.motorHot], "the hot motor is the only interruption")
+        expect(LiveAlerts.interruptions == [.battery, .destination, .motorHot], "battery levels, F-22 and the hot motor are the only interruptions")
         let banned: [LiveBanner] = [.batteryTight, .returnCheck, .destination, .headwind, .starting, .notRiding]
         expect(banned.allSatisfy { !LiveAlerts.isAllowed($0) }, "insight and prompt banners cannot reach the live view")
         var h = LiveScreenDriver()

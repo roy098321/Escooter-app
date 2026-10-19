@@ -70,6 +70,11 @@ struct SettingsView: View {
             } label: {
                 Label("Notifications", systemImage: "bell").squircle(Theme.danger)
             }
+            NavigationLink {
+                SoundsSettingsView()
+            } label: {
+                Label("Sounds", systemImage: "speaker.wave.2").squircle(Theme.canyon)
+            }
         }
     }
 
@@ -314,6 +319,29 @@ struct DisplaySettingsView: View {
             DispatchQueue.main.async { loaded = true }
         }
         .screen("Display settings")
+    }
+}
+
+/// F-19: one switch per sound. The battery, destination and motor warnings are not here: they always play during a ride (P-4).
+struct SoundsSettingsView: View {
+    @State private var on: [SoundToggle: Bool] = [:]
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(SoundToggle.allCases, id: \.self) { t in
+                    Toggle(t.title, isOn: Binding(get: { on[t] ?? true }, set: { v in on[t] = v; t.set(v) }))
+                }
+            } footer: {
+                Text("Battery, destination and motor warnings always sound during a ride, even with the silent switch on.")
+            }
+            .glassRows()
+        }
+        .glassList()
+        .navigationTitle("Sounds")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { for t in SoundToggle.allCases { on[t] = t.isOn } }
+        .screen("Sounds settings")
     }
 }
 

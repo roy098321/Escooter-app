@@ -172,6 +172,7 @@ final class RecorderService {
                 // ride summary; since P-4 nothing of them is shown during the ride.
                 _ = InsightRunner.atRideStart(db, routeId: RouteFollowSelection.shared.routeId, battery: battery, lat: input.lat, lon: input.lon)
                 if let id = RouteFollowSelection.shared.routeId {
+                    RideVoice.shared.usualRoutePctPerKm = RouteFollowLoader.usualPctPerKm(routeId: id, database: db)      // F-22
                     driver.follow(RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination),
                                   utcOffsetMin: RouteCardLoader.currentOffsetMin())
                 }
@@ -194,6 +195,7 @@ final class RecorderService {
             if ProcessInfo.processInfo.isLowPowerModeEnabled { mark(RideMarks.lowPower) }
         }
         let screen = driver.update(input, at: time ?? Self.now())
+        RideVoice.shared.update(input, screen: screen, at: time ?? Self.now(), database: AppModel.shared.displayDatabase)   // F-19 sounds, P-4 warnings
         if !fromSimulator, driver.etaMarks.count > etaLogged, let real = AppModel.shared.database {
             // T-00 part 2: the arrival time shown at 25 / 50 / 75% of the followed route (Q-E)
             FieldKitService.logEta(real, routeId: RouteFollowSelection.shared.routeId, marks: Array(driver.etaMarks.dropFirst(etaLogged)))

@@ -21,6 +21,8 @@ struct LiveRideView: View {
     @State private var answerTap = 0
     @State private var holdActive = false
     @State private var holdProgress = 0.0
+    /// F-19: a light tick at each quarter of the fill, a strong tap when the ride ends
+    @State private var holdTicks = 0
     @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var track = LiveCameraTrack()
     @State private var tilesTop: CGFloat?
@@ -344,6 +346,7 @@ struct LiveRideView: View {
                         hold.cancel()
                         holdActive = false
                         holdProgress = 0
+                        holdTicks = 0
                     }
             )
             Text("Hold to end").font(.footnote.weight(.semibold))
@@ -359,11 +362,17 @@ struct LiveRideView: View {
         guard hold.startedAt != nil else { return }
         let now = Date().timeIntervalSince1970
         holdProgress = hold.progress(at: now)
+        let quarter = Int(holdProgress * 4)
+        if quarter > holdTicks, quarter < 4 {
+            holdTicks = quarter
+            Haptics.light()
+        }
         if hold.completed(at: now) {
             hold.cancel()
             holdProgress = 0
             holdActive = false
-            Haptics.success()
+            holdTicks = 0
+            Haptics.strong()
             RecorderService.shared.press(.endHeld)
         }
     }

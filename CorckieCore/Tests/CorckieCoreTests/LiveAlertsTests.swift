@@ -1,11 +1,14 @@
 import XCTest
 @testable import CorckieCore
 
-/// P-4: the one place the live view may raise something. Today only the hot motor (plus plain data-state banners).
+/// P-4: the one place the live view may raise something. The battery levels, F-22 and the hot motor (plus plain data-state banners).
 final class LiveAlertsTests: XCTestCase {
-    func test_onlyTheHotMotorInterrupts() {
-        XCTAssertEqual(LiveAlerts.interruptions, [.motorHot])
-        XCTAssertEqual(LiveAlert.motorHot.banners, [.hot, .veryHot])
+    func test_onlyTheThreeWarningsInterrupt() {
+        XCTAssertEqual(LiveAlerts.interruptions, [.battery, .destination, .motorHot])
+        XCTAssertEqual(LiveAlertKind.motorHot.banners, [.hot, .veryHot])
+        XCTAssertTrue(LiveAlertKind.battery.banners.isEmpty && LiveAlertKind.destination.banners.isEmpty, "they speak, they show no banner")
+        XCTAssertEqual(LiveAlert.battery(level: 20, kmLeft: 6).kind, .battery)
+        XCTAssertEqual(LiveAlert.destination(name: "Work", verdict: .short(km: 2)).kind, .destination)
     }
 
     func test_allowedBanners() {

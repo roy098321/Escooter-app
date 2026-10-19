@@ -231,6 +231,23 @@ extension Label where Title == Text, Icon == Image {
 enum Haptics {
     @MainActor static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
     @MainActor static func warning() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
+
+    // F-19 (P6-3): the "alive" set. A soft tick for connecting, small ticks for selections, a firm tap for Start, a strong one to end.
+    // Callable from anywhere (the recorder service is not on the main actor): the generator is used on the main actor.
+    static func soft() { onMain { UIImpactFeedbackGenerator(style: .soft).impactOccurred() } }
+    static func tick() { onMain { UISelectionFeedbackGenerator().selectionChanged() } }
+    static func light() { onMain { UIImpactFeedbackGenerator(style: .light).impactOccurred() } }
+    static func firm() { onMain { UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 0.9) } }
+    static func strong() { onMain { UIImpactFeedbackGenerator(style: .heavy).impactOccurred() } }
+
+    /// The warning pattern: medium taps 0.2 s apart (two for battery and motor, three for the destination)
+    static func taps(_ n: Int) {
+        for i in 0..<max(1, n) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2 * Double(i)) { onMain { UIImpactFeedbackGenerator(style: .medium).impactOccurred() } }
+        }
+    }
+
+    private static func onMain(_ work: @escaping @MainActor () -> Void) { Task { @MainActor in work() } }
 }
 
 // MARK: Chip flow

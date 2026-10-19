@@ -38,6 +38,22 @@ public struct LiveScreenState: Equatable, Sendable {
     /// M2-08: GPS lost on a followed route: the dot moves by wheel distance and is drawn hollow at `dotOverride`
     public var dotHollow: Bool = false
     public var dotOverride: LivePath.Coord? = nil
+    /// F-22: where the followed route stands (km done / km of the route / name); nil without a followed route or while off it
+    public var routeProgress: RouteLiveProgress? = nil
+    /// The followed route's end is reached (S5 arrival sound once)
+    public var arrived: Bool = false
+}
+
+public struct RouteLiveProgress: Equatable, Sendable {
+    public var name: String
+    public var routeKm: Double
+    public var alongKm: Double
+
+    public init(name: String, routeKm: Double, alongKm: Double) {
+        self.name = name
+        self.routeKm = routeKm
+        self.alongKm = alongKm
+    }
 }
 
 public enum LiveScreenLogic {
@@ -82,6 +98,9 @@ public struct LiveScreenDriver: Sendable {
     public private(set) var etaMarks: [EtaMark] = []
 
     public init() {}
+
+    /// Within this distance of the route's end the rider has arrived
+    public static let arrivedWithinM = 40.0
 
     /// M2-06: the route this ride follows (Where to?), or nil. Set before the ride starts or while it runs.
     public mutating func follow(_ route: RouteFollower?, utcOffsetMin: Int = 0) {
@@ -136,11 +155,17 @@ public struct LiveScreenDriver: Sendable {
         }
         var arrival: ArrivalStrip?
         var dotOverride: LivePath.Coord?
+        var progress: RouteLiveProgress?
+        var arrived = false
         if let step = step, let f = follower {
             let shown = arrivalDisplay.show(remainingS: step.remainingS, nowS: t)
             arrival = ArrivalStrip(text: ArrivalStrip.text(destination: f.destinationName, arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin),
                                    offRoute: step.offPath, deadReckoned: step.deadReckoned,
                                    short: ArrivalStrip.shortText(arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin))
+            if !step.offPath {
+                progress = RouteLiveProgress(name: f.destinationName, routeKm: f.totalM / 1000, alongKm: step.alongM / 1000)
+                arrived = step.alongM >= f.totalM - Self.arrivedWithinM
+            }
             if step.deadReckoned, let d = step.dot { dotOverride = LivePath.Coord(lat: d.lat, lon: d.lon) }
             if !step.offPath {
                 let done = f.totalM > 0 ? step.alongM / f.totalM * 100 : 0
@@ -156,6 +181,8 @@ public struct LiveScreenDriver: Sendable {
                                dotGreyed: tiles.chips.contains(.noGps))
         state.arrival = arrival
         state.dotOverride = dotOverride
+        state.routeProgress = progress
+        state.arrived = arrived
         state.dotHollow = dotOverride != nil
         if dotOverride != nil { state.dotGreyed = false }
         return state
