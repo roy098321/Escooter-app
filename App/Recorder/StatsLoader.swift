@@ -21,6 +21,8 @@ struct StatsModel {
     var lastWeek: [Insight] = []
     var thisWeek: [Insight] = []
     var pastWeeks: [InsightRunner.PastWeek] = []
+    /// B33: km per finished week for the Past weeks chart (every week with rides, gaps as 0)
+    var weekBars: [WeekBar] = []
     /// S12: "First week \u{00B7} from Wed 30 Sep" while the shown week is the partial first one
     var firstWeekNote: String?
     /// F-01: lifetime numbers (odometer based)
@@ -67,6 +69,11 @@ enum StatsLoader {
                           recent: (try? InsightQueries(db).recent()) ?? [], electricityIlsPerKwh: prices.electricityIlsPerKwh,
                           fuelLPer100km: prices.fuelLPer100km, fuelPriceIls: prices.fuelFallbackIls, packWh: prices.packWh,
                           lastWeek: week.last, thisWeek: week.now, pastWeeks: week.past)
+        if back == 0 {
+            let from = InsightWeek.start(ms: nowMs, utcOffsetMin: utcOffsetMin) - 12 * 7 * OutsideTime.dayMs
+            let rows = ((try? q.rides(from: from, to: nowMs)) ?? []).filter { $0.kind == "ride" }
+            model.weekBars = WeekBars.make(rides: rows.map { (startMs: $0.startAt, km: $0.distanceM / 1000) }, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+        }
         model.overall = OverallLoader.load(db, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
         model.utcOffsetMin = utcOffsetMin
         model.firstWeekNote = StatsCalc.firstWeekNote(firstRideMs: q.firstRideMs(), period: p, span: span, mode: mode, utcOffsetMin: utcOffsetMin)

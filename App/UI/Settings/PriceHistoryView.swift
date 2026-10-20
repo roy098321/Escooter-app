@@ -16,9 +16,9 @@ struct PriceHistoryView: View {
     var body: some View {
         Form {
             section(title: "Fuel price (\u{20AA} per litre)", rows: fuel, value: $fuelValue, date: $fuelDate, kind: PriceHistoryQueries.fuel,
-                    info: "95 octane, self-service. A new price counts from its date on.")
+                    info: InfoContent(lead: "A new price counts from its date on.", basedOn: [InfoBasedOn("Fuel", "95 octane, self-service")]))
             section(title: "Electricity rate (\u{20AA} per kWh)", rows: electricity, value: $electricityValue, date: $electricityDate,
-                    kind: PriceHistoryQueries.electricity, info: "A new rate counts from its date on.")
+                    kind: PriceHistoryQueries.electricity, info: InfoContent(lead: "A new rate counts from its date on."))
         }
         .glassList()
         .navigationTitle("Price history")
@@ -27,7 +27,7 @@ struct PriceHistoryView: View {
         .onAppear(perform: load)
     }
 
-    private func section(title: String, rows: [PriceRow], value: Binding<String>, date: Binding<Date>, kind: String, info: String) -> some View {
+    private func section(title: String, rows: [PriceRow], value: Binding<String>, date: Binding<Date>, kind: String, info: InfoContent) -> some View {
         Section {
             ForEach(rows.reversed(), id: \.validFrom) { row in
                 HStack {
@@ -51,7 +51,7 @@ struct PriceHistoryView: View {
         } header: {
             HStack(spacing: 4) {
                 Text(title).textCase(nil)
-                InfoButton(title, text: info)
+                InfoButton(title, info: info)
             }
         }
         .glassRows()
@@ -123,7 +123,7 @@ struct PurchaseSettingsView: View {
             } header: {
                 HStack(spacing: 4) {
                     Text("Before CorckieApp").textCase(nil)
-                    InfoButton("Before the app", text: "Overall stats estimate the km ridden before the first logged ride from the odometer at that ride minus the odometer at purchase. Use 0 for a new scooter.")
+                    InfoButton("Before the app", info: InfoContent(lead: "Overall stats estimate the km ridden before the first logged ride.", formula: [], basedOn: [InfoBasedOn("Estimate", "odometer at the first ride minus odometer at purchase")], caveat: "Use 0 for a new scooter."))
                 }
             }
             .glassRows()

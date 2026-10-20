@@ -270,12 +270,17 @@ extension SectionHeader where Trailing == EmptyView {
 ///     InfoButton("Battery per km", text: "Rested battery at the start minus at the end, divided by the distance.")
 struct InfoButton: View {
     let title: String
-    let text: String
+    let info: InfoContent
     @State private var open = false
 
-    init(_ title: String, text: String) {
+    init(_ title: String, info: InfoContent) {
         self.title = title
-        self.text = text
+        self.info = info
+    }
+
+    /// A lead line only (no formula): kept for the places that have nothing to calculate
+    init(_ title: String, text: String) {
+        self.init(title, info: InfoContent(lead: text))
     }
 
     var body: some View {
@@ -289,8 +294,8 @@ struct InfoButton: View {
         .buttonStyle(.plain)
         .accessibilityLabel("About \(title)")
         .sheet(isPresented: $open) {
-            InfoSheet(title: title, text: text)
-                .presentationDetents([.height(220), .medium])
+            InfoSheet(title: title, info: info)
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Theme.background)
                 .presentationCornerRadius(DS.Radius.hero)
@@ -298,20 +303,100 @@ struct InfoButton: View {
     }
 }
 
-private struct InfoSheet: View {
+/// F-25: every info sheet looks the same: title, one lead line, a formula box (aligned rows, a bold accent result row), "Based on" rows
+/// (a row opens the screen where the value is set, when it can be set) and at most one caveat sentence.
+///
+///     InfoSheet(title: "Money", info: InfoFormula.money(grossIls: 145.74, electricityIls: 0.27, km: 126, lPer100: 14, rate: 0.64, charges: 0.5))
+struct InfoSheet: View {
     let title: String
-    let text: String
+    let info: InfoContent
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(title).font(.headline).fontDesign(.rounded)
-                Text(text).font(.body).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(title).font(.headline).fontDesign(.rounded)
+                    Text(info.lead).font(.body).fixedSize(horizontal: false, vertical: true)
+                    if !info.formula.isEmpty { formulaBox }
+                    if !info.basedOn.isEmpty { basedOnBox }
+                    if let caveat = info.caveat {
+                        Text(caveat).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
+                .padding(.bottom, 20)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.top, 24)
+            .toolbar(.hidden, for: .navigationBar)
         }
+    }
+
+    private var formulaBox: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(info.formula.enumerated()), id: \.offset) { _, row in
+                if row.role == .result { Divider().padding(.vertical, 6) }
+                HStack(alignment: .firstTextBaseline) {
+                    Text(prefix(row.role) + row.label).lineLimit(2)
+                    Spacer(minLength: 12)
+                    Text(row.text).monospacedDigit()
+                }
+                .font(row.role == .result ? .body.weight(.bold) : .body)
+                .foregroundStyle(row.role == .result ? Theme.accentInk : Color.primary)
+                .padding(.vertical, 3)
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(DS.Space.cardPad)
+        .frame(maxWidth: .infinity)
+        .glassCard(padding: 0)
+    }
+
+    private func prefix(_ role: InfoRole) -> String {
+        switch role {
+        case .minus: return "\u{2212} "
+        case .plus: return "+ "
+        case .divide: return "\u{00F7} "
+        case .result: return "= "
+        case .start: return ""
+        }
+    }
+
+    private var basedOnBox: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("BASED ON").font(.caption.weight(.semibold)).tracking(0.4).foregroundStyle(Theme.sectionLabel)
+            VStack(spacing: 0) {
+                ForEach(Array(info.basedOn.enumerated()), id: \.offset) { i, row in
+                    if i > 0 { Divider() }
+                    if let link = row.link {
+                        NavigationLink {
+                            switch link {
+                            case .costSettings: CostSettingsView()
+                            case .priceHistory: PriceHistoryView()
+                            }
+                        } label: { basedOnRow(row, chevron: true) }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Opens where it is set")
+                    } else {
+                        basedOnRow(row, chevron: false)
+                    }
+                }
+            }
+            .padding(.horizontal, DS.Space.cardPad)
+            .glassCard(padding: 0)
+        }
+    }
+
+    private func basedOnRow(_ row: InfoBasedOn, chevron: Bool) -> some View {
+        HStack {
+            Text(row.label).font(.subheadline)
+            Spacer(minLength: 12)
+            Text(row.value).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+            if chevron { Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary) }
+        }
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 

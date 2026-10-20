@@ -186,7 +186,9 @@ struct RouteCardView: View {
         let ready = m.stats.filter { !$0.filling }
         if !ready.isEmpty {
             SectionHeader("Usual") {
-                InfoButton("Usual range", text: ready.map { "\($0.label): \($0.value)" }.joined(separator: "\n") + "\nBased on \(m.totalRides) \(m.totalRides == 1 ? "ride" : "rides").")
+                InfoButton("Usual range", info: InfoContent(
+                    lead: "The range each usual number moves in on this route.",
+                    basedOn: ready.map { InfoBasedOn($0.label, $0.value) } + [InfoBasedOn("Based on", "\(m.totalRides) \(m.totalRides == 1 ? "ride" : "rides")")]))
             }
             StatTileGrid {
                 ForEach(Array(ready.enumerated()), id: \.offset) { _, s in

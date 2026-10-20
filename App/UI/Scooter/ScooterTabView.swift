@@ -1,4 +1,5 @@
 import CorckieCore
+import PhotosUI
 import SwiftUI
 
 /// M3-05: the Scooter tab. Status, info, links, and "Forget scooter" (clears the pairing only, never ride data).
@@ -13,6 +14,9 @@ struct ScooterTabView: View {
         /// V17: a made-up parked spot for the ui-shot
         var parked: ParkedSpot?
         var nowMs: Int64?
+        /// F-26: the colour, and a made-up cut-out instead of a photo (ui-shot only)
+        var colour: ScooterColour = .sand
+        var samplePhoto = false
     }
 
     var preview: Preview?
@@ -24,7 +28,10 @@ struct ScooterTabView: View {
     @State private var customName: String?
     @State private var renaming = false
     @State private var nameText = ""
-    @State private var connectTap = 0
+    @State private var colour: ScooterColour = .sand
+    @State private var photo: ScooterPhotoStore.Loaded?
+    @State private var pickingPhoto = false
+    @State private var pickedItem: PhotosPickerItem?
     @Environment(\.dynamicTypeSize) private var typeSize
     private let link = AppModel.shared.scooter
 
@@ -59,6 +66,9 @@ struct ScooterTabView: View {
                         // S4: Forget scooter lives behind the dots, not as a big red button on the page
                         Menu {
                             Button { nameText = customName ?? record?.name ?? ""; renaming = true } label: { Label("Rename scooter", systemImage: "pencil") }
+                            colourMenu
+                            Button { pickingPhoto = true } label: { Label("Choose photo", systemImage: "photo") }
+                            if photo != nil { Button { removePhoto() } label: { Label("Remove photo", systemImage: "xmark.circle") } }
                             Button(role: .destructive) { confirmForget = true } label: { Label("Forget scooter", systemImage: "trash") }
                         } label: {
                             Image(systemName: "ellipsis.circle")
@@ -68,6 +78,8 @@ struct ScooterTabView: View {
                 }
             }
             .onAppear(perform: reload)
+            .photosPicker(isPresented: $pickingPhoto, selection: $pickedItem, matching: .images)
+            .onChange(of: pickedItem) { _, item in if let item { Task { await usePicked(item) } } }
             .alert("Rename scooter", isPresented: $renaming) {
                 TextField("Name", text: $nameText)
                 Button("Cancel", role: .cancel) {}
@@ -92,54 +104,13 @@ struct ScooterTabView: View {
         let odo = preview != nil ? preview?.odometerKm : odometerKm
         let livePct: Int? = preview != nil ? preview?.batteryPct : link.frame?.batteryPct
         let pct = connected ? (livePct ?? seenPct) : seenPct
-        // S1 / S2 / S5: one status card: dot, name, odometer chip, the battery % (a clock when it is the last seen one), a small connect button
-        let stacked = typeSize.isAccessibilitySize
-        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
-        VStack(alignment: .leading, spacing: 8) {
-        layout {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Circle().fill(connected ? Theme.ok : Theme.accent).frame(width: 9, height: 9)
-                    Text(customName ?? rec?.name ?? "Scooter").font(.title3.weight(.semibold)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
-                }
-                if let odo {
-                    InfoChip("gauge.with.dots.needle.67percent", String(format: "%.1f km", odo), label: "Odometer")
-                }
-            }
-            Spacer(minLength: 8)
-            HStack(spacing: 4) {
-                if !connected { Image(systemName: "clock").font(.footnote).foregroundStyle(.secondary) }
-                Text(pct.map { "\($0)%" } ?? "\u{2013}").scaledFont(36, weight: .semibold, mono: true, relativeTo: .largeTitle)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(connected ? "Battery \(pct ?? 0)%" : "Battery \(pct ?? 0)%, last seen \(Self.lastSeenText(seenMs))")
-            if !connected {
-                Button {
-                    connectTap += 1
-                    if preview == nil { link.start() }
-                } label: {
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                        .font(.headline)
-                        .foregroundStyle(Theme.onAccent)
-                        .frame(width: DS.hit, height: DS.hit)
-                        .background(Theme.accent, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Connect")
-                .sensoryFeedback(.impact(weight: .medium), trigger: connectTap)
-            }
+        // F-26: the hero card (the line-art scooter enters from the left; name, battery %, caption, odometer and Connect on the right)
+        let nowMs = preview?.nowMs ?? Int64(Date().timeIntervalSince1970 * 1000)
+        ScooterHeroCard(name: customName ?? rec?.name ?? "Scooter", connected: connected, pct: pct,
+                        caption: seenMs.map { Self.lastConnectedCaption($0, nowMs: nowMs) }, odometerKm: odo,
+                        colour: colour, photo: photo) {
+            if preview == nil { link.start() }
         }
-            if !connected, let seenMs {
-                // the big % is the value from the last connection: say so, and when
-                Text(Self.lastConnectedCaption(seenMs, nowMs: preview?.nowMs ?? Int64(Date().timeIntervalSince1970 * 1000)))
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)      // P6-3: the card spans the full width when its content is stacked at big text sizes
-        .padding(DS.Space.cardPad)
-        .glassCard(radius: DS.Radius.hero, padding: 0)
         parkedRow
         // S3: one row: what is due next
         NavigationLink { MaintenanceView() } label: {
@@ -218,12 +189,49 @@ struct ScooterTabView: View {
     }
 
     private func reload() {
-        guard preview == nil, let db = AppModel.shared.database else { return }
+        if let p = preview {
+            colour = p.colour
+            photo = p.samplePhoto ? ScooterPhotoStore.syntheticCutout() : nil
+            return
+        }
+        guard let db = AppModel.shared.database else { return }
+        colour = ScooterColour.from(stored: SettingsValue.text(db, ScooterColour.settingKey))
+        photo = ScooterPhotoStore.load()
         record = ScooterRecord.latest(in: db)
         customName = SettingsValue.text(db, Self.nameKey)
         odometerKm = (try? MaintenanceQueries(db).odometerKm()) ?? nil
         rows = MaintenanceService.rows(db)
         parked = ParkedResolver.current(database: db, simulated: false)   // B34: newest of the last ride end and the last-seen spot
+    }
+
+    /// F-26: Scooter colour, a submenu with the 6 swatches and a checkmark on the chosen one
+    @ViewBuilder private var colourMenu: some View {
+        Menu {
+            ForEach(ScooterColour.allCases, id: \.self) { c in
+                Button { setColour(c) } label: {
+                    Label(c.title, systemImage: c == colour ? "checkmark.circle.fill" : "circle.fill")
+                        .foregroundStyle(c.color)
+                }
+            }
+        } label: { Label("Scooter colour", systemImage: "circle.lefthalf.filled") }
+    }
+
+    private func setColour(_ c: ScooterColour) {
+        colour = c
+        guard preview == nil, let db = AppModel.shared.database else { return }
+        SettingsValue.set(db, ScooterColour.settingKey, c.rawValue)
+    }
+
+    /// the picked picture is cut out and stored on the phone only (P-2)
+    private func usePicked(_ item: PhotosPickerItem) async {
+        defer { pickedItem = nil }
+        guard preview == nil, let data = try? await item.loadTransferable(type: Data.self) else { return }
+        if let loaded = await ScooterPhotoStore.store(data) { photo = loaded }
+    }
+
+    private func removePhoto() {
+        ScooterPhotoStore.remove()
+        photo = nil
     }
 
     private func saveName() {
@@ -249,7 +257,8 @@ enum ScooterPreview {
         case "scooter-tab": return .init(record: rec, connected: true, lastSeenMs: nil, batteryPct: 58, odometerKm: 412.3,
                                          parked: ParkedSpot(lat: 40.0, lon: -75.0, endedAtMs: 1_790_000_000_000 - 2 * 3_600_000, placeName: "Work"),
                                          nowMs: 1_790_000_000_000)
-        case "scooter-tab-off": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000, batteryPct: 58, odometerKm: 412.3)
+        case "scooter-tab-off": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000 - 7 * 3_600_000, batteryPct: 58, odometerKm: 412.3, nowMs: 1_790_000_000_000)
+        case "scooter-tab-photo": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000 - 7 * 3_600_000, batteryPct: 65, odometerKm: 1059.6, nowMs: 1_790_000_000_000, colour: .sand, samplePhoto: true)
         case "scooter-tab-none": return .init(record: nil, connected: false, lastSeenMs: nil, batteryPct: nil, odometerKm: nil)
         default: return nil
         }

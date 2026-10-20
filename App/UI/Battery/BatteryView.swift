@@ -96,10 +96,10 @@ struct BatteryView: View {
     }
 
     /// One glass card with a small header (and an optional ⓘ)
-    private func card<Content: View>(_ title: String, info: String? = nil, @ViewBuilder _ content: () -> Content) -> some View {
+    private func card<Content: View>(_ title: String, info: InfoContent? = nil, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             if let info {
-                SectionHeader(title) { InfoButton(title, text: info) }
+                SectionHeader(title) { InfoButton(title, info: info) }
             } else {
                 SectionHeader(title)
             }
@@ -121,7 +121,8 @@ struct BatteryView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Spacer(minLength: 4)
-            InfoButton("Calibration", text: BatteryText.calibrationValue(cal) + ". Learned from your own rides: the energy the scooter reports divided by how much the battery % dropped. It is calibrated after 5 good rides.")
+            InfoButton("Calibration", info: InfoContent(lead: "Learned from your own rides: the energy the scooter reports divided by how much the battery % dropped.",
+                                                       basedOn: [InfoBasedOn("Now", BatteryText.calibrationValue(cal)), InfoBasedOn("Calibrated after", "5 good rides")]))
         }
         .padding(.leading, DS.Space.cardPad)
         .padding(.trailing, 4)
@@ -130,7 +131,7 @@ struct BatteryView: View {
     }
 
     @ViewBuilder private func chargeLogSection(_ o: BatteryOverview) -> some View {
-        card("Charge log", info: "The scooter switches off while charging, so a charge is found when the battery % is higher at the next ride than where the last ride ended. Charge cycles are the battery used, added up, in full charges.") {
+        card("Charge log", info: InfoContent(lead: "A charge is found when the battery % is higher at the next ride than where the last ride ended.", basedOn: [InfoBasedOn("Charge cycles", "battery used, added up, in full charges")], caveat: "The scooter switches off while charging, so charges are never seen directly.")) {
             if o.charges.isEmpty {
                 Label("No charge yet", systemImage: "bolt.slash").font(.subheadline).foregroundStyle(.secondary)
             }

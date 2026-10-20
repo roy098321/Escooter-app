@@ -126,7 +126,7 @@ struct StatsView: View {
         HStack(spacing: 0) {
             SectionHeader(m.period.label) {
                 if m.holidayTagged { Image(systemName: "party.popper").font(.caption).foregroundStyle(Theme.canyon).accessibilityLabel("Holiday week") }
-                if let note = m.firstWeekNote { InfoButton("First week", text: note) }
+                if let note = m.firstWeekNote { InfoButton("First week", info: InfoContent(lead: note)) }
             }
             Spacer(minLength: 0)
             Button { back += 1 } label: { Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44) }
@@ -151,10 +151,10 @@ struct StatsView: View {
 
     /// ST6: Money is ONE number, the net saved; the way it is made sits behind the ⓘ
     @ViewBuilder private func moneySection(_ m: StatsModel) -> some View {
-        if let saved = m.totals.fuelSavedIls {
-            SectionHeader("Money") { InfoButton("Money", text: Self.moneyInfo(m)) }
+        if m.totals.fuelSavedIls != nil {
+            SectionHeader("Money") { InfoButton("Money", info: Self.moneyInfo(m)) }
             HStack {
-                Text(StatsCalc.money(max(0, saved)))
+                Text(StatsCalc.money(max(0, Self.shownSaved(m))))
                     .scaledFont(28, weight: .semibold, mono: true, relativeTo: .title)
                     .foregroundStyle(Theme.accentInk)
                     .lineLimit(1).minimumScaleFactor(0.6)
@@ -174,15 +174,18 @@ struct StatsView: View {
         return pct >= 0 ? .up(text) : .down(text)
     }
 
-    static func moneyInfo(_ m: StatsModel) -> String {
+    static func moneyInfo(_ m: StatsModel) -> InfoContent {
         let t = m.totals
         let net = max(0, t.fuelSavedIls ?? 0)
-        let gross = StatsCalc.money(net + t.electricityIls)
-        let l100 = String(format: "%.0f", m.fuelLPer100km)
-        let rate = String(format: "%.2f", m.electricityIlsPerKwh)
-        let first = "Saved is the fuel money you did not spend, \(gross) for the same distance by car at \(l100) L per 100 km, "
-        let second = "minus the electricity of your rides, \(StatsCalc.money(t.electricityIls)) at \(rate) \u{20AA} per kWh."
-        return first + second + " You used \(StatsCalc.charges(t.charges)) full charges."
+        return InfoFormula.money(grossIls: net + t.electricityIls, electricityIls: t.electricityIls, km: t.km, lPer100: m.fuelLPer100km,
+                                 rate: m.electricityIlsPerKwh, charges: t.charges)
+    }
+
+    /// B32: the headline is the shown fuel money minus the shown electricity, the same number the sheet adds up to
+    static func shownSaved(_ m: StatsModel) -> Double {
+        let t = m.totals
+        let net = max(0, t.fuelSavedIls ?? 0)
+        return InfoFormula.shownSaved(gross: net + t.electricityIls, electricity: t.electricityIls)
     }
 
     private func bars(_ m: StatsModel) -> some View {
@@ -249,15 +252,15 @@ struct StatsView: View {
 
     /// ST10: the finished weeks as a small bar chart; a tap opens the compact table
     @ViewBuilder private func pastWeeksLink(_ m: StatsModel) -> some View {
-        if !m.pastWeeks.isEmpty {
-            NavigationLink { PastWeeksView(weeks: m.pastWeeks) } label: {
+        if !m.weekBars.isEmpty {
+            NavigationLink { PastWeeksView(weeks: m.pastWeeks, bars: m.weekBars) } label: {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Label("Past weeks", systemImage: "calendar")
                         Spacer()
                         Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
                     }
-                    PastWeeksChart(weeks: m.pastWeeks, height: 60)
+                    PastWeeksChart(bars: m.weekBars, height: 60)
                 }
                 .padding(DS.Space.cardPad)
                 .glassCard(padding: 0)
@@ -304,7 +307,7 @@ struct CostSettingsView: View {
             } header: {
                 HStack(spacing: 4) {
                     Text("Electricity price (\u{20AA} per kWh)").textCase(nil)
-                    InfoButton("Electricity price", text: "Full charges used times the battery size times this price. Default 0.64.")
+                    InfoButton("Electricity price", info: InfoContent(lead: "What your charging costs per kWh.", basedOn: [InfoBasedOn("Cost", "full charges used \u{00D7} battery size \u{00D7} this price"), InfoBasedOn("Default", "0.64 \u{20AA} / kWh")]))
                 }
             }
             .glassRows()
@@ -313,7 +316,7 @@ struct CostSettingsView: View {
             } header: {
                 HStack(spacing: 4) {
                     Text("Car fuel use (L per 100 km)").textCase(nil)
-                    InfoButton("Car fuel use", text: "Saved is the same distance by car at this use and the fuel price, minus the electricity of the ride. Default 7.")
+                    InfoButton("Car fuel use", info: InfoContent(lead: "Saved is the same distance by car at this use and the fuel price, minus the electricity of the ride.", basedOn: [InfoBasedOn("Default", "7 L / 100 km")]))
                 }
             }
             .glassRows()
@@ -353,7 +356,7 @@ struct OverallSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionHeader("Overall") { InfoButton("Overall", text: OverallLoader.details(stats)) }
+            SectionHeader("Overall") { InfoButton("Overall", info: InfoFormula.overall(stats)) }
             tiles
             if stats.usesUnverifiedPrice {
                 Label("Check the fuel price", systemImage: "exclamationmark.triangle")
@@ -366,7 +369,7 @@ struct OverallSection: View {
 
     @ViewBuilder private var tiles: some View {
         let items = OverallLoader.tiles(stats)
-        let perKm = OverallCalc.savedPerKm(stats)
+        let perKm = InfoFormula.shownPerKm(stats)
         if typeSize.isAccessibilitySize || perKm == nil {
             // big text: one tile per row; no fuel price: no money tile
             StatTileGrid {
@@ -404,7 +407,7 @@ struct SavedPerKmTile: View {
                     .lineLimit(1).minimumScaleFactor(0.6)
                 Text("/ km saved").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accentInk).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 0)
-                InfoButton("Saved per km", text: OverallLoader.perKmInfo(stats))
+                InfoButton("Saved per km", info: InfoFormula.perKm(stats))
             }
             Text("every km by scooter instead of car").font(.caption).foregroundStyle(.secondary)
         }
@@ -459,6 +462,7 @@ enum StatsPreview {
         var model = StatsModel(span: month || rolling ? .month : .week, mode: rolling ? .rolling : .calendar, period: period, totals: t, comparisonPct: empty || firstWeek ? nil : 12,
                                holidayTagged: false, recent: insights, electricityIlsPerKwh: 0.64, fuelLPer100km: 7, fuelPriceIls: 8.27, packWh: 800,
                                lastWeek: week, pastWeeks: empty ? [] : WeekPreview.weeks())
+        model.weekBars = empty ? [] : WeekPreview.bars()
         model.overall = empty ? nil : overall()
         if firstWeek { model.firstWeekNote = "First week \u{00B7} from Wed 7 Oct" }
         return model
@@ -469,11 +473,11 @@ enum StatsPreview {
 
 /// ST10: km per finished week as a small bar chart (oldest on the left)
 struct PastWeeksChart: View {
-    let weeks: [InsightRunner.PastWeek]
+    let bars: [WeekBar]
     var height: CGFloat = 120
 
     var body: some View {
-        let ordered = Array(weeks.sorted { $0.start < $1.start }.enumerated())
+        let ordered = Array(bars.sorted { $0.start < $1.start }.enumerated())   // B33: one slot per week, empty weeks are 0
         Chart(ordered, id: \.offset) { item in
             BarMark(x: .value("Week", item.offset), y: .value("km", item.element.km))
                 .foregroundStyle(Theme.accent)
@@ -490,11 +494,12 @@ struct PastWeeksChart: View {
 /// have no summary).
 struct PastWeeksView: View {
     var weeks: [InsightRunner.PastWeek]
+    var bars: [WeekBar] = []
 
     var body: some View {
         ScrollView {
             VStack(spacing: DS.Space.row) {
-                if weeks.isEmpty {
+                if weeks.isEmpty && bars.isEmpty {
                     VStack(spacing: 8) {
                         Image(systemName: "calendar").font(.largeTitle).foregroundStyle(.secondary)
                         Text("No weeks yet").font(.headline)
@@ -503,10 +508,10 @@ struct PastWeeksView: View {
                     .padding(24)
                     .glassCard(radius: DS.Radius.hero, padding: 0)
                 } else {
-                    PastWeeksChart(weeks: weeks)
+                    PastWeeksChart(bars: bars)
                         .padding(DS.Space.cardPad)
                         .glassCard(padding: 0)
-                    table
+                    if !weeks.isEmpty { table }
                 }
             }
             .padding(DS.Space.gutter)
@@ -537,6 +542,10 @@ struct PastWeeksView: View {
 }
 
 enum WeekPreview {
+    static func bars() -> [WeekBar] {
+        [WeekBar(start: 1, km: 22, rides: 3), WeekBar(start: 2, km: 40, rides: 6), WeekBar(start: 3, km: 0, rides: 0), WeekBar(start: 4, km: 61, rides: 8)]
+    }
+
     static func weeks() -> [InsightRunner.PastWeek] {
         [InsightRunner.PastWeek(start: 1, title: "Week of 20 Sep", lines: [], km: 61, rides: 8),
          InsightRunner.PastWeek(start: 2, title: "Week of 13 Sep", lines: [], km: 40, rides: 6),
