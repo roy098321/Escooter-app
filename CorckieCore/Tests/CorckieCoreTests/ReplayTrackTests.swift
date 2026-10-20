@@ -162,6 +162,10 @@ final class ReplayTrackTests: XCTestCase {
         XCTAssertEqual(r.latSpan, 0.019 * 1.3 / 0.75, accuracy: 1e-9)
         XCTAssertGreaterThan(r.centerLat, 10 + 0.019 / 2)          // moved north: the path sits below the bar
         XCTAssertLessThanOrEqual(r.centerLat - r.latSpan / 2, 10)   // the south end is still on the map
+        let side = try XCTUnwrap(MapFit.region(pts, padding: 0.15, sideCover: 0.25))
+        XCTAssertEqual(side.lonSpan, 0.019 * 1.3 / 0.75, accuracy: 1e-9)
+        XCTAssertGreaterThan(side.centerLon, -30 + 0.019 / 2)        // moved east: the path sits left of the layer control
+        XCTAssertLessThanOrEqual(side.centerLon - side.lonSpan / 2, -30)
         XCTAssertNil(MapFit.region([]))
     }
 

@@ -232,7 +232,7 @@ struct ReplayView: View {
         track = t
         playback = ComparePlayback(durationS: t.durationS)
         playback.setSpeed(previewData != nil ? 5 : 20)
-        if let r = MapFit.region(t.coordinates, padding: 0.15, topCover: 0.3) {
+        if let r = MapFit.region(t.coordinates, padding: 0.12, topCover: 0.28, sideCover: 0.25) {
             camera = .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: r.centerLat, longitude: r.centerLon),
                                                 span: MKCoordinateSpan(latitudeDelta: r.latSpan, longitudeDelta: r.lonSpan)))
         }
