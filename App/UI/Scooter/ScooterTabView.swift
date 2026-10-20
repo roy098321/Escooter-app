@@ -20,6 +20,8 @@ struct ScooterTabView: View {
         /// P6-5: a made-up whole picture (unedited), and the colour sheet opened on its own
         var sampleUnedited = false
         var colourSheet = false
+        /// F-31: a made-up running charge timer (ui-shot)
+        var charge: ChargeSession?
     }
 
     var preview: Preview?
@@ -39,6 +41,8 @@ struct ScooterTabView: View {
     @State private var showColours = false
     /// P6-5: the photo being framed (nil = no sheet)
     @State private var framing: FramingItem?
+    /// F-31: the Plugged in sheet
+    @State private var showCharge = false
 
     struct FramingItem: Identifiable {
         let id = UUID()
@@ -97,6 +101,12 @@ struct ScooterTabView: View {
             .onAppear(perform: reload)
             .photosPicker(isPresented: $pickingPhoto, selection: $pickedItem, matching: .images)
             .onChange(of: pickedItem) { _, item in if let item { Task { await usePicked(item) } } }
+            .sheet(isPresented: $showCharge) {
+                ChargeSheet(input: chargeInput()) { s in
+                    if ChargeTimer.shared.session != nil { ChargeTimer.shared.update(s) } else { ChargeTimer.shared.begin(s) }
+                }
+                .glassPresentation(detents: [.large])
+            }
             .sheet(isPresented: $showColours) {
                 ScooterColourSheet(selected: colour) { c in setColour(c); showColours = false }
                     .glassPresentation(detents: [.height(300)])
@@ -135,9 +145,17 @@ struct ScooterTabView: View {
         let pct = connected ? (livePct ?? seenPct) : seenPct
         // F-26: the hero card (the line-art scooter enters from the left; name, battery %, caption, odometer and Connect on the right)
         let nowMs = preview?.nowMs ?? Int64(Date().timeIntervalSince1970 * 1000)
-        ScooterHeroCard(name: customName ?? rec?.name ?? "Scooter", connected: connected, pct: pct,
-                        caption: seenMs.map { Self.lastConnectedCaption($0, nowMs: nowMs) }, odometerKm: odo,
-                        colour: colour, photo: photo) {
+        // F-31: a running charge timer (or the estimate it left when unplugged) replaces the last reading on the card
+        let timer = ChargeTimer.shared
+        let charge: ChargeSession? = preview != nil ? preview?.charge : timer.session
+        let shown = Self.chargeAdjusted(pct: pct, caption: seenMs.map { Self.lastConnectedCaption($0, nowMs: nowMs) },
+                                        unplugged: preview == nil && !connected && charge == nil ? timer.unplugged : nil, utcOffsetMin: timer.utcOffsetMin)
+        ScooterHeroCard(name: customName ?? rec?.name ?? "Scooter", connected: connected, pct: shown.pct,
+                        caption: shown.caption, odometerKm: odo,
+                        colour: colour, photo: photo,
+                        charge: charge, chargeNowMs: preview?.nowMs ?? timer.nowMs, utcOffsetMin: preview != nil ? 0 : timer.utcOffsetMin,
+                        onPlugged: connected ? nil : { if preview != nil { return }; if charge != nil { timer.unplug() } else { showCharge = true } },
+                        onEditCharge: { if preview == nil { showCharge = true } }) {
             if preview == nil { link.start() }
         }
         parkedRow
@@ -165,6 +183,22 @@ struct ScooterTabView: View {
             .glassCard(padding: 0)
         }
         .buttonStyle(.plain)
+    }
+
+    /// F-31: after Unplugged the card keeps the line's estimate ("≈ 72 % · estimate when unplugged") until the real % is read
+    static func chargeAdjusted(pct: Int?, caption: String?, unplugged: (pct: Double, ms: Int64)?, utcOffsetMin: Int) -> (pct: Int?, caption: String?) {
+        guard let u = unplugged else { return (pct, caption) }
+        return (Int(u.pct.rounded()), "\u{2248} estimate when unplugged \u{00B7} \(ChargeText.clock(u.ms, utcOffsetMin: utcOffsetMin))")
+    }
+
+    /// F-31: what the Plugged in sheet needs (the last reading, the rider's %/km, the usual trip)
+    private func chargeInput() -> ChargeSheet.Input {
+        let t = ChargeTimer.shared
+        let name = customName ?? record?.name ?? "Scooter"
+        let ctx = t.context(scooterName: name)
+        let last = t.lastReading()
+        return ChargeSheet.Input(scooterName: name, lastPct: last?.pct, lastMs: last?.ms, nowMs: t.now, utcOffsetMin: t.utcOffsetMin,
+                                 pctPerKm: ctx.pctPerKm, reserve: ctx.reserve, usualNeed: ctx.usualNeed, usualName: ctx.usualName, editing: t.session)
     }
 
     /// V17: "Parked · Work · 2 h ago"; a tap opens the spot on a map
@@ -284,6 +318,7 @@ enum ScooterPreview {
         case "scooter-tab-photo": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000 - 7 * 3_600_000, batteryPct: 65, odometerKm: 1059.6, nowMs: 1_790_000_000_000, colour: .sand, samplePhoto: true)
         case "scooter-tab-colours": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000 - 7 * 3_600_000, batteryPct: 65, odometerKm: 1059.6, nowMs: 1_790_000_000_000, colour: .moss, colourSheet: true)
         case "scooter-tab-photo-full": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000 - 7 * 3_600_000, batteryPct: 65, odometerKm: 1059.6, nowMs: 1_790_000_000_000, colour: .sand, sampleUnedited: true)
+        case "scooter-tab-charging": return .init(record: rec, connected: false, lastSeenMs: ChargePreview.nowMs - 4 * 3_600_000, batteryPct: 18, odometerKm: 412.3, nowMs: ChargePreview.nowMs, charge: ChargePreview.session(.pct(80)))
         case "scooter-tab-none": return .init(record: nil, connected: false, lastSeenMs: nil, batteryPct: nil, odometerKm: nil)
         default: return nil
         }

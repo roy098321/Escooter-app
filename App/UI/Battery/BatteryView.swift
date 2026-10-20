@@ -8,10 +8,13 @@ struct BatteryView: View {
     /// Preview data for the ui-shots (no database, no Bluetooth).
     struct Preview {
         var overview: BatteryOverview
+        var chart: ChargeLogData?
     }
 
     var preview: Preview?
     @State private var loaded: BatteryOverview?
+    /// F-27: the charge log chart
+    @State private var chartData: ChargeLogData?
     private let link = AppModel.shared.scooter
 
     private var overview: BatteryOverview? { preview?.overview ?? loaded }
@@ -131,6 +134,11 @@ struct BatteryView: View {
     }
 
     @ViewBuilder private func chargeLogSection(_ o: BatteryOverview) -> some View {
+        if let d = chartData ?? preview?.chart {
+            ChargeLogChartView(readings: d.readings, rows: d.rows, info: InfoContent(lead: "A charge is found from the timer you start with Plugged in, or when the battery % is higher at the next ride than where the last ride ended.",
+                                                                                  basedOn: [InfoBasedOn("Charging speed", "13.6 % per hour"), InfoBasedOn("Solid bar", "the real % was read afterwards")],
+                                                                                  caveat: "Lighter bars and times with \u{2248} are estimates."), nowMs: d.nowMs)
+        } else {
         card("Charge log", info: InfoContent(lead: "A charge is found when the battery % is higher at the next ride than where the last ride ended.", basedOn: [InfoBasedOn("Charge cycles", "battery used, added up, in full charges")], caveat: "The scooter switches off while charging, so charges are never seen directly.")) {
             if o.charges.isEmpty {
                 Label("No charge yet", systemImage: "bolt.slash").font(.subheadline).foregroundStyle(.secondary)
@@ -140,6 +148,8 @@ struct BatteryView: View {
                                             start: Self.dayText(c.windowStartAt), end: Self.dayText(c.windowEndAt)))
                     .font(.subheadline)
             }
+        }
+
         }
     }
 
@@ -171,6 +181,7 @@ struct BatteryView: View {
         let live: Double? = AppModel.shared.settledBatteryPct.map { Double($0) }   // B50: not the boot reading
         let pct: Double? = connected ? live : LastSeen.load().pct.map { Double($0) }
         loaded = BatteryOverview.load(db, currentPct: pct, connected: connected)
+        chartData = ChargeLogData.load(db, charges: loaded?.charges ?? [], entries: ChargeTimer.shared.log, nowMs: ChargeTimer.shared.now)   // F-27
     }
 }
 

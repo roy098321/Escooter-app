@@ -91,6 +91,7 @@ final class AppModel {
         }
         PermissionsCheck.shared.refresh()
         IdleBatteryLog.recordIfIdle()
+        ChargeTimer.shared.start()                     // F-31: a charge that was running when the app closed
     }
 
     /// Opens (and if needed migrates) the database before anything else (DATA_MODEL V1).
@@ -110,6 +111,7 @@ final class AppModel {
         scooter.connectHandlers.append { [weak self] inBackground in
             guard let self else { return }
             self.bootSettle.reset()                      // B50
+            Task { @MainActor in for _ in 0..<30 where ChargeTimer.shared.charging { try? await Task.sleep(nanoseconds: 2_000_000_000); ChargeTimer.shared.tick() } }   // F-31: the real % ends the charge timer
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .connected))
             RecorderService.shared.scooterConnected(at: Date())
             ConnectionWatch.shared.connected()          // B34: the phone's location as the scooter's last-seen spot

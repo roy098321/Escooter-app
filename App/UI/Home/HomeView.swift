@@ -25,6 +25,8 @@ struct HomeView: View {
     var previewToday: InsightCard?
     /// P6-5: made-up Where to? rows (icon, colour, pin) for the ui-shots
     var previewRows: [WhereToRow]?
+    /// F-31: a made-up running charge timer for the ui-shot
+    var previewCharge: ChargeSession?
 
     /// F-17: the disc is 250 pt at normal text size and grows with Dynamic Type (capped at 300 pt)
     @ScaledMetric(relativeTo: .title3) private var discSize: CGFloat = HomeView.discBase
@@ -185,7 +187,12 @@ struct HomeView: View {
             if backupBannerShown { backupCard }
             if let n = EdgeWatch.shared.expiryNotice { noticeCard(n, symbol: "clock.badge.exclamationmark") }
             if let n = EdgeWatch.shared.storageNotice { noticeCard(n, symbol: "internaldrive") }
-            if m.batteryText != nil {
+            if let cs = previewCharge ?? (preview == nil && m.state != .riding ? ChargeTimer.shared.session : nil) {
+                // F-31: while charging the status pill is the charge line
+                NavigationLink { BatteryView() } label: {
+                    ChargeStatusLine(session: cs, nowMs: previewCharge != nil ? ChargePreview.nowMs : ChargeTimer.shared.nowMs, utcOffsetMin: previewCharge != nil ? 0 : ChargeTimer.shared.utcOffsetMin)
+                }.buttonStyle(.plain)
+            } else if m.batteryText != nil {
                 NavigationLink { BatteryView() } label: { statusPill(m) }.buttonStyle(.plain)
             } else {
                 statusPill(m)

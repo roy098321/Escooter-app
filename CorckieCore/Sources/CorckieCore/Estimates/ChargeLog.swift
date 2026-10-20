@@ -54,6 +54,20 @@ public struct DetectedCharge: Equatable, Sendable {
     public var inferredWhileAway: Bool
     public var isSimulated: Bool
 
+
+    public init(id: String, afterRideId: String, beforeRideId: String, fromPct: Double, toPct: Double, windowStartAt: Int64, windowEndAt: Int64,
+                startedByShutdownFlag: Bool, inferredWhileAway: Bool, isSimulated: Bool) {
+        self.id = id
+        self.afterRideId = afterRideId
+        self.beforeRideId = beforeRideId
+        self.fromPct = fromPct
+        self.toPct = toPct
+        self.windowStartAt = windowStartAt
+        self.windowEndAt = windowEndAt
+        self.startedByShutdownFlag = startedByShutdownFlag
+        self.inferredWhileAway = inferredWhileAway
+        self.isSimulated = isSimulated
+    }
     public var chargedPct: Double { max(0, toPct - fromPct) }
 }
 

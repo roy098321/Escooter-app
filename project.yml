@@ -27,10 +27,12 @@ targets:
       - path: App
         excludes:
           - "Config/Info.plist"
+      - path: Shared                       # F-31: the Live Activity attributes, also compiled into the widget extension
       - path: CorckieCore/Tests/Fixtures   # anonymised rides for the in-app simulator (TESTING §5)
         type: folder
         buildPhase: resources
     dependencies:
+      - target: CorckieWidgets            # F-31: Live Activity (lock screen + Dynamic Island), embedded in the app
       - package: CorckieCore
         product: CorckieCore
       - package: CorckieCore
@@ -52,6 +54,24 @@ targets:
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: CorckieApp records where you ride, for maps and routes.
         INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: CorckieApp keeps recording your ride when the phone is locked in your pocket.
         INFOPLIST_KEY_NSMotionUsageDescription: CorckieApp measures climbs with the phone's barometer.
+  CorckieWidgets:
+    # F-31: the charge Live Activity. ActivityKit local updates only (no push, no server). Unsigned like the app; SideStore signs it on the phone.
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Shared
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: CorckieApp Charging
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.corckieapp.app.widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
   AppTests:
     # Migration tests (TESTING §1 layer 4). Store/ is compiled straight in: no app host,
     # so no Bluetooth / location side effects on the Simulator.
@@ -84,6 +104,24 @@ schemes:
       config: Debug
     archive:
       config: Release
+  CorckieWidgets:
+    # F-31: the charge Live Activity. ActivityKit local updates only (no push, no server). Unsigned like the app; SideStore signs it on the phone.
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Shared
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: CorckieApp Charging
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.corckieapp.app.widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
   AppTests:
     build:
       targets:

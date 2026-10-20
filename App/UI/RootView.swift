@@ -194,7 +194,7 @@ enum UIShot {
         "home-first", "home-notconnected", "home-ready", "home-parked", "home-cantfind", "home-riding", "home-location", "home-crash", "home-whereto",
         "ride-missing", "replay-missing", "data-failed", "home-simulated", "home-readonly", "stats-first-week", "export-empty", "stats-overall", "price-history", "purchase",
         "stats-insights", "insights-learning", "insight-detail", "insight-detail-departure", "insight-detail-creep", "insight-detail-wind", "home-today"
-    ]
+    ] + ChargePreview.names
 
     @ViewBuilder static func screen(_ name: String) -> some View {
         NavigationStack {
@@ -296,6 +296,11 @@ enum UIShot {
                 NavigationStack { FactorsView(preview: FactorsPreview.rows(name)) }
             case "route-arriveby":
                 ScrollView { ArriveByCard(routeId: nil, destination: "Work", rides: RoutesPreview.arriveByRides(), preview: true).padding() }
+            case "scooter-tab-charging": ScooterTabView(preview: ScooterPreview.make(name))
+            case "charge-sheet", "charge-sheet-km", "charge-sheet-ready", "charge-sheet-correct", "charge-log": ChargePreview.screen(name)
+            case "home-charging":
+                HomeView(preview: HomePreview.input("home-notconnected"), previewCharge: ChargePreview.session(.pct(80)))
+                    .floatingTabBar(selection: .constant(2))
             case "scooter-tab", "scooter-tab-off", "scooter-tab-none", "scooter-tab-photo", "scooter-tab-photo-full", "scooter-tab-colours":
                 ScooterTabView(preview: ScooterPreview.make(name))
             case "battery-page", "battery-page-empty", "battery-page-calibrated":

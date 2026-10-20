@@ -51,6 +51,12 @@ struct ScooterHeroCard: View {
     let colour: ScooterColour
     let photo: ScooterPhotoStore.Loaded?
     let onConnect: () -> Void
+    /// F-31: a running charge timer replaces the % column; the Plugged in / Unplugged pill sits next to Connect
+    var charge: ChargeSession?
+    var chargeNowMs: Int64 = 0
+    var utcOffsetMin = 0
+    var onPlugged: (() -> Void)?
+    var onEditCharge: () -> Void = {}
     @State private var connectTap = 0
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.colorScheme) private var scheme
@@ -58,7 +64,13 @@ struct ScooterHeroCard: View {
     private let artSize = CGSize(width: 300, height: 294)
 
     init(name: String, connected: Bool, pct: Int?, caption: String?, odometerKm: Double?, colour: ScooterColour = .sand,
-         photo: ScooterPhotoStore.Loaded? = nil, onConnect: @escaping () -> Void = {}) {
+         photo: ScooterPhotoStore.Loaded? = nil, charge: ChargeSession? = nil, chargeNowMs: Int64 = 0, utcOffsetMin: Int = 0,
+         onPlugged: (() -> Void)? = nil, onEditCharge: @escaping () -> Void = {}, onConnect: @escaping () -> Void = {}) {
+        self.charge = charge
+        self.chargeNowMs = chargeNowMs
+        self.utcOffsetMin = utcOffsetMin
+        self.onPlugged = onPlugged
+        self.onEditCharge = onEditCharge
         self.name = name
         self.connected = connected
         self.pct = pct
@@ -73,6 +85,14 @@ struct ScooterHeroCard: View {
         ZStack(alignment: .topLeading) {
             HStack(spacing: 0) {
                 Spacer(minLength: typeSize.isAccessibilitySize ? 60 : 150)
+                if let charge {
+                    VStack(alignment: .trailing, spacing: 6) {
+                        ChargingBlock(session: charge, nowMs: chargeNowMs, utcOffsetMin: utcOffsetMin, onEdit: onEditCharge)
+                        Spacer(minLength: 0)
+                    }
+                    .halo(photo != nil)
+                    .environment(\.colorScheme, unedited ? ColorScheme.dark : scheme)
+                } else {
                 VStack(alignment: .trailing, spacing: 6) {
                     HStack(spacing: 6) {
                         Circle().fill(connected ? Theme.ok : Theme.accent).frame(width: 9, height: 9)
@@ -96,26 +116,30 @@ struct ScooterHeroCard: View {
                 }
                 .halo(photo != nil)
                 .environment(\.colorScheme, unedited ? ColorScheme.dark : scheme)
+                }
             }
             .padding(.top, 24)
             .padding(.trailing, 20)
             if !connected {
-                Button { connectTap += 1; onConnect() } label: {
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                        .font(.title3)
-                        .foregroundStyle(Theme.onAccent)
-                        .frame(width: 62, height: 62)
-                        .background(Theme.accent, in: Circle())
+                HStack(spacing: 10) {
+                    if let onPlugged { ChargePill(charging: charge != nil, action: onPlugged).halo(photo != nil) }
+                    Button { connectTap += 1; onConnect() } label: {
+                        Image(systemName: "antenna.radiowaves.left.and.right")
+                            .font(.title3)
+                            .foregroundStyle(Theme.onAccent)
+                            .frame(width: 62, height: 62)
+                            .background(Theme.accent, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .halo(photo != nil)
+                    .accessibilityLabel("Connect")
+                    .sensoryFeedback(.impact(weight: .medium), trigger: connectTap)
                 }
-                .buttonStyle(.plain)
-                .halo(photo != nil)
-                .accessibilityLabel("Connect")
-                .sensoryFeedback(.impact(weight: .medium), trigger: connectTap)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(20)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 310, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: charge != nil ? 380 : 310, alignment: .topLeading)
         .background(alignment: .topLeading) { art }     // a background never changes the card's size, so a wide photo cannot push the card off screen
         .glassCard(radius: DS.Radius.hero, padding: 0)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.hero, style: .continuous))
