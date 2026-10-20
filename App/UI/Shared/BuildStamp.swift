@@ -30,19 +30,17 @@ extension View {
 
 private struct BuildStampModifier: ViewModifier {
     func body(content: Content) -> some View {
-        content.overlay {
+        content.overlay(alignment: .bottom) {
             if BuildStamp.isVisible {
-                let gap = max(14, BuildStamp.bottomInset + FloatingTabBar.bottomGap - BuildStamp.belowIndicator)
-                Color.clear
-                    .ignoresSafeArea()
-                    .overlay(alignment: .bottom) {
-                        Text(BuildStamp.text)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                            .frame(height: gap)
-                            .padding(.bottom, BuildStamp.belowIndicator)
-                    }
+                // the overlay sits on the safe area, so the home indicator's inset is added back to reach the screen edge
+                let inset = BuildStamp.bottomInset
+                let gap = max(14, inset + FloatingTabBar.bottomGap - BuildStamp.belowIndicator)
+                Text(BuildStamp.text)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .frame(height: gap)
+                    .padding(.bottom, BuildStamp.belowIndicator - inset)
                     .allowsHitTesting(false)
             }
         }
