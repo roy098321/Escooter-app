@@ -178,6 +178,12 @@ public struct WeekBar: Equatable, Sendable {
     public var start: Int64
     public var km: Double
     public var rides: Int
+
+    public init(start: Int64, km: Double, rides: Int) {
+        self.start = start
+        self.km = km
+        self.rides = rides
+    }
 }
 
 public enum WeekBars {
