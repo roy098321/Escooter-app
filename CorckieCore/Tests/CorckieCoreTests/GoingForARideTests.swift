@@ -149,12 +149,12 @@ final class GoingForARideTests: XCTestCase {
         XCTAssertEqual(c.sent.count, 2)
     }
 
-    func testSentWithoutBatteryAfterTenSeconds() {
+    func testSentWithoutBatteryAfterTwentySeconds() {   // B50: long enough for the boot settle
         let (n, c) = make()
         n.scooterConnected(at: 0, appActive: false, rideActive: false)
-        n.tick(at: 9.9, appActive: false, rideActive: false)
+        n.tick(at: 19.9, appActive: false, rideActive: false)
         XCTAssertTrue(c.sent.isEmpty)
-        n.tick(at: 10, appActive: false, rideActive: false)
+        n.tick(at: 20, appActive: false, rideActive: false)
         XCTAssertEqual(c.sent.first?.title, "Scooter on")
     }
 
