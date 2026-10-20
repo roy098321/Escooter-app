@@ -178,11 +178,16 @@ public struct WeekBar: Equatable, Sendable {
     public var start: Int64
     public var km: Double
     public var rides: Int
+    /// P6-5: riding time of the week and the shekels saved against the car (nil without a fuel price)
+    public var seconds: Double = 0
+    public var savedIls: Double?
 
-    public init(start: Int64, km: Double, rides: Int) {
+    public init(start: Int64, km: Double, rides: Int, seconds: Double = 0, savedIls: Double? = nil) {
         self.start = start
         self.km = km
         self.rides = rides
+        self.seconds = seconds
+        self.savedIls = savedIls
     }
 }
 

@@ -32,11 +32,45 @@ final class QuickDialStoreTests: XCTestCase {
         try addPlace(db, "p2", nil, lat: 10.05)
         let loaded = QuickDialLoader.load(database: db, routeChips: [], slots: 3, from: GeoPoint(lat: 10, lon: 20), nowMs: base, utcOffsetMin: 0)
         XCTAssertEqual(loaded.chips.map(\.routeId), ["place:p1"])
-        XCTAssertNotNil(loaded.chips.first?.timeText)
+        XCTAssertNil(loaded.chips.first?.timeText, "B44: no ride there, no time (no straight-line guess)")
+        XCTAssertEqual(loaded.chips.first?.note, "no rides there yet")
+        XCTAssertEqual(loaded.chips.first?.here, false)
         XCTAssertEqual(QuickDialLoader.placeId(fromKey: "place:p1"), "p1")
         XCTAssertNil(QuickDialLoader.placeId(fromKey: "route-1"))
         let none = QuickDialLoader.load(database: db, routeChips: [], slots: 3, from: nil)
         XCTAssertNil(none.chips.first?.timeText)
+        // B46: standing inside the circle makes the place "here"
+        let atGym = QuickDialLoader.load(database: db, routeChips: [], slots: 3, from: GeoPoint(lat: 10.02, lon: 20), nowMs: base, utcOffsetMin: 0)
+        XCTAssertEqual(atGym.chips.first?.here, true)
+        XCTAssertEqual(atGym.rows.first?.here, true)
+    }
+
+    /// B44 / B45 (P6-5): a place's time comes only from rides that ended there
+    func test_placeTimeComesOnlyFromRidesThatEndedThere() throws {
+        let db = try open()
+        try addPlace(db, "p1", "Old workplace", lat: 10.05)
+        let none = QuickDialLoader.load(database: db, routeChips: [], slots: 3, from: nil, nowMs: base, utcOffsetMin: 0)
+        XCTAssertEqual(none.chips.first?.note, "no rides there yet")
+        _ = try RouteFixtures.insertRide(db, id: "r1", path: SyntheticRoutes.main, startAt: base - 2 * 86_400_000, simulated: false)
+        try RouteQueries(db).setPlaces(rideId: "r1", startPlaceId: nil, endPlaceId: "p1")
+        let one = QuickDialLoader.load(database: db, routeChips: [], slots: 3, from: nil, nowMs: base, utcOffsetMin: 0)
+        XCTAssertEqual(one.chips.first?.note, "1 ride there \u{00B7} estimate after 2")
+        _ = try RouteFixtures.insertRide(db, id: "r2", path: SyntheticRoutes.main, startAt: base - 86_400_000, simulated: false)
+        try RouteQueries(db).setPlaces(rideId: "r2", startPlaceId: nil, endPlaceId: "p1")
+        let two = QuickDialLoader.load(database: db, routeChips: [], slots: 3, from: nil, nowMs: base, utcOffsetMin: 0)
+        XCTAssertNotNil(two.chips.first?.timeText)
+        XCTAssertNil(two.chips.first?.note)
+        XCTAssertEqual(two.rows.first?.timeText, two.chips.first?.timeText)
+    }
+
+    func test_pinsAreWrittenAndReadBackInOrder() throws {
+        let db = try open()
+        try addPlace(db, "a", "A", lat: 10.01)
+        try addPlace(db, "b", "B", lat: 10.02)
+        try QuickDialLoader.writePins(["b": 1, "a": 2], database: db)
+        XCTAssertEqual(QuickDialLoader.pins(db), ["b": 1, "a": 2])
+        try QuickDialLoader.writePins(["a": 1], database: db)
+        XCTAssertEqual(QuickDialLoader.pins(db), ["a": 1])
     }
 
     func test_iconAndSlotAreStoredPerPlace() throws {

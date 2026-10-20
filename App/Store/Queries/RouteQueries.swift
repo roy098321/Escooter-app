@@ -75,6 +75,17 @@ struct RouteQueries {
         }
     }
 
+    /// P6-5 (B44 / B45): every real ride that ended at this place (its end place was linked), newest first
+    func placeRides(placeId: String) throws -> [RouteRideRow] {
+        try writer.read { db in
+            try RouteRideRow.fetchAll(db, sql: """
+                SELECT id, startAt, utcOffsetMin, kind, variantId, totalS, distanceM, avgMovingMps, usedPct, elevGainM, elevLossM,
+                       excludedFromUsual, windLevel, wet
+                FROM ride WHERE endPlaceId = ? AND isSimulated = 0 AND kind != 'discarded' AND endAt IS NOT NULL ORDER BY startAt DESC
+                """, arguments: [placeId])
+        }
+    }
+
     func rideCount(routeId: String) throws -> Int {
         try writer.read { db in
             try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM ride WHERE routeId = ? AND kind != 'discarded'", arguments: [routeId]) ?? 0

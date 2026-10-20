@@ -187,7 +187,7 @@ enum UIShot {
         "ride-compare", "ride-merge", "ride-trim", "routes-empty", "routes-list", "routes-greyed", "route-card", "route-card-sparse", "places", "places-map", "place-detail", "place-add", "rides-colours",
         "rides-sort-destination", "rides-sort-dayofweek", "rides-sort-timeofday", "rides-sort-distance", "rides-sort-duration", "rides-sort-battery",
         "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-rolling", "stats-empty", "week-card", "factors", "factors-sparse",
-        "scooter-tab", "scooter-tab-off", "scooter-tab-none", "scooter-tab-photo", "info-money", "info-overall", "battery-page", "battery-page-empty", "battery-page-calibrated",
+        "scooter-tab", "scooter-tab-off", "scooter-tab-none", "scooter-tab-photo", "scooter-tab-photo-full", "scooter-tab-colours", "info-money", "info-overall", "battery-page", "battery-page-empty", "battery-page-calibrated",
         "onboarding1", "onboarding2", "onboarding3",
         "live-riding", "live-ready", "live-starting", "live-fast", "live-gps", "live-nogps", "live-offline", "live-banner",
         "live-arrival", "live-routegps",
@@ -271,7 +271,7 @@ enum UIShot {
             case "info-overall":
                 InfoSheet(title: "Overall", info: InfoFormula.overall(StatsPreview.overall())).background(Theme.background)
             case "past-weeks":
-                NavigationStack { PastWeeksView(weeks: WeekPreview.weeks(), bars: WeekPreview.bars()) }
+                NavigationStack { PastWeeksView(weeks: WeekPreview.weeks(), bars: WeekPreview.bars(), utcOffsetMin: 0) }
             case "ride-missing": RideDetailView(rideId: "missing-ride")
             case "replay-missing": ReplayView(rideId: "missing-ride")
             case "data-failed": DataUpdateFailedView(message: "Made-up message for the screenshot")
@@ -296,7 +296,7 @@ enum UIShot {
                 NavigationStack { FactorsView(preview: FactorsPreview.rows(name)) }
             case "route-arriveby":
                 ScrollView { ArriveByCard(routeId: nil, destination: "Work", rides: RoutesPreview.arriveByRides(), preview: true).padding() }
-            case "scooter-tab", "scooter-tab-off", "scooter-tab-none", "scooter-tab-photo":
+            case "scooter-tab", "scooter-tab-off", "scooter-tab-none", "scooter-tab-photo", "scooter-tab-photo-full", "scooter-tab-colours":
                 ScooterTabView(preview: ScooterPreview.make(name))
             case "battery-page", "battery-page-empty", "battery-page-calibrated":
                 BatteryView(preview: BatteryPreview.make(name))
@@ -311,10 +311,10 @@ enum UIShot {
                 } else if let input = HomePreview.input(name) {
                     // the shots show the floating tab bar too (as in the real app)
                     HomeView(preview: input, previewChips: HomePreview.chips(name),
-                             previewSelected: name.hasPrefix("home-whereto") || name == "home-quick" ? "place:m" : nil,
+                             previewSelected: name.hasPrefix("home-whereto") || name == "home-quick" ? "a" : nil,
                              previewSheet: name == "home-whereto-sheet",
                              previewParked: name == "home-parked" ? CGPoint(x: 0.76, y: 0.36) : nil,
-                             previewQuick: HomePreview.quick(name))
+                             previewQuick: HomePreview.quick(name), previewRows: HomePreview.rows(name))
                         .floatingTabBar(selection: .constant(2))
                 } else {
                     HomeView()

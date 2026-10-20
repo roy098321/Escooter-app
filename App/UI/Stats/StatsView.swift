@@ -16,6 +16,8 @@ struct StatsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// F-16: Calendar (this week / month / year) or Rolling (the last 7 / 30 / 365 days), remembered
     @AppStorage("stats.mode") private var modeRaw = StatsMode.calendar.rawValue
+    /// P6-5: what the Past weeks chart measures, remembered (Core `PastWeeksMetric`)
+    @AppStorage(PastWeeksMetric.settingKey) private var metricRaw = PastWeeksMetric.km.rawValue
     @State private var back = 0
     @State private var model: StatsModel?
 
@@ -250,22 +252,26 @@ struct StatsView: View {
         .padding(.top, DS.Space.block)
     }
 
-    /// ST10: the finished weeks as a small bar chart; a tap opens the compact table
+    /// ST10 + P6-5: the finished weeks as a bar chart with a switch (km, rides, time, \u{20AA} saved); the title row opens the compact table
     @ViewBuilder private func pastWeeksLink(_ m: StatsModel) -> some View {
         if !m.weekBars.isEmpty {
-            NavigationLink { PastWeeksView(weeks: m.pastWeeks, bars: m.weekBars) } label: {
-                VStack(alignment: .leading, spacing: 6) {
+            let metric = PastWeeksMetric.from(stored: metricRaw)
+            VStack(alignment: .leading, spacing: 10) {
+                NavigationLink { PastWeeksView(weeks: m.pastWeeks, bars: m.weekBars, utcOffsetMin: m.utcOffsetMin) } label: {
                     HStack {
-                        Label("Past weeks", systemImage: "calendar")
+                        Label(metric.cardTitle, systemImage: "calendar")
                         Spacer()
                         Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
                     }
-                    PastWeeksChart(bars: m.weekBars, height: 60)
+                    .frame(minHeight: 28)
+                    .contentShape(Rectangle())
                 }
-                .padding(DS.Space.cardPad)
-                .glassCard(padding: 0)
+                .buttonStyle(.plain)
+                PastWeeksSwitch()
+                PastWeeksChart(bars: m.weekBars, metric: metric, height: 180, utcOffsetMin: m.utcOffsetMin)
             }
-            .buttonStyle(.plain)
+            .padding(DS.Space.cardPad)
+            .glassCard(padding: 0)
             .padding(.top, DS.Space.row)
         }
     }
@@ -453,22 +459,67 @@ enum StatsPreview {
 
 // MARK: Past weeks
 
-/// ST10: km per finished week as a small bar chart (oldest on the left)
-struct PastWeeksChart: View {
-    let bars: [WeekBar]
-    var height: CGFloat = 120
+/// P6-5: the switch above the Past weeks chart, km / rides / time / \u{20AA} saved, with the sliding pill of the tab bar and Load; remembered.
+struct PastWeeksSwitch: View {
+    @AppStorage(PastWeeksMetric.settingKey) private var metricRaw = PastWeeksMetric.km.rawValue
 
     var body: some View {
-        let ordered = Array(bars.sorted { $0.start < $1.start }.enumerated())   // B33: one slot per week, empty weeks are 0
-        Chart(ordered, id: \.offset) { item in
-            BarMark(x: .value("Week", "w\(item.offset)"), y: .value("km", item.element.km))
-                .foregroundStyle(Theme.accent)
-                .cornerRadius(3)
+        GlassSegmented(options: PastWeeksMetric.allCases.map { ($0.rawValue, $0.switchTitle) },
+                       selection: Binding(get: { metricRaw }, set: { metricRaw = $0 }), slidingPill: true)
+            .accessibilityLabel("What the chart shows")
+    }
+}
+
+/// ST10 + P6-5: one value per finished week as bars, oldest on the left, newest at the right edge. Each bar carries its value on top ("61 km")
+/// and its week label below ("6 Sep"), so it is always clear what is measured; empty weeks are a thin bar with 0. More weeks than fit scroll
+/// sideways. Drawn with plain views (not Charts) so the labels sit exactly on the bars.
+struct PastWeeksChart: View {
+    let bars: [WeekBar]
+    var metric: PastWeeksMetric = .km
+    var height: CGFloat = 180
+    var utcOffsetMin = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let slot: CGFloat = 50
+    private let labelBand: CGFloat = 44
+
+    var body: some View {
+        let ordered = bars.sorted { $0.start < $1.start }   // B33: one slot per week, empty weeks are 0
+        let top = max(ordered.map { metric.value($0) }.max() ?? 0, 0.0001)
+        let barArea = max(40, height - labelBand)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .bottom, spacing: 6) {
+                ForEach(ordered, id: \.start) { bar in
+                    let v = metric.value(bar)
+                    VStack(spacing: 4) {
+                        Spacer(minLength: 0)
+                        Text(metric.valueText(bar))
+                            .font(.caption2.weight(.semibold))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .foregroundStyle(v > 0 ? Color.primary : Color.secondary)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(Theme.accent)
+                            .frame(height: max(3, barArea * CGFloat(v / top)))
+                        Text(PastWeeksMetric.weekLabel(start: bar.start, utcOffsetMin: utcOffsetMin))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(width: slot, height: height)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Week of \(PastWeeksMetric.weekLabel(start: bar.start, utcOffsetMin: utcOffsetMin)), \(metric.valueText(bar))")
+                }
+            }
+            .padding(.horizontal, 2)
+            .frame(minWidth: 0, alignment: .trailing)
+            .animation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.35), value: metric)
         }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
+        .defaultScrollAnchor(.trailing)
         .frame(height: height)
-        .accessibilityLabel("Distance per past week, bar chart")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(metric.cardTitle), bar chart")
     }
 }
 
@@ -477,6 +528,8 @@ struct PastWeeksChart: View {
 struct PastWeeksView: View {
     var weeks: [InsightRunner.PastWeek]
     var bars: [WeekBar] = []
+    var utcOffsetMin = 0
+    @AppStorage(PastWeeksMetric.settingKey) private var metricRaw = PastWeeksMetric.km.rawValue
 
     var body: some View {
         ScrollView {
@@ -490,9 +543,13 @@ struct PastWeeksView: View {
                     .padding(24)
                     .glassCard(radius: DS.Radius.hero, padding: 0)
                 } else {
-                    PastWeeksChart(bars: bars)
-                        .padding(DS.Space.cardPad)
-                        .glassCard(padding: 0)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(PastWeeksMetric.from(stored: metricRaw).cardTitle).font(.subheadline.weight(.semibold))
+                        PastWeeksSwitch()
+                        PastWeeksChart(bars: bars, metric: PastWeeksMetric.from(stored: metricRaw), height: 260, utcOffsetMin: utcOffsetMin)
+                    }
+                    .padding(DS.Space.cardPad)
+                    .glassCard(padding: 0)
                     if !weeks.isEmpty { table }
                 }
             }
@@ -524,8 +581,12 @@ struct PastWeeksView: View {
 }
 
 enum WeekPreview {
+    /// made-up weeks on real week starts (a Sunday, 7 days apart) so the labels read like dates
     static func bars() -> [WeekBar] {
-        [WeekBar(start: 1, km: 22, rides: 3), WeekBar(start: 2, km: 40, rides: 6), WeekBar(start: 3, km: 0, rides: 0), WeekBar(start: 4, km: 61, rides: 8)]
+        let week: Int64 = 7 * 86_400_000
+        let first: Int64 = 1_787_443_200_000   // a Sunday in 2026
+        let data: [(Double, Int, Double, Double?)] = [(22, 3, 4_500, 18), (40, 6, 7_800, 33), (0, 0, 0, 0), (61, 8, 11_400, 52), (35, 5, 6_600, 29), (48, 7, 9_300, 41)]
+        return data.enumerated().map { i, d in WeekBar(start: first + Int64(i) * week, km: d.0, rides: d.1, seconds: d.2, savedIls: d.3) }
     }
 
     static func weeks() -> [InsightRunner.PastWeek] {

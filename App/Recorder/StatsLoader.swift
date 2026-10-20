@@ -73,8 +73,8 @@ enum StatsLoader {
                           lastWeek: week.last, thisWeek: week.now, pastWeeks: week.past)
         if back == 0 {
             let from = InsightWeek.start(ms: nowMs, utcOffsetMin: utcOffsetMin) - 12 * 7 * OutsideTime.dayMs
-            let rows = ((try? q.rides(from: from, to: nowMs)) ?? []).filter { $0.kind == "ride" }
-            model.weekBars = WeekBars.make(rides: rows.map { (startMs: $0.startAt, km: $0.distanceM / 1000) }, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+            let rows = (try? q.rides(from: from, to: nowMs)) ?? []
+            model.weekBars = WeekBars.make(statsRides: rows, prices: prices, nowMs: nowMs, utcOffsetMin: utcOffsetMin)   // P6-5: km, rides, time and u{20AA} saved per week
         }
         model.overall = OverallLoader.load(db, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
         InsightBoardLoader.retireOldOnce(db)

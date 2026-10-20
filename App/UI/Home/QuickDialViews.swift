@@ -2,17 +2,31 @@ import CorckieCore
 import SwiftUI
 import UIKit
 
-/// F-29: the round icon of a place. A native SF Symbol or one or two typed letters in the same round style; no emoji. The chosen one has
-/// the accent fill. The name is read by VoiceOver from the button around it, never the symbol name.
+/// F-29: the round icon of a place. A native SF Symbol or one or two typed letters in the same round style; no emoji. The chosen one is filled.
+/// F-29b (owner, 20 Oct): with the place's colour the chosen icon is filled in that colour (a dark glyph on light colours like yellow, white on
+/// blue) and an icon that is not chosen is that colour's outline and tint. Without a colour it is the accent orange as before. The name is read
+/// by VoiceOver from the button around it, never the symbol name.
 struct PlaceIconView: View {
     let icon: PlaceIcon
     var size: CGFloat = 52
     var selected = false
+    /// an id of `PlaceColours`; nil = the accent orange
+    var colourId: String?
+    /// B46: the phone is inside this place: dimmed, with a small "you are here" mark
+    var here = false
+
+    private var colour: Color? { colourId.map { Color(hex: PlaceColours.hex($0)) } }
+    private var darkGlyph: Bool { colourId.map { PlaceColours.glyphIsDark(hex: PlaceColours.hex($0)) } ?? true }
 
     var body: some View {
         ZStack {
-            Circle().fill(selected ? Theme.accent : Theme.chip)
-            Circle().strokeBorder(selected ? Theme.accentInk.opacity(0.5) : Theme.line, lineWidth: 1)
+            if selected {
+                Circle().fill(colour ?? Theme.accent)
+                Circle().strokeBorder(colour == nil ? Theme.accentInk.opacity(0.5) : Color.black.opacity(0.12), lineWidth: 1)
+            } else {
+                Circle().fill(colour.map { $0.opacity(0.18) } ?? Theme.chip)
+                Circle().strokeBorder(colour ?? Theme.line, lineWidth: colour == nil ? 1 : 2)
+            }
             switch icon {
             case .symbol(let name):
                 Image(systemName: UIImage(systemName: name) != nil ? name : PlaceIcon.fallbackSymbol)
@@ -24,38 +38,87 @@ struct PlaceIconView: View {
                     .lineLimit(1)
             }
         }
-        .foregroundStyle(selected ? Theme.onAccent : Theme.accentInk)
+        .foregroundStyle(glyphStyle)
+        .frame(width: size, height: size)
+        .opacity(here ? 0.45 : 1)
+        .overlay(alignment: .bottomTrailing) {
+            if here {
+                Image(systemName: "location.fill")
+                    .font(.system(size: size * 0.2, weight: .bold))
+                    .foregroundStyle(Theme.onAccent)
+                    .frame(width: size * 0.36, height: size * 0.36)
+                    .background(Theme.accent, in: Circle())
+                    .overlay(Circle().strokeBorder(Theme.background, lineWidth: 1.5))
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var glyphStyle: Color {
+        if selected { return colour == nil || darkGlyph ? Theme.onAccent : .white }
+        return colour == nil ? Theme.accentInk : .primary
+    }
+}
+
+/// P6-5 (owner, 20 Oct): the permanent first slot of the quick dial, "No destination" (free ride). Not a place, so it looks different: a dashed
+/// neutral grey ring with the infinity symbol (no place colour); chosen (= no destination) it fills light neutral with a dark glyph.
+struct FreeRideIcon: View {
+    var size: CGFloat = 52
+    var selected = false
+
+    var body: some View {
+        ZStack {
+            if selected {
+                Circle().fill(Color(white: 0.88))
+            } else {
+                Circle().strokeBorder(Color.secondary.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+            }
+            Image(systemName: QuickDialSlot.freeRideSymbol)
+                .font(.system(size: size * 0.4, weight: .semibold))
+                .foregroundStyle(selected ? Color(white: 0.1) : Color.secondary)
+        }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
     }
 }
 
-/// F-29: Home's quick dial. Round buttons (3, or 2 at the largest text sizes) and "..." for the full list. Tap = choose, tap again = no
-/// destination. The line under the buttons always says what is chosen ("Maya's house, 12 min, needs ~9 %" or "No destination"); when the
-/// battery may not fit (F-22) that line is the orange warning instead.
+/// F-29: Home's quick dial. Round buttons: "No destination" first (P6-5, always there), then the places (3, or 2 at the largest text sizes),
+/// and "..." for the full list. Tap = choose; the first slot clears. The line under the buttons always says what is chosen ("Maya's house,
+/// 12 min, needs ~9 %" or "No destination"); when the battery may not fit (F-22) that line is the orange warning instead.
 struct QuickDialRow: View {
     let items: [QuickDialItem]
     let selectedKey: String?
     let summary: String
     let warning: String?
-    let onTap: (String) -> Void
+    let onTap: (QuickDialItem) -> Void
+    let onClear: () -> Void
     let onMore: () -> Void
     @ScaledMetric(relativeTo: .body) private var dial: CGFloat = 52
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let size = min(dial, 84)
+        let size = min(dial, typeSize.isAccessibilitySize ? 72 : 56)
         return VStack(spacing: 10) {
-            HStack(spacing: 14) {
+            HStack(spacing: 10) {
+                Button(action: onClear) {
+                    FreeRideIcon(size: size, selected: selectedKey == nil)
+                        .frame(minWidth: DS.hit, minHeight: DS.hit)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(QuickDialSlot.freeRideName)
+                .accessibilityHint("No destination, a free ride")
+                .accessibilityAddTraits(selectedKey == nil ? .isSelected : [])
                 ForEach(items) { item in
                     let on = item.key == selectedKey
-                    Button { onTap(item.key) } label: {
-                        PlaceIconView(icon: item.icon, size: size, selected: on)
+                    Button { onTap(item) } label: {
+                        PlaceIconView(icon: item.icon, size: size, selected: on, colourId: item.colourId, here: item.here)
                             .frame(minWidth: DS.hit, minHeight: DS.hit)
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(item.name)
-                    .accessibilityHint(on ? "Chosen. Tap again for no destination" : "Choose as the destination")
+                    .accessibilityLabel(item.here ? "\(item.name), \(PlaceHere.hereWord.lowercased())" : item.name)
+                    .accessibilityHint(item.here ? "You are already here" : (on ? "Chosen. Tap again for no destination" : "Choose as the destination"))
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
                 Button(action: onMore) {
@@ -91,6 +154,8 @@ struct QuickDialRow: View {
 struct PlaceHomeCard: View {
     let placeId: String
     let name: String
+    /// F-29b: the place colour, which colours the icon preview and the chosen cell
+    var colourId: String?
     var preview = false
 
     @State private var icon: PlaceIcon?
@@ -111,14 +176,14 @@ struct PlaceHomeCard: View {
                 .accessibilityLabel("Position on Home")
             }
             HStack(spacing: 12) {
-                PlaceIconView(icon: shownIcon, size: 52, selected: true)
+                PlaceIconView(icon: shownIcon, size: 52, selected: true, colourId: colourId)
                 Text("Icon").font(.subheadline).foregroundStyle(.secondary)
                 Spacer()
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                 ForEach(PlaceIcon.symbols, id: \.self) { symbol in
                     Button { setIcon(.symbol(symbol)) } label: {
-                        PlaceIconView(icon: .symbol(symbol), size: 48, selected: icon == .symbol(symbol))
+                        PlaceIconView(icon: .symbol(symbol), size: 48, selected: icon == .symbol(symbol), colourId: colourId)
                             .frame(maxWidth: .infinity, minHeight: DS.hit)
                             .contentShape(Rectangle())
                     }

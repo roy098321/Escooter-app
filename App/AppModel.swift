@@ -22,6 +22,12 @@ final class AppModel {
     /// V4: "Data update failed · Send report" instead of running on half-migrated data
     private(set) var databaseError: String?
 
+    /// B50: the scooter reports full for a few seconds after power-on; the % on Home, the Scooter tab, the battery page, the last-seen log and the
+    /// "Scooter on" notification is the settled one (`BootSettle`). Starts again at every connection.
+    private(set) var bootSettle = BootSettle()
+    /// the battery % to show: nil while the boot reading settles
+    var settledBatteryPct: Int? { bootSettle.displayPct }
+
     @ObservationIgnored private let started = Date()
     @ObservationIgnored private var launched = false
     @ObservationIgnored private var fingerprintSaved = false
@@ -103,6 +109,7 @@ final class AppModel {
     private func wireScooter() {
         scooter.connectHandlers.append { [weak self] inBackground in
             guard let self else { return }
+            self.bootSettle.reset()                      // B50
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .connected))
             RecorderService.shared.scooterConnected(at: Date())
             ConnectionWatch.shared.connected()          // B34: the phone's location as the scooter's last-seen spot
@@ -122,7 +129,7 @@ final class AppModel {
             guard let self else { return }
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .disconnected))
             RecorderService.shared.scooterDisconnected(at: Date())
-            LastSeen.note(batteryPct: self.live.frame?.batteryPct, force: true)
+            LastSeen.note(batteryPct: self.bootSettle.displayPct, force: true)
             ConnectionWatch.shared.disconnected(odoKm: self.live.frame?.odometerKm)   // B34
             FieldChecks.shared.scooterDisconnected(reason: reason)
             C8Recorder.shared.linkDown(at: Date())
@@ -135,10 +142,16 @@ final class AppModel {
             C8Recorder.shared.packet(bytes, at: time, background: background)
             self.live.handle(TimedScooterEvent(t: time.timeIntervalSince(self.started), event: .packet(bytes)))
             self.evaluateScooterChecks()
-            LastSeen.note(batteryPct: self.live.frame?.batteryPct)
+            // B50: no false 100 % from the boot reading in the last-seen log, the notification or the screens
+            if let live = GoingForARideContent.liveBatteryPct(self.live.frame, now: self.live.now) {
+                self.bootSettle.reading(pct: live, at: time.timeIntervalSince(self.started))
+            } else {
+                self.bootSettle.tick(at: time.timeIntervalSince(self.started))
+            }
+            LastSeen.note(batteryPct: self.bootSettle.displayPct)
             ConnectionWatch.shared.packet(odoKm: self.live.frame?.odometerKm)         // B34 / B35: once per connection
             // B27: the "Scooter on · N%" text takes the % only from a packet A just received on this connection
-            FieldChecks.shared.packet(batteryPct: GoingForARideContent.liveBatteryPct(self.live.frame, now: self.live.now))
+            FieldChecks.shared.packet(batteryPct: self.bootSettle.notifyPct)
         }
     }
 

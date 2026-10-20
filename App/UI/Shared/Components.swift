@@ -50,7 +50,7 @@ struct StatTile: View {
             }
         }
         .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
-        .glassCard(radius: DS.Radius.tile, tint: tint, padding: 12)
+        .glassCard(radius: DS.Radius.tile, tint: tint, padding: 12, deep: highlighted)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel([label, value, trend.map(Self.spoken), note].compactMap { $0 }.joined(separator: ", "))
     }
@@ -162,10 +162,10 @@ private struct WeightedTileRow: Layout {
 
 // MARK: InfoChip
 
-/// One fact as a small chip: SF Symbol + a short text ("⏱ 13 min", "🏁 8:56", "🔋 11%"). Sand fill, never wraps.
+/// One fact as a small chip: SF Symbol + a short text ("13 min", "arrive 8:56", "11%"). Sand fill, never wraps.
 ///
 ///     InfoChip("timer", "13 min")
-///     InfoChip("flag.checkered", "8:56", label: "Arrive")
+///     InfoChip("mappin.and.ellipse", "arrive 8:56", label: "Arrive")
 struct InfoChip: View {
     let symbol: String
     let text: String

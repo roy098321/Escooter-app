@@ -12,7 +12,7 @@ enum BatteryNowSource {
             return nil
         }
         let scooter = AppModel.shared.scooter
-        if scooter.connected, let p = scooter.frame?.batteryPct { return BatteryNow(pct: Double(p)) }
+        if scooter.connected, let p = AppModel.shared.settledBatteryPct { return BatteryNow(pct: Double(p)) }   // B50
         let seen = LastSeen.load()
         guard let ms = seen.ms, let pct = seen.pct else { return nil }
         let nowMs = Int64(Date().timeIntervalSince1970 * 1000)

@@ -89,10 +89,10 @@ public enum QuickDial {
     }
 
     /// The line under the icons: always what was chosen. "Maya's house · 12 min · needs ~9 %" or "No destination".
-    public static func summary(name: String?, minutes: Int?, needPct: Double?) -> String {
+    public static func summary(name: String?, minutes: Int?, needPct: Double?, note: String? = nil) -> String {
         guard let name, !name.isEmpty else { return "No destination" }
         var parts = [name]
-        if let minutes { parts.append("\(minutes) min") }
+        if let minutes { parts.append("\(minutes) min") } else if let note { parts.append(note) }
         if let needPct { parts.append("needs ~\(Int(needPct.rounded())) %") }
         return parts.joined(separator: " \u{00B7} ")
     }

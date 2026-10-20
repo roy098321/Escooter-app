@@ -24,6 +24,6 @@ final class DeclutterHomeGuardTests: XCTestCase {
         let live = try text("UI/Live/LiveRideView.swift")
         XCTAssertFalse(live.contains("the ride starts when you move"))
         XCTAssertFalse(live.contains("min left"))
-        XCTAssertTrue(live.contains("flag.checkered"))
+        XCTAssertTrue(live.contains("mappin.and.ellipse"), "B47: a neutral arrival icon, never a racing flag")
     }
 }

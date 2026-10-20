@@ -50,10 +50,10 @@ struct MapBackdrop: View {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .saturation(0.15)
+                    .saturation(dark ? 0.15 : 0.30)   // B48: a bit more colour in light mode, or the map vanishes into the white page
                     .blur(radius: 3)
-                    .overlay(Theme.background.opacity(dark ? 0.62 : 0.72))
-                    .overlay(Theme.chip.opacity(dark ? 0.10 : 0.30))
+                    .overlay(Theme.background.opacity(dark ? 0.62 : 0.60))   // B48: about 35-40 % of the map shows in light mode (was 28 %)
+                    .overlay(Theme.chip.opacity(dark ? 0.10 : 0.12))
                     .clipped()
                     .accessibilityHidden(true)
             } else {
@@ -70,12 +70,12 @@ struct MapBackdrop: View {
         let w = size.width
         let h = size.height
         // F-15: muted, slightly warm (sand) tones; dark = neutral greys
-        let land = dark ? Color(white: 0.085) : Color(red: 0.992, green: 0.984, blue: 0.969)
-        let block = dark ? Color(white: 0.11) : Color(red: 0.972, green: 0.953, blue: 0.922)
-        let water = dark ? Color(white: 0.10) : Color(red: 0.957, green: 0.937, blue: 0.906)
-        let park = dark ? Color(white: 0.115) : Color(red: 0.953, green: 0.929, blue: 0.890)
+        let land = dark ? Color(white: 0.085) : Color(red: 0.980, green: 0.965, blue: 0.940)
+        let block = dark ? Color(white: 0.11) : Color(red: 0.930, green: 0.900, blue: 0.850)
+        let water = dark ? Color(white: 0.10) : Color(red: 0.860, green: 0.890, blue: 0.900)
+        let park = dark ? Color(white: 0.115) : Color(red: 0.880, green: 0.910, blue: 0.840)
         let road = dark ? Color(white: 0.14) : Color.white
-        let avenue = dark ? Color(white: 0.16) : Color(red: 0.953, green: 0.906, blue: 0.827)
+        let avenue = dark ? Color(white: 0.16) : Color(red: 0.930, green: 0.860, blue: 0.740)
 
         ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(land))
 

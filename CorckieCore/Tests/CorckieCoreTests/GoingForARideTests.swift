@@ -34,17 +34,17 @@ final class GoingForARideTests: XCTestCase {
         XCTAssertEqual(c.sent.count, 1)
     }
 
-    /// B27 (T-04): packets flow but no live battery reading comes within 2 s: "Scooter on" without a %, never an old value.
-    func test_B27_noLiveBatteryWithin2s_sendsWithoutAPercent() {
+    /// B27 (T-04) + B50: packets flow but no settled battery reading comes within 15 s: "Scooter on" without a %, never an old value.
+    func test_B27_noLiveBatteryWithin15s_sendsWithoutAPercent() {
         let (n, c) = make()
         n.scooterConnected(at: 0, appActive: false, rideActive: false)
         n.packet(at: 0.4)
-        n.tick(at: 1.9, appActive: false, rideActive: false)
-        XCTAssertTrue(c.sent.isEmpty, "still inside the 2 s")
-        n.packet(at: 2.4)
-        n.tick(at: 2.4, appActive: false, rideActive: false)
+        n.tick(at: 2.9, appActive: false, rideActive: false)
+        XCTAssertTrue(c.sent.isEmpty, "still inside the settle wait")
+        n.packet(at: 15.6)
+        n.tick(at: 15.6, appActive: false, rideActive: false)
         XCTAssertEqual(c.sent.map { $0.title }, ["Scooter on"])
-        n.batteryReading(pct: 11, at: 2.6, appActive: false, rideActive: false)
+        n.batteryReading(pct: 11, at: 15.8, appActive: false, rideActive: false)
         XCTAssertEqual(c.sent.count, 1, "one per power-on")
     }
 

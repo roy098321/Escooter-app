@@ -181,7 +181,7 @@ struct LiveRideView: View {
             }
             if let a = s.arrival {
                 // M2-06 arrival strip (M28); under the banner, never over the speed and battery tiles
-                Label(a.short, systemImage: "flag.checkered")
+                Label(a.short, systemImage: "mappin.and.ellipse")
                     .font(.headline.monospacedDigit())
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)

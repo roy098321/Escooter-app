@@ -17,6 +17,9 @@ struct ScooterTabView: View {
         /// F-26: the colour, and a made-up cut-out instead of a photo (ui-shot only)
         var colour: ScooterColour = .sand
         var samplePhoto = false
+        /// P6-5: a made-up whole picture (unedited), and the colour sheet opened on its own
+        var sampleUnedited = false
+        var colourSheet = false
     }
 
     var preview: Preview?
@@ -32,6 +35,19 @@ struct ScooterTabView: View {
     @State private var photo: ScooterPhotoStore.Loaded?
     @State private var pickingPhoto = false
     @State private var pickedItem: PhotosPickerItem?
+    /// B43: the Scooter colour sheet
+    @State private var showColours = false
+    /// P6-5: the photo being framed (nil = no sheet)
+    @State private var framing: FramingItem?
+
+    struct FramingItem: Identifiable {
+        let id = UUID()
+        var image: UIImage
+        var transparent: Bool
+        var frame: PhotoFrame
+        var cutout: Bool
+        var cut: UIImage?
+    }
     @Environment(\.dynamicTypeSize) private var typeSize
     private let link = AppModel.shared.scooter
 
@@ -66,8 +82,9 @@ struct ScooterTabView: View {
                         // S4: Forget scooter lives behind the dots, not as a big red button on the page
                         Menu {
                             Button { nameText = customName ?? record?.name ?? ""; renaming = true } label: { Label("Rename scooter", systemImage: "pencil") }
-                            colourMenu
+                            Button { showColours = true } label: { Label("Scooter colour", systemImage: "circle.lefthalf.filled") }   // B43: a sheet of real swatches
                             Button { pickingPhoto = true } label: { Label("Choose photo", systemImage: "photo") }
+                            if let p = photo { Button { framing = FramingItem(image: p.full, transparent: p.transparent, frame: p.frame, cutout: p.useCut, cut: p.cut) } label: { Label("Frame photo", systemImage: "crop") } }
                             if photo != nil { Button { removePhoto() } label: { Label("Remove photo", systemImage: "xmark.circle") } }
                             Button(role: .destructive) { confirmForget = true } label: { Label("Forget scooter", systemImage: "trash") }
                         } label: {
@@ -80,6 +97,18 @@ struct ScooterTabView: View {
             .onAppear(perform: reload)
             .photosPicker(isPresented: $pickingPhoto, selection: $pickedItem, matching: .images)
             .onChange(of: pickedItem) { _, item in if let item { Task { await usePicked(item) } } }
+            .sheet(isPresented: $showColours) {
+                ScooterColourSheet(selected: colour) { c in setColour(c); showColours = false }
+                    .glassPresentation(detents: [.height(300)])
+            }
+            .sheet(item: $framing) { item in
+                PhotoFramingSheet(image: item.image, transparent: item.transparent, frame: item.frame, cutout: item.cutout, existingCut: item.cut,
+                                  onSave: { frame, cutout, cut in
+                                      framing = nil
+                                      Task { await savePhoto(item.image, frame: frame, cutout: cutout, cut: cut) }
+                                  }, onCancel: { framing = nil })
+                    .glassPresentation(detents: [.large])
+            }
             .alert("Rename scooter", isPresented: $renaming) {
                 TextField("Name", text: $nameText)
                 Button("Cancel", role: .cancel) {}
@@ -102,7 +131,7 @@ struct ScooterTabView: View {
         let seenMs: Int64? = preview != nil ? preview?.lastSeenMs : LastSeen.load().ms
         let seenPct: Int? = preview != nil ? preview?.batteryPct : LastSeen.load().pct
         let odo = preview != nil ? preview?.odometerKm : odometerKm
-        let livePct: Int? = preview != nil ? preview?.batteryPct : link.frame?.batteryPct
+        let livePct: Int? = preview != nil ? preview?.batteryPct : AppModel.shared.settledBatteryPct
         let pct = connected ? (livePct ?? seenPct) : seenPct
         // F-26: the hero card (the line-art scooter enters from the left; name, battery %, caption, odometer and Connect on the right)
         let nowMs = preview?.nowMs ?? Int64(Date().timeIntervalSince1970 * 1000)
@@ -191,7 +220,8 @@ struct ScooterTabView: View {
     private func reload() {
         if let p = preview {
             colour = p.colour
-            photo = p.samplePhoto ? ScooterPhotoStore.syntheticCutout() : nil
+            photo = p.samplePhoto ? ScooterPhotoStore.syntheticCutout() : (p.sampleUnedited ? ScooterPhotoStore.syntheticPhoto() : nil)
+            if p.colourSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { showColours = true } }
             return
         }
         guard let db = AppModel.shared.database else { return }
@@ -204,29 +234,22 @@ struct ScooterTabView: View {
         parked = ParkedResolver.current(database: db, simulated: false)   // B34: newest of the last ride end and the last-seen spot
     }
 
-    /// F-26: Scooter colour, a submenu with the 6 swatches and a checkmark on the chosen one
-    @ViewBuilder private var colourMenu: some View {
-        Menu {
-            ForEach(ScooterColour.allCases, id: \.self) { c in
-                Button { setColour(c) } label: {
-                    Label(c.title, systemImage: c == colour ? "checkmark.circle.fill" : "circle.fill")
-                        .foregroundStyle(c.color)
-                }
-            }
-        } label: { Label("Scooter colour", systemImage: "circle.lefthalf.filled") }
-    }
-
     private func setColour(_ c: ScooterColour) {
         colour = c
         guard preview == nil, let db = AppModel.shared.database else { return }
         SettingsValue.set(db, ScooterColour.settingKey, c.rawValue)
     }
 
-    /// the picked picture is cut out and stored on the phone only (P-2)
+    /// P6-5: the picked picture opens the framing sheet as it is (not cut out); it is stored on the phone only (P-2) when Save is tapped
     private func usePicked(_ item: PhotosPickerItem) async {
         defer { pickedItem = nil }
-        guard preview == nil, let data = try? await item.loadTransferable(type: Data.self) else { return }
-        if let loaded = await ScooterPhotoStore.store(data) { photo = loaded }
+        guard preview == nil, let data = try? await item.loadTransferable(type: Data.self),
+              let image = await ScooterPhotoStore.prepare(data) else { return }
+        framing = FramingItem(image: image, transparent: ScooterPhotoStore.hasTransparency(image), frame: PhotoFrame(), cutout: false, cut: nil)
+    }
+
+    private func savePhoto(_ image: UIImage, frame: PhotoFrame, cutout: Bool, cut: UIImage?) async {
+        if let loaded = await ScooterPhotoStore.save(image, frame: frame, cutout: cutout, cut: cut) { photo = loaded }
     }
 
     private func removePhoto() {
@@ -259,6 +282,8 @@ enum ScooterPreview {
                                          nowMs: 1_790_000_000_000)
         case "scooter-tab-off": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000 - 7 * 3_600_000, batteryPct: 58, odometerKm: 412.3, nowMs: 1_790_000_000_000)
         case "scooter-tab-photo": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000 - 7 * 3_600_000, batteryPct: 65, odometerKm: 1059.6, nowMs: 1_790_000_000_000, colour: .sand, samplePhoto: true)
+        case "scooter-tab-colours": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000 - 7 * 3_600_000, batteryPct: 65, odometerKm: 1059.6, nowMs: 1_790_000_000_000, colour: .moss, colourSheet: true)
+        case "scooter-tab-photo-full": return .init(record: rec, connected: false, lastSeenMs: 1_790_000_000_000 - 7 * 3_600_000, batteryPct: 65, odometerKm: 1059.6, nowMs: 1_790_000_000_000, colour: .sand, sampleUnedited: true)
         case "scooter-tab-none": return .init(record: nil, connected: false, lastSeenMs: nil, batteryPct: nil, odometerKm: nil)
         default: return nil
         }

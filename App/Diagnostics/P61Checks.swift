@@ -164,8 +164,8 @@ enum P61Checks {
         n.scooterConnected(at: 0, appActive: false, rideActive: false)
         n.packet(at: 0.3)
         n.tick(at: 1.5, appActive: false, rideActive: false)
-        n.tick(at: 2.4, appActive: false, rideActive: false)
-        expect(center.titles == ["Scooter on"], "no live % within 2 s: \(center.titles.first ?? "nothing sent")")
+        n.tick(at: 15.4, appActive: false, rideActive: false)
+        expect(center.titles == ["Scooter on"], "no settled % within 15 s: \(center.titles.first ?? "nothing sent")")
         var stale = ScooterFrame(t: 100)
         stale.batteryPct = 11
         stale.ageA = 0

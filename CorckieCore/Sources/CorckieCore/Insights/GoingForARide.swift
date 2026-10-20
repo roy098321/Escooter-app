@@ -38,10 +38,13 @@ public struct GoingForARideRule: Equatable, Sendable {
     public static let messageType = "going_for_a_ride"
     /// A link down for longer than this ends the power-on
     public static let sessionGapS = 120.0
-    /// The battery reading is awaited this long after the connect; then the notification goes out without it
-    public static let batteryWaitS = 10.0
+    /// The battery reading is awaited this long after the connect (B50: long enough for the boot settle); then the notification goes out without it
+    public static let batteryWaitS = 20.0
     /// B27 (T-04): once packets flow, a live battery reading must come within this; else "Scooter on" without a %
     public static let liveBatteryWaitS = 2.0
+    /// B50: the scooter reports full for a few seconds after power-on; the % waits for a stable reading (`BootSettle`), at most this long,
+    /// then "Scooter on" goes out without a %
+    public static let settleMaxS = BootSettle.maxWaitS
 
     private var sessionOpen = false
     private var settled = false            // sent or deliberately dropped for this power-on
@@ -110,7 +113,7 @@ public struct GoingForARideRule: Equatable, Sendable {
     /// Call about once a second (or when the app wakes): ends a long disconnect, stops waiting for the battery.
     public mutating func tick(at t: Double, appActive: Bool, rideActive: Bool) -> [GoingForARideOutput] {
         var out = closeIfStale(at: t)
-        let liveWaitOver = firstPacketAt.map { t - $0 >= Self.liveBatteryWaitS } ?? false
+        let liveWaitOver = firstPacketAt.map { t - $0 >= Self.settleMaxS } ?? false
         if sessionOpen, !settled, disconnectedAt == nil, let since = waitingSince, t - since >= Self.batteryWaitS || liveWaitOver {
             if rideActive {
                 out += drop(at: t, reason: "ride in progress")

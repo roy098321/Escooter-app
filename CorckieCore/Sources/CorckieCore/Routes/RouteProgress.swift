@@ -150,7 +150,7 @@ public struct ArrivalStrip: Equatable, Sendable {
     public var text: String
     public var offRoute: Bool
     public var deadReckoned: Bool
-    /// L3: "18:13 \u{00B7} 5 min" (the strip shows a flag icon in front of it)
+    /// L3: "18:13 \u{00B7} 5 min" (the strip shows an arrival pin in front of it)
     public var short: String = ""
 
     public static func shortText(arrivalS: Double, nowS: Double, utcOffsetMin: Int) -> String {
@@ -194,6 +194,10 @@ public struct WhereToChip: Equatable, Sendable {
     public var usedText: String?
     /// F-22: the route's usual battery need, % (today's estimate), for the pre-ride check
     public var usualNeedPct: Double?
+    /// P6-5 (B44 / B45): why there is no time ("no rides there yet", "1 ride there u{00B7} estimate after 2"); nil when there is one
+    public var note: String?
+    /// P6-5 (B46): the phone is inside this place's circle
+    public var here = false
 
     public init(routeId: String, label: String, detail: String) {
         self.routeId = routeId

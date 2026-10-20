@@ -37,10 +37,13 @@ private struct BuildStampModifier: ViewModifier {
                 // the overlay sits on the safe area, so the home indicator's inset is added back to reach the screen edge
                 let inset = BuildStamp.bottomInset
                 let gap = max(14, inset + FloatingTabBar.bottomGap - BuildStamp.belowIndicator)
+                // B49: a small page-colour pill behind the stamp, so content scrolling under the tab bar never mixes with it
                 Text(BuildStamp.text)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .background(Theme.background.opacity(0.94), in: Capsule())
                     .frame(height: gap)
                     .padding(.bottom, BuildStamp.belowIndicator - inset)
                     .allowsHitTesting(false)

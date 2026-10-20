@@ -126,7 +126,7 @@ struct PlaceMapView: View {
             VStack(spacing: 12) {
                 titleCard(place)
                 settingsCard(place)
-                if place.row.hasName { PlaceHomeCard(placeId: place.id, name: place.row.title, preview: preview != nil) }   // F-29
+                if place.row.hasName { PlaceHomeCard(placeId: place.id, name: place.row.title, colourId: place.colourId, preview: preview != nil) }   // F-29
             }
         }
     }
@@ -154,8 +154,11 @@ struct PlaceMapView: View {
         VStack(alignment: .leading, spacing: 8) {
             Toggle(isOn: Binding(get: { place.row.canCharge },
                                  set: { on in save { try PlaceService.setCanCharge(placeId: $0.id, canCharge: on, database: $1) } })) {
-                Image(systemName: "powerplug").foregroundStyle(Theme.canyon)
-                    .accessibilityLabel("I can charge here")
+                Label {
+                    Text("I can charge here")
+                } icon: {
+                    Image(systemName: "powerplug").foregroundStyle(Theme.canyon)
+                }
             }
             HStack {
                 Text("Circle")

@@ -31,19 +31,24 @@ enum DS {
 
 private struct GlassCardStyle: ViewModifier {
     @Environment(\.sunlight) private var sunlight
+    @Environment(\.colorScheme) private var scheme
     let radius: CGFloat
     let tint: Color?
     let padding: CGFloat
     let thin: Bool
+    var deep = false
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        // P6-5: in light mode the card is the sand fill with no hairline and a very soft warm shadow (y 2, blur 8, about 6 %); dark mode is unchanged
+        let soft = !sunlight && scheme == .light
         content
             .padding(padding)
             .background {
                 ZStack {
                     // F-15: a matte sand card (dark grey in dark mode), no frosted glass; white with a hairline in sunlight
-                    shape.fill(sunlight ? Theme.row : Theme.card)
+                    shape.fill(sunlight ? Theme.row : (deep ? Theme.cardDeep : Theme.card))
+                        .shadow(color: soft ? Color(red: 0.45, green: 0.30, blue: 0.15).opacity(0.06) : .clear, radius: 8, x: 0, y: 2)
                     if let tint { shape.fill(tint.opacity(sunlight ? 0.2 : 0.14)) }
                 }
             }
@@ -54,10 +59,11 @@ private struct GlassCardStyle: ViewModifier {
 }
 
 extension View {
-    /// The card of theme v2: faint sand (#F8F3EB) / dark grey (#1F1F1F), optional tint; white with a hairline in sunlight.
+    /// The card of theme v2: faint sand (#F8F3EB) / dark grey (#1F1F1F), optional tint; white with a hairline in sunlight. In light mode no
+    /// hairline and a very soft warm shadow; `deep` is the slightly deeper sand of the highlight tiles.
     /// (The name stays from the glass look so the screens did not change; `thin` is kept for call-site compatibility.)
-    func glassCard(radius: CGFloat = DS.Radius.card, tint: Color? = nil, padding: CGFloat = DS.Space.cardPad, thin: Bool = false) -> some View {
-        modifier(GlassCardStyle(radius: radius, tint: tint, padding: padding, thin: thin))
+    func glassCard(radius: CGFloat = DS.Radius.card, tint: Color? = nil, padding: CGFloat = DS.Space.cardPad, thin: Bool = false, deep: Bool = false) -> some View {
+        modifier(GlassCardStyle(radius: radius, tint: tint, padding: padding, thin: thin, deep: deep))
     }
 
     /// Task-sheet style (Compare picker, Merge, Trim, Replay, check guide): standard iOS sheet with detents and a drag indicator

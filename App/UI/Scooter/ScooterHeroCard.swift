@@ -53,6 +53,7 @@ struct ScooterHeroCard: View {
     let onConnect: () -> Void
     @State private var connectTap = 0
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.colorScheme) private var scheme
 
     private let artSize = CGSize(width: 300, height: 294)
 
@@ -94,6 +95,7 @@ struct ScooterHeroCard: View {
                     Spacer(minLength: 0)
                 }
                 .halo(photo != nil)
+                .environment(\.colorScheme, unedited ? ColorScheme.dark : scheme)
             }
             .padding(.top, 24)
             .padding(.trailing, 20)
@@ -119,21 +121,21 @@ struct ScooterHeroCard: View {
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.hero, style: .continuous))
     }
 
+    /// P6-5: a photo that is shown as it is fills the whole card (text over it turns light)
+    private var unedited: Bool { photo.map { !$0.useCut } ?? false }
+
     @ViewBuilder private var art: some View {
         if let photo {
-            if photo.cutout {
+            if photo.useCut, let cut = photo.cut {
                 // a cut-out: full card height, exactly half of its width inside the card from the left edge
-                let aspect = photo.image.size.height > 0 ? photo.image.size.width / photo.image.size.height : 1
-                Image(uiImage: photo.image).resizable().aspectRatio(contentMode: .fit)
+                let aspect = cut.size.height > 0 ? cut.size.width / cut.size.height : 1
+                Image(uiImage: cut).resizable().aspectRatio(contentMode: .fit)
                     .frame(width: artSize.height * aspect, height: artSize.height)
                     .offset(x: -artSize.height * aspect / 2, y: 8)
                     .accessibilityHidden(true)
             } else {
-                // no subject found: the whole photo, aspect-fill in the same left-half place
-                Image(uiImage: photo.image).resizable().aspectRatio(contentMode: .fill)
-                    .frame(width: artSize.width, height: artSize.height)
-                    .clipped()
-                    .offset(x: -118, y: 8)
+                // the photo as it is: the whole picture fills the card, framed by moving and zooming like a wallpaper
+                FramedPhoto(image: photo.full, frame: photo.frame)
                     .accessibilityHidden(true)
             }
         } else {
@@ -145,6 +147,28 @@ struct ScooterHeroCard: View {
             .offset(x: -118, y: 8)
             .accessibilityHidden(true)
         }
+    }
+}
+
+/// P6-5 (owner, 20 Oct): a photo aspect-filled into whatever box it is given, moved and zoomed by a `PhotoFrame` (fractions of the box, kept so
+/// the photo always covers the box). Used by the hero card and by the framing sheet, so what is framed is what is shown.
+struct FramedPhoto: View {
+    let image: UIImage
+    var frame: PhotoFrame
+
+    var body: some View {
+        GeometryReader { g in
+            let w = max(g.size.width, 1), h = max(g.size.height, 1)
+            let imageAspect = image.size.height > 0 ? Double(image.size.width / image.size.height) : 1
+            let f = frame.clamped(imageAspect: imageAspect, cardAspect: Double(w / h))
+            let fillW = imageAspect > Double(w / h) ? h * CGFloat(imageAspect) : w
+            let fillH = imageAspect > Double(w / h) ? h : w / CGFloat(imageAspect)
+            Image(uiImage: image)
+                .resizable()
+                .frame(width: fillW * CGFloat(f.scale), height: fillH * CGFloat(f.scale))
+                .position(x: w / 2 + CGFloat(f.dx) * w, y: h / 2 + CGFloat(f.dy) * h)
+        }
+        .clipped()
     }
 }
 
@@ -160,11 +184,24 @@ private extension View {
 }
 
 /// F-26: the owner's own scooter photo, kept in Application Support only (P-2: never committed, never sent anywhere, not in backups).
-/// A picture that already has transparency is kept as it is; otherwise Vision's foreground mask cuts the subject out; when it finds
-/// none the whole photo is used.
+/// P6-5 (owner, 20 Oct): the photo is kept as it is by default (the whole picture fills the hero card, moved and zoomed to frame it); "Cut out
+/// the scooter" is the alternative: Vision's foreground mask, made when it is switched on. A picture that already has a see-through background is
+/// only ever shown cut out. The frame and the choice are small numbers in a file next to the picture.
 enum ScooterPhotoStore {
     struct Loaded: @unchecked Sendable {
-        var image: UIImage
+        /// the photo as picked (upright, at most 1600 px)
+        var full: UIImage
+        /// the cut-out, once there is one
+        var cut: UIImage?
+        /// true = show the cut-out
+        var useCut: Bool
+        var frame: PhotoFrame
+        /// the picture itself has a see-through background
+        var transparent: Bool
+    }
+
+    private struct Saved: Codable {
+        var frame: PhotoFrame
         var cutout: Bool
     }
 
@@ -173,37 +210,59 @@ enum ScooterPhotoStore {
     }
     private static var cutoutFile: URL { folder.appendingPathComponent("scooter-cutout.png") }
     private static var fullFile: URL { folder.appendingPathComponent("scooter-photo.jpg") }
+    private static var stateFile: URL { folder.appendingPathComponent("scooter-frame.json") }
 
     static func load() -> Loaded? {
-        if let d = try? Data(contentsOf: cutoutFile), let i = UIImage(data: d) { return Loaded(image: i, cutout: true) }
-        if let d = try? Data(contentsOf: fullFile), let i = UIImage(data: d) { return Loaded(image: i, cutout: false) }
+        let saved = (try? Data(contentsOf: stateFile)).flatMap { try? JSONDecoder().decode(Saved.self, from: $0) }
+        let cut = (try? Data(contentsOf: cutoutFile)).flatMap { UIImage(data: $0) }
+        if let d = try? Data(contentsOf: fullFile), let i = UIImage(data: d) {
+            return Loaded(full: i, cut: cut, useCut: (saved?.cutout ?? false) && cut != nil, frame: saved?.frame ?? PhotoFrame(), transparent: false)
+        }
+        // a photo stored by an older build or a picture that was see-through: only the cut-out exists
+        if let cut { return Loaded(full: cut, cut: cut, useCut: true, frame: saved?.frame ?? PhotoFrame(), transparent: true) }
         return nil
     }
 
     static func remove() {
         try? FileManager.default.removeItem(at: cutoutFile)
         try? FileManager.default.removeItem(at: fullFile)
+        try? FileManager.default.removeItem(at: stateFile)
     }
 
-    /// Processes the picked picture (off the main thread) and stores it; returns what to show.
-    static func store(_ data: Data) async -> Loaded? {
+    /// The picked picture, upright and at most 1600 px (nothing is stored yet); nil when it cannot be read.
+    static func prepare(_ data: Data) async -> UIImage? {
+        await Task.detached(priority: .userInitiated) { () -> UIImage? in
+            guard let raw = UIImage(data: data) else { return nil }
+            return normalized(raw, maxSide: 1600)
+        }.value
+    }
+
+    /// Stores the framed photo. `cutout` true makes (or reuses) the cut-out; when Vision finds no subject the photo stays as it is.
+    static func save(_ image: UIImage, frame: PhotoFrame, cutout: Bool, cut known: UIImage? = nil) async -> Loaded? {
         await Task.detached(priority: .userInitiated) { () -> Loaded? in
-            guard let raw = UIImage(data: data), let image = normalized(raw, maxSide: 1600) else { return nil }
             do {
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                 var dir = folder
                 var values = URLResourceValues()
                 values.isExcludedFromBackup = true
                 try? dir.setResourceValues(values)
-                remove()
-                if let result = hasTransparency(image) ? image : cutOut(image) {
-                    guard let png = result.pngData() else { return nil }
+                let transparent = hasTransparency(image)
+                try? FileManager.default.removeItem(at: cutoutFile)
+                if transparent {
+                    guard let png = image.pngData() else { return nil }
                     try png.write(to: cutoutFile, options: .completeFileProtection)
-                    return Loaded(image: result, cutout: true)
+                    try? FileManager.default.removeItem(at: fullFile)
+                    try JSONEncoder().encode(Saved(frame: frame, cutout: true)).write(to: stateFile, options: .completeFileProtection)
+                    return Loaded(full: image, cut: image, useCut: true, frame: frame, transparent: true)
                 }
                 guard let jpg = image.jpegData(compressionQuality: 0.85) else { return nil }
                 try jpg.write(to: fullFile, options: .completeFileProtection)
-                return Loaded(image: image, cutout: false)
+                var cutImage: UIImage?
+                if cutout { cutImage = known ?? cutOut(image) }
+                if let cutImage, let png = cutImage.pngData() { try png.write(to: cutoutFile, options: .completeFileProtection) }
+                let useCut = cutout && cutImage != nil
+                try JSONEncoder().encode(Saved(frame: frame, cutout: useCut)).write(to: stateFile, options: .completeFileProtection)
+                return Loaded(full: image, cut: cutImage, useCut: useCut, frame: frame, transparent: false)
             } catch {
                 return nil
             }
@@ -257,7 +316,7 @@ enum ScooterPhotoStore {
         }
     }
 
-    /// a made-up picture for the ui-shot (a plain shape on a transparent background, never a real photo)
+    /// a made-up cut-out for the ui-shot (a plain shape on a transparent background, never a real photo)
     static func syntheticCutout() -> Loaded {
         let size = CGSize(width: 480, height: 300)
         let format = UIGraphicsImageRendererFormat()
@@ -269,6 +328,165 @@ enum ScooterPhotoStore {
             c.cgContext.fill(CGRect(x: 80, y: 130, width: 300, height: 30))
             c.cgContext.fill(CGRect(x: 360, y: 10, width: 26, height: 150))
         }
-        return Loaded(image: img, cutout: true)
+        return Loaded(full: img, cut: img, useCut: true, frame: PhotoFrame(), transparent: true)
+    }
+
+    /// a made-up whole picture for the ui-shot (sky, ground and the same plain shape, never a real photo), wider than the card so it can be moved
+    static func syntheticPhoto() -> Loaded {
+        let size = CGSize(width: 900, height: 600)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let img = UIGraphicsImageRenderer(size: size, format: format).image { c in
+            let g = c.cgContext
+            UIColor(red: 0.70, green: 0.82, blue: 0.93, alpha: 1).setFill()
+            g.fill(CGRect(x: 0, y: 0, width: size.width, height: 360))
+            UIColor(red: 0.55, green: 0.58, blue: 0.52, alpha: 1).setFill()
+            g.fill(CGRect(x: 0, y: 360, width: size.width, height: 240))
+            UIColor(red: 0.30, green: 0.34, blue: 0.40, alpha: 1).setFill()
+            g.fillEllipse(in: CGRect(x: 180, y: 330, width: 170, height: 170))
+            g.fillEllipse(in: CGRect(x: 520, y: 330, width: 170, height: 170))
+            g.fill(CGRect(x: 250, y: 320, width: 360, height: 34))
+            g.fill(CGRect(x: 585, y: 120, width: 30, height: 210))
+        }
+        return Loaded(full: img, cut: nil, useCut: false, frame: PhotoFrame(), transparent: false)
+    }
+}
+
+/// P6-5: after picking a photo (or from the menu): move and zoom the whole photo to frame it like a wallpaper, and optionally cut the scooter out.
+/// The default is the photo as it is. Nothing is stored until Save.
+struct PhotoFramingSheet: View {
+    let image: UIImage
+    let transparent: Bool
+    @State var frame: PhotoFrame
+    @State var cutout: Bool
+    var existingCut: UIImage?
+    let onSave: (PhotoFrame, Bool, UIImage?) -> Void
+    let onCancel: () -> Void
+
+    @State private var base: PhotoFrame?
+    @State private var baseZoom: Double?
+    @State private var cut: UIImage?
+    @State private var cutting = false
+    @State private var noSubject = false
+
+    private var imageAspect: Double { image.size.height > 0 ? Double(image.size.width / image.size.height) : 1 }
+
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Button("Cancel", action: onCancel).frame(minHeight: DS.hit)
+                Spacer()
+                Text("Frame photo").font(.headline).fontDesign(.rounded)
+                Spacer()
+                Button("Save") { onSave(frame.clamped(imageAspect: imageAspect), cutout && !transparent && (cut ?? existingCut) != nil, cut ?? existingCut) }
+                    .font(.body.weight(.semibold))
+                    .frame(minHeight: DS.hit)
+            }
+            GeometryReader { g in
+                let w = g.size.width
+                let h = w / CGFloat(PhotoFrame.cardAspect)
+                ZStack {
+                    if cutout || transparent, let shown = cut ?? existingCut ?? (transparent ? image : nil) {
+                        Image(uiImage: shown).resizable().aspectRatio(contentMode: .fit).padding(16)
+                    } else {
+                        FramedPhoto(image: image, frame: frame)
+                            .gesture(drag(width: w, height: h))
+                            .simultaneousGesture(zoom())
+                    }
+                    if cutting { ProgressView() }
+                }
+                .frame(width: w, height: h)
+                .background(Theme.card)
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.hero, style: .continuous))
+                .accessibilityLabel("Photo preview. Drag to move, pinch to zoom")
+            }
+            .aspectRatio(CGFloat(PhotoFrame.cardAspect), contentMode: .fit)
+            if !transparent {
+                Toggle("Cut out the scooter", isOn: Binding(get: { cutout }, set: { setCutout($0) }))
+                    .disabled(cutting)
+                if noSubject { Text("No scooter found, the photo stays as it is.").font(.footnote).foregroundStyle(.secondary) }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, DS.Space.gutter)
+        .padding(.top, 8)
+    }
+
+    private func drag(width: CGFloat, height: CGFloat) -> some Gesture {
+        DragGesture()
+            .onChanged { v in
+                let start = base ?? frame
+                base = start
+                var f = start
+                f.dx += Double(v.translation.width / max(width, 1))
+                f.dy += Double(v.translation.height / max(height, 1))
+                frame = f.clamped(imageAspect: imageAspect)
+            }
+            .onEnded { _ in base = nil }
+    }
+
+    private func zoom() -> some Gesture {
+        MagnifyGesture()
+            .onChanged { v in
+                let start = baseZoom ?? frame.scale
+                baseZoom = start
+                var f = frame
+                f.scale = start * Double(v.magnification)
+                frame = f.clamped(imageAspect: imageAspect)
+            }
+            .onEnded { _ in baseZoom = nil }
+    }
+
+    private func setCutout(_ on: Bool) {
+        guard on else { cutout = false; noSubject = false; return }
+        if cut != nil || existingCut != nil { cut = cut ?? existingCut; cutout = true; return }
+        cutting = true
+        noSubject = false
+        let source = image
+        Task {
+            let result = await Task.detached(priority: .userInitiated) { ScooterPhotoStore.cutOut(source) }.value
+            cutting = false
+            if let result { cut = result; cutout = true } else { cutout = false; noSubject = true }
+        }
+    }
+}
+
+/// P6-5 (B43): the Scooter colour choice as a small sheet of the six real colours, a checkmark on the chosen one. (A menu tints its icons with
+/// the accent, so every swatch looked orange.)
+struct ScooterColourSheet: View {
+    let selected: ScooterColour
+    let onPick: (ScooterColour) -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Scooter colour").font(.headline).fontDesign(.rounded).padding(.top, 14)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 16) {
+                ForEach(ScooterColour.allCases, id: \.self) { c in
+                    Button { onPick(c) } label: {
+                        VStack(spacing: 6) {
+                            Circle()
+                                .fill(c.color)
+                                .frame(width: 54, height: 54)
+                                .overlay(Circle().strokeBorder(Color.primary.opacity(0.15), lineWidth: 1))
+                                .overlay {
+                                    if c == selected {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 20, weight: .bold))
+                                            .foregroundStyle(PlaceColours.glyphIsDark(hex: String(format: "#%06lX", c.hex)) ? Color(white: 0.1) : Color.white)
+                                    }
+                                }
+                            Text(c.title).font(.footnote).foregroundStyle(.primary)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: DS.hit)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(c.title)
+                    .accessibilityAddTraits(c == selected ? .isSelected : [])
+                }
+            }
+            .padding(.horizontal, DS.Space.gutter)
+            Spacer(minLength: 0)
+        }
     }
 }

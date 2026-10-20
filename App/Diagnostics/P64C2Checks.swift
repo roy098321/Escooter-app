@@ -47,7 +47,7 @@ enum P64C2Checks {
             let loaded = QuickDialLoader.load(database: temp, routeChips: [], slots: 3, from: GeoPoint(lat: 10, lon: 20), nowMs: 1_790_000_000_000, utcOffsetMin: 0)
             let chip = loaded.chips.first { $0.routeId == "place:p1" }
             expect(loaded.chips.count == 1 && chip != nil, "a named place without a route is a destination; a nameless one is not")
-            expect(chip?.timeText != nil && chip?.usualNeedPct == nil, "about 2.2 km away: a time from the fallback speed, no battery figure without rides")
+            expect(chip?.timeText == nil && chip?.note == "no rides there yet" && chip?.usualNeedPct == nil, "B44: no ride ended there, so no time and no battery figure")
             expect(QuickDialLoader.summary(chip: nil) == "No destination" && QuickDialLoader.summary(chip: chip).hasPrefix("Gym \u{00B7}"),
                    "the line under the icons says what was chosen")
             let nowhere = QuickDialLoader.load(database: temp, routeChips: [], slots: 3, from: nil)

@@ -20,6 +20,8 @@ enum Theme {
     static let background = dynamic(light: 0xFFFFFF, dark: 0x121212)
     /// cards and tiles on a page: faint sand / dark grey
     static let card = dynamic(light: 0xF8F3EB, dark: 0x1F1F1F)
+    /// P6-5: highlight tiles (the shekel and km numbers) in light mode: a slightly deeper sand than a card
+    static let cardDeep = dynamic(light: 0xF4EADA, dark: 0x1F1F1F)
     /// chips, segmented-control tracks, small pills: stronger sand / a step lighter than cards
     static let chip = dynamic(light: 0xF3E7D3, dark: 0x262626)
     /// the page behind Apple-style grouped lists (owner: very light warm white, not #F2F2F7)
@@ -60,7 +62,7 @@ enum Theme {
 
     /// Every token by name, for the theme check (u61) and the readability page.
     static let all: [(name: String, light: UInt32, dark: UInt32)] = [
-        ("background", 0xFFFFFF, 0x121212), ("card", 0xF8F3EB, 0x1F1F1F), ("chip", 0xF3E7D3, 0x262626),
+        ("background", 0xFFFFFF, 0x121212), ("card", 0xF8F3EB, 0x1F1F1F), ("cardDeep", 0xF4EADA, 0x1F1F1F), ("chip", 0xF3E7D3, 0x262626),
         ("groupedBackground", 0xF7F3ED, 0x121212), ("row", 0xFFFFFF, 0x1F1F1F), ("line", 0xEADFCF, 0x2E2E2E), ("bar", 0xFFFFFF, 0x1F1F1F),
         ("accent", 0xF89355, 0xF89355), ("accentSoft", 0xF7A462, 0xF7A462), ("accentInk", 0xB85A1E, 0xF89355), ("onAccent", 0x24160C, 0x1A1410),
         ("sectionLabel", 0x965530, 0xC37F51), ("canyon", 0xC37F51, 0xC37F51), ("muted", 0x64422C, 0xB3A497),

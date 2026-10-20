@@ -10,6 +10,9 @@ struct QuickDialItem: Identifiable, Equatable {
     var icon: PlaceIcon
     /// the id the Where to? choice uses: a saved route that ends here (its id), else "place:<id>" (B31)
     var key: String
+    /// the place colour (an id of `PlaceColours`) and whether the phone is inside the place's circle (B46)
+    var colourId: String = "orange"
+    var here = false
 }
 
 /// F-29 / B31: reads the places into the quick dial and the Where to? list. Compiled into AppTests too, so it takes the phone's location as
@@ -96,64 +99,115 @@ enum QuickDialLoader {
     // MARK: The Where to? list and the quick dial
 
     /// - routeChips: the chips of the saved routes (`RouteFollowLoader.chips`)
-    /// - from: where the phone is now (nil = unknown: place destinations then carry no time and no battery figure)
+    /// - from: where the phone is now (nil = unknown: no place is "here")
+    /// P6-5: a place's time comes only from rides that ended there (B44, B45); no straight-line guess. A place the phone is inside is "here" (B46).
     static func load(database: AppDatabase, routeChips: [WhereToChip], slots: Int, from: GeoPoint?,
                      nowMs: Int64 = RouteCardLoader.currentMs(), utcOffsetMin: Int = RouteCardLoader.currentOffsetMin())
-        -> (chips: [WhereToChip], items: [QuickDialItem]) {
+        -> (chips: [WhereToChip], items: [QuickDialItem], rows: [WhereToRow]) {
         let store = RouteQueries(database)
         let places = ((try? store.places()) ?? []).filter { !($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
         let savedRoutes = ((try? store.routes()) ?? []).filter { $0.state == "saved" }
-        let allRides = savedRoutes.flatMap { RouteCardLoader.stats((try? store.routeRides(routeId: $0.id)) ?? []) }
-        let mps = PlaceDestination.usualMps(allRides)
-        let pctPerKm = DestinationRules.usualPctPerKm(rides: allRides)
         let visitCounts = visits(database)
         let iconMap = icons(database)
-        let pinMap = pins(database)
+        let pinMap = QuickDialSlot.normalized(pins(database))
+        let colourMap = PlaceColourStore.colours(database: database)
 
         var chips = routeChips
         var keyForPlace: [String: String] = [:]
         for p in places {
-            // a saved route that ends here (and has a chip) is used as it is
-            if let r = savedRoutes.first(where: { route in route.toPlaceId == p.id && routeChips.contains(where: { chip in chip.routeId == route.id }) }) {
+            let name = p.name ?? ""
+            // every ride that ended here: the rides of the saved routes that end here and the rides whose end place is this one, each once
+            var rows: [RouteRideRow] = []
+            var seen = Set<String>()
+            for route in savedRoutes where route.toPlaceId == p.id {
+                for r in (try? store.routeRides(routeId: route.id)) ?? [] where seen.insert(r.id).inserted { rows.append(r) }
+            }
+            for r in (try? store.placeRides(placeId: p.id)) ?? [] where seen.insert(r.id).inserted { rows.append(r) }
+            let verdict = PlaceRides.verdict(rides: RouteCardLoader.stats(rows), nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+            let here = PlaceHere.isHere(phone: from, place: GeoPoint(lat: p.lat, lon: p.lon), radiusM: p.radiusM)
+
+            // a saved route that ends here (and has a chip) is used as it is; without a usual estimate it takes the place's rides (B45)
+            if let r = savedRoutes.first(where: { route in route.toPlaceId == p.id && routeChips.contains(where: { chip in chip.routeId == route.id }) }),
+               let i = chips.firstIndex(where: { $0.routeId == r.id }) {
                 keyForPlace[p.id] = r.id
+                chips[i].here = here
+                if chips[i].timeText == nil { apply(verdict, to: &chips[i], name: name, nowMs: nowMs, utcOffsetMin: utcOffsetMin) }
                 continue
             }
-            let name = p.name ?? ""
-            let est = from.flatMap { PlaceDestination.estimate(distanceM: Geo.distanceM($0, GeoPoint(lat: p.lat, lon: p.lon)), usualMps: mps, usualPctPerKm: pctPerKm) }
-            var chip = WhereToChip(routeId: placePrefix + p.id, label: name, detail: detail(name: name, estimate: est))
-            if let est {
-                let arrive = Double(nowMs) / 1000 + est.timeS
-                let local = Int64(arrive) + Int64(utcOffsetMin) * 60
-                let minute = Int((((local % 86_400) + 86_400) % 86_400) / 60)
-                chip.timeText = "\(est.minutes) min"
-                chip.arriveText = DayClock.clockText(minuteOfDay: minute)
-                chip.usedText = est.usedPct.map { "\(Int($0.rounded()))%" }
-                chip.usualNeedPct = est.usedPct
-            }
+            var chip = WhereToChip(routeId: placePrefix + p.id, label: name, detail: name)
+            chip.here = here
+            apply(verdict, to: &chip, name: name, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
             chips.append(chip)
             keyForPlace[p.id] = chip.routeId
         }
 
         let ranked = QuickDial.slots(places.map { QuickDialPlace(id: $0.id, name: $0.name, visits: visitCounts[$0.id] ?? 0, pinOrder: pinMap[$0.id]) },
                                      count: slots)
+        func hereFlag(_ key: String) -> Bool { chips.first(where: { $0.routeId == key })?.here ?? false }
         let items: [QuickDialItem] = ranked.compactMap { id in
             guard let p = places.first(where: { $0.id == id }), let key = keyForPlace[id] else { return nil }
-            return QuickDialItem(id: id, name: p.name ?? "", icon: iconMap[id] ?? PlaceIcon.automatic(name: p.name), key: key)
+            return QuickDialItem(id: id, name: p.name ?? "", icon: iconMap[id] ?? PlaceIcon.automatic(name: p.name), key: key,
+                                 colourId: colourMap[id] ?? "orange", here: hereFlag(key))
         }
-        return (chips, items)
+        let rows: [WhereToRow] = chips.map { chip in
+            if let p = places.first(where: { keyForPlace[$0.id] == chip.routeId }) {
+                return WhereToRow(key: chip.routeId, name: chip.label, icon: iconMap[p.id] ?? PlaceIcon.automatic(name: p.name), colourId: colourMap[p.id] ?? "orange",
+                                  placeId: p.id, here: chip.here, pin: pinMap[p.id], timeText: chip.timeText, arriveText: chip.arriveText, note: chip.note)
+            }
+            return WhereToRow(key: chip.routeId, name: chip.label, icon: PlaceIcon.automatic(name: chip.label), colourId: "grey", placeId: nil,
+                              here: false, pin: nil, timeText: chip.timeText, arriveText: chip.arriveText, note: chip.note)
+        }
+        return (chips, items, rows)
     }
 
-    private static func detail(name: String, estimate: PlaceDestination.Estimate?) -> String {
-        guard let e = estimate else { return name }
-        var parts = [name, "about \(e.minutes) min in a straight line"]
-        if let u = e.usedPct { parts.append("uses about \(Int(u.rounded()))%") }
-        return parts.joined(separator: " \u{00B7} ")
+    /// Writes the verdict into a chip: the time, the arrival and the battery use, or the reason there is none
+    private static func apply(_ v: PlaceRides.Verdict, to chip: inout WhereToChip, name: String, nowMs: Int64, utcOffsetMin: Int) {
+        switch v {
+        case .estimate(let timeS, let used, _):
+            let minutes = max(1, Int((timeS / 60).rounded()))
+            let arrive = Double(nowMs) / 1000 + timeS
+            let local = Int64(arrive) + Int64(utcOffsetMin) * 60
+            let minute = Int((((local % 86_400) + 86_400) % 86_400) / 60)
+            chip.timeText = "\(minutes) min"
+            chip.arriveText = DayClock.clockText(minuteOfDay: minute)
+            chip.usedText = used.map { "\(Int($0.rounded()))%" }
+            chip.usualNeedPct = used
+            chip.note = nil
+            chip.detail = [name, "about \(minutes) min", used.map { "uses about \(Int($0.rounded()))%" }].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        case .none, .tooFew:
+            chip.note = PlaceRides.note(v)
+            chip.detail = [name, chip.note].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        }
     }
 
     /// The line under the quick dial for the chosen chip (or "No destination")
     static func summary(chip: WhereToChip?) -> String {
         guard let chip else { return QuickDial.summary(name: nil, minutes: nil, needPct: nil) }
         let minutes = chip.timeText.flatMap { Int($0.split(separator: " ").first ?? "") }
-        return QuickDial.summary(name: chip.label, minutes: minutes, needPct: chip.usualNeedPct)
+        return QuickDial.summary(name: chip.label, minutes: minutes, needPct: chip.usualNeedPct, note: chip.note)
     }
+
+    /// P6-5: the pins as the Where to? sheet edited them (slot 1 to 3); everything else is unpinned
+    static func writePins(_ pins: [String: Int], database: AppDatabase) throws {
+        let normal = QuickDialSlot.normalized(pins)
+        let existing = Set(settings(database, prefix: "place.home.").map(\.0))
+        for id in existing.union(normal.keys) { try setPin(normal[id], placeId: id, database: database) }
+    }
+}
+
+/// One line of the Where to? sheet (P6-5): the place's icon in its colour, its name, and the time or the reason there is none.
+struct WhereToRow: Identifiable, Equatable {
+    var key: String
+    var name: String
+    var icon: PlaceIcon
+    var colourId: String
+    /// nil for a route that ends at no named place (it cannot be pinned)
+    var placeId: String?
+    var here: Bool
+    /// 1 to 3 when the place is on Home
+    var pin: Int?
+    var timeText: String?
+    var arriveText: String?
+    var note: String?
+    var id: String { key }
 }

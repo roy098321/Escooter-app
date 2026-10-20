@@ -168,7 +168,7 @@ struct BatteryView: View {
     private func reload() {
         guard preview == nil, let db = AppModel.shared.database else { return }
         let connected = link.connected
-        let live: Double? = link.frame?.batteryPct.map { Double($0) }
+        let live: Double? = AppModel.shared.settledBatteryPct.map { Double($0) }   // B50: not the boot reading
         let pct: Double? = connected ? live : LastSeen.load().pct.map { Double($0) }
         loaded = BatteryOverview.load(db, currentPct: pct, connected: connected)
     }

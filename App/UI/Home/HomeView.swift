@@ -23,12 +23,20 @@ struct HomeView: View {
     var previewQuick: [QuickDialItem]?
     /// F-21: the ui-shot TODAY card
     var previewToday: InsightCard?
+    /// P6-5: made-up Where to? rows (icon, colour, pin) for the ui-shots
+    var previewRows: [WhereToRow]?
 
     /// F-17: the disc is 250 pt at normal text size and grows with Dynamic Type (capped at 300 pt)
     @ScaledMetric(relativeTo: .title3) private var discSize: CGFloat = HomeView.discBase
     @State private var chips: [WhereToChip] = []
     /// F-29: the round buttons of the quick dial
     @State private var quick: [QuickDialItem] = []
+    /// P6-5: the rows of the Where to? sheet (icon, colour, pin, time or the reason there is none)
+    @State private var rows: [WhereToRow] = []
+    /// B46: the line shown under the quick dial for a moment after a tap on the place the phone is in
+    @State private var hereLine: String?
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.sunlight) private var sunlight
     /// B35: riding that was not recorded, until dismissed
     @State private var gap: UntrackedGap?
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -65,7 +73,7 @@ struct HomeView: View {
         return HomeInput(paired: scooter.hasKnownScooter || simulated, connected: scooter.connected || simulated,
                          connectingSinceS: connectingSince?.timeIntervalSince1970,
                          nowS: now.timeIntervalSince1970,
-                         batteryPct: scooter.frame?.batteryPct ?? (simulated ? RecorderService.shared.live?.batteryPct : nil),
+                         batteryPct: AppModel.shared.settledBatteryPct ?? (simulated ? RecorderService.shared.live?.batteryPct : nil),
                          lastSeenMs: seen.ms, lastSeenPct: seen.pct,
                          utcOffsetMin: TimeZone.current.secondsFromGMT() / 60,
                          rideActive: RecorderService.shared.rideActive,
@@ -160,11 +168,13 @@ struct HomeView: View {
             .defaultScrollAnchor(UIShot.requested == "home-bottom" ? .bottom : nil)   // the ui-shot of the very bottom (B23)
         }
         .sheet(isPresented: $showWhereTo) {
-            WhereToSheet(chips: shownChips, selected: selectedRoute) { id in
+            WhereToSheet(rows: shownRows, selected: selectedRoute, editable: preview == nil, onPick: { id in
                 pickRoute(id)
                 showWhereTo = false
-            }
-            .glassPresentation(detents: [.medium])
+            }, onPins: { pins in
+                savePins(pins)
+            })
+            .glassPresentation(detents: [.medium, .large])
         }
     }
 
@@ -279,12 +289,20 @@ struct HomeView: View {
             } label: {
                 ZStack {
                     VStack(spacing: 8) {
-                        // A2: the Connect icon breathes while connecting (no spinner) and cross-fades into Start (0.3 s)
-                        Image(systemName: discSymbol(m.primary))
-                            .font(.system(size: 40, weight: .semibold))
-                            .symbolEffect(.pulse, options: .repeating, isActive: m.state == .connecting && !reduceMotion)
-                            .contentTransition(.opacity)
-                            .animation(.easeInOut(duration: 0.3), value: discSymbol(m.primary))
+                        // A2: the Connect icon breathes while connecting (no spinner) and cross-fades into Start (0.3 s).
+                        // P6-5: with a destination chosen the Start disc shows that place's icon instead of the generic start glyph.
+                        ZStack {
+                            if let icon = discDestinationIcon(m) {
+                                destinationGlyph(icon)
+                            } else {
+                                Image(systemName: discSymbol(m.primary))
+                                    .font(.system(size: 40, weight: .semibold))
+                                    .symbolEffect(.pulse, options: .repeating, isActive: m.state == .connecting && !reduceMotion)
+                            }
+                        }
+                        .frame(height: 48)
+                        .contentTransition(.opacity)
+                        .animation(.easeInOut(duration: 0.3), value: discSymbol(m.primary) + (discDestinationIcon(m)?.code ?? ""))
                         Text(HomeCopy.buttonWord(m.primary, connecting: m.state == .connecting))
                             .font(.title3.weight(.semibold))
                             .multilineTextAlignment(.center)
@@ -305,6 +323,7 @@ struct HomeView: View {
             .accessibilityLabel(m.primaryTitle)
         }
         .frame(maxWidth: .infinity)
+        .background { discGlow }
     }
 
     /// F-17: the disc at the normal text size (was 170 pt)
@@ -321,14 +340,52 @@ struct HomeView: View {
         }
     }
 
+    /// P6-5: the chosen place's icon when the scooter is connected and Start shows (a route with no named place gives none)
+    private func discDestinationIcon(_ m: HomeModel) -> PlaceIcon? {
+        guard m.primary == .startRide, let key = selectedRoute else { return nil }
+        return shownRows.first(where: { $0.key == key && $0.placeId != nil })?.icon
+    }
+
+    @ViewBuilder private func destinationGlyph(_ icon: PlaceIcon) -> some View {
+        switch icon {
+        case .symbol(let name):
+            Image(systemName: UIImage(systemName: name) != nil ? name : PlaceIcon.fallbackSymbol)
+                .font(.system(size: 40, weight: .semibold))
+                .transition(.opacity)
+        case .letters(let text):
+            Text(text)
+                .font(.system(size: 38, weight: .semibold, design: .rounded))
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+                .transition(.opacity)
+        }
+    }
+
+    /// B48: in light mode a soft warm sand glow sits behind the Connect / Start disc (the accent at a low alpha); dark mode is unchanged
+    @ViewBuilder private var discGlow: some View {
+        if scheme == .light && !sunlight {
+            RadialGradient(colors: [Theme.accent.opacity(0.30), Theme.accent.opacity(0.10), .clear], center: .center, startRadius: 40, endRadius: 270)
+                .frame(width: 560, height: 560)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+
     // MARK: Where to? (M2-06): a row that opens a sheet with one choice per saved route; hidden until a route exists (S2)
 
     private var shownChips: [WhereToChip] { previewChips ?? chips }
     private var shownQuick: [QuickDialItem] { previewQuick ?? quick }
+    private var shownRows: [WhereToRow] { previewRows ?? rows }
     private var selectedRoute: String? { preview != nil ? previewSelected : RouteFollowSelection.shared.chosenKey }
 
-    /// The sheet: choosing the one already chosen keeps it; nil = no destination
+    /// The sheet: choosing the one already chosen keeps it; nil = no destination. The place the phone is in cannot be chosen (B46).
     private func pickRoute(_ id: String?) {
+        if let id, let chip = shownChips.first(where: { $0.routeId == id }), chip.here {
+            Haptics.soft()
+            flashHere(chip.label)
+            return
+        }
+        Haptics.tick()
         guard preview == nil else { return }
         if let id {
             if selectedRoute != id { RouteFollowSelection.shared.choose(key: id) }
@@ -337,11 +394,36 @@ struct HomeView: View {
         }
     }
 
-    /// F-29: the quick dial. Tap = choose, tap again = no destination.
-    private func quickTapped(_ key: String) {
+    /// F-29: the quick dial. Tap = choose, tap again = no destination. A light tick on every tap; the place the phone is in gives a soft
+    /// tick and the line says "You're at Home" (B46).
+    private func quickTapped(_ item: QuickDialItem) {
+        if item.here {
+            Haptics.soft()
+            flashHere(item.name)
+            return
+        }
         Haptics.tick()
         guard preview == nil else { return }
-        RouteFollowSelection.shared.choose(key: key)
+        RouteFollowSelection.shared.choose(key: item.key)
+    }
+
+    /// the first slot of the quick dial: no destination
+    private func clearTapped() {
+        Haptics.tick()
+        guard preview == nil else { return }
+        RouteFollowSelection.shared.choose(key: nil)
+    }
+
+    private func flashHere(_ name: String) {
+        withAnimation(.easeInOut(duration: 0.2)) { hereLine = PlaceHere.tapLine(name: name) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { withAnimation(.easeInOut(duration: 0.2)) { hereLine = nil } }
+    }
+
+    /// P6-5: the sheet's pin changes land in the same settings as the place screen's "Show on Home", and show on Home at once
+    private func savePins(_ pins: [String: Int]) {
+        guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
+        try? QuickDialLoader.writePins(pins, database: db)
+        reloadLastRide()
     }
 
     /// F-29 (owner correction 01:35): the line under the icons always says what was chosen
@@ -356,9 +438,9 @@ struct HomeView: View {
     }
 
     private var whereToRow: some View {
-        let warning = preRideWarning
-        return QuickDialRow(items: shownQuick, selectedKey: selectedRoute, summary: whereToSummary, warning: warning,
-                            onTap: quickTapped, onMore: { showWhereTo = true })
+        let warning = hereLine == nil ? preRideWarning : nil
+        return QuickDialRow(items: shownQuick, selectedKey: selectedRoute, summary: hereLine ?? whereToSummary, warning: warning,
+                            onTap: quickTapped, onClear: clearTapped, onMore: { showWhereTo = true })
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .glassCard(radius: 26, tint: warning == nil ? nil : Theme.accent, padding: 0)
@@ -477,6 +559,7 @@ struct HomeView: View {
                                           slots: QuickDial.slotCount(accessibilitySize: typeSize.isAccessibilitySize), from: phone)
         chips = loaded.chips
         quick = loaded.items
+        rows = loaded.rows
         if let id = RouteFollowSelection.shared.chosenKey, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.choose(key: nil) }
         parked = ParkedResolver.current(database: db, simulated: ScreenSimulator.shared.active)
         gap = ScreenSimulator.shared.active ? nil : ConnectionWatch.visibleGap(db)
@@ -529,74 +612,219 @@ private struct DiscFrameKey: PreferenceKey {
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
 }
 
-/// The content of the Where to? sheet (B29, a standard iOS sheet at half height): "No destination" or one of the saved routes with its
-/// three chips; picking one closes the sheet (the caller does that). UI only, the selection is `RouteFollowSelection`.
+/// The content of the Where to? sheet (B29, a standard iOS sheet). P6-5: compact one-line rows, the place's icon in its colour, the name, and on
+/// the right "17 min \u{00B7} arrive 17:11" (or why there is no time: "no rides there yet", "You are here"). Each place has a pin ("On Home", at most
+/// 3; the 4th asks which to replace); Edit drags the pinned ones into order. Picking a row closes the sheet (the caller does that). UI only; the
+/// selection is `RouteFollowSelection` and the pins are the same settings as the place screen's "Show on Home".
 private struct WhereToSheet: View {
-    let chips: [WhereToChip]
+    let rows: [WhereToRow]
     let selected: String?
+    var editable = true
     let onPick: (String?) -> Void
+    let onPins: ([String: Int]) -> Void
+
+    @State private var editing = false
+    @State private var replacing: WhereToRow?
+
+    private var pins: [String: Int] {
+        var out: [String: Int] = [:]
+        for r in rows { if let id = r.placeId, let p = r.pin { out[id] = p } }
+        return out
+    }
+    private var pinnedRows: [WhereToRow] { rows.filter { $0.pin != nil }.sorted { ($0.pin ?? 0) < ($1.pin ?? 0) } }
+    private var canEdit: Bool { editable && rows.contains { $0.placeId != nil } }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DS.Space.row) {
-                Text("Where to?").font(.headline).fontDesign(.rounded).padding(.top, 22).padding(.bottom, 4)
-                row("No destination", chip: nil, on: selected == nil) { onPick(nil) }
-                ForEach(chips, id: \.routeId) { c in
-                    row(c.label, chip: c, on: c.routeId == selected) { onPick(c.routeId) }
+        VStack(spacing: 0) {
+            HStack {
+                Text("Where to?").font(.headline).fontDesign(.rounded)
+                Spacer()
+                if canEdit {
+                    Button(editing ? "Done" : "Edit") { Haptics.tick(); withAnimation(.easeInOut(duration: 0.2)) { editing.toggle() } }
+                        .font(.body.weight(.semibold))
+                        .frame(minHeight: DS.hit)
                 }
             }
             .padding(.horizontal, DS.Space.gutter)
+            .padding(.top, 14)
+            if editing { editList } else { pickList }
+        }
+        .confirmationDialog("Replace which?", isPresented: Binding(get: { replacing != nil }, set: { if !$0 { replacing = nil } }), titleVisibility: .visible) {
+            if let new = replacing?.placeId {
+                ForEach(pinnedRows, id: \.key) { old in
+                    if let oldId = old.placeId {
+                        Button(old.name) { onPins(QuickDialSlot.replace(oldId, with: new, in: pins)) }
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private var pickList: some View {
+        ScrollView {
+            VStack(spacing: 6) {
+                Button { onPick(nil) } label: {
+                    HStack(spacing: 10) {
+                        FreeRideIcon(size: 34, selected: selected == nil)
+                        Text(QuickDialSlot.freeRideName).font(.body.weight(selected == nil ? .semibold : .regular))
+                        Spacer(minLength: 8)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                    .glassCard(radius: 16, padding: 0)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected == nil ? .isSelected : [])
+                ForEach(rows) { r in
+                    HStack(spacing: 6) {
+                        Button { onPick(r.key) } label: { rowLabel(r) }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(r.key == selected ? .isSelected : [])
+                        if editable, r.placeId != nil { pinButton(r) }
+                    }
+                }
+            }
+            .padding(.horizontal, DS.Space.gutter)
+            .padding(.top, 6)
             .padding(.bottom, DS.Space.block)
         }
     }
 
-    private func row(_ title: String, chip: WhereToChip?, on: Bool, action: @escaping () -> Void) -> some View {
-        Button {
-            action()
-        } label: {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.body.weight(on ? .semibold : .regular))
-                    if let c = chip, let t = c.timeText, let a = c.arriveText {
-                        HStack(spacing: 6) {
-                            InfoChip("timer", t, label: "Time")
-                            InfoChip("flag.checkered", a, label: "Arrive")
-                            if let u = c.usedText { InfoChip("battery.50percent", u, label: "Battery used") }
-                        }
+    private var editList: some View {
+        List {
+            Section {
+                ForEach(pinnedRows) { r in
+                    HStack(spacing: 10) {
+                        PlaceIconView(icon: r.icon, size: 34, selected: true, colourId: r.colourId)
+                        Text(r.name).lineLimit(1)
+                        Spacer(minLength: 8)
+                        pinButton(r)
                     }
                 }
-                Spacer(minLength: 8)
-                if on { Image(systemName: "checkmark").foregroundStyle(Theme.accentInk) }
+                .onMove { from, to in
+                    var ids = pinnedRows.compactMap(\.placeId)
+                    ids.move(fromOffsets: from, toOffset: to)
+                    Haptics.tick()
+                    onPins(QuickDialSlot.reordered(ids))
+                }
+            } header: {
+                Text("On Home \u{00B7} drag to reorder")
             }
-            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
-            .glassCard()
-            .contentShape(Rectangle())
+            Section {
+                ForEach(rows.filter { $0.pin == nil && $0.placeId != nil }) { r in
+                    HStack(spacing: 10) {
+                        PlaceIconView(icon: r.icon, size: 34, selected: false, colourId: r.colourId)
+                        Text(r.name).lineLimit(1)
+                        Spacer(minLength: 8)
+                        pinButton(r)
+                    }
+                }
+            } header: {
+                Text("Other places")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .environment(\.editMode, .constant(.active))
+    }
+
+    private func rowLabel(_ r: WhereToRow) -> some View {
+        HStack(spacing: 10) {
+            PlaceIconView(icon: r.icon, size: 34, selected: r.key == selected, colourId: r.placeId == nil ? nil : r.colourId, here: r.here)
+            Text(r.name).font(.body.weight(r.key == selected ? .semibold : .regular)).lineLimit(1)
+            Spacer(minLength: 6)
+            Text(trailing(r))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+        .glassCard(radius: 16, padding: 0)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(r.name), \(trailing(r))")
+    }
+
+    /// "17 min \u{00B7} arrive 17:11", the reason there is no time, or "You are here"
+    private func trailing(_ r: WhereToRow) -> String {
+        if r.here { return PlaceHere.hereWord }
+        if let t = r.timeText, let a = r.arriveText { return "\(t) \u{00B7} arrive \(a)" }
+        return r.note ?? ""
+    }
+
+    private func pinButton(_ r: WhereToRow) -> some View {
+        let on = r.pin != nil
+        return Button { togglePin(r) } label: {
+            Image(systemName: on ? "pin.fill" : "pin")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(on ? Theme.accentInk : Color.secondary)
+                .frame(width: DS.hit, height: DS.hit)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityLabel("On Home")
+        .accessibilityValue(on ? "on" : "off")
+    }
+
+    private func togglePin(_ r: WhereToRow) {
+        guard let id = r.placeId else { return }
+        Haptics.tick()
+        if pins[id] != nil {
+            onPins(QuickDialSlot.unpin(id, in: pins))
+        } else {
+            switch QuickDialSlot.pin(id, in: pins) {
+            case .pinned(let next): onPins(next)
+            case .needsReplace: replacing = r
+            }
+        }
     }
 }
 
 /// Made-up Home states for the CI ui-shots (`-uiShot home-first` and so on).
 enum HomePreview {
-    /// M2-06: made-up chips (no real place names)
+    private static func hasQuick(_ name: String) -> Bool { name == "home-whereto" || name == "home-whereto-sheet" || name == "home-quick" }
+
+    /// M2-06 + P6-5: made-up chips (no real place names): two with a time, one the phone is in (Home), one with no rides (B44), one with one ride (B45)
     static func chips(_ name: String) -> [WhereToChip]? {
-        guard name == "home-whereto" || name == "home-whereto-sheet" || name == "home-quick" else { return nil }
+        guard hasQuick(name) else { return nil }
         var work = WhereToChip(routeId: "a", label: "Work", detail: "Work")
-        work.timeText = "13 min"; work.arriveText = "8:56"; work.usedText = "11%"
+        work.timeText = "13 min"; work.arriveText = "8:56"; work.usedText = "11%"; work.usualNeedPct = 11
         var home = WhereToChip(routeId: "b", label: "Home", detail: "Home")
-        home.timeText = "14 min"; home.arriveText = "9:02"; home.usedText = "12%"
+        home.timeText = "14 min"; home.arriveText = "9:02"; home.usedText = "12%"; home.here = true
         var maya = WhereToChip(routeId: "place:m", label: "Maya's house", detail: "Maya's house")
         maya.timeText = "12 min"; maya.arriveText = "9:00"; maya.usedText = "9%"; maya.usualNeedPct = 9
-        return [work, home, maya]
+        var gran = WhereToChip(routeId: "place:g", label: "Grandma", detail: "Grandma")
+        gran.note = "no rides there yet"
+        var old = WhereToChip(routeId: "place:o", label: "Old workplace", detail: "Old workplace")
+        old.note = "1 ride there \u{00B7} estimate after 2"
+        return [work, home, maya, gran, old]
     }
 
-    /// F-29: made-up quick-dial buttons (a symbol, a symbol, typed letters)
+    /// F-29: made-up quick-dial buttons (a symbol, a symbol, typed letters), each in its place colour; Home is the place the phone is in
     static func quick(_ name: String) -> [QuickDialItem]? {
-        guard name == "home-whereto" || name == "home-whereto-sheet" || name == "home-quick" else { return nil }
-        return [QuickDialItem(id: "b", name: "Home", icon: .symbol("house"), key: "b"),
-                QuickDialItem(id: "a", name: "Work", icon: .symbol("building.2"), key: "a"),
-                QuickDialItem(id: "m", name: "Maya's house", icon: .letters("M"), key: "place:m")]
+        guard hasQuick(name) else { return nil }
+        return [QuickDialItem(id: "b", name: "Home", icon: .symbol("house"), key: "b", colourId: "green", here: true),
+                QuickDialItem(id: "a", name: "Work", icon: .symbol("building.2"), key: "a", colourId: "blue"),
+                QuickDialItem(id: "m", name: "Maya's house", icon: .letters("M"), key: "place:m", colourId: "pink")]
+    }
+
+    /// P6-5: made-up rows of the Where to? sheet
+    static func rows(_ name: String) -> [WhereToRow]? {
+        guard let chips = chips(name) else { return nil }
+        let looks: [String: (PlaceIcon, String, Int?)] = [
+            "a": (.symbol("building.2"), "blue", 2), "b": (.symbol("house"), "green", 1), "place:m": (.letters("M"), "pink", 3),
+            "place:g": (.symbol("figure.and.child.holdinghands"), "yellow", nil), "place:o": (.symbol("building.columns"), "vermillion", nil)
+        ]
+        return chips.map { c in
+            let look = looks[c.routeId] ?? (.letters("?"), "orange", nil)
+            return WhereToRow(key: c.routeId, name: c.label, icon: look.0, colourId: look.1, placeId: c.routeId, here: c.here, pin: look.2,
+                              timeText: c.timeText, arriveText: c.arriveText, note: c.note)
+        }
     }
 
     static func input(_ name: String) -> HomeInput? {
