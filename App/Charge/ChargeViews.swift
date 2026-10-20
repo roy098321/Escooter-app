@@ -36,6 +36,7 @@ struct ChargePill: View {
                 .foregroundStyle(Theme.accentInk)
                 .padding(.horizontal, 16)
                 .frame(minHeight: 44)
+                .background(Theme.row.opacity(0.92), in: Capsule())
                 .overlay(Capsule().strokeBorder(Theme.accent, lineWidth: 2))
                 .contentShape(Capsule())
         }

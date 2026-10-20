@@ -77,7 +77,7 @@ enum ChargeEtaChecks {
         expect(real.measured && real.endPct == 35, "the real % on connect is logged as measured")
         let rows = ChargeLogChart.rows(entries: [est, real.self], detected: [])
         expect(rows.count == 2 && Set(rows.map(\.solid)) == [true, false], "solid bar for measured, lighter for \u{2248}")
-        let seg = ChargeLogChart.segments([ChargeReading(ms: 0, pct: 80), ChargeReading(ms: 3_600_000, pct: 70), ChargeReading(ms: 12 * 3_600_000, pct: 30)])
+        let seg = ChargeLogChart.segments([ChargeReading(ms: 0, pct: 80), ChargeReading(ms: 3_600_000, pct: 70), ChargeReading(ms: 40 * 3_600_000, pct: 30)])
         expect(seg.map(\.dashed) == [false, true], "a long gap between readings is dashed, no invented curve")
         let m = ChargeLogEntry(id: "m", startMs: 0, endMs: 139 * 60_000, startPct: 33, endPct: 65, measured: true)
         expect(ChargeLogChart.detail(ChargeLogChart.rows(entries: [m], detected: [])[0]) == "+32 % \u{00B7} 2 h 19", "+32 % \u{00B7} 2 h 19")

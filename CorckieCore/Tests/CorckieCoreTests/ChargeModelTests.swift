@@ -99,7 +99,7 @@ final class ChargeModelTests: XCTestCase {
     }
 
     func testChartSegmentsRowsAndDetails() {
-        let r = [ChargeReading(ms: 0, pct: 80), ChargeReading(ms: 3_600_000, pct: 75), ChargeReading(ms: 20 * 3_600_000, pct: 33)]
+        let r = [ChargeReading(ms: 0, pct: 80), ChargeReading(ms: 3_600_000, pct: 75), ChargeReading(ms: 40 * 3_600_000, pct: 33)]
         let seg = ChargeLogChart.segments(r)
         XCTAssertEqual(seg.map(\.dashed), [false, true])
         let m = ChargeLogEntry(id: "m", startMs: 100 * 3_600_000, endMs: 102 * 3_600_000 + 19 * 60_000, startPct: 33, endPct: 65, measured: true)

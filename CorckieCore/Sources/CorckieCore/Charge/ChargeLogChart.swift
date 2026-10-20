@@ -50,8 +50,8 @@ public struct ChargeRow: Equatable, Sendable, Identifiable {
 }
 
 public enum ChargeLogChart {
-    /// Readings further apart than this are joined by a dashed line
-    public static let gapMs: Int64 = 3 * 3_600_000
+    /// Readings further apart than this (a day) are joined by a dashed line
+    public static let gapMs: Int64 = 24 * 3_600_000
     public static let windowDays = 7
 
     public static func segments(_ readings: [ChargeReading]) -> [ChargeLineSegment] {
