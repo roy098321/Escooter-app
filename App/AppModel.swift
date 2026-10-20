@@ -91,7 +91,7 @@ final class AppModel {
         }
         PermissionsCheck.shared.refresh()
         IdleBatteryLog.recordIfIdle()
-        ChargeTimer.shared.start()                     // F-31: a charge that was running when the app closed
+        Task { @MainActor in ChargeTimer.shared.start() }   // F-31: a charge that was running when the app closed
     }
 
     /// Opens (and if needed migrates) the database before anything else (DATA_MODEL V1).

@@ -36,6 +36,15 @@ public struct ChargeRow: Equatable, Sendable, Identifiable {
     public var endPct: Double
     public var source: Source
 
+    public init(id: String, startMs: Int64, endMs: Int64, startPct: Double, endPct: Double, source: Source) {
+        self.id = id
+        self.startMs = startMs
+        self.endMs = endMs
+        self.startPct = startPct
+        self.endPct = endPct
+        self.source = source
+    }
+
     public var solid: Bool { source == .measured || source == .seen }
     public var gainedPct: Double { max(0, endPct - startPct) }
 }
