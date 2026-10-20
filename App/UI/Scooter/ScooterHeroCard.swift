@@ -70,7 +70,6 @@ struct ScooterHeroCard: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            art
             HStack(spacing: 0) {
                 Spacer(minLength: typeSize.isAccessibilitySize ? 60 : 150)
                 VStack(alignment: .trailing, spacing: 6) {
@@ -115,6 +114,7 @@ struct ScooterHeroCard: View {
             }
         }
         .frame(maxWidth: .infinity, minHeight: 310, alignment: .topLeading)
+        .background(alignment: .topLeading) { art }     // a background never changes the card's size, so a wide photo cannot push the card off screen
         .glassCard(radius: DS.Radius.hero, padding: 0)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.hero, style: .continuous))
     }

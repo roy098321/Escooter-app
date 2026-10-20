@@ -461,7 +461,7 @@ struct PastWeeksChart: View {
     var body: some View {
         let ordered = Array(bars.sorted { $0.start < $1.start }.enumerated())   // B33: one slot per week, empty weeks are 0
         Chart(ordered, id: \.offset) { item in
-            BarMark(x: .value("Week", item.offset), y: .value("km", item.element.km))
+            BarMark(x: .value("Week", "w\(item.offset)"), y: .value("km", item.element.km))
                 .foregroundStyle(Theme.accent)
                 .cornerRadius(3)
         }
