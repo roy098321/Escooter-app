@@ -605,7 +605,7 @@ enum CheckList {
         m("ui32", p6M, "Ride detail map, climbs and battery chart (B37 / B38 / B39)", "Open a few rides, one with climbs",
           "The map is zoomed to the ride path with a little room, not to the whole region; the battery chart shows three labels that never overlap; each climb's battery % is plausible (small climbs show no battery % at all)", manual: true),
         m("u80", p6M, "A saved place is a destination (B31)", "Nothing to do · Run all automatic marks it",
-          "On made-up places in a temporary database: a named place without a route is listed under Where to? and says "no rides there yet" (P6-5: no time from the straight line any more); a nameless place is not; without a phone location it is listed without numbers; the +10 % margin is applied only by the F-22 warning"),
+          "On made-up places in a temporary database: a named place without a route is listed under Where to? and says \"no rides there yet\" (P6-5: no time from the straight line any more); a nameless place is not; without a phone location it is listed without numbers; the +10 % margin is applied only by the F-22 warning"),
         m("u81", p6M, "Quick dial ranking and place icons (F-29)", "Nothing to do · Run all automatic marks it",
           "3 slots (2 at the largest text sizes); pinned places first in the owner's order, then the most visited ride end places; 16 different symbols that all exist on this iOS, or 1-2 typed letters, never an emoji; icon and slot are stored per place and removed again; the line under the icons reads \"Maya's house \u{00B7} 12 min \u{00B7} needs ~9 %\" or \"No destination\""),
         m("u82", p6M, "Parked spot: newest of ride end and last seen (B34)", "Nothing to do · Run all automatic marks it",
