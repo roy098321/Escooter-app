@@ -30,7 +30,9 @@ extension View {
 
 private struct BuildStampModifier: ViewModifier {
     func body(content: Content) -> some View {
-        content.overlay(alignment: .bottom) {
+        // the stamp never covers content: every scroll view below keeps its content above the stamp (it can still scroll under the indicator)
+        let margin = BuildStamp.isVisible ? max(0, 19 + max(14, BuildStamp.bottomInset + FloatingTabBar.bottomGap - BuildStamp.belowIndicator) / 2 - BuildStamp.bottomInset) + 4 : 0
+        return content.contentMargins(.bottom, margin, for: .scrollContent).overlay(alignment: .bottom) {
             if BuildStamp.isVisible {
                 // the overlay sits on the safe area, so the home indicator's inset is added back to reach the screen edge
                 let inset = BuildStamp.bottomInset

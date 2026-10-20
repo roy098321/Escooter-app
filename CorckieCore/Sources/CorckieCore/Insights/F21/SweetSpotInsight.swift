@@ -262,7 +262,7 @@ public enum SweetSpotInsight {
             if step == 0 {
                 var text = "~\(Int(range(base).rounded())) km range"
                 if let t = context.routeTimeS { text += " \u{00B7} \(Int((t / 60).rounded())) min" }
-                rows.append(WhatIfRow(label: "\(Int(v)) km/h", items: [WhatIfItem(text, .neutral)], isBaseline: true))
+                rows.append(WhatIfRow(label: "\(Int(v)) km/h (your usual)", items: [WhatIfItem(text, .neutral)], isBaseline: true))
                 continue
             }
             let dKm = Int((range(v) - range(base)).rounded())
