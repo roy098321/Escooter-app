@@ -47,7 +47,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: CorckieApp   # owner, P4 D3: "v1" shows inside the app instead (VersionLabel)
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"   # F-28: landscape only where OrientationLock allows it
         INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: CorckieApp reads live data from your scooter. It never changes the scooter's settings.
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: CorckieApp records where you ride, for maps and routes.
         INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: CorckieApp keeps recording your ride when the phone is locked in your pocket.

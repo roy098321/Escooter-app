@@ -5,6 +5,8 @@ import SwiftUI
 /// M5-03: the elevation panel (profile + the real cost of each climb) and the speed / battery charts of the full ride detail.
 struct RideSeriesPanels: View {
     let series: RideSeries
+    /// F-28: tap the speed / battery charts to open them full screen
+    var onExpand: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -57,7 +59,15 @@ struct RideSeriesPanels: View {
 
     private var chartsPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Speed and battery").font(.headline)
+            HStack {
+                Text("Speed and battery").font(.headline)
+                Spacer()
+                if let onExpand {
+                    Button(action: onExpand) { Image(systemName: "arrow.up.left.and.arrow.down.right").font(.subheadline.weight(.semibold)) }
+                        .foregroundStyle(Theme.accentInk)
+                        .accessibilityLabel("Open the charts full screen")
+                }
+            }
             Chart {
                 ForEach(Array(series.chart.enumerated()), id: \.offset) { _, p in
                     if let v = p.speedKmh {
@@ -80,15 +90,23 @@ struct RideSeriesPanels: View {
                     }
                 }
             }
-            .chartYScale(domain: .automatic(includesZero: false))
+            .chartYScale(domain: batteryAxis.domain)
+            .chartYAxis { AxisMarks(values: batteryAxis.ticks) }   // B37: three labels, never crowded
             .chartXAxisLabel("min")
             .chartYAxisLabel("%")
-            .frame(height: 90)
+            .frame(height: 110)
             .accessibilityLabel("Battery chart, percent against minutes")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .glassCard(padding: 0)
+        .contentShape(Rectangle())
+        .onTapGesture { onExpand?() }
+    }
+
+    private var batteryAxis: (domain: ClosedRange<Double>, ticks: [Double]) {
+        let values = series.chart.compactMap(\.batteryPct).map(Double.init)
+        return ChartCursor.batteryAxis(min: values.min() ?? 0, max: values.max() ?? 100)
     }
 }
 

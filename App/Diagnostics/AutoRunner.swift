@@ -102,6 +102,7 @@ final class AutoRunner {
         P62Checks.run()                          // P6-2 chunk 1: u61 theme, u62 tab bar hides on scroll, u64 Home and live view declutter (chunk 2a), u65 Rides list and ride detail declutter (chunk 2b), u66 Stats / Battery / Routes / Settings declutter (chunk 3)
         P63AliveChecks.run()                     // P6-3 chunk 3: u74 battery warnings, u75 F-22, u76 sound files, u77 audio session
         P63Checks.run()                          // P6-3 chunk 1: u67 Add a place, u68 map screens, u69 Home, u70 rolling stats, u71 saved per km + weekly line, u72 parked, u73 quiet live view
+        P64Checks.run()                          // P6-4 chunk 1: u78 Replay / ride charts maths (B37, B38, B39, cursor)
 
         if model.scooter.connected {
             summary.append("Simulator checks skipped: the real scooter is connected (switch it off and run again)")
@@ -155,7 +156,7 @@ final class AutoRunner {
 
 /// The IDs "Run all automatic" settles by itself (T-01: also what the check list calls Automatic).
 enum AutomaticChecks {
-    static let ids: [String] = ["h1", "a3", "a6", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "u10", "u11", "u12", "u13", "u14", "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u22", "u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32", "u33", "u34", "u35", "u36", "u37", "u38", "u39", "u40", "u41", "u42", "u44", "u45", "u46", "u47", "u48", "u49", "u50", "u51", "u52", "u53", "u54", "u55", "u56", "u57", "u58", "u59", "u60", "u61", "u62", "u64", "u65", "u66", "u67", "u68", "u69", "u70", "u71", "u72", "u73", "u74", "u75", "u76", "u77", "a9", "o1", "e1", "d6", "d9", "d1", "d7", "d8",
+    static let ids: [String] = ["h1", "a3", "a6", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "u10", "u11", "u12", "u13", "u14", "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u22", "u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32", "u33", "u34", "u35", "u36", "u37", "u38", "u39", "u40", "u41", "u42", "u44", "u45", "u46", "u47", "u48", "u49", "u50", "u51", "u52", "u53", "u54", "u55", "u56", "u57", "u58", "u59", "u60", "u61", "u62", "u64", "u65", "u66", "u67", "u68", "u69", "u70", "u71", "u72", "u73", "u74", "u75", "u76", "u77", "u78", "a9", "o1", "e1", "d6", "d9", "d1", "d7", "d8",
                       "e2", "e3", "e3b", "e4", "e5", "e6", "e6b", "e7",
                       "u80", "u81", "u82", "u83"]
 }

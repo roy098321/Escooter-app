@@ -41,6 +41,8 @@ struct RideDetailView: View {
     @State private var showTrim = false
     @State private var showReplay = false
     @State private var replayDownload = false
+    /// F-28: the speed / battery charts full screen
+    @State private var showCharts = false
     @State private var exportFile: ExportedFile?
     @State private var mergeInfo: MergeInfo?
     @State private var sameRideAnswered = false
@@ -136,8 +138,11 @@ struct RideDetailView: View {
         .sheet(isPresented: $showTrim) {
             if let id = activeId { TrimSheet(rideId: id, onChanged: { toast = "Trim saved."; load() }).glassPresentation() }
         }
-        .sheet(isPresented: $showReplay) {
-            if let id = activeId { NavigationStack { ReplayView(rideId: id, startDownload: replayDownload) }.glassPresentation(detents: [.large]) }
+        .fullScreenCover(isPresented: $showReplay) {
+            if let id = activeId { ReplayView(rideId: id, startDownload: replayDownload) }
+        }
+        .fullScreenCover(isPresented: $showCharts) {
+            if let s = previewSeries ?? series { RideChartsFullScreen(points: s.points) }
         }
         .sheet(item: $exportFile) { file in ShareSheet(url: file.url) }
         .overlay(alignment: .bottom) { toastBar }
@@ -382,7 +387,7 @@ struct RideDetailView: View {
         DisclosureGroup("More", isExpanded: $moreOpen) {
             VStack(alignment: .leading, spacing: 12) {
                 rowsCard(detailRows(m))
-                if let s = previewSeries ?? series { RideSeriesPanels(series: s) }
+                if let s = previewSeries ?? series { RideSeriesPanels(series: s, onExpand: { showCharts = true }) }
                 fieldKitRows
                 ForEach(m.infoLines, id: \.self) { Text($0).font(.footnote).foregroundStyle(.secondary) }
             }
@@ -461,7 +466,7 @@ struct RideDetailView: View {
     private func mapView(_ path: RidePathModel) -> some View {
         let fullGradient = (previewSeries ?? series)?.values(layer) ?? []   // F-04: continuous gradient when the readings are there
         let gradient = pathReveal >= 1 ? fullGradient : Array(fullGradient.prefix(Int(Double(fullGradient.count) * pathReveal)))
-        return Map(initialPosition: Self.position(path, sheet: true), interactionModes: [.pan, .zoom]) {
+        return Map(initialPosition: Self.fitted(path), interactionModes: [.pan, .zoom]) {
             GradientPath.lines(gradient, layer: layer)
             PlacePinMarks(pins: preview != nil ? RideDetailPreview.pins : pins)
             ForEach(Array((fullGradient.isEmpty ? layerSegments : []).enumerated()), id: \.offset) { _, seg in
@@ -497,6 +502,16 @@ struct RideDetailView: View {
         if layer == .speed { return Self.legend(path) }
         if layer == .wind, (previewSeries ?? series)?.wind == nil { return "No wind data yet. It arrives with the weather, a little after the ride." }
         return layer.legend
+    }
+
+    /// B39: framed on the path itself (a stray GPS fix far away is ignored), padded, with room for the floating top bar
+    static func fitted(_ path: RidePathModel) -> MapCameraPosition {
+        var points: [GeoPoint] = []
+        for seg in path.segments { for c in seg.coords { points.append(GeoPoint(lat: c.lat, lon: c.lon)) } }
+        for run in path.walks { for c in run { points.append(GeoPoint(lat: c.lat, lon: c.lon)) } }
+        guard let r = MapFit.region(points, padding: 0.15, topCover: 0.3) else { return position(path) }
+        return .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: r.centerLat, longitude: r.centerLon),
+                                          span: MKCoordinateSpan(latitudeDelta: r.latSpan, longitudeDelta: r.lonSpan)))
     }
 
     /// `sheet`: the bottom half is under the sheet, so the path is framed in the upper part (centre moved south, wider span)

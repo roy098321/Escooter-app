@@ -272,4 +272,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func applicationDidEnterBackground(_ application: UIApplication) {
         BudgetedNotifier.scheduleBackgroundRefresh()
     }
+
+    /// F-28: portrait everywhere; the full-screen ride charts allow landscape while shown
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        OrientationLock.mask
+    }
 }

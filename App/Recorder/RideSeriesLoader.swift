@@ -42,7 +42,7 @@ enum RideSeriesLoader {
             let mps: Double? = s.speedMps ?? s.gpsSpeedMps
             let kmh: Double? = mps.map { $0 * 3.6 }
             points.append(SeriesPoint(t: Double(s.t) / 1000, lat: s.lat, lon: s.lon, hAccM: s.hAccM, speedKmh: kmh,
-                                      batteryPct: s.batteryPct, altM: s.altBaroM))
+                                      batteryPct: s.batteryPct, altM: s.altBaroM, powerW: s.powerW))
         }
         var series = RideSeries()
         series.points = points

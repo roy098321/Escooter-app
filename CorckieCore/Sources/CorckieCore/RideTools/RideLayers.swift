@@ -12,9 +12,12 @@ public struct SeriesPoint: Equatable, Sendable {
     public var speedKmh: Double?
     public var batteryPct: Int?
     public var altM: Double?
+    /// F-18: the scooter's power, for the Replay's Power layer and tile (nil when not read)
+    public var powerW: Double?
 
     public init(t: Double, lat: Double? = nil, lon: Double? = nil, hAccM: Double? = nil, speedKmh: Double? = nil,
-                batteryPct: Int? = nil, altM: Double? = nil) {
+                batteryPct: Int? = nil, altM: Double? = nil, powerW: Double? = nil) {
+        self.powerW = powerW
         self.t = t
         self.lat = lat
         self.lon = lon
@@ -225,12 +228,38 @@ public enum RideLayers {
         guard to > from, gain >= rise else { return nil }
         let d = profile[to].distM - profile[from].distM
         let grade = d > 0 ? gain / d * 100 : 0
-        let t0 = times[from], t1 = times[to]
-        let b0 = points.filter { $0.t <= t0 }.compactMap(\.batteryPct).last ?? points.compactMap(\.batteryPct).first
-        let b1 = points.filter { $0.t <= t1 }.compactMap(\.batteryPct).last
-        var used: Int?
-        if let b0, let b1 { used = max(0, b0 - b1) }
+        let used = climbBatteryUsed(points, from: times[from], to: times[to], distM: d, gainM: gain)
         return ClimbSpan(startDistM: profile[from].distM, endDistM: profile[to].distM, gainM: gain, gradePct: grade, usedPct: used)
+    }
+
+    /// B38 battery reading resolution: the scooter reports whole percent
+    public static let batteryResolutionPct = 1
+    /// B38 plausibility: a climb can use at most this much energy per km (about twice a hard ride) plus the lift itself
+    public static let climbMaxWhPerKm = 40.0
+    public static let climbLiftKg = 150.0
+    public static let climbLiftEfficiency = 0.6
+    /// Wh per battery point (768 Wh pack / 100)
+    public static let whPerBatteryPct = 7.68
+
+    /// B38: battery points used on one climb, from the climb's OWN readings only (`from`...`to` seconds): the median of its first
+    /// three readings minus the median of its last three (one sagging reading does not count). nil (hidden) when the climb has
+    /// fewer than two readings, when the drop is below the reading resolution, or when it is more than the climb could really use
+    /// (`climbMaxWhPerKm` over its distance plus lifting `climbLiftKg` up `gainM`, +10 % margin): that is voltage sag, not energy.
+    public static func climbBatteryUsed(_ points: [SeriesPoint], from t0: Double, to t1: Double, distM: Double, gainM: Double) -> Int? {
+        guard t1 > t0 else { return nil }
+        let readings = points.filter { $0.t >= t0 && $0.t <= t1 }.compactMap(\.batteryPct)
+        guard readings.count >= 2 else { return nil }
+        func median(_ list: ArraySlice<Int>) -> Int {
+            let sorted = list.sorted()
+            return sorted[sorted.count / 2]
+        }
+        let k = max(1, min(3, readings.count / 2))
+        let used = median(readings.prefix(k)) - median(readings.suffix(k))
+        guard used >= batteryResolutionPct else { return nil }
+        let liftWh = climbLiftKg * 9.81 * max(0, gainM) / 3_600 / climbLiftEfficiency
+        let ceiling = (max(0, distM) / 1_000 * climbMaxWhPerKm + liftWh) / whPerBatteryPct * 1.1
+        guard Double(used) <= max(Double(batteryResolutionPct), ceiling) else { return nil }
+        return used
     }
 
     static func thinned<T>(_ list: [T], to max: Int) -> [T] {

@@ -183,7 +183,7 @@ enum UIShot {
     /// Every screen name the ui-shots and the check u44 open (M6-05). New states are added here and to the ui-shots list in ci.yml.
     static let allNames: [String] = [
         "settings", "settings-full", "settings-data", "export", "restore", "developer", "checks", "results", "simulator", "outside", "scooter", "rides", "rides-list", "rides-long", "home-bottom",
-        "ride-detail", "ride-nogps", "ride-gap", "ride-walk", "ride-detail-full", "ride-layer-speed", "ride-layer-hills", "ride-layer-wind", "ride-save-route", "ride-prompt", "ride-insights", "replay",
+        "ride-detail", "ride-nogps", "ride-gap", "ride-walk", "ride-detail-full", "ride-layer-speed", "ride-layer-hills", "ride-layer-wind", "ride-save-route", "ride-prompt", "ride-insights", "replay", "ride-charts-full",
         "ride-compare", "ride-merge", "ride-trim", "routes-empty", "routes-list", "routes-greyed", "route-card", "route-card-sparse", "places", "places-map", "place-detail", "place-add", "rides-colours",
         "rides-sort-destination", "rides-sort-dayofweek", "rides-sort-timeofday", "rides-sort-distance", "rides-sort-duration", "rides-sort-battery",
         "route-arriveby", "past-weeks", "stats-week", "stats-month", "stats-rolling", "stats-empty", "week-card", "factors", "factors-sparse",
@@ -257,6 +257,8 @@ enum UIShot {
                                 progress: [Insight(type: .q15After, rideId: "p", routeId: "A", text: "Rain on Seed commute: 1 of 3 wet rides", basedOnN: 1, isProgress: true, createdAt: 1_790_000_000_000)]))
             case "replay":
                 ReplayView(rideId: nil, previewData: ReplayDataLoader.sample())
+            case "ride-charts-full":
+                RideChartsFullScreen(points: RideDetailPreview.series().points)
             case "ride-compare":
                 CompareSheet(rideId: "a", preview: RideToolsPreview.compare())
             case "ride-merge":

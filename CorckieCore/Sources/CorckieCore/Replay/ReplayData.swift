@@ -133,6 +133,14 @@ public enum ReplayBuilder {
         return (x, y)
     }
 
+    /// The inverse of `mercator`: a mercator pixel at zoom `z` back to degrees (F-18: the native Replay reads the same timeline)
+    public static func degrees(x: Double, y: Double, z: Int) -> (lat: Double, lon: Double) {
+        let n = 256 * pow(2.0, Double(z))
+        let lon = x / n * 360 - 180
+        let lat = atan(sinh(Double.pi * (1 - 2 * y / n))) * 180 / Double.pi
+        return (lat, lon)
+    }
+
     // MARK: Timeline
 
     /// One point per second from the first to the last reading. Numbers are interpolated; across a gap longer than
