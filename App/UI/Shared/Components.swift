@@ -1,3 +1,4 @@
+import CorckieCore
 import SwiftUI
 
 // P6-2 shared building blocks (F-11 declutter + F-15 theme v2). The screens are rebuilt from these in the next chunks:
