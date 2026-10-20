@@ -63,7 +63,8 @@ public enum InsightSamplesF21 {
         for i in 0..<(habit + early) {
             let isEarly = i < early
             let minute = Double(isEarly ? 7 * 60 + 30 : 8 * 60 + 10) + 4 * rng.next()
-            let total = (19 - (isEarly ? gainMin : 0) + noiseMin * rng.next()) * 60
+            let saved: Double = isEarly ? gainMin : 0
+            let total: Double = (19 - saved + noiseMin * rng.next()) * 60
             let start = midnight + Int64(i) * day + Int64(minute * 60_000)
             out.append(DepartureRide(startAt: start, utcOffsetMin: 180, totalS: total, distanceKm: 7.4))
         }

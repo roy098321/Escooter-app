@@ -73,7 +73,8 @@ public enum InsightMath {
         guard let mad = median(res.map { abs($0) }), mad > 0 else { return (first, Array(0..<rows.count)) }
         let limit = 3 * 1.4826 * mad
         let kept = (0..<rows.count).filter { abs(res[$0]) <= limit }
-        guard kept.count < rows.count, kept.count > (rows.first?.count ?? 0) + 2 else { return (first, Array(0..<rows.count)) }
+        let keptN = kept.count, allN = rows.count, needN = (rows.first?.count ?? 0) + 2
+        guard allN > keptN, keptN > needN else { return (first, Array(0..<allN)) }
         let w = weights.map { ws in kept.map { ws[$0] } }
         guard let second = leastSquares(rows: kept.map { rows[$0] }, y: kept.map { y[$0] }, weights: w) else { return (first, Array(0..<rows.count)) }
         return (second, kept)

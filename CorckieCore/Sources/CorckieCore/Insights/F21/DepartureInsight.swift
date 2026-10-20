@@ -122,7 +122,9 @@ public enum DepartureInsight {
 
         let lowMin = Int(max(0, (gain - tq * d.se) / 60).rounded()), highMin = Int(((gain + tq * d.se) / 60).rounded())
         let interval = lowMin >= 1 ? "Leaving then saves between \(lowMin) and \(highMin) min." : "Leaving then saves up to \(highMin) min."
-        let spread = sqrt(((InsightMath.variance(habit.map(\.totalS)) ?? 0) + (InsightMath.variance(best.map(\.totalS)) ?? 0)) / 2) / 60
+        let varHabit: Double = InsightMath.variance(habit.map(\.totalS)) ?? 0
+        let varBest: Double = InsightMath.variance(best.map(\.totalS)) ?? 0
+        let spread = sqrt((varHabit + varBest) / 2) / 60
         let first = rides.map(\.startAt).min() ?? 0, last = rides.map(\.startAt).max() ?? 0
         let card = InsightCard(
             topic: .departure, kind: .pattern,

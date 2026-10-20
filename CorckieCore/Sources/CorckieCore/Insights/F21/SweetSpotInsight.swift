@@ -110,7 +110,10 @@ public enum SweetSpotInsight {
             var wh = 0.0, km = 0.0, withPower = 0
             for i in 1..<seg.count {
                 let dt = seg[i].tS - seg[i - 1].tS
-                km += dt * ((seg[i].speedKmh ?? 0) + (seg[i - 1].speedKmh ?? 0)) / 2 / 3600
+                let v1: Double = seg[i].speedKmh ?? 0
+                let v0: Double = seg[i - 1].speedKmh ?? 0
+                let meanKmh: Double = (v1 + v0) / 2
+                km += dt * meanKmh / 3600
                 if let p = seg[i - 1].powerW {
                     wh += p * dt / 3600
                     withPower += 1
