@@ -104,24 +104,6 @@ schemes:
       config: Debug
     archive:
       config: Release
-  CorckieWidgets:
-    # F-31: the charge Live Activity. ActivityKit local updates only (no push, no server). Unsigned like the app; SideStore signs it on the phone.
-    type: app-extension
-    platform: iOS
-    sources:
-      - path: Widgets
-      - path: Shared
-    info:
-      path: Widgets/Info.plist
-      properties:
-        CFBundleDisplayName: CorckieApp Charging
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.widgetkit-extension
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.corckieapp.app.widgets
-        TARGETED_DEVICE_FAMILY: "1"
-        SKIP_INSTALL: YES
   AppTests:
     build:
       targets:
