@@ -126,6 +126,7 @@ struct PlaceMapView: View {
             VStack(spacing: 12) {
                 titleCard(place)
                 settingsCard(place)
+                if place.row.hasName { PlaceHomeCard(placeId: place.id, name: place.row.title, preview: preview != nil) }   // F-29
             }
         }
     }

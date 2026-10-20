@@ -105,6 +105,7 @@ final class AppModel {
             guard let self else { return }
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .connected))
             RecorderService.shared.scooterConnected(at: Date())
+            ConnectionWatch.shared.connected()          // B34: the phone's location as the scooter's last-seen spot
             CheckResults.shared.passOnce("b1", "Connected to the scooter")
             if inBackground {
                 CheckResults.shared.passOnce("c1", "Connected while the app was in the background")
@@ -122,6 +123,7 @@ final class AppModel {
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .disconnected))
             RecorderService.shared.scooterDisconnected(at: Date())
             LastSeen.note(batteryPct: self.live.frame?.batteryPct, force: true)
+            ConnectionWatch.shared.disconnected(odoKm: self.live.frame?.odometerKm)   // B34
             FieldChecks.shared.scooterDisconnected(reason: reason)
             C8Recorder.shared.linkDown(at: Date())
         }
@@ -134,6 +136,7 @@ final class AppModel {
             self.live.handle(TimedScooterEvent(t: time.timeIntervalSince(self.started), event: .packet(bytes)))
             self.evaluateScooterChecks()
             LastSeen.note(batteryPct: self.live.frame?.batteryPct)
+            ConnectionWatch.shared.packet(odoKm: self.live.frame?.odometerKm)         // B34 / B35: once per connection
             // B27: the "Scooter on · N%" text takes the % only from a packet A just received on this connection
             FieldChecks.shared.packet(batteryPct: GoingForARideContent.liveBatteryPct(self.live.frame, now: self.live.now))
         }

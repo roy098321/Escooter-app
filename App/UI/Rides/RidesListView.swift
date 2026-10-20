@@ -16,6 +16,8 @@ struct RidesListView: View {
     var previewSort: RideSort?
 
     @State private var items: [RideListItem] = []
+    /// B35: riding the scooter's odometer showed but no ride recorded
+    @State private var gaps: [UntrackedGap] = []
     @State private var placeColours: [String: String] = [:]
     @State private var placeNames: [String: String] = [:]
     @State private var filter: RideDateFilter = .allTime
@@ -88,6 +90,13 @@ struct RidesListView: View {
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
+                    if !gaps.isEmpty {
+                        Section {
+                            ForEach(gaps) { gapRow($0) }
+                        } header: {
+                            SectionHeader("Not recorded").padding(.top, 0)
+                        }
+                    }
                     ForEach(m.groups, id: \.title) { group in
                         Section {
                             ForEach(group.rides, id: \.id) { row($0) }
@@ -204,6 +213,23 @@ struct RidesListView: View {
         }
     }
 
+    /// B35: a placeholder for riding that was not recorded. Not tappable: there is nothing but the distance.
+    private func gapRow(_ gap: UntrackedGap) -> some View {
+        let date = Date(timeIntervalSince1970: Double(gap.detectedAtMs) / 1000)
+        let text = OdometerGap.rideRow(km: gap.km)
+        return HStack(spacing: 10) {
+            Image(systemName: "questionmark.circle").foregroundStyle(Theme.canyon).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(text).font(.body.weight(.semibold))
+                Text("Found on \(Self.timeText(date, offsetMin: TimeZone.current.secondsFromGMT() / 60, withDay: true))")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+        }
+        .accessibilityElement(children: .combine)
+        .listRowBackground(Theme.row)
+    }
+
     private func row(_ ride: RideListItem, showDay: Bool = false) -> some View {
         let offset = ride.utcOffsetMin ?? TimeZone.current.secondsFromGMT() / 60
         let date = Date(timeIntervalSince1970: Double(ride.startAt) / 1000)
@@ -253,6 +279,7 @@ struct RidesListView: View {
             return
         }
         guard let db = AppModel.shared.displayDatabase else { items = []; return }
+        gaps = ScreenSimulator.shared.active ? [] : GapStore.all(db)
         let routes = RouteQueries(db)
         let ends = (try? routes.endPlaceIds()) ?? [:]
         let starts = (try? routes.startPlaceIds()) ?? [:]

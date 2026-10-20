@@ -10,7 +10,30 @@ final class RouteFollowSelection {
     var routeId: String?
     /// M6-01 (Q23): follow the fastest combination of this route instead of its usual path (cleared with the route)
     var combination = false
+    /// B31: a saved place chosen as the destination while no saved route ends there (before the ride only: the time and the battery need)
+    var placeId: String?
     private init() {}
+
+    /// The id the Where to? list and the quick dial use: the route id, else "place:<id>"
+    var chosenKey: String? { routeId ?? placeId.map { QuickDialLoader.placePrefix + $0 } }
+
+    /// Chooses by key; nil or the key already chosen clears (tap again = no destination)
+    func choose(key: String?) {
+        if let key, key != chosenKey {
+            combination = false
+            if let place = QuickDialLoader.placeId(fromKey: key) {
+                routeId = nil
+                placeId = place
+            } else {
+                placeId = nil
+                routeId = key
+            }
+        } else {
+            routeId = nil
+            placeId = nil
+            combination = false
+        }
+    }
 
     func toggle(_ id: String) {
         routeId = routeId == id ? nil : id

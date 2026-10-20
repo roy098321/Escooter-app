@@ -223,7 +223,7 @@ struct ScooterTabView: View {
         customName = SettingsValue.text(db, Self.nameKey)
         odometerKm = (try? MaintenanceQueries(db).odometerKm()) ?? nil
         rows = MaintenanceService.rows(db)
-        parked = ParkedLoader.latest(database: db, simulated: false)
+        parked = ParkedResolver.current(database: db, simulated: false)   // B34: newest of the last ride end and the last-seen spot
     }
 
     private func saveName() {

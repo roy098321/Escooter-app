@@ -14,7 +14,7 @@ struct ParkedMapView: View {
     var body: some View {
         Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: 700, longitudinalMeters: 700)),
             interactionModes: [.pan, .zoom]) {
-            Marker("Scooter", systemImage: "scooter", coordinate: coordinate).tint(Theme.accent)
+            Marker(spot.confident ? "Scooter" : "Last seen", systemImage: "scooter", coordinate: coordinate).tint(spot.confident ? Theme.accent : Theme.canyon)
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .ignoresSafeArea()

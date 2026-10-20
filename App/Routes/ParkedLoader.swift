@@ -37,4 +37,18 @@ enum ParkedLoader {
         }
         return spot
     }
+
+    /// B34: the odometer at the end of that same ride (nil when it was not stored)
+    static func latestOdoEndKm(database: AppDatabase, simulated: Bool) -> Double? {
+        let value: Double?? = try? database.writer.read { (db: Database) -> Double? in
+            guard let row = try Row.fetchOne(db, sql: """
+                SELECT odoEndKm FROM ride
+                WHERE kind IN ('ride', 'shortHop') AND endAt IS NOT NULL AND isSimulated = ?
+                ORDER BY endAt DESC LIMIT 1
+                """, arguments: [simulated ? 1 : 0]) else { return nil }
+            let odo: Double? = row["odoEndKm"]
+            return odo
+        }
+        return value ?? nil
+    }
 }

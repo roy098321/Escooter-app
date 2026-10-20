@@ -15,6 +15,7 @@ struct RootView: View {
     var body: some View {
         // G4 (P6-2): the version shows only in Settings → About now, no longer on every screen.
         content.themeRoot().sunlightRoot()
+            .buildStamp()   // F-30: the build number above the home indicator, on every screen
             .onAppear { MapSnapshotStore.shared.refresh() }
             .onChange(of: scenePhase) { _, p in if p == .active { MapSnapshotStore.shared.refresh() } }
             .onChange(of: PhoneSensors.shared.roundedLocation.map { "\($0.lat),\($0.lon)" }) { _, _ in MapSnapshotStore.shared.refresh() }
@@ -298,8 +299,10 @@ enum UIShot {
                 } else if let input = HomePreview.input(name) {
                     // the shots show the floating tab bar too (as in the real app)
                     HomeView(preview: input, previewChips: HomePreview.chips(name),
-                             previewSelected: name.hasPrefix("home-whereto") ? "a" : nil, previewSheet: name == "home-whereto-sheet",
-                             previewParked: name == "home-parked" ? CGPoint(x: 0.76, y: 0.36) : nil)
+                             previewSelected: name.hasPrefix("home-whereto") || name == "home-quick" ? "place:m" : nil,
+                             previewSheet: name == "home-whereto-sheet",
+                             previewParked: name == "home-parked" ? CGPoint(x: 0.76, y: 0.36) : nil,
+                             previewQuick: HomePreview.quick(name))
                         .floatingTabBar(selection: .constant(2))
                 } else {
                     HomeView()

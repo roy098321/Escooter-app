@@ -10,6 +10,10 @@ public struct ParkedSpot: Equatable, Sendable {
     public var endedAtMs: Int64
     /// the saved place the ride ended in, if any
     public var placeName: String?
+    /// B34: the spot is where the phone was when the scooter last connected or disconnected, not a ride end ("Last seen here")
+    public var isLastSeen = false
+    /// B34: false when the scooter's odometer went up since this spot, so the scooter has moved and no pin is drawn
+    public var confident = true
 
     public init(lat: Double, lon: Double, endedAtMs: Int64, placeName: String? = nil) {
         self.lat = lat
@@ -34,6 +38,12 @@ public enum ParkedText {
 
     /// "Parked · Work · 2 h ago" (the place is left out when the ride did not end in a saved place)
     public static func line(_ spot: ParkedSpot, nowMs: Int64) -> String {
+        // B34: "Last seen here · 2 h ago" (a connect / disconnect spot); "Last seen · 2 h ago" when the scooter has moved since
+        if spot.isLastSeen || !spot.confident {
+            let name = spot.placeName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let head = spot.confident ? "Last seen here" : "Last seen"
+            return ([head] + (name.isEmpty ? [] : [name]) + [ago(endedAtMs: spot.endedAtMs, nowMs: nowMs)]).joined(separator: " \u{00B7} ")
+        }
         let name = spot.placeName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return (["Parked"] + (name.isEmpty ? [] : [name]) + [ago(endedAtMs: spot.endedAtMs, nowMs: nowMs)]).joined(separator: " \u{00B7} ")
     }

@@ -19,10 +19,17 @@ struct HomeView: View {
     var previewSheet = false
     /// ui-shots: a made-up parked pin (a fraction of the screen)
     var previewParked: CGPoint?
+    /// ui-shots: made-up quick-dial buttons (F-29)
+    var previewQuick: [QuickDialItem]?
 
     /// F-17: the disc is 250 pt at normal text size and grows with Dynamic Type (capped at 300 pt)
     @ScaledMetric(relativeTo: .title3) private var discSize: CGFloat = HomeView.discBase
     @State private var chips: [WhereToChip] = []
+    /// F-29: the round buttons of the quick dial
+    @State private var quick: [QuickDialItem] = []
+    /// B35: riding that was not recorded, until dismissed
+    @State private var gap: UntrackedGap?
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var now = Date()
     @State private var connectingSince: Date?
     @State private var discTap = 0
@@ -94,7 +101,11 @@ struct HomeView: View {
         }
         .onChange(of: ScreenSimulator.shared.active) { _, _ in lastRide = nil; reloadLastRide() }
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reloadLastRide() }
-        .onChange(of: RecorderService.shared.rideActive) { _, active in if !active { loadReady = false; loadSelectorFromStore() } }
+        .onChange(of: RecorderService.shared.rideActive) { _, active in
+            if !active { loadReady = false; loadSelectorFromStore(); RouteFollowSelection.shared.placeId = nil }
+        }
+        .onChange(of: ConnectionWatch.shared.token) { _, _ in reloadLastRide() }
+        .onChange(of: typeSize) { _, _ in reloadLastRide() }
         .onReceive(tick) { now = $0 }
         .onChange(of: AppModel.shared.scooter.connected) { _, connected in
             if connected {
@@ -158,6 +169,7 @@ struct HomeView: View {
     private func topBlock(_ m: HomeModel) -> some View {
         VStack(spacing: DS.Space.block) {
             if m.showCrashBanner { crashCard }
+            if let g = gap, m.state != .riding { gapCard(g) }
             if backupBannerShown { backupCard }
             if let n = EdgeWatch.shared.expiryNotice { noticeCard(n, symbol: "clock.badge.exclamationmark") }
             if let n = EdgeWatch.shared.storageNotice { noticeCard(n, symbol: "internaldrive") }
@@ -172,13 +184,13 @@ struct HomeView: View {
 
     private func bottomBlock(_ m: HomeModel) -> some View {
         VStack(spacing: DS.Space.row) {
-            if !shownChips.isEmpty && m.state != .riding { whereToRow }
+            if !(shownChips.isEmpty && shownQuick.isEmpty) && m.state != .riding { whereToRow }
             if m.state != .riding { loadRow }
         }
     }
 
     /// V17: the pin is not drawn while a ride is on
-    private var parkedForMap: ParkedSpot? { input.rideActive ? nil : parked }
+    private var parkedForMap: ParkedSpot? { input.rideActive || parked?.confident == false ? nil : parked }   // B34: no pin when the scooter has moved
 
     // MARK: Load for the next ride (F-02)
 
@@ -309,20 +321,29 @@ struct HomeView: View {
     // MARK: Where to? (M2-06): a row that opens a sheet with one choice per saved route; hidden until a route exists (S2)
 
     private var shownChips: [WhereToChip] { previewChips ?? chips }
-    private var selectedRoute: String? { preview != nil ? previewSelected : RouteFollowSelection.shared.routeId }
+    private var shownQuick: [QuickDialItem] { previewQuick ?? quick }
+    private var selectedRoute: String? { preview != nil ? previewSelected : RouteFollowSelection.shared.chosenKey }
 
+    /// The sheet: choosing the one already chosen keeps it; nil = no destination
     private func pickRoute(_ id: String?) {
         guard preview == nil else { return }
         if let id {
-            if selectedRoute != id { RouteFollowSelection.shared.toggle(id) }
+            if selectedRoute != id { RouteFollowSelection.shared.choose(key: id) }
         } else {
-            RouteFollowSelection.shared.routeId = nil
+            RouteFollowSelection.shared.choose(key: nil)
         }
     }
 
-    /// B29: the compact row "Where to? · Work" that opens the standard sheet
+    /// F-29: the quick dial. Tap = choose, tap again = no destination.
+    private func quickTapped(_ key: String) {
+        Haptics.tick()
+        guard preview == nil else { return }
+        RouteFollowSelection.shared.choose(key: key)
+    }
+
+    /// F-29 (owner correction 01:35): the line under the icons always says what was chosen
     private var whereToSummary: String {
-        HomeCopy.whereToLine(label: shownChips.first(where: { $0.routeId == selectedRoute })?.label)
+        QuickDialLoader.summary(chip: shownChips.first(where: { $0.routeId == selectedRoute }))
     }
 
     /// F-22 (pre-ride, silent): "Work needs about 40%, you have 45%" when the chosen route may not fit the battery
@@ -333,23 +354,28 @@ struct HomeView: View {
 
     private var whereToRow: some View {
         let warning = preRideWarning
-        return Button { showWhereTo = true } label: {
-            HStack(spacing: 8) {
-                Image(systemName: warning == nil ? "mappin.and.ellipse" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(warning == nil ? Theme.canyon : Theme.accentInk).accessibilityHidden(true)
-                Text(warning ?? whereToSummary).font(.subheadline.weight(.semibold)).lineLimit(2).multilineTextAlignment(.leading)
-                    .foregroundStyle(warning == nil ? Color.primary : Theme.accentInk)
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.up").font(.footnote.weight(.semibold)).foregroundStyle(.secondary).accessibilityHidden(true)
-            }
-            .frame(maxWidth: .infinity, minHeight: DS.hit, alignment: .leading)
+        return QuickDialRow(items: shownQuick, selectedKey: selectedRoute, summary: whereToSummary, warning: warning,
+                            onTap: quickTapped, onMore: { showWhereTo = true })
             .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .glassCard(radius: 26, tint: warning == nil ? nil : Theme.accent, padding: 0)
-            .contentShape(Rectangle())
+    }
+
+    /// B35: one line, dismissable. Not modal, and it does not wait for the end of a ride (P-4 covers rides only).
+    private func gapCard(_ g: UntrackedGap) -> some View {
+        HStack(spacing: 10) {
+            Label(OdometerGap.homeLine(km: g.km), systemImage: "questionmark.circle")
+                .font(.subheadline.weight(.semibold))
+            Spacer(minLength: 8)
+            Button("Dismiss") {
+                ConnectionWatch.dismissGaps(upTo: g.toKm)
+                withAnimation(.easeInOut(duration: 0.2)) { gap = nil }
+            }
+            .font(.footnote.weight(.semibold))
+            .frame(minHeight: DS.hit)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(warning ?? whereToSummary)
-        .accessibilityHint("Opens the list of destinations")
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(tint: .orange)
     }
 
     private var locationCard: some View {
@@ -443,9 +469,14 @@ struct HomeView: View {
 
     private func reloadLastRide() {
         guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
-        chips = RouteFollowLoader.chips(database: db)
-        if let id = RouteFollowSelection.shared.routeId, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.routeId = nil }
-        parked = ParkedLoader.latest(database: db, simulated: ScreenSimulator.shared.active)
+        let phone = PhoneSensors.shared.lastKnown.map { GeoPoint(lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) }
+        let loaded = QuickDialLoader.load(database: db, routeChips: RouteFollowLoader.chips(database: db),
+                                          slots: QuickDial.slotCount(accessibilitySize: typeSize.isAccessibilitySize), from: phone)
+        chips = loaded.chips
+        quick = loaded.items
+        if let id = RouteFollowSelection.shared.chosenKey, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.choose(key: nil) }
+        parked = ParkedResolver.current(database: db, simulated: ScreenSimulator.shared.active)
+        gap = ScreenSimulator.shared.active ? nil : ConnectionWatch.visibleGap(db)
         oldestRideMs = try? RideQueries(db).rides().last?.startAt
         BackupWriter.shared.runIfDue()
         EdgeWatch.shared.refresh(database: db)
@@ -547,12 +578,22 @@ private struct WhereToSheet: View {
 enum HomePreview {
     /// M2-06: made-up chips (no real place names)
     static func chips(_ name: String) -> [WhereToChip]? {
-        guard name == "home-whereto" || name == "home-whereto-sheet" else { return nil }
+        guard name == "home-whereto" || name == "home-whereto-sheet" || name == "home-quick" else { return nil }
         var work = WhereToChip(routeId: "a", label: "Work", detail: "Work")
         work.timeText = "13 min"; work.arriveText = "8:56"; work.usedText = "11%"
         var home = WhereToChip(routeId: "b", label: "Home", detail: "Home")
         home.timeText = "14 min"; home.arriveText = "9:02"; home.usedText = "12%"
-        return [work, home]
+        var maya = WhereToChip(routeId: "place:m", label: "Maya's house", detail: "Maya's house")
+        maya.timeText = "12 min"; maya.arriveText = "9:00"; maya.usedText = "9%"; maya.usualNeedPct = 9
+        return [work, home, maya]
+    }
+
+    /// F-29: made-up quick-dial buttons (a symbol, a symbol, typed letters)
+    static func quick(_ name: String) -> [QuickDialItem]? {
+        guard name == "home-whereto" || name == "home-whereto-sheet" || name == "home-quick" else { return nil }
+        return [QuickDialItem(id: "b", name: "Home", icon: .symbol("house"), key: "b"),
+                QuickDialItem(id: "a", name: "Work", icon: .symbol("building.2"), key: "a"),
+                QuickDialItem(id: "m", name: "Maya's house", icon: .letters("M"), key: "place:m")]
     }
 
     static func input(_ name: String) -> HomeInput? {
@@ -564,7 +605,7 @@ enum HomePreview {
             return HomeInput(paired: false, connected: false, nowS: now)
         case "home-notconnected":
             return HomeInput(paired: true, connected: false, nowS: now, lastSeenMs: seen, lastSeenPct: 58, lastRide: ride)
-        case "home-ready", "home-parked", "home-whereto", "home-whereto-sheet":
+        case "home-ready", "home-parked", "home-whereto", "home-whereto-sheet", "home-quick":
             return HomeInput(paired: true, connected: true, nowS: now, batteryPct: 91, lastRide: ride)
         case "home-cantfind":
             return HomeInput(paired: true, connected: false, connectingSinceS: now - 40, nowS: now, lastSeenMs: seen, lastSeenPct: 58)
