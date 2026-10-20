@@ -142,7 +142,7 @@ public enum PastWeeksMetric: String, CaseIterable, Sendable {
     /// "Past weeks \u{00B7} km"
     public var cardTitle: String { "Past weeks \u{00B7} " + (self == .saved ? "\u{20AA} saved" : switchTitle) }
 
-    public static func from(stored: String?) -> PastWeeksMetric { stored.flatMap(PastWeeksMetric(rawValue:)) ?? .km }
+    public static func from(stored: String?) -> PastWeeksMetric { stored.flatMap { PastWeeksMetric(rawValue: $0) } ?? .km }
 
     public func value(_ bar: WeekBar) -> Double {
         switch self {
