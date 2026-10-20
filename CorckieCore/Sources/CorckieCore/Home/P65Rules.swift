@@ -62,7 +62,7 @@ public enum PlaceHere {
 
 public enum QuickDialSlot {
     /// SF Symbol of the permanent first slot ("free ride")
-    public static let freeRideSymbol = "infinity"
+    public static let freeRideSymbol = "questionmark"
     public static let freeRideName = "No destination"
     /// the pinned places on Home at most
     public static let maxPins = 3

@@ -57,10 +57,10 @@ final class ThemeGuardTests: XCTestCase {
         let ds = try text("UI/Shared/DesignSystem.swift")
         XCTAssertTrue(ds.contains("Theme.groupedBackground") && ds.contains("Theme.row"), "grouped lists in theme colours")
         XCTAssertFalse(ds.contains("systemGroupedBackground"), "no grey #F2F2F7 page")
-        XCTAssertTrue(ds.contains("shape.fill(sunlight ? Theme.row : (deep ? Theme.cardDeep : Theme.card))"), "cards are sand (a deeper sand for highlight tiles), white in sunlight")
-        // P6-5 (B48): light mode cards have no hairline and a very soft warm shadow; the hairline stays for sunlight only
-        XCTAssertTrue(ds.contains("let soft = !sunlight && scheme == .light") && ds.contains("radius: 8, x: 0, y: 2"), "a very soft warm shadow in light mode")
-        XCTAssertTrue(ds.contains("if sunlight { shape.strokeBorder(Color(.separator), lineWidth: 0.5) }"), "the grey hairline is only for sunlight mode")
+        XCTAssertTrue(ds.contains("shape.fill(deep ? Theme.cardDeep : Theme.card)"), "cards are sand (a deeper sand for highlight tiles), the same cream in sunlight")
+        // P6-5 (B48): light mode cards have no hairline and a very soft warm shadow; sunlight uses the same cream fill and shadow (no hairline)
+        XCTAssertTrue(ds.contains("let soft = scheme == .light") && ds.contains("radius: 8, x: 0, y: 2"), "a very soft warm shadow in light mode")
+        XCTAssertFalse(ds.contains("shape.strokeBorder(Color(.separator), lineWidth: 0.5)"), "no hairline on cards, sunlight included")
         // owner answer 2: only Home has a (muted) map behind it
         let backdrop = try text("UI/Shared/MapBackdrop.swift")
         XCTAssertTrue(backdrop.contains("if sunlight || !map") && backdrop.contains(".saturation("))

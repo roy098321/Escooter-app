@@ -61,7 +61,7 @@ struct PlaceIconView: View {
 }
 
 /// P6-5 (owner, 20 Oct): the permanent first slot of the quick dial, "No destination" (free ride). Not a place, so it looks different: a dashed
-/// neutral grey ring with the infinity symbol (no place colour); chosen (= no destination) it fills light neutral with a dark glyph.
+/// neutral grey ring with the question mark (no place colour); chosen (= no destination) it fills light neutral with a dark glyph.
 struct FreeRideIcon: View {
     var size: CGFloat = 52
     var selected = false

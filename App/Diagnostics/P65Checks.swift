@@ -117,7 +117,7 @@ enum P65Checks {
         expect(PlaceColours.glyphIsDark(hex: PlaceColours.hex("yellow")) && !PlaceColours.glyphIsDark(hex: PlaceColours.hex("blue")),
                "dark glyph on yellow, white on blue")
         let symbol = "mappin.and.ellipse"
-        expect(UIImage(systemName: symbol) != nil && UIImage(systemName: QuickDialSlot.freeRideSymbol) != nil, "B47: the neutral arrival pin and the infinity symbol exist on this iOS")
+        expect(UIImage(systemName: symbol) != nil && UIImage(systemName: QuickDialSlot.freeRideSymbol) != nil, "B47: the neutral arrival pin and the question mark symbol exist on this iOS")
         CheckResults.shared.set("u112", expect.ok ? .pass : .fail, expect.line)
     }
 }

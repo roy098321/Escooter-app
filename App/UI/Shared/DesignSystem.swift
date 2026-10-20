@@ -3,7 +3,7 @@ import UIKit
 
 /// UI overhaul (UI_PLAN section 1), theme v2 (F-15): spacing, radii, the card, the grouped-list look and the small controls.
 /// Colours come from `Theme` (Theme.swift); the reusable building blocks for the screens (StatTile, InfoChip, StatusPill,
-/// SectionHeader, InfoButton) are in Components.swift. Sunlight mode turns cards into white panels with a hairline (C30).
+/// SectionHeader, InfoButton) are in Components.swift. Sunlight mode keeps the cream card (same fill and soft shadow) with its other contrast boosts.
 /// The live ride view keeps its own `GlassCard` and fixed sizes; nothing here changes its numbers.
 enum DS {
     enum Space {
@@ -41,19 +41,16 @@ private struct GlassCardStyle: ViewModifier {
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         // P6-5: in light mode the card is the sand fill with no hairline and a very soft warm shadow (y 2, blur 8, about 6 %); dark mode is unchanged
-        let soft = !sunlight && scheme == .light
+        let soft = scheme == .light
         content
             .padding(padding)
             .background {
                 ZStack {
-                    // F-15: a matte sand card (dark grey in dark mode), no frosted glass; white with a hairline in sunlight
-                    shape.fill(sunlight ? Theme.row : (deep ? Theme.cardDeep : Theme.card))
+                    // F-15: a matte sand card (dark grey in dark mode), no frosted glass; sunlight uses the same fill and shadow (its contrast boosts are elsewhere)
+                    shape.fill(deep ? Theme.cardDeep : Theme.card)
                         .shadow(color: soft ? Color(red: 0.45, green: 0.30, blue: 0.15).opacity(0.06) : .clear, radius: 8, x: 0, y: 2)
                     if let tint { shape.fill(tint.opacity(sunlight ? 0.2 : 0.14)) }
                 }
-            }
-            .overlay {
-                if sunlight { shape.strokeBorder(Color(.separator), lineWidth: 0.5) }
             }
     }
 }
