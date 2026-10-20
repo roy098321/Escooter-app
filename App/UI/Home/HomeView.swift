@@ -21,6 +21,8 @@ struct HomeView: View {
     var previewParked: CGPoint?
     /// ui-shots: made-up quick-dial buttons (F-29)
     var previewQuick: [QuickDialItem]?
+    /// F-21: the ui-shot TODAY card
+    var previewToday: InsightCard?
 
     /// F-17: the disc is 250 pt at normal text size and grows with Dynamic Type (capped at 300 pt)
     @ScaledMetric(relativeTo: .title3) private var discSize: CGFloat = HomeView.discBase
@@ -179,6 +181,7 @@ struct HomeView: View {
                 statusPill(m)
             }
             if m.showLocationCard { locationCard }
+            if m.state != .riding { TodayInsightSlot(preview: previewToday, live: preview == nil) }   // F-21, never during a ride (P-4)
         }
     }
 

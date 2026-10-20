@@ -78,9 +78,9 @@ final class SmartPromptStoreTests: XCTestCase {
         let db = try open()
         let r = try InsightSeed.hotRide(db)
         let ranked = try InsightQueries(db).ranked(forRide: r.lastRideId, nowMs: r.nowMs + 60_000)
-        XCTAssertEqual(ranked.top?.type, .heatPeak)
-        XCTAssertEqual(ranked.top?.text, "Peak 93 \u{00B0}C \u{00B7} +68 \u{00B0}C")
-        XCTAssertTrue(ranked.more.contains { $0.type == .heatHotDay })
+        let all = [ranked.top].compactMap { $0 } + ranked.more
+        XCTAssertFalse(all.contains { $0.type == .heatPeak }, "F-21: the Peak card is no longer stored")
+        XCTAssertTrue(all.contains { $0.type == .heatHotDay })
         let stored = try InsightQueries(db).forRide(r.lastRideId).map(\.id)
         XCTAssertEqual(Set(stored).count, stored.count)
     }

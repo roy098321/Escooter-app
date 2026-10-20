@@ -29,6 +29,8 @@ struct StatsModel {
     var overall: OverallStats?
     /// the phone's offset when the model was made (the chart labels the days in local time)
     var utcOffsetMin = 0
+    /// F-21: the Insights section (at most 3 cards, Medium / High certainty only)
+    var insights = InsightBoard(cards: [], learning: [])
 }
 
 enum StatsLoader {
@@ -75,6 +77,8 @@ enum StatsLoader {
             model.weekBars = WeekBars.make(rides: rows.map { (startMs: $0.startAt, km: $0.distanceM / 1000) }, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
         }
         model.overall = OverallLoader.load(db, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+        InsightBoardLoader.retireOldOnce(db)
+        model.insights = InsightBoardLoader.board(db, nowMs: nowMs)
         model.utcOffsetMin = utcOffsetMin
         model.firstWeekNote = StatsCalc.firstWeekNote(firstRideMs: q.firstRideMs(), period: p, span: span, mode: mode, utcOffsetMin: utcOffsetMin)
         return model

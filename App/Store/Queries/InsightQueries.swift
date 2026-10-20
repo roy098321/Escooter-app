@@ -170,6 +170,19 @@ struct InsightQueries {
             .sorted { (order.firstIndex(of: $0.type) ?? 9) < (order.firstIndex(of: $1.type) ?? 9) }
     }
 
+    /// F-21: removes the stored rows of the retired types (`InsightType.retiredF21`: Peak °C, onboarding hints); returns how many
+    @discardableResult
+    func retireOld() throws -> Int {
+        try guardWritable()
+        let names = InsightType.retiredF21.map(\.rawValue).sorted()
+        let all = names + names.map { "progress." + $0 }
+        let marks = all.map { _ in "?" }.joined(separator: ",")
+        return try database.writer.write { db in
+            try db.execute(sql: "DELETE FROM insight WHERE type IN (\(marks))", arguments: StatementArguments(all))
+            return db.changesCount
+        }
+    }
+
     func count() throws -> (rows: Int, progress: Int) {
         try database.writer.read { db in
             (try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM insight") ?? 0,

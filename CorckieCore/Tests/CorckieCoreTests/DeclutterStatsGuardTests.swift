@@ -26,7 +26,12 @@ final class DeclutterStatsGuardTests: XCTestCase {
         XCTAssertTrue(stats.contains("StatsSpan.allCases"))
         XCTAssertTrue(stats.contains("SectionHeader(\"Money\")"))
         XCTAssertTrue(stats.contains("SectionHeader(\"Overall\")"))
-        XCTAssertTrue(stats.contains("Recent insights"))
+        // F-21: the old Recent insights list is replaced by the Insights cards (at most 3, Medium / High only)
+        XCTAssertFalse(stats.contains("Recent insights"))
+        XCTAssertTrue(stats.contains("InsightsSection(board: m.insights)"))
+        let insights = try text("UI/Insights/InsightViews.swift")
+        XCTAssertTrue(insights.contains("SectionHeader(\"Insights\")"))
+        for gone in ["lightbulb", "Peak ", "Ride the same trip"] { XCTAssertFalse(insights.contains(gone), "Insights must not contain \(gone)") }
     }
 
     func test_factorsSentencesAreGone() throws {

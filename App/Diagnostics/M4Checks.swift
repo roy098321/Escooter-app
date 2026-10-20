@@ -141,7 +141,7 @@ enum HeatCheck {
             let ranked = try InsightQueries(temp).ranked(forRide: r.lastRideId, nowMs: r.nowMs + 60_000)
             let all = ([ranked.top].compactMap { $0 } + ranked.more)
             top = ranked.top?.text ?? "none"
-            dbOk = ranked.top?.type == .heatPeak && ranked.top?.text == "Peak 93 \u{00B0}C \u{00B7} +68 \u{00B0}C"
+            dbOk = !all.contains { $0.type == .heatPeak }     // F-21: the Peak card is gone
                 && all.contains { $0.type == .heatHotDay && $0.text.hasPrefix("Hot day (33") }
         } catch {
             results.set("u35", .fail, "The temporary database failed: \(error.localizedDescription)")

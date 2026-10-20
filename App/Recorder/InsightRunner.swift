@@ -30,7 +30,8 @@ enum InsightRunner {
     static func afterRide(_ database: AppDatabase, rideId: String, nowMs: Int64 = nowMs()) throws -> Report {
         guard !database.isReadOnly else { return Report() }
         let store = InsightQueries(database)
-        let candidates = try candidatesAfterRide(database, rideId: rideId, nowMs: nowMs)
+        // F-21: the retired types (Peak °C, onboarding hints) are no longer stored
+        let candidates = try candidatesAfterRide(database, rideId: rideId, nowMs: nowMs).filter { !InsightType.retiredF21.contains($0.type) }
         let existing = try store.existing(forRide: rideId)
         let merge = InsightDedupe.merge(candidates: candidates, existing: existing, nowMs: nowMs, summarySeen: try store.summarySeen(rideId: rideId))
         let keep = Set(candidates.filter(\.isProgress).map(\.id))

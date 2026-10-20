@@ -192,7 +192,8 @@ enum UIShot {
         "live-riding", "live-ready", "live-starting", "live-fast", "live-gps", "live-nogps", "live-offline", "live-banner",
         "live-arrival", "live-routegps",
         "home-first", "home-notconnected", "home-ready", "home-parked", "home-cantfind", "home-riding", "home-location", "home-crash", "home-whereto",
-        "ride-missing", "replay-missing", "data-failed", "home-simulated", "home-readonly", "stats-first-week", "export-empty", "stats-overall", "price-history", "purchase"
+        "ride-missing", "replay-missing", "data-failed", "home-simulated", "home-readonly", "stats-first-week", "export-empty", "stats-overall", "price-history", "purchase",
+        "stats-insights", "insights-learning", "insight-detail", "insight-detail-departure", "insight-detail-creep", "insight-detail-wind", "home-today"
     ]
 
     @ViewBuilder static func screen(_ name: String) -> some View {
@@ -281,6 +282,11 @@ enum UIShot {
             case "export-empty": ExportEverythingView(previewEmpty: true)
             case "stats-week", "stats-month", "stats-rolling", "stats-empty", "week-card", "stats-first-week":
                 StatsView(preview: StatsPreview.model(name))
+            case "stats-insights", "insights-learning", "insight-detail", "insight-detail-departure", "insight-detail-creep", "insight-detail-wind":
+                InsightsPreview.screen(name)   // F-21
+            case "home-today":
+                HomeView(preview: HomePreview.input("home-ready"), previewToday: InsightsPreview.card(.wind))
+                    .floatingTabBar(selection: .constant(2))
             case "price-history": PriceHistoryView()
             case "purchase": PurchaseSettingsView()
             case "stats-overall":

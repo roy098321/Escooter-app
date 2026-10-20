@@ -3,8 +3,8 @@ import CorckieCore
 import SwiftUI
 
 /// M4-07 / P6-2 / P6-3: the Stats tab. One Week / Month / Year control (and, F-16, a small Calendar / Rolling switch right of the title), then clear sections: the period (distance with a change chip, rides,
-/// time, per-day bars), Money (one net number), Overall (4 tiles), and below them What affects my rides, Past weeks and the recent
-/// insights. Explanations sit behind an ⓘ (G1). Numbers are made in CorckieCore (`StatsCalc`, unit tested); this view draws them.
+/// time, per-day bars), Money (one net number), Overall (4 tiles), and below them What affects my rides, Past weeks and the F-21
+/// Insights (at most 3 cards). Explanations sit behind an ⓘ (G1). Numbers are made in CorckieCore (`StatsCalc`, unit tested); this view draws them.
 /// No records, goals or streaks (P-3).
 struct StatsView: View {
     var preview: StatsModel?
@@ -62,7 +62,7 @@ struct StatsView: View {
             if let overall = m.overall { OverallSection(stats: overall) }
             if preview == nil { factorsLink }
             pastWeeksLink(m)
-            recentSection(m)
+            InsightsSection(board: m.insights)   // F-21
         }
         .padding(16)
     }
@@ -270,25 +270,6 @@ struct StatsView: View {
         }
     }
 
-    /// ST8: the recent insights sit at the bottom, and are not drawn when there are none
-    @ViewBuilder private func recentSection(_ m: StatsModel) -> some View {
-        if !m.recent.isEmpty {
-            SectionHeader("Recent insights")
-            VStack(spacing: DS.Space.row) {
-                ForEach(Array(m.recent.enumerated()), id: \.offset) { item in
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "lightbulb").foregroundStyle(Theme.canyon).frame(width: 24)
-                        Text(item.element.text).font(.subheadline)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(DS.Space.cardPad)
-                    .glassCard(padding: 0)
-                    .accessibilityElement(children: .combine)
-                }
-            }
-        }
-    }
-
     private func load() {
         guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
         model = StatsLoader.load(db, span: span, mode: mode, back: back)
@@ -464,6 +445,7 @@ enum StatsPreview {
                                lastWeek: week, pastWeeks: empty ? [] : WeekPreview.weeks())
         model.weekBars = empty ? [] : WeekPreview.bars()
         model.overall = empty ? nil : overall()
+        model.insights = empty ? InsightBoard(cards: [], learning: []) : InsightsPreview.board()
         if firstWeek { model.firstWeekNote = "First week \u{00B7} from Wed 7 Oct" }
         return model
     }
