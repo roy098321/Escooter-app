@@ -109,7 +109,8 @@ public enum DepartureInsight {
             x += 5
         }
         let dots = rides.map { InsightDot(x: $0.minuteOfDay, y: $0.totalS / 60) }
-        let xt = InsightFormat.ticks(lo, hi, count: 4).map { ($0 / 15).rounded() * 15 }
+        let tickStep: Double = hi - lo > 90 ? 30 : 15
+        let xt = Array(stride(from: (lo / tickStep).rounded(.up) * tickStep, through: hi, by: tickStep))
         let allY = dots.map(\.y) + curve.map(\.lo) + curve.map(\.hi)
         let yt = InsightFormat.ticks(allY.min() ?? 0, allY.max() ?? 1, count: 3)
         let bandLo = Double(bk) * windowMin

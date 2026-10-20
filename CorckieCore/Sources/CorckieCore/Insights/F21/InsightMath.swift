@@ -267,7 +267,7 @@ public enum InsightFormat {
         let raw = (hi - lo) / Double(count - 1)
         let mag = pow(10, floor(log10(raw)))
         let steps = [1.0, 2.0, 2.5, 5.0, 10.0]
-        let step = (steps.first { $0 * mag >= raw } ?? 10) * mag
+        let step = (steps.last { $0 * mag <= raw } ?? 1) * mag
         var out: [Double] = []
         var v = (lo / step).rounded(.up) * step
         while v <= hi + 1e-9 {

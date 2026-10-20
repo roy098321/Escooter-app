@@ -296,7 +296,7 @@ public enum SweetSpotInsight {
         let ys = dots.map(\.y) + curvePts.map(\.lo) + curvePts.map(\.hi)
         let yt = InsightFormat.ticks(ys.min() ?? 0, ys.max() ?? 1, count: 3)
         let chart = InsightChart(title: "Your rides, battery per km by speed", dots: dots, curve: curvePts,
-                                 band: max(lo, best - half)...min(hi, best + half),
+                                 band: max(lo, (best - half).rounded(.down))...min(hi, (best + half).rounded(.up)),
                                  xTicks: xt, xLabels: xt.enumerated().map { i, v in "\(Int(v.rounded()))" + (i == xt.count - 1 ? " km/h" : "") },
                                  yTicks: yt, yLabels: yt.map { InsightFormat.one($0) + "%" },
                                  caption: "Dots = your stretches of steady riding \u{00B7} band = how sure we are")
@@ -309,7 +309,7 @@ public enum SweetSpotInsight {
         let exclusions = "Only steady stretches (\u{2265} 1 min at a constant speed). Climbs, stops and strong wind left out"
             + (left.isEmpty ? "." : " (\(left.joined(separator: ", "))).")
 
-        let lowKmh = Int((best - half).rounded()), highKmh = Int((best + half).rounded())
+        let lowKmh = Int((best - half).rounded(.down)), highKmh = Int((best + half).rounded(.up))
         let spread = fitted.fit.sigma
         let action: String
         if abs(base - best) >= 2, gainKm >= 1 {
