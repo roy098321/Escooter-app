@@ -24,7 +24,8 @@ final class AppModel {
 
     /// B50: the scooter reports full for a few seconds after power-on; the % on Home, the Scooter tab, the battery page, the last-seen log and the
     /// "Scooter on" notification is the settled one (`BootSettle`). Starts again at every connection.
-    private(set) var bootSettle = BootSettle()
+    /// B54: the settle runs inside the pipeline (on the B56 flip-filtered value), so the ride's start / end get it too.
+    var bootSettle: BootSettle { live.batterySettle }
     /// the battery % to show: nil while the boot reading settles
     var settledBatteryPct: Int? { bootSettle.displayPct }
 
@@ -110,7 +111,6 @@ final class AppModel {
     private func wireScooter() {
         scooter.connectHandlers.append { [weak self] inBackground in
             guard let self else { return }
-            self.bootSettle.reset()                      // B50
             self.loadBatteryDetector()                   // B56b: this scooter's flip history, before its first reading
             Task { @MainActor in for _ in 0..<30 where ChargeTimer.shared.charging { try? await Task.sleep(nanoseconds: 2_000_000_000); ChargeTimer.shared.tick() } }   // F-31: the real % ends the charge timer
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .connected))
@@ -146,16 +146,12 @@ final class AppModel {
             C8Recorder.shared.packet(bytes, at: time, background: background)
             self.live.handle(TimedScooterEvent(t: time.timeIntervalSince(self.started), event: .packet(bytes)))
             self.evaluateScooterChecks()
-            // B50: no false 100 % from the boot reading in the last-seen log, the notification or the screens
-            if let live = GoingForARideContent.liveBatteryPct(self.live.frame, now: self.live.now) {
-                self.bootSettle.reading(pct: live, at: time.timeIntervalSince(self.started))
-            } else {
-                self.bootSettle.tick(at: time.timeIntervalSince(self.started))
-            }
+            // B50 / B54: no false 100 % from the boot reading in the last-seen log, the notification or the screens (settled in the pipeline)
             LastSeen.note(batteryPct: self.bootSettle.displayPct)
             ConnectionWatch.shared.packet(odoKm: self.live.frame?.odometerKm)         // B34 / B35: once per connection
             // B27: the "Scooter on · N%" text takes the % only from a packet A just received on this connection
-            FieldChecks.shared.packet(batteryPct: self.bootSettle.notifyPct)
+            let fresh = GoingForARideContent.liveBatteryPct(self.live.frame, now: self.live.now)
+            FieldChecks.shared.packet(batteryPct: fresh != nil ? self.bootSettle.notifyPct : nil)
         }
     }
 

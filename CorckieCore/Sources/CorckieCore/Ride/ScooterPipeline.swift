@@ -11,6 +11,11 @@ public struct ScooterPipeline {
     public private(set) var frame: ScooterFrame?
     /// B56: the battery % after the flip filter (per-scooter auto-detect); `frame.batteryPct` is the filtered value
     public private(set) var batteryFilter = BatteryFilter()
+    /// B54 / B50: the boot reading is not believed. The frame carries a battery % only once it has settled after this
+    /// connection (or the wait gave up), so the screens, the ride's start / end and its samples never get the boot 100 %.
+    public private(set) var batterySettle = BootSettle()
+    /// The battery % the frames carry (filtered and settled)
+    private var batteryOut: Int?
     /// B57: what the newest checked frame dropped (for the log line when the format watch trips)
     public private(set) var lastDropped: [Plausibility.Field] = []
     public private(set) var connected = false
@@ -34,6 +39,8 @@ public struct ScooterPipeline {
             assembler.reset()
             frame = nil
             batteryFilter.newConnection()          // B56: the boot readings come again
+            batterySettle.reset()                  // B54 / B50
+            batteryOut = nil
         case .disconnected:
             connected = false
             disconnects += 1
@@ -52,7 +59,16 @@ public struct ScooterPipeline {
             var checked = plausibility.check(raw, isPacketA: kind == .a)
             lastDropped = checked.dropped
             // B56: everything after this point sees the flip-filtered %
-            if let pct = checked.frame.batteryPct { checked.frame.batteryPct = batteryFilter.reading(pct, at: e.t) }
+            // B54: settled on the filtered value (B56: "3 equal readings" never fires on flipping data). Only a packet A brings
+            // a new reading; a packet B frame repeats the last value handed on.
+            if kind == .a {
+                if let pct = checked.frame.batteryPct {
+                    batteryOut = batterySettle.reading(pct: batteryFilter.reading(pct, at: e.t), at: e.t)
+                } else {
+                    batterySettle.tick(at: e.t)
+                }
+            }
+            checked.frame.batteryPct = batteryOut
             frame = checked.frame
             totals.add(checked.frame, kind: kind)
         }

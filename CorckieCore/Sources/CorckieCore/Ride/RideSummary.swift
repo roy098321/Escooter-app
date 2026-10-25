@@ -315,7 +315,10 @@ public enum RideSummaryBuilder {
 
     static func batteryText(_ start: Double?, _ end: Double?) -> String {
         switch (start, end) {
-        case let (a?, b?): return "\(Int(a.rounded()))% \u{2192} \(Int(b.rounded()))%"
+        case let (a?, b?):
+            // B54: a battery that "went up" during a ride is a reading, not a charge: the start value once, no arrow
+            if b.rounded() > a.rounded() { return "\(Int(a.rounded()))%" }
+            return "\(Int(a.rounded()))% \u{2192} \(Int(b.rounded()))%"
         case let (a?, nil): return "\(Int(a.rounded()))% \u{2192} \(dash)"
         case let (nil, b?): return "\(dash) \u{2192} \(Int(b.rounded()))%"
         default: return dash

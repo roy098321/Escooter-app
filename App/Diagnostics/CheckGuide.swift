@@ -812,6 +812,8 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: 1.93 km of GPS is kept, under 300 m is not, the summary says Recorded by phone, the restore list holds 30 days. The real thing is check ui131."], place: .noScooter),
         "ui131": CheckGuide(proves: "A ride the app set aside can be brought back.",
                             steps: ["Rides \u{2192} scroll to the bottom \u{2192} Restore discarded ride.", "Find the 24 Oct 18:00 ride, tap Restore, tap Done: it is back in the list. Open it: Recorded by phone with a note. Tap Pass or Fail with a note."], place: .noScooter),
+        "u132": CheckGuide(proves: "A short ride right after switching on never shows the battery going up (the boot reading is not used).",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the boot 100 % never reaches the ride, and a ride whose end reading is higher shows its start once."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

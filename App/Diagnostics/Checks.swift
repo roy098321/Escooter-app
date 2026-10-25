@@ -705,7 +705,9 @@ enum CheckList {
         m("u131", p6M, "A ride the phone took over is never lost (B57)", "Nothing to do \u{00B7} Run all automatic marks it",
           "0 m on a frozen odometer with 1.93 km of GPS after Phone took over is kept as a short hop with the GPS distance and top speed; under 300 m stays discarded; the summary says Recorded by phone with a note; Restore discarded ride lists the last 30 days only"),
         m("ui131", p6M, "Restore discarded ride (B57)", "Rides \u{2192} bottom of the list \u{2192} Restore discarded ride",
-          "A sheet lists the pieces set aside in the last 30 days with time, distance (GPS when it saw more) and length; Restore puts one back in the list as a ride or short hop; the 24 Oct 18:00 ride should be there", manual: true)
+          "A sheet lists the pieces set aside in the last 30 days with time, distance (GPS when it saw more) and length; Restore puts one back in the list as a ride or short hop; the 24 Oct 18:00 ride should be there", manual: true),
+        m("u132", p6M, "A ride's battery start and end are settled readings (B54)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Made-up packets 100, 100, 100 then 99 after power-on: no frame carries the boot 100 %, the ride starts at 99 %; a ride that went 99 \u{2192} 100 shows 99% once")
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

@@ -1,9 +1,11 @@
 import CorckieCore
+import CorckieSim
 import Foundation
 
 /// Batch 101.251026.00 chunk A checks ("never lose a ride"), on made-up input only (nothing real is read or written):
 /// u130 the battery % flip filter and its per-scooter auto-detect (B56, B56b),
-/// u131 a ride the phone took over is kept with its GPS distance and top speed, "Recorded by phone", restore list (B57).
+/// u131 a ride the phone took over is kept with its GPS distance and top speed, "Recorded by phone", restore list (B57),
+/// u132 a ride's start / end battery are settled readings: the boot 100 % never reaches them; "went up" shows the start once (B54).
 @MainActor
 enum B101Checks {
     private final class Expect {
@@ -19,6 +21,26 @@ enum B101Checks {
     static func run() {
         runFlipFilter()
         runPhoneRide()
+        runSettledBattery()
+    }
+
+    // MARK: u132
+
+    private static func runSettledBattery() {
+        let expect = Expect()
+        var p = ScooterPipeline()
+        p.handle(TimedScooterEvent(t: 0, event: .connected))
+        var seen: [Int?] = []
+        for (i, pct) in [100, 100, 100, 99, 99, 99, 99].enumerated() {
+            var v = PacketEncoder.Values()
+            v.batteryPct = pct
+            p.handle(TimedScooterEvent(t: Double(i) + 0.5, event: .packet(PacketEncoder.packetA(v))))
+            seen.append(p.frame?.batteryPct)
+        }
+        expect(!seen.contains(100) && seen.last == 99, "B54: boot 100, 100, 100 then 99: the frames never carry 100")
+        expect(RideSummaryBuilder.build(RideDetailInput(startAt: 0, startRestPct: 99, endRestPct: 100), gaps: [], points: [])
+                .mainStats.first { $0.label == "Battery" }?.value == "99%", "a ride that went 99 \u{2192} 100 shows 99% once")
+        CheckResults.shared.set("u132", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u131
