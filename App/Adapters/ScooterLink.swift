@@ -131,6 +131,7 @@ extension ScooterLink: CBCentralManagerDelegate {
             // so this is the connect (wake notification, checks, sensors)
             let background = inBackground
             connectedAt = Date()
+            PlugInStore.noteConnect(atMs: Int64(Date().timeIntervalSince1970 * 1000))
             log("Connected (restored by iOS)")
             didBecomeConnected(known)
             connectHandlers.forEach { $0(background) }
@@ -164,6 +165,7 @@ extension ScooterLink: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager, didConnect connectedPeripheral: CBPeripheral) {
         let background = inBackground
         connectedAt = Date()
+        PlugInStore.noteConnect(atMs: Int64(Date().timeIntervalSince1970 * 1000))   // F-31b: the Plug in pill goes at the next connect
         log("Connected")
         didBecomeConnected(connectedPeripheral)
         connectHandlers.forEach { $0(background) }

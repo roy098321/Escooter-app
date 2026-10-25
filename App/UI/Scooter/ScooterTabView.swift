@@ -102,10 +102,10 @@ struct ScooterTabView: View {
             .photosPicker(isPresented: $pickingPhoto, selection: $pickedItem, matching: .images)
             .onChange(of: pickedItem) { _, item in if let item { Task { await usePicked(item) } } }
             .sheet(isPresented: $showCharge) {
-                ChargeSheet(input: chargeInput()) { s in
-                    if ChargeTimer.shared.session != nil { ChargeTimer.shared.update(s) } else { ChargeTimer.shared.begin(s) }
-                }
-                .glassPresentation(detents: [.large])
+                // F-31b: the one alert sheet (Battery | Range, − number +, "18:02 estimated")
+                PlugAlertSheet(alert: PlugInStore.alert, session: PlugInStore.draft(alert: PlugInStore.alert),
+                               utcOffsetMin: ChargeTimer.shared.utcOffsetMin) { a in PlugInStore.setAlert(a) }
+                    .glassPresentation(detents: [.height(300), .medium])
             }
             .sheet(isPresented: $showColours) {
                 ScooterColourSheet(selected: colour) { c in setColour(c); showColours = false }
@@ -154,7 +154,7 @@ struct ScooterTabView: View {
                         caption: shown.caption, odometerKm: odo,
                         colour: colour, photo: photo,
                         charge: charge, chargeNowMs: preview?.nowMs ?? timer.nowMs, utcOffsetMin: preview != nil ? 0 : timer.utcOffsetMin,
-                        onPlugged: connected ? nil : { if preview != nil { return }; if charge != nil { timer.unplug() } else { showCharge = true } },
+                        onPlugged: connected ? nil : { if preview != nil { return }; if charge != nil { timer.unplug() } else { PlugInStore.plugIn() } },
                         onEditCharge: { if preview == nil { showCharge = true } }) {
             if preview == nil { link.start() }
         }
@@ -192,15 +192,6 @@ struct ScooterTabView: View {
     }
 
     /// F-31: what the Plugged in sheet needs (the last reading, the rider's %/km, the usual trip)
-    private func chargeInput() -> ChargeSheet.Input {
-        let t = ChargeTimer.shared
-        let name = customName ?? record?.name ?? "Scooter"
-        let ctx = t.context(scooterName: name)
-        let last = t.lastReading()
-        return ChargeSheet.Input(scooterName: name, lastPct: last?.pct, lastMs: last?.ms, nowMs: t.now, utcOffsetMin: t.utcOffsetMin,
-                                 pctPerKm: ctx.pctPerKm, reserve: ctx.reserve, usualNeed: ctx.usualNeed, usualName: ctx.usualName, editing: t.session)
-    }
-
     /// V17: "Parked · Work · 2 h ago"; a tap opens the spot on a map
     @ViewBuilder private var parkedRow: some View {
         let spot = preview != nil ? preview?.parked : parked

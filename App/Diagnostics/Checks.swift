@@ -767,7 +767,11 @@ enum CheckList {
         m("u152", p6M, "Ride review card heights (note 11)", "Nothing to do \u{00B7} Run all automatic marks it",
           "Full, default, one line and hidden are in order; at full the layer row and legend stay visible; hidden leaves only the lip; a flick snaps to the nearest; the one line reads 19 min \u{00B7} 8.0 km \u{00B7} 32 km/h"),
         m("ui152", p6M, "Drag the ride card like Apple Maps (note 11)", "Open a ride; drag the handle up and down; flick it down to the bottom",
-          "The card snaps to full, default (map about half the screen), one line (time \u{00B7} distance \u{00B7} top speed) and hidden with a small lip; tapping the lip brings it back; the map, layer row and legend stay visible at every height", manual: true)
+          "The card snaps to full, default (map about half the screen), one line (time \u{00B7} distance \u{00B7} top speed) and hidden with a small lip; tapping the lip brings it back; the map, layer row and legend stay visible at every height", manual: true),
+        m("u153", p6M, "Plug in after every ride (F-31b)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "The pill shows right after a ride, not after 2 h, during a ride or after the next connect; 100% by default, \u{2212} / + by 5 % or 1 km; the 100 % alert includes the +5 % margin; estimated explains the charge rate"),
+        m("ui153", p6M, "Plug in after a ride (F-31b)", "Finish a ride, switch the scooter off, look at Home",
+          "One big \u{26A1} Plug in pill and a small 100% pill (no bell); one tap on Plug in starts the timer from the last reading; the small pill opens Battery | Range with \u{2212} number + and 18:02 estimated (tap estimated for why), ticks on every tap; while charging the spot shows the charge line, the alert time and Unplugged", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

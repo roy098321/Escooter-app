@@ -58,6 +58,10 @@ struct HomeView: View {
     /// H7: the backup folder picker straight from the banner
     @State private var pickingBackup = false
     @State private var lastRide: RideListItem?
+    /// F-31b: when the last real ride ended (the Plug in pill shows for 2 h after it)
+    @State private var lastRideEndMs: Int64?
+    @State private var plugAlert: PlugAlert = PlugInStore.alert
+    @State private var showPlugAlert = false
     @State private var oldestRideMs: Int64?
     /// F-02: the Load for the next ride (None / Light / Heavy / Exact), kept until the next ride starts
     @State private var loadSel = "none"
@@ -170,6 +174,13 @@ struct HomeView: View {
             .defaultScrollAnchor(UIShot.requested == "home-bottom" ? .bottom : nil)   // the ui-shot of the very bottom (B23)
         }
         .onChange(of: showWhereTo) { _, open in if open { reloadLastRide() } }   // B58: fresh times when the sheet opens
+        .sheet(isPresented: $showPlugAlert) {
+            PlugAlertSheet(alert: plugAlert, session: PlugInStore.draft(alert: plugAlert), utcOffsetMin: ChargeTimer.shared.utcOffsetMin) { a in
+                plugAlert = a
+                PlugInStore.setAlert(a)
+            }
+            .glassPresentation(detents: [.height(300), .medium])
+        }
         .sheet(isPresented: $showWhereTo) {
             WhereToSheet(rows: shownRows, selected: selectedRoute, editable: preview == nil, onPick: { id in
                 pickRoute(id)
@@ -189,10 +200,17 @@ struct HomeView: View {
             if let n = EdgeWatch.shared.expiryNotice { noticeCard(n, symbol: "clock.badge.exclamationmark") }
             if let n = EdgeWatch.shared.storageNotice { noticeCard(n, symbol: "internaldrive") }
             if let cs = previewCharge ?? (preview == nil && m.state != .riding ? ChargeTimer.shared.session : nil) {
-                // F-31: while charging the status pill is the charge line
+                // F-31: while charging the status pill is the charge line; F-31b: the alert time and Unplugged under it
                 NavigationLink { BatteryView() } label: {
                     ChargeStatusLine(session: cs, nowMs: previewCharge != nil ? ChargePreview.nowMs : ChargeTimer.shared.nowMs, utcOffsetMin: previewCharge != nil ? 0 : ChargeTimer.shared.utcOffsetMin)
                 }.buttonStyle(.plain)
+                if previewCharge == nil {
+                    ChargeAlertRow(text: PlugIn.chargeLineAlert(cs, plugAlert, utcOffsetMin: ChargeTimer.shared.utcOffsetMin),
+                                   onAlert: { showPlugAlert = true }, onUnplug: { ChargeTimer.shared.unplug() })
+                }
+            } else if showsPlugIn(m) {
+                // F-31b: after every ride, one tap starts the charge timer from the last reading (silent when it appears)
+                PlugInRow(alert: plugAlert, onPlug: { PlugInStore.plugIn() }, onAlert: { showPlugAlert = true })
             } else if m.batteryText != nil {
                 NavigationLink { BatteryView() } label: { statusPill(m) }.buttonStyle(.plain)
             } else {
@@ -201,6 +219,14 @@ struct HomeView: View {
             if m.showLocationCard { locationCard }
             if m.state != .riding { TodayInsightSlot(preview: previewToday, live: preview == nil) }   // F-21, never during a ride (P-4)
         }
+    }
+
+    /// F-31b: a ride ended within 2 h, no ride now, not charging, the scooter off and not connected since, and a reading to start from
+    private func showsPlugIn(_ m: HomeModel) -> Bool {
+        guard preview == nil, m.state != .riding, ChargeTimer.shared.lastReading() != nil else { return false }
+        return PlugIn.shows(rideEndMs: lastRideEndMs, nowMs: Int64(now.timeIntervalSince1970 * 1000), riding: input.rideActive,
+                            charging: ChargeTimer.shared.charging, connected: AppModel.shared.scooter.connected,
+                            lastConnectMs: PlugInStore.lastConnectMs)
     }
 
     private func bottomBlock(_ m: HomeModel) -> some View {
@@ -608,6 +634,7 @@ struct HomeView: View {
         BackupWriter.shared.runIfDue()
         EdgeWatch.shared.refresh(database: db)
         guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
+        lastRideEndMs = r.isSimulated ? nil : r.endAt   // F-31b
         lastRide = RideListItem(id: r.id, startAt: r.startAt, utcOffsetMin: r.utcOffsetMin, kind: r.kind,
                                 distanceM: r.distanceM, totalS: r.totalS)
     }

@@ -12,18 +12,15 @@ enum ChargePreview {
 
     static let names = ["scooter-tab-charging", "charge-sheet", "charge-sheet-km", "charge-sheet-ready", "charge-sheet-correct", "home-charging", "charge-log"]
 
-    private static func input(editing: ChargeSession? = nil) -> ChargeSheet.Input {
-        ChargeSheet.Input(scooterName: "G2", lastPct: 18, lastMs: nowMs - 8 * 60_000, nowMs: nowMs, utcOffsetMin: 0, pctPerKm: 2.3, reserve: 5,
-                          usualNeed: 20, usualName: "Work", editing: editing)
+    /// F-31b: the alert sheet as it would open 8 min after the last reading (18 %)
+    private static var draft: ChargeSession {
+        ChargeSession(id: "preview", startPct: 18, startMs: nowMs, target: .none, pctPerKm: 2.3, usualNeedPct: 20, usualName: "Work", scooterName: "G2")
     }
 
     @ViewBuilder static func screen(_ name: String) -> some View {
         switch name {
-        case "charge-sheet": sheet(ChargeSheet(input: input()) { _ in })
-        case "charge-sheet-km": sheet(ChargeSheet(input: input(), preset: (.range, .off, "10")) { _ in })
-        case "charge-sheet-ready": sheet(ChargeSheet(input: input(), preset: (.readyBy, .off, "10")) { _ in })
-        case "charge-sheet-correct": sheet(ChargeSheet(input: ChargeSheet.Input(scooterName: "G2", lastPct: nil, lastMs: nil, nowMs: nowMs, utcOffsetMin: 0, pctPerKm: 2.3,
-                                                                              reserve: 5, usualNeed: 20, usualName: "Work", editing: nil)) { _ in })
+        case "charge-sheet", "charge-sheet-ready", "charge-sheet-correct": sheet(PlugAlertSheet(alert: .battery(100), session: draft, utcOffsetMin: 0) { _ in })
+        case "charge-sheet-km": sheet(PlugAlertSheet(alert: .range(15), session: draft, utcOffsetMin: 0) { _ in })
         case "charge-log": ScrollView { ChargeLogChartView(readings: logReadings, rows: logRows, nowMs: nowMs).padding(DS.Space.gutter) }
                 .background { MapBackdrop().ignoresSafeArea() }
         default: EmptyView()

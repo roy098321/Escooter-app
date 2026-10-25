@@ -7,7 +7,8 @@ import Foundation
 /// u149 the route is one gradient line per unbroken run, nothing overlapping (B59),
 /// u150 the ride summary's map takes ~55 % of the screen, the tiles sit in the lower part (B52),
 /// u151 the route draws itself smoothly: eased, by distance, small steps per frame (B53),
-/// u152 the ride review card snaps to full / default / one line / hidden with a lip (note 11).
+/// u152 the ride review card snaps to full / default / one line / hidden with a lip (note 11),
+/// u153 Plug in after every ride: when it shows, − / +, the alert time with its margin, why it is estimated (F-31b).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -28,6 +29,27 @@ enum B101LateChecks {
         runSummaryLayout()
         runSmoothDraw()
         runRideCard()
+        runPlugIn()
+    }
+
+    // MARK: u153
+
+    /// F-31b: the pill after every ride (2 h, never during a ride, gone at the next connect), 100 % by default, alert time with margin
+    private static func runPlugIn() {
+        let expect = Expect()
+        let end: Int64 = 1_790_000_000_000
+        expect(PlugIn.shows(rideEndMs: end, nowMs: end + 60_000, riding: false, charging: false, connected: false, lastConnectMs: end - 600_000),
+               "shows right after a ride")
+        expect(!PlugIn.shows(rideEndMs: end, nowMs: end + 7_300_000, riding: false, charging: false, connected: false, lastConnectMs: nil)
+               && !PlugIn.shows(rideEndMs: end, nowMs: end + 60_000, riding: true, charging: false, connected: false, lastConnectMs: nil)
+               && !PlugIn.shows(rideEndMs: end, nowMs: end + 3_600_000, riding: false, charging: false, connected: false, lastConnectMs: end + 60_000),
+               "gone after 2 h, during a ride and after the next connect")
+        expect(PlugAlert.default.pillText == "100%" && PlugIn.stepped(.battery(100), by: -1) == .battery(95) && PlugIn.stepped(.range(15), by: 1) == .range(16),
+               "100% by default; \u{2212} / + by 5 % or 1 km")
+        let s = ChargeSession(startPct: 18, startMs: end, pctPerKm: 2.0, reservePct: 10, scooterName: "Test")
+        expect(PlugIn.alertMs(s, .battery(100)) == ChargeModel.notifyFullMs(s), "100 %: the alert includes the +5 % margin")
+        expect(PlugIn.why(s, .battery(100), utcOffsetMin: 0).contains("13.6 % an hour"), "estimated explains the charge rate")
+        expect.report("u153")
     }
 
     // MARK: u152

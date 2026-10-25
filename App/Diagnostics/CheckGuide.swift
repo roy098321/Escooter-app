@@ -874,6 +874,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the heights, the snap and the one line each say ok. The real thing is check ui152."], place: .noScooter),
         "ui152": CheckGuide(proves: "You can drag the ride card away to see the map, like Apple Maps.",
                             steps: ["Open a ride from Rides.", "Drag the handle up (full), down (one line), flick down (hidden), tap the lip (back). Tap Pass or Fail with a note."], place: .noScooter),
+        "u153": CheckGuide(proves: "The Plug in pill shows at the right moments and its alert time is honest.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: when it shows, the steps, the margin and the explanation each say ok. The real thing is check ui153."], place: .noScooter),
+        "ui153": CheckGuide(proves: "After a ride, one tap starts the charge timer.",
+                            steps: ["Finish a ride and switch the scooter off.", "Home shows \u{26A1} Plug in and a small 100% pill: tap the small pill, try \u{2212} / +, tap estimated.", "Tap Plug in: the charge line shows with the alert time and Unplugged. Tap Pass or Fail with a note."], place: .scooterHome),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]
