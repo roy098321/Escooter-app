@@ -791,7 +791,15 @@ enum CheckList {
         m("ui157", p6M, "What's new after the update (F-32)", "Open the app for the first time after installing this build",
           "A card over the dimmed Home: What's new \u{00B7} 251026, four items and the smaller-changes line; \u{2715} or a tap outside closes it; it does not come back; Settings \u{2192} What's new lists everything", manual: true),
         m("ui159", p6M, "Ride screen preview (F-37)", "Settings \u{2192} Developer \u{2192} Ride screen preview",
-          "The real ride screen full screen with a Preview badge plays a made-up ride (speed, battery, arrival line, moving map); \u{22EF} pauses, triggers battery 20 / 15 / 10 %, Motor hot, Phone took over, switches destination and day / night; no ride appears in Rides afterwards", manual: true)
+          "The real ride screen full screen with a Preview badge plays a made-up ride (speed, battery, arrival line, moving map); \u{22EF} pauses, triggers battery 20 / 15 / 10 %, Motor hot, Phone took over, switches destination and day / night; no ride appears in Rides afterwards", manual: true),
+        m("u144", p6M, "Places order is saved (place drag)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Made-up places: dragging the last to the top gives the new order, it is saved and read back, a new place goes after the ordered ones"),
+        m("ui144", p6M, "Hold a place to drag it (place drag)", "Settings \u{2192} Places: hold a place card, drag it up or down, let go",
+          "The card lifts with a haptic, the others slide aside, a light tick per slot, the order stays after reopening and is used in Where to?; hold and let go without moving opens Rename \u{00B7} Colour \u{00B7} Icon \u{00B7} Show on Home", manual: true),
+        m("ui145", p6M, "The \u{203A} sits inside each place card (B51)", "Settings \u{2192} Places",
+          "Every card is full width with its \u{203A} inside the card on the right, nothing sticking out", manual: true),
+        m("ui146", p6M, "No parked pin on Home's map (B60)", "Park, switch the scooter off, open Home; then the Scooter tab",
+          "Home's background map has no parked-scooter pin; the Scooter tab still shows the Parked row and its map", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

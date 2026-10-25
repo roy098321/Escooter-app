@@ -38,6 +38,22 @@ enum B101LateChecks {
         runRideGraph()
         runReleaseName()
         runWhatsNew()
+        runPlaceOrder()
+    }
+
+    // MARK: u144
+
+    /// Places hold-to-drag (batch 101 chunk B): a drag saves the new order, the saved order sorts the list, unknown places keep their order
+    private static func runPlaceOrder() {
+        let expect = Expect()
+        let ids = ["home", "uni", "gym", "grandma"]
+        let moved = PlaceOrder.moved(ids, from: IndexSet(integer: 3), to: 0)
+        expect(moved == ["grandma", "home", "uni", "gym"], "drag Grandma to the top: " + moved.joined(separator: ", "))
+        let saved = PlaceOrder.parse(PlaceOrder.json(moved))
+        expect(saved == moved, "the order is saved and read back")
+        expect(PlaceOrder.apply(ids + ["new"], saved: saved) == moved + ["new"], "a new place goes after the ordered ones")
+        expect(PlaceOrder.apply(["home", "uni"], saved: saved) == ["home", "uni"], "a removed place is skipped")
+        expect.report("u144")
     }
 
     // MARK: u157

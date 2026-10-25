@@ -898,6 +898,14 @@ struct CheckGuide {
                             steps: ["Open the app right after installing the update.", "The card says What's new \u{00B7} 251026; close it; reopen the app: it stays closed. Settings \u{2192} What's new has the full list. Tap Pass or Fail with a note."], place: .noScooter),
         "ui159": CheckGuide(proves: "You can look at the ride screen without riding, and nothing is recorded.",
                             steps: ["Settings \u{2192} Developer \u{2192} Ride screen preview.", "Watch it play; try the \u{22EF} events and scenarios; close.", "Rides has no new ride. Tap Pass or Fail with a note."], place: .noScooter),
+        "u144": CheckGuide(proves: "A new places order is kept.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the drag, the save and the new-place rule each say ok. The real thing is check ui144."], place: .noScooter),
+        "ui144": CheckGuide(proves: "You can put your places in the order you like by holding and dragging.",
+                            steps: ["Settings \u{2192} Places: hold a card and drag it to another spot.", "Close and reopen: the order stayed; Where to? follows it. Hold and let go without moving: the menu opens. Tap Pass or Fail with a note."], place: .noScooter),
+        "ui145": CheckGuide(proves: "The Places list looks tidy: the arrow is inside each card.",
+                            steps: ["Settings \u{2192} Places.", "Each card's \u{203A} sits inside it on the right. Tap Pass or Fail with a note."], place: .noScooter),
+        "ui146": CheckGuide(proves: "Home's map no longer shows where the scooter is parked.",
+                            steps: ["Park and switch the scooter off. Open Home: no parked pin on the background map.", "The Scooter tab still has the Parked row and map. Tap Pass or Fail with a note."], place: .scooterHome),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]
