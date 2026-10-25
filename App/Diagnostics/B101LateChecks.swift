@@ -41,8 +41,8 @@ enum B101LateChecks {
         let expect = Expect()
         let off = 0
         let day: Int64 = 86_400_000
-        let start: Int64 = 1_791_158_400_000 / day * day   // a made-up week
-        let p = StatsPeriod(startMs: start, endMs: start + 7 * day, label: "This week", isPartial: false, dayCount: 7)
+        let p = StatsCalc.period(span: .week, mode: .calendar, nowMs: 1_791_158_400_000, utcOffsetMin: off, back: 1)   // a made-up finished week
+        let start = p.startMs
         let prices = StatsPrices(packWh: 800, electricityIlsPerKwh: 0.64, fuelIlsByMonth: [:], fuelFallbackIls: 8, fuelLPer100km: 7)
         let rides = [StatsRide(startAt: start + 2 * day + 8 * 3_600_000, utcOffsetMin: off, kind: "ride", distanceM: 9_000, totalS: 1_200, usedPct: 10),
                      StatsRide(startAt: start + 2 * day + 17 * 3_600_000, utcOffsetMin: off, kind: "ride", distanceM: 9_000, totalS: 1_500, usedPct: 10)]
