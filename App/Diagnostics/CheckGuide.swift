@@ -870,6 +870,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: small even steps, a partial front. The real thing is check ui151."], place: .noScooter),
         "ui151": CheckGuide(proves: "After a ride the route draws itself smoothly.",
                             steps: ["Finish a ride and watch the summary open.", "The line draws in about a second without jitter, then the tiles fade in. Tap Pass or Fail with a note."], place: .ride),
+        "u152": CheckGuide(proves: "The ride card has four heights and never covers the layer row.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the heights, the snap and the one line each say ok. The real thing is check ui152."], place: .noScooter),
+        "ui152": CheckGuide(proves: "You can drag the ride card away to see the map, like Apple Maps.",
+                            steps: ["Open a ride from Rides.", "Drag the handle up (full), down (one line), flick down (hidden), tap the lip (back). Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

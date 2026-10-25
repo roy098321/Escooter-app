@@ -763,7 +763,11 @@ enum CheckList {
         m("u151", p6M, "Smooth route draw (B53)", "Nothing to do \u{00B7} Run all automatic marks it",
           "The drawing front moves less than 2 % of the route per 1/120 s frame, ends exactly at 100 %, and draws the front stretch in part"),
         m("ui151", p6M, "The route draws smoothly after a ride (B53)", "Finish a ride and watch the summary open",
-          "The route draws itself in about a second without stutter, then the tiles fade in; with Reduce Motion on there is no drawing, the map just fades in", manual: true)
+          "The route draws itself in about a second without stutter, then the tiles fade in; with Reduce Motion on there is no drawing, the map just fades in", manual: true),
+        m("u152", p6M, "Ride review card heights (note 11)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Full, default, one line and hidden are in order; at full the layer row and legend stay visible; hidden leaves only the lip; a flick snaps to the nearest; the one line reads 19 min \u{00B7} 8.0 km \u{00B7} 32 km/h"),
+        m("ui152", p6M, "Drag the ride card like Apple Maps (note 11)", "Open a ride; drag the handle up and down; flick it down to the bottom",
+          "The card snaps to full, default (map about half the screen), one line (time \u{00B7} distance \u{00B7} top speed) and hidden with a small lip; tapping the lip brings it back; the map, layer row and legend stay visible at every height", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

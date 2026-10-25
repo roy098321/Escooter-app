@@ -101,7 +101,7 @@ final class AutoRunner {
         P64C3Checks.run()                        // P6-4 chunk 3: u90 info sheets add up (B32), u91 Past weeks buckets (B33), u92 scooter colour stored
         P64C3bChecks.run()                       // P6-4 chunk 3b (F-21): u100 sweet spot, u101 departure + creep, u102 wind, u103 certainty gate
         B101Checks.run()                         // batch 101 chunk A: u130 battery flip filter (B56), u131 phone rides kept (B57), u132 settled ride battery (B54), u133 end at last movement (F-38), u134 riding start (B62), u135 what is a ride (F-39), u136 bad readings (notes 12 + 10); chunk B: u137 destination during the ride (F-35), u138 ride kept open while connected or moving (B63), u139 Scooter-on destination buttons (F-36), u140 one Where to? row per destination (B61), u141 fresh arrival time (B58), u142 time and battery (note 14), u143 quick dial never hidden (B55)
-        B101LateChecks.run()                     // batch 101 chunks C-E: u147 shared energy track (F-34), u148 map layer row (F-33), u149 one gradient route line (B59), u150 ride summary layout (B52), u151 smooth route draw (B53)
+        B101LateChecks.run()                     // batch 101 chunks C-E: u147 shared energy track (F-34), u148 map layer row (F-33), u149 one gradient route line (B59), u150 ride summary layout (B52), u151 smooth route draw (B53), u152 ride review card (note 11)
         ChargeEtaChecks.run()                    // P6-6 (F-31 / F-27): u120 charge timer maths, u121 targets + notification times, u122 charge log data
         P61UiChecks.run(real: model.database)   // chunk 2: u55 bounce, u56 live tiles + camera, u57 saved way back
         await P61PlaceChecks.run()               // chunk 3: u58 place colours, u59 places by hand + labels, u60 street lookup
@@ -168,5 +168,5 @@ enum AutomaticChecks {
                       "u100", "u101", "u102", "u103", "u110", "u111", "u112", "u120", "u121", "u122",
                       "u130", "u131", "u132", "u133", "u134", "u135", "u136",
                       "u137", "u138", "u139", "u140", "u141", "u142", "u143",
-                      "u147", "u148", "u149", "u150", "u151"]
+                      "u147", "u148", "u149", "u150", "u151", "u152"]
 }

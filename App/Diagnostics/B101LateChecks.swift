@@ -6,7 +6,8 @@ import Foundation
 /// u148 the map layer row: five buttons, tap again for the derived view, stops as dots, honest legends (F-33),
 /// u149 the route is one gradient line per unbroken run, nothing overlapping (B59),
 /// u150 the ride summary's map takes ~55 % of the screen, the tiles sit in the lower part (B52),
-/// u151 the route draws itself smoothly: eased, by distance, small steps per frame (B53).
+/// u151 the route draws itself smoothly: eased, by distance, small steps per frame (B53),
+/// u152 the ride review card snaps to full / default / one line / hidden with a lip (note 11).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -26,6 +27,26 @@ enum B101LateChecks {
         runGradientLine()
         runSummaryLayout()
         runSmoothDraw()
+        runRideCard()
+    }
+
+    // MARK: u152
+
+    /// Note 11: four heights in order, the layer row stays visible at full height, a flick snaps to the nearest, the one line
+    private static func runRideCard() {
+        let expect = Expect()
+        let h = 759.0, inset = 59.0, controls = 170.0, bar = 90.0
+        let tops = Dictionary(uniqueKeysWithValues: CardDetent.allCases.map {
+            ($0, RideCardLayout.top($0, height: h, topInset: inset, controlsBottom: controls, bottomReserve: bar))
+        })
+        let order = CardDetent.allCases.compactMap { tops[$0] }
+        expect(order == order.sorted() && Set(order).count == 4, "full / default / one line / hidden in order: " + order.map { String(Int($0)) }.joined(separator: " \u{00B7} "))
+        expect((tops[.full] ?? 0) > controls, "the map, layer row and legend stay visible at full height")
+        expect(tops[.hidden] == h, "hidden leaves only the lip")
+        expect(RideCardLayout.snap(predictedTop: h + 200, tops: tops) == .hidden && RideCardLayout.snap(predictedTop: 0, tops: tops) == .full,
+               "a flick snaps to the nearest height")
+        expect(RideCardLayout.line(time: "19 min", distance: "8.0 km", topSpeed: "32 km/h") == "19 min \u{00B7} 8.0 km \u{00B7} 32 km/h", "one line: 19 min \u{00B7} 8.0 km \u{00B7} 32 km/h")
+        expect.report("u152")
     }
 
     // MARK: u151

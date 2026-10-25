@@ -60,6 +60,8 @@ struct RideDetailView: View {
     @State private var drawnScale: LayerScale?
     @State private var stopDots: [StopDot] = []
     @State private var showHint = false
+    /// Note 11: the card's height (full / default / one line / hidden with a lip)
+    @State private var cardDetent: CardDetent = .standard
     /// A4: right after a ride the path draws itself (about 1 s) and the six tiles fade in one by one after it (60 ms apart).
     /// B53: 0 = drawing (a canvas over the map, `revealStart`), 1 = done (the real map line)
     @State private var pathReveal = 1.0
@@ -217,8 +219,9 @@ struct RideDetailView: View {
 
     // MARK: Layout
 
+    /// Note 11: the map fills the screen, the card is dragged like Apple Maps (B52: the default height keeps ~55 % for the map)
     private func content(_ m: RideSummaryModel) -> some View {
-        MapScreen(tallMap: true) {
+        RideCardScreen(detent: $cardDetent) {
             mapLayer(m)
         } topBar: {
             topBar(m)
@@ -237,6 +240,9 @@ struct RideDetailView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
+        } line: {
+            Text(RideCardLayout.line(time: stat(m, "Time"), distance: stat(m, "Distance"), topSpeed: stat(m, "Top speed")))
+                .font(.headline).fontDesign(.rounded).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
         } content: {
             sheetContent(m)
         }
@@ -589,8 +595,8 @@ struct RideDetailView: View {
         var points: [GeoPoint] = []
         for seg in path.segments { for c in seg.coords { points.append(GeoPoint(lat: c.lat, lon: c.lon)) } }
         for run in path.walks { for c in run { points.append(GeoPoint(lat: c.lat, lon: c.lon)) } }
-        // B52: the taller map; the top bar, layer row and legend cover its upper part (F-33: the row spans the width)
-        guard let r = MapFit.region(points, padding: 0.12, topCover: 0.42, sideCover: 0.1) else { return position(path) }
+        // Note 11: the map fills the screen: the top bar, layer row and legend cover its top, the card (default height) its lower ~45 %
+        guard let r = MapFit.region(points, padding: 0.12, topCover: 0.24, sideCover: 0.05, bottomCover: 0.42) else { return position(path) }
         return .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: r.centerLat, longitude: r.centerLon),
                                           span: MKCoordinateSpan(latitudeDelta: r.latSpan, longitudeDelta: r.lonSpan)))
     }
