@@ -87,7 +87,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             homeScreen(HomeLogic.model(input))
-                .background { MapBackdrop(map: true, parked: parkedForMap, parkedPreview: previewParked).ignoresSafeArea() }
+                .background { MapBackdrop(map: true, parked: nil, parkedPreview: nil)   // B60: no parked pin on Home's map background.ignoresSafeArea() }
                 .navigationTitle("Home")
                 .navigationBarTitleDisplayMode(.inline)
                 .screen("Home")
