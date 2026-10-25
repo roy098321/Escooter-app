@@ -177,6 +177,10 @@ public struct RideMetrics: Equatable, Sendable {
     public var avgMovingMps: Double?
     /// M7: top speed held ≥ T33, GPS-confirmed, × wheel factor, km/h
     public var topSpeedKmh = 0.0
+    /// B57: the phone's own numbers, for a ride the phone recorded (scooter readings gone): GPS path length, m, and
+    /// the GPS speed held ≥ T33 with good fixes, km/h
+    public var gpsDistanceM = 0.0
+    public var gpsTopSpeedKmh = 0.0
     /// M3: number of stops
     public var stops = 0
     /// D3 / T102: distance walked (pushing) inside the ride, m; counted in `distanceM`, left out of M6 and M9
@@ -292,6 +296,7 @@ public enum RideMetricsCalculator {
 
         // M7
         m.topSpeedKmh = topSpeed(samples, wheelFactor: wheelFactor, maxStepS: maxStepS)
+        m.gpsTopSpeedKmh = gpsTopSpeed(samples, maxStepS: maxStepS)
 
         // M8 rested %
         m.startRestPct = restedStart(samples, moving)
@@ -396,6 +401,7 @@ public enum RideMetricsCalculator {
             }
         }
         m.liftedWheelM = lifted
+        m.gpsDistanceM = gpsTotal
 
         if let a = odo.first, let b = odo.last {
             m.distanceM = max(0, (b - a) * 1000 * wheelFactor - lifted)
@@ -465,6 +471,24 @@ public enum RideMetricsCalculator {
                 continue
             }
             window.append((s.t, v * wheelFactor))
+            while window.count > 1, s.t - window[1].t >= T.t33TopSpeedHeldS { window.removeFirst() }
+            if let first = window.first, s.t - first.t >= T.t33TopSpeedHeldS {
+                best = max(best, window.map { $0.kmh }.min() ?? 0)
+            }
+        }
+        return best
+    }
+
+    /// B57: the same held-speed rule on the phone's GPS speed (good fixes only), for rides the phone recorded.
+    static func gpsTopSpeed(_ samples: [RideSample], maxStepS: Double) -> Double {
+        var window: [(t: Double, kmh: Double)] = []
+        var best = 0.0
+        var prevT: Double?
+        for s in samples {
+            defer { prevT = s.t }
+            guard s.hasGoodFix, let v = s.gpsSpeedKmh else { window.removeAll(); continue }
+            if let p = prevT, s.t - p > maxStepS { window.removeAll() }
+            window.append((s.t, v))
             while window.count > 1, s.t - window[1].t >= T.t33TopSpeedHeldS { window.removeFirst() }
             if let first = window.first, s.t - first.t >= T.t33TopSpeedHeldS {
                 best = max(best, window.map { $0.kmh }.min() ?? 0)

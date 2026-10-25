@@ -2,7 +2,8 @@ import CorckieCore
 import Foundation
 
 /// Batch 101.251026.00 chunk A checks ("never lose a ride"), on made-up input only (nothing real is read or written):
-/// u130 the battery % flip filter and its per-scooter auto-detect (B56, B56b).
+/// u130 the battery % flip filter and its per-scooter auto-detect (B56, B56b),
+/// u131 a ride the phone took over is kept with its GPS distance and top speed, "Recorded by phone", restore list (B57).
 @MainActor
 enum B101Checks {
     private final class Expect {
@@ -17,6 +18,26 @@ enum B101Checks {
 
     static func run() {
         runFlipFilter()
+        runPhoneRide()
+    }
+
+    // MARK: u131
+
+    private static func runPhoneRide() {
+        let expect = Expect()
+        expect(PhoneRide.sizeClass(distanceM: 0, gpsM: 1_930, phoneTookOver: true) == .shortHop,
+               "B57: 0 m on the frozen odometer but 1.93 km of GPS after the phone took over is kept")
+        expect(PhoneRide.sizeClass(distanceM: 0, gpsM: 250, phoneTookOver: true) == .discarded, "under 300 m of GPS is still a discarded piece")
+        expect(PhoneRide.distanceM(scooterM: 40, gpsM: 1_930, scooterLost: true) == 1_930
+               && PhoneRide.topSpeedKmh(scooterKmh: 0, gpsKmh: 27, scooterLost: true) == 27, "distance and top speed from the GPS")
+        var input = RideDetailInput(startAt: 1_790_000_000_000, kind: "shortHop", distanceM: 1_930, totalS: 360)
+        input.recordedByPhone = true
+        let m = RideSummaryBuilder.build(input, gaps: [], points: [])
+        expect(m.subtitle.contains("Recorded by phone") && m.notes.contains { $0.kind == .phone }, "the summary says Recorded by phone with a note")
+        let now: Int64 = 1_790_000_000_000
+        let ids = PhoneRide.restoreCandidates([("a", now - 86_400_000, "discarded", false, true), ("b", now - 40 * 86_400_000, "discarded", false, true)], nowMs: now)
+        expect(ids == ["a"], "Restore discarded ride offers the last 30 days only")
+        CheckResults.shared.set("u131", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u130

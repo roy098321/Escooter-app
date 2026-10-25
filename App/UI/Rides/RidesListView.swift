@@ -28,6 +28,9 @@ struct RidesListView: View {
     @State private var pendingDelete: RideListItem?
     @State private var errorText: String?
     @State private var selected: RideRoute?
+    /// B57: discarded pieces of the last 30 days that can be restored
+    @State private var discarded: [RideRecord] = []
+    @State private var restoreOpen = false
 
     struct RideRoute: Hashable, Identifiable {
         let id: String
@@ -63,6 +66,9 @@ struct RidesListView: View {
             Button("Keep it", role: .cancel) {}
         } message: { _ in
             Text("The ride and all its stored readings are removed. This cannot be undone.")
+        }
+        .sheet(isPresented: $restoreOpen, onDismiss: reload) {
+            RestoreDiscardedSheet(rides: discarded)
         }
         .alert("Could not delete", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("OK") {}
@@ -110,6 +116,17 @@ struct RidesListView: View {
                                 ForEach(m.shortHops, id: \.id) { row($0, showDay: true) }
                             }
                             .font(.subheadline.weight(.semibold))
+                        }
+                    }
+                    if !discarded.isEmpty {
+                        Section {
+                            Button {
+                                restoreOpen = true
+                            } label: {
+                                Label("Restore discarded ride", systemImage: "arrow.uturn.backward.circle")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .listRowBackground(Theme.row)
                         }
                     }
                     Color.clear.frame(height: 1).id("list-end")
@@ -280,6 +297,7 @@ struct RidesListView: View {
         }
         guard let db = AppModel.shared.displayDatabase else { items = []; return }
         gaps = ScreenSimulator.shared.active ? [] : GapStore.all(db)
+        discarded = ScreenSimulator.shared.active ? [] : RideToolsService.restoreCandidates(db)     // B57
         let routes = RouteQueries(db)
         let ends = (try? routes.endPlaceIds()) ?? [:]
         let starts = (try? routes.startPlaceIds()) ?? [:]

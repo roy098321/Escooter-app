@@ -32,6 +32,10 @@ public struct RideDetailInput: Equatable, Sendable {
     public var ignoredReadings: Int
     public var hasGps: Bool?
     public var isSimulated: Bool
+    /// B57: the phone recorded (most of) this ride: "Recorded by phone" with a note (from `RideExtras`)
+    public var recordedByPhone = false
+    /// B57: why the scooter's readings were not used (the format watch's reason), for ⋯ → Ride info
+    public var formatReason: String?
 
     public init(startAt: Int64, utcOffsetMin: Int? = nil, kind: String = "ride", status: String = "ended",
                 endReason: String? = nil, distanceM: Double? = nil, totalS: Double? = nil, movingS: Double? = nil,
@@ -214,6 +218,7 @@ public enum RideSummaryBuilder {
 
         var subtitle = ""
         if input.kind == "shortHop" { subtitle = "Short hop" }
+        if input.recordedByPhone { subtitle = subtitle.isEmpty ? recordedByPhoneTitle : subtitle + " \u{00B7} " + recordedByPhoneTitle }
         if input.isSimulated { subtitle = subtitle.isEmpty ? "Simulated" : subtitle + " \u{00B7} Simulated" }
 
         let firstPct = points.sorted { $0.t < $1.t }.compactMap(\.batteryPct).first
@@ -244,7 +249,9 @@ public enum RideSummaryBuilder {
                                      text: "Recovered: the app was closed during this ride. Everything up to the last stored reading is kept."))
         }
         let scooterGapS = gapSeconds(gaps, kind: "scooter", totalS: input.totalS)
-        if scooterGapS > 0 {
+        if input.recordedByPhone {
+            notes.append(SummaryNote(kind: .phone, text: recordedByPhoneNote))
+        } else if scooterGapS > 0 {
             notes.append(SummaryNote(kind: .phone,
                                      text: "Scooter readings were missing for \(duration(scooterGapS)); the phone kept the path (dashed line). Totals leave that stretch out."))
         }
@@ -274,6 +281,7 @@ public enum RideSummaryBuilder {
             info.append(String(format: "Odometer %.1f km to %.1f km", a, b))
         }
         if let reason = endReasonText(input.endReason) { info.append(reason) }
+        if let f = input.formatReason { info.append("Phone took over: " + f) }
 
         return RideSummaryModel(title: title(startAt: input.startAt, utcOffsetMin: offset), subtitle: subtitle,
                                 mainStats: main, scooterStats: scooter, notes: notes, noGps: noGps, path: path,
@@ -284,6 +292,10 @@ public enum RideSummaryBuilder {
     // MARK: Formatting
 
     static let dash = "\u{2013}"
+
+    /// B57
+    public static let recordedByPhoneTitle = "Recorded by phone"
+    public static let recordedByPhoneNote = "Recorded by phone: the scooter's readings could not be used for this ride, so the distance and top speed come from the phone's GPS (dashed line). Battery and energy may be missing."
 
     /// "45 s", "34 min", "1 h 05 min"
     public static func duration(_ seconds: Double) -> String {

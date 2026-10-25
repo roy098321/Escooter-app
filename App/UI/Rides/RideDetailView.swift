@@ -571,7 +571,7 @@ enum RideDetailLoader {
     static func load(id: String, db: AppDatabase) -> RideSummaryModel? {
         let q = RideQueries(db)
         guard let r = try? q.ride(id: id), r.kind != "discarded" else { return nil }
-        let input = RideDetailInput(
+        var input = RideDetailInput(
             startAt: r.startAt, utcOffsetMin: r.utcOffsetMin, kind: r.kind, status: r.status, endReason: r.endReason,
             distanceM: r.distanceM, totalS: r.totalS, movingS: r.movingS, avgMovingMps: r.avgMovingMps,
             topSpeedMps: r.topSpeedMps, stops: r.stops, energyWhRaw: r.energyWhRaw,
@@ -579,6 +579,10 @@ enum RideDetailLoader {
             startRestPct: r.startRestPct, endRestPct: r.endRestPct, odoStartKm: r.odoStartKm, odoEndKm: r.odoEndKm,
             elevGainM: r.elevGainM, elevLossM: r.elevLossM, tempPeakC: r.tempPeakC, tempRiseC: r.tempRiseC,
             ignoredReadings: r.ignoredReadings, hasGps: r.hasGps, isSimulated: r.isSimulated)
+        // B57: "Recorded by phone" and the format watch's reason are kept beside the row
+        let extras = RideExtras.parse(try? q.setting(key: RideExtras.key(rideId: id)))
+        input.recordedByPhone = extras.recordedByPhone
+        input.formatReason = extras.formatReason
         let gaps = ((try? q.gaps(rideId: id)) ?? []).map { RideGapSpan(kind: $0.kind, startT: $0.startT, endT: $0.endT) }
         let points = ((try? q.samples(rideId: id)) ?? []).map { (s: RideSampleRecord) -> RidePoint in
             RidePoint(t: s.t, lat: s.lat, lon: s.lon, hAccM: s.hAccM, speedKmh: s.speedMps.map { v in v * 3.6 },

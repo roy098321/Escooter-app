@@ -42,6 +42,8 @@ actor Recorder {
     private var rideStartT: [Int: Double] = [:]
     private var gapRowIds: [Int: Int64] = [:]
     private var chunkSeq: [Int: Int] = [:]
+    /// B57: the format watch's reason and one raw packet, per ride, from when the phone took over (formatChanged)
+    private var formatNotes: [Int: (reason: String?, packetHex: String?)] = [:]
     private var database: AppDatabase?
     /// Store actions that arrived before the database could be opened (iOS relaunch before the first unlock)
     private var waiting: [RecorderAction] = []
@@ -245,7 +247,13 @@ actor Recorder {
                 guard let id = rideIds[seq] else { return }
                 let gap = try q.openGap(rideId: id, kind: "scooter", startT: rel(seq, startT))
                 gapRowIds[seq] = gap.id
-                hooks.log("Phone took over (\(reason.rawValue))")
+                if reason == .formatChanged {
+                    // B57 (P-6): one raw packet and the decoder's reason, so a new format can be recognised instead of assumed
+                    hooks.log(core.formatChangeLine)
+                    formatNotes[seq] = (core.feed.pipeline.plausibility.formatChangeReason, core.lastRawPacket.map { Hex.string($0) })
+                } else {
+                    hooks.log("Phone took over (\(reason.rawValue))")
+                }
             case let .gapClosed(seq, endT):
                 if let gid = gapRowIds[seq] { try q.closeGap(id: gid, endT: rel(seq, endT)) }
                 gapRowIds[seq] = nil
@@ -301,6 +309,26 @@ actor Recorder {
             if m.distanceM <= 0 { r.distanceM = end.distanceM }
             r.status = end.status
             r.kind = end.sizeClass.rawValue
+            // B57: a ride the phone took over keeps its GPS distance and top speed, and is never discarded with ≥ 300 m of GPS
+            let gaps = end.ride.gapList
+            let formatChanged = gaps.contains { $0.reason == .formatChanged }
+            let lost = formatChanged || (gaps.last.map { $0.odoAfterKm == nil } ?? false)
+            if !gaps.isEmpty {
+                r.distanceM = PhoneRide.distanceM(scooterM: r.distanceM ?? 0, gpsM: max(m.gpsDistanceM, lost ? end.distanceM : 0), scooterLost: lost)
+                r.topSpeedMps = PhoneRide.topSpeedKmh(scooterKmh: (r.topSpeedMps ?? 0) * 3.6, gpsKmh: m.gpsTopSpeedKmh, scooterLost: lost) / 3.6
+                if lost, let d = r.distanceM, let moving = r.movingS, moving > 0 { r.avgMovingMps = d / moving }
+                let kind = PhoneRide.sizeClass(distanceM: r.distanceM ?? 0, gpsM: max(m.gpsDistanceM, end.distanceM), phoneTookOver: true)
+                r.kind = kind.rawValue
+                var extras = RideExtras.parse(try? q.setting(key: RideExtras.key(rideId: id)))
+                extras.recordedByPhone = PhoneRide.recordedByPhone(formatChanged: formatChanged, scooterGapS: m.gapScooterS, totalS: m.totalS)
+                if let f = formatNotes[seq] {
+                    extras.formatReason = f.reason
+                    extras.formatPacketHex = f.packetHex
+                }
+                try? q.setSetting(key: RideExtras.key(rideId: id), json: extras.json)
+                if r.kind != end.sizeClass.rawValue { hooks.log("B57: ride \(seq) kept as \(r.kind) (GPS \(Int(m.gpsDistanceM)) m)") }
+            }
+            formatNotes[seq] = nil
             r.endAt = ms(end.endT)
             r.endReason = end.reason.rawValue
             r.firstMoveAt = end.ride.firstMoveT.map { ms($0) }

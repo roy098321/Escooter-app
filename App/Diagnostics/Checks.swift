@@ -701,7 +701,11 @@ enum CheckList {
         m("u130", p6M, "Battery % flip filter, per scooter (B56)", "Nothing to do \u{00B7} Run all automatic marks it",
           "Made-up readings 100, 99, 100, 99 \u{2026} turn the filter on and show 99; a scooter whose % only goes down is used as it is; +1 is believed after 60 s, +2 at once; the flip history is kept per scooter"),
         m("ui130", p6M, "Battery % no longer jumps 100 \u{2194} 99 (B56)", "Scooter on, Home and a ride's battery chart",
-          "The % on Home and the Scooter tab stays put instead of flipping by one; after a ride the battery line goes down in steps without a zigzag; charging still makes it go up", scooter: true, manual: true)
+          "The % on Home and the Scooter tab stays put instead of flipping by one; after a ride the battery line goes down in steps without a zigzag; charging still makes it go up", scooter: true, manual: true),
+        m("u131", p6M, "A ride the phone took over is never lost (B57)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "0 m on a frozen odometer with 1.93 km of GPS after Phone took over is kept as a short hop with the GPS distance and top speed; under 300 m stays discarded; the summary says Recorded by phone with a note; Restore discarded ride lists the last 30 days only"),
+        m("ui131", p6M, "Restore discarded ride (B57)", "Rides \u{2192} bottom of the list \u{2192} Restore discarded ride",
+          "A sheet lists the pieces set aside in the last 30 days with time, distance (GPS when it saw more) and length; Restore puts one back in the list as a ride or short hop; the 24 Oct 18:00 ride should be there", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

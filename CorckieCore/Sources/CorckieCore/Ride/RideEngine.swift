@@ -802,7 +802,13 @@ public struct RideEngine: Codable, Equatable, Sendable {
             if let i = gaps.indices.last, gaps[i].isOpen { gaps[i].endT = endT }
             r.gaps = gaps.isEmpty ? nil : gaps
         }
-        let distance = r.distanceAfterTrimM
+        var distance = r.distanceAfterTrimM
+        // B57: after a phone takeover the odometer may have frozen (format changed) or never come back; the GPS-integrated
+        // distance is then the better one, and a ride with real GPS distance is never discarded
+        let gpsM = max(0, r.wheelM - (r.wheelAtTrimM ?? 0))
+        let tookOver = !r.gapList.isEmpty
+        let lost = r.gapList.contains { $0.reason == .formatChanged } || (r.gapList.last.map { $0.odoAfterKm == nil } ?? false)
+        if r.trimStartT != nil { distance = PhoneRide.distanceM(scooterM: distance, gpsM: gpsM, scooterLost: lost) }
         var lowBattery: Int?
         if reason == .scooterOff || reason == .disconnected, let b = r.lastBatteryPct, Double(b) <= T.t80ReserveDefaultPct {
             lowBattery = b
@@ -812,7 +818,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
             ranOut = pct
         }
         return RideEnd(ride: r, reason: reason, endT: endT, decidedAtT: t, distanceM: distance,
-                       sizeClass: RideSizeClass.of(distanceM: distance), lowBatteryOffPct: lowBattery, batteryRanOutPct: ranOut)
+                       sizeClass: PhoneRide.sizeClass(distanceM: distance, gpsM: gpsM, phoneTookOver: tookOver),
+                       lowBatteryOffPct: lowBattery, batteryRanOutPct: ranOut)
     }
 
     private mutating func finish(_ reason: RideEndReason, at t: Double, _ out: inout [RideEngineEvent]) {

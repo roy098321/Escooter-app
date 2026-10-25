@@ -135,6 +135,8 @@ public struct RideRecorderCore {
     var lastLiveT = -Double.infinity
     public private(set) var lastSampleT: Double?
     var wasActive = false
+    /// B57: the newest raw scooter packet (logged once when the format watch trips)
+    public private(set) var lastRawPacket: [UInt8]?
 
     public init(engine: RideEngine = RideEngine()) {
         feed = RideFeed(engine: engine)
@@ -147,6 +149,12 @@ public struct RideRecorderCore {
         feed.engine.usualPctPerKm = v
     }
 
+    /// B57: the log line for a format change: the watch's reason, what the newest frame dropped, the newest raw packet
+    public var formatChangeLine: String {
+        PhoneRide.formatChangeLine(reason: feed.pipeline.plausibility.formatChangeReason,
+                                   dropped: feed.pipeline.lastDropped.map(\.rawValue), packet: lastRawPacket)
+    }
+
     /// B56b: the scooter's stored battery flip history (set by the app at each connection)
     public mutating func setBatteryDetector(_ d: BatteryFlipDetector) {
         feed.setBatteryDetector(d)
@@ -156,6 +164,7 @@ public struct RideRecorderCore {
 
     public mutating func scooter(_ e: TimedScooterEvent) -> [RecorderAction] {
         var out: [RecorderAction] = []
+        if case .packet(let bytes) = e.event { lastRawPacket = bytes }
         take(feed.scooter(e), at: e.t, &out)
         if case .packet(let bytes) = e.event, seq != nil {
             if rawStartT == nil { rawStartT = e.t }

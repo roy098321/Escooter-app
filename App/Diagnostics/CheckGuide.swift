@@ -808,6 +808,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: flipping readings show 99, clean ones pass unchanged, +1 waits 60 s, +2 shows at once. The real thing is check ui130."], place: .noScooter),
         "ui130": CheckGuide(proves: "The battery % no longer jumps between neighbours on the real scooter.",
                             steps: ["Switch the scooter on and watch Home for a minute: the % should not flip by one.", "After a ride open its battery chart: no zigzag. Tap Pass or Fail with a note."], place: .scooterHome),
+        "u131": CheckGuide(proves: "A ride the phone recorded after the scooter's readings stopped making sense is kept, with the GPS distance and top speed.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: 1.93 km of GPS is kept, under 300 m is not, the summary says Recorded by phone, the restore list holds 30 days. The real thing is check ui131."], place: .noScooter),
+        "ui131": CheckGuide(proves: "A ride the app set aside can be brought back.",
+                            steps: ["Rides \u{2192} scroll to the bottom \u{2192} Restore discarded ride.", "Find the 24 Oct 18:00 ride, tap Restore, tap Done: it is back in the list. Open it: Recorded by phone with a note. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

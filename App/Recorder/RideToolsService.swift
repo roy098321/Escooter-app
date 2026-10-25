@@ -268,6 +268,46 @@ enum RideToolsService {
         try q.save(r)
     }
 
+    // MARK: B57 Restore discarded ride
+
+    /// Discarded pieces of the last 30 days (real, ended), newest first: what "Restore discarded ride" offers.
+    static func restoreCandidates(_ database: AppDatabase, nowMs: Int64 = FactorUpdater.nowMs()) -> [RideRecord] {
+        let rows = ((try? RideQueries(database).rides(includeDiscarded: true)) ?? []).filter { $0.kind == "discarded" }
+        let ids = PhoneRide.restoreCandidates(rows.map { (id: $0.id, startAt: $0.startAt, kind: $0.kind, isSimulated: $0.isSimulated, ended: !$0.isOpen) },
+                                              nowMs: nowMs)
+        return ids.compactMap { id in rows.first { $0.id == id } }
+    }
+
+    /// The phone's GPS distance of a stored ride, m (for the restore list and the restored ride's size)
+    static func gpsDistanceM(_ database: AppDatabase, rideId: String) -> Double {
+        let samples = ((try? RideQueries(database).samples(rideId: rideId)) ?? []).map(Recorder.sample(from:))
+        return RideMetricsCalculator.compute(samples).gpsDistanceM
+    }
+
+    /// B57: a discarded piece becomes a ride again: numbers from its samples, GPS distance and top speed when the scooter's
+    /// readings were lost, its own size class (never discarded again), then places, routes and factors as after a ride.
+    static func restoreDiscarded(_ database: AppDatabase, rideId: String, nowMs: Int64 = FactorUpdater.nowMs()) throws {
+        let q = RideQueries(database)
+        guard let before = try q.ride(id: rideId), before.kind == "discarded" else { return }
+        try recompute(database, rideId: rideId, reclass: false)
+        guard var r = try q.ride(id: rideId) else { return }
+        let samples = try q.samples(rideId: rideId).map(Recorder.sample(from:))
+        let m = RideMetricsCalculator.compute(samples)
+        let gapS = r.gapScooterS ?? 0
+        let lost = gapS > 0 && m.gpsDistanceM > (r.distanceM ?? 0)
+        r.distanceM = PhoneRide.distanceM(scooterM: r.distanceM ?? 0, gpsM: m.gpsDistanceM, scooterLost: lost)
+        r.topSpeedMps = PhoneRide.topSpeedKmh(scooterKmh: (r.topSpeedMps ?? 0) * 3.6, gpsKmh: m.gpsTopSpeedKmh, scooterLost: lost) / 3.6
+        if lost, let d = r.distanceM, let moving = r.movingS, moving > 0 { r.avgMovingMps = d / moving }
+        r.kind = PhoneRide.restoredKind(distanceM: r.distanceM ?? 0, gpsM: m.gpsDistanceM).rawValue
+        try q.save(r)
+        if lost {
+            var extras = RideExtras.parse(try? q.setting(key: RideExtras.key(rideId: rideId)))
+            extras.recordedByPhone = true          // the scooter's readings were lost and the GPS carried the ride
+            try q.setSetting(key: RideExtras.key(rideId: rideId), json: extras.json)
+        }
+        refresh(database, rideId: rideId, nowMs: nowMs, routes: true)
+    }
+
     /// Stretches of samples marked as walking (pushing the scooter)
     static func walkSpans(_ rows: [RideSampleRecord]) -> [RideStopSpan] {
         var out: [RideStopSpan] = []

@@ -11,6 +11,8 @@ public struct ScooterPipeline {
     public private(set) var frame: ScooterFrame?
     /// B56: the battery % after the flip filter (per-scooter auto-detect); `frame.batteryPct` is the filtered value
     public private(set) var batteryFilter = BatteryFilter()
+    /// B57: what the newest checked frame dropped (for the log line when the format watch trips)
+    public private(set) var lastDropped: [Plausibility.Field] = []
     public private(set) var connected = false
     public private(set) var connects = 0
     public private(set) var disconnects = 0
@@ -48,6 +50,7 @@ public struct ScooterPipeline {
                 return
             }
             var checked = plausibility.check(raw, isPacketA: kind == .a)
+            lastDropped = checked.dropped
             // B56: everything after this point sees the flip-filtered %
             if let pct = checked.frame.batteryPct { checked.frame.batteryPct = batteryFilter.reading(pct, at: e.t) }
             frame = checked.frame
