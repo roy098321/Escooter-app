@@ -14,10 +14,13 @@ public struct SeriesPoint: Equatable, Sendable {
     public var altM: Double?
     /// F-18: the scooter's power, for the Replay's Power layer and tile (nil when not read)
     public var powerW: Double?
+    /// F-33: the controller temperature the scooter reports (nil when not read)
+    public var tempC: Double?
 
     public init(t: Double, lat: Double? = nil, lon: Double? = nil, hAccM: Double? = nil, speedKmh: Double? = nil,
-                batteryPct: Int? = nil, altM: Double? = nil, powerW: Double? = nil) {
+                batteryPct: Int? = nil, altM: Double? = nil, powerW: Double? = nil, tempC: Double? = nil) {
         self.powerW = powerW
+        self.tempC = tempC
         self.t = t
         self.lat = lat
         self.lon = lon
@@ -175,7 +178,9 @@ public enum RideLayers {
     // MARK: Elevation profile and climbs
 
     /// Distance along the ride against smoothed altitude, and the climbs (rise of 5 m or more, ended by a drop of 3 m).
-    public static func elevation(_ points: [SeriesPoint]) -> (profile: [ElevPoint], climbs: [ClimbSpan]) {
+    /// F-34: with an energy track, a climb's battery cost comes from the track (power shape scaled to the ride's drop), not from
+    /// the climb's own whole-percent readings (B38's voltage-sag guard is then not needed).
+    public static func elevation(_ points: [SeriesPoint], energy: EnergyTrack? = nil) -> (profile: [ElevPoint], climbs: [ClimbSpan]) {
         let alt = smoothed(points.map(\.altM), radius: 3)
         var profile: [ElevPoint] = []
         var times: [Double] = []
@@ -208,7 +213,7 @@ public enum RideLayers {
             if let s = startIndex {
                 if a > profile[highIndex].altM { highIndex = i }
                 if profile[highIndex].altM - a >= drop || i == profile.count - 1 {
-                    if let c = climb(profile, times, points, from: s, to: highIndex, rise: rise) { climbs.append(c) }
+                    if let c = climb(profile, times, points, from: s, to: highIndex, rise: rise, energy: energy) { climbs.append(c) }
                     startIndex = nil
                     lowIndex = i
                 }
@@ -223,12 +228,19 @@ public enum RideLayers {
         return (thinned(profile, to: 240), climbs)
     }
 
-    private static func climb(_ profile: [ElevPoint], _ times: [Double], _ points: [SeriesPoint], from: Int, to: Int, rise: Double) -> ClimbSpan? {
+    private static func climb(_ profile: [ElevPoint], _ times: [Double], _ points: [SeriesPoint], from: Int, to: Int, rise: Double,
+                              energy: EnergyTrack?) -> ClimbSpan? {
         let gain = profile[to].altM - profile[from].altM
         guard to > from, gain >= rise else { return nil }
         let d = profile[to].distM - profile[from].distM
         let grade = d > 0 ? gain / d * 100 : 0
-        let used = climbBatteryUsed(points, from: times[from], to: times[to], distM: d, gainM: gain)
+        let used: Int?
+        if let energy, energy.source != .none {
+            let fromTrack = energy.usedPct(from: times[from], to: times[to]).map { Int($0.rounded()) }
+            used = (fromTrack ?? 0) >= batteryResolutionPct ? fromTrack : nil
+        } else {
+            used = climbBatteryUsed(points, from: times[from], to: times[to], distM: d, gainM: gain)
+        }
         return ClimbSpan(startDistM: profile[from].distM, endDistM: profile[to].distM, gainM: gain, gradePct: grade, usedPct: used)
     }
 

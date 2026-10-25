@@ -852,6 +852,8 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the made-up and this phone's loads say ok (a failure would be named)."], place: .noScooter),
         "ui143": CheckGuide(proves: "The quick dial never disappears from Home.",
                             steps: ["Connect the scooter and look at Home before riding, also right after connecting.", "The round buttons are there each time (at least ? and the dots). Tap Pass or Fail with a note."], place: .scooterHome),
+        "u147": CheckGuide(proves: "Battery use is spread along the ride by the scooter's power and adds up to what the battery really dropped.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the four lines each say ok."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

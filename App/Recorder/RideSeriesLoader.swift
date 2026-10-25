@@ -15,6 +15,8 @@ struct RideSeries {
     var speedValues: [ValueStretch] = []
     var hillValues: [ValueStretch] = []
     var windValues: [ValueStretch]?
+    /// F-34: the shared energy track (power shape scaled to the battery drop)
+    var energy: EnergyTrack = .empty
 
     func values(_ layer: MapLayer) -> [ValueStretch] {
         switch layer {
@@ -42,7 +44,7 @@ enum RideSeriesLoader {
             let mps: Double? = s.speedMps ?? s.gpsSpeedMps
             let kmh: Double? = mps.map { $0 * 3.6 }
             points.append(SeriesPoint(t: Double(s.t) / 1000, lat: s.lat, lon: s.lon, hAccM: s.hAccM, speedKmh: kmh,
-                                      batteryPct: s.batteryPct, altM: s.altBaroM, powerW: s.powerW))
+                                      batteryPct: s.batteryPct, altM: s.altBaroM, powerW: s.powerW, tempC: s.tempC))
         }
         var series = RideSeries()
         series.points = points
@@ -50,7 +52,9 @@ enum RideSeriesLoader {
         series.hills = RideLayers.hills(points)
         series.speedValues = RideLayers.smoothedStretches(RideLayers.speedStretches(points))
         series.hillValues = RideLayers.smoothedStretches(RideLayers.hillStretches(points))
-        let elevation = RideLayers.elevation(points)
+        let used = CalibrationUpdater.shownUsed(db, rideId: rideId, usedPct: ride.usedPct)
+        series.energy = EnergyTrack.build(points, totalUsedPct: used)
+        let elevation = RideLayers.elevation(points, energy: series.energy)
         series.profile = elevation.profile
         series.climbs = elevation.climbs
         series.chart = RideLayers.chartSeries(points)
