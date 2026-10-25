@@ -707,7 +707,13 @@ enum CheckList {
         m("ui131", p6M, "Restore discarded ride (B57)", "Rides \u{2192} bottom of the list \u{2192} Restore discarded ride",
           "A sheet lists the pieces set aside in the last 30 days with time, distance (GPS when it saw more) and length; Restore puts one back in the list as a ride or short hop; the 24 Oct 18:00 ride should be there", manual: true),
         m("u132", p6M, "A ride's battery start and end are settled readings (B54)", "Nothing to do \u{00B7} Run all automatic marks it",
-          "Made-up packets 100, 100, 100 then 99 after power-on: no frame carries the boot 100 %, the ride starts at 99 %; a ride that went 99 \u{2192} 100 shows 99% once")
+          "Made-up packets 100, 100, 100 then 99 after power-on: no frame carries the boot 100 %, the ride starts at 99 %; a ride that went 99 \u{2192} 100 shows 99% once"),
+        m("u133", p6M, "A ride ends at its last movement (F-38)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Made-up ride: 5 min, a 2 min stop, 5 min more, then standing: it ends at the last movement (not 10 min later), the stop is kept and Time includes it"),
+        m("u134", p6M, "The ride starts at the first real riding movement (B62)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Made-up inputs: a minute of pushing at 4 km/h then riding: the ride starts at the first riding second; only pushing saves nothing; a lifted wheel spinning is not riding; 8 km/h and 3 s are the named thresholds"),
+        m("ui134", p6M, "Scooter on early, ride later (B62)", "Switch the scooter on at home or in the lift, wait or wheel it out, then ride",
+          "The Scooter on notification stays until you really ride; the ride's start time and its clock begin when you set off (motor or faster than walking), not when you switched on; wheeling it out without riding saves no ride", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

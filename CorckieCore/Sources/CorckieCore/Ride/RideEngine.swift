@@ -33,6 +33,20 @@ public enum RideConfirmSignal: String, Codable, Sendable {
     case gpsDistance
     /// Start ride pressed (skips stage 2)
     case manual
+    /// B62: real riding movement (motor power or faster than walking pace) for a few seconds in a row
+    case riding
+}
+
+/// B62 (owner 24 Oct): the ride starts at the first real riding movement: motor pushing (power) or faster than walking pace,
+/// for a few seconds in a row, back-dated to the beginning of that movement. Standing, pushing at walking pace without motor
+/// power and a lifted wheel spinning are not riding. Starting guesses, to be tuned on 1 Hz ride logs (HUNT-1 week).
+public enum RideStartRule {
+    /// Faster than this is riding even without motor power (km/h)
+    public static let ridingKmh = 8.0
+    /// Riding movement must last this long in a row (s)
+    public static let ridingHoldS = 3.0
+    /// A wheel that turns while the phone has been still this long is a lifted wheel (s)
+    public static let liftedWindowS = 5.0
 }
 
 /// Why a started ride was dropped without a trace (silent cancel: ride row deleted, no message).
@@ -41,6 +55,8 @@ public enum RideCancelReason: String, Codable, Sendable {
     case gpsStill
     /// Not confirmed within T15
     case unconfirmed
+    /// B62: the ride ended without any real riding movement (nothing is saved)
+    case noRiding
     /// "Not riding" tapped
     case notRiding
     /// The scooter switched itself off before the ride was confirmed
@@ -206,6 +222,8 @@ public struct EngineRide: Codable, Equatable, Sendable {
     public var gaps: [RideGap]?
     /// Battery % at the start (this ride's %/km for the estimate, decision 5)
     public var firstBatteryPct: Int?
+    /// B62: the beginning of the first real riding movement (the ride's start once it ends); nil = no riding yet
+    public var ridingStartT: Double?
 
     public var gapList: [RideGap] { gaps ?? [] }
 
@@ -276,6 +294,8 @@ public enum RideEngineEvent: Equatable, Sendable {
     case rideStarted(seq: Int, at: Double, manual: Bool)
     /// Stage 2: hide the "starting…" dot, release the queued ride-start messages
     case rideConfirmed(seq: Int, at: Double, by: RideConfirmSignal)
+    /// B62: the first real riding movement (`at` = its beginning): the ride has really started
+    case ridingStarted(seq: Int, at: Double)
     /// Silent cancel: delete the ride row, back to Home, no message
     case rideCancelled(seq: Int, at: Double, reason: RideCancelReason)
     /// Show "Same ride?" (tappable while stopped)
@@ -339,6 +359,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
     var gpsFastSince: Double?
     var lastMotorBatteryPct: Int?
     var lastIntegrateT: Double?
+    /// B62: since when the riding movement has lasted without a break
+    var ridingRunSince: Double?
 
     // M1-04 trackers
     var stopCandidateSince: Double?
@@ -656,6 +678,36 @@ public struct RideEngine: Codable, Equatable, Sendable {
         ride = r
     }
 
+    /// B62: riding movement now: motor power while the wheel turns, or faster than `RideStartRule.ridingKmh` (wheel speed, or
+    /// GPS speed without the scooter). Pushing at walking pace without motor power is not riding.
+    func ridingNow(at t: Double) -> Bool {
+        if linkLive(at: t) {
+            let v = speedKmh ?? 0
+            return v > RideStartRule.ridingKmh || ((currentA ?? 0) > T.t11ConfirmCurrentA && v > T.t10AutostartKmh)
+        }
+        return (gpsSpeedNow(at: t) ?? 0) > RideStartRule.ridingKmh
+    }
+
+    /// B62: the first riding movement that lasts `ridingHoldS` in a row starts the ride, back-dated to its beginning. A wheel
+    /// that turns while the phone stays still (good fixes) is a lifted wheel, not riding.
+    private mutating func trackRiding(at t: Double, _ out: inout [RideEngineEvent]) {
+        guard var r = ride, r.ridingStartT == nil, ridingNow(at: t) else {
+            ridingRunSince = nil
+            return
+        }
+        let since = ridingRunSince ?? t
+        ridingRunSince = since
+        guard t - since >= RideStartRule.ridingHoldS else { return }
+        if linkLive(at: t), gpsStill(window: RideStartRule.liftedWindowS, at: t) == true {
+            ridingRunSince = nil
+            return
+        }
+        r.ridingStartT = since
+        ride = r
+        ridingRunSince = nil
+        out.append(.ridingStarted(seq: r.seq, at: since))
+    }
+
     // MARK: Evaluate
 
     private mutating func evaluate(at t: Double, _ out: inout [RideEngineEvent]) {
@@ -663,6 +715,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         guard ride != nil else { return }
         trackTrim(at: t)
         trackMovement(at: t)
+        trackRiding(at: t, &out)
         if phase == .starting { evaluateStarting(at: t, &out) }
         guard ride != nil else { return }
         updatePhoneMode(at: t, &out)
@@ -790,6 +843,22 @@ public struct RideEngine: Codable, Equatable, Sendable {
     /// The ride as it would end now (used by `finish` and by recovery).
     public func closing(_ reason: RideEndReason, at t: Double) -> RideEnd? {
         guard var r = ride else { return nil }
+        // B62: the ride starts at its first real riding movement (back-dated); what came before (standing, wheeling it out) is not
+        // the ride. `startT` stays the row's clock (the samples are stored against it); the Recorder moves the row's start to
+        // `ridingStartT` when it closes the ride.
+        if let rs = r.ridingStartT, rs > r.startT {
+            if let f = r.firstMoveT, f < rs { r.firstMoveT = rs }
+            if let tr = r.trimStartT, tr < rs { r.trimStartT = rs }
+            r.stops.removeAll { ($0.endT ?? .infinity) <= rs }
+            for i in r.stops.indices where r.stops[i].startT < rs { r.stops[i].startT = rs }
+            r.walks.removeAll { ($0.endT ?? .infinity) <= rs }
+            for i in r.walks.indices where r.walks[i].startT < rs { r.walks[i].startT = rs }
+            if var gaps = r.gaps {
+                gaps.removeAll { ($0.endT ?? .infinity) <= rs }
+                for i in gaps.indices where gaps[i].startT < rs { gaps[i].startT = rs }
+                r.gaps = gaps.isEmpty ? nil : gaps
+            }
+        }
         let endT = max(r.startT, min(t, r.lastMoveT ?? t))
         // A stop still open at the end is the standstill after the last movement, not a stop
         r.stops.removeAll { $0.isOpen || $0.startT >= endT }
@@ -823,6 +892,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
     }
 
     private mutating func finish(_ reason: RideEndReason, at t: Double, _ out: inout [RideEngineEvent]) {
+        // B62: no riding movement = nothing saved (a ride started by hand is kept, as the rider asked for it)
+        if let r = ride, r.ridingStartT == nil, !r.manual { return cancel(r, .noRiding, at: t, &out) }
         guard let end = closing(reason, at: t) else { return }
         if let pct = end.batteryRanOutPct { out.append(.batteryRanOut(seq: end.ride.seq, pct: pct)) }
         out.append(.rideEnded(end))
@@ -836,6 +907,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         armed = (speedKmh ?? 0) <= T.t10AutostartKmh
         currentAboveSince = nil
         gpsFastSince = nil
+        ridingRunSince = nil
         stopCandidateSince = nil
         stopCandidateFix = nil
         pushSince = nil
@@ -987,7 +1059,9 @@ public struct RideEngine: Codable, Equatable, Sendable {
                          mapOffline: mapOffline, phase: phase,
                          scooterTempC: linked ? temperatureC : nil, phoneMode: phone,
                          formatChanged: untrustedSince != nil,
-                         lat: lastFix?.lat, lon: lastFix?.lon, rideElapsedS: ride.map { max(0, t - $0.startT) },
+                         // B62: the clock runs from the first real riding movement (a ride started by hand: from the press until then)
+                         lat: lastFix?.lat, lon: lastFix?.lon,
+                         rideElapsedS: ride.map { r in max(0, t - (r.ridingStartT ?? (r.manual ? r.startT : t))) },
                          rideDistanceM: ride.map { $0.wheelM })
     }
 }

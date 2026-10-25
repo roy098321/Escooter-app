@@ -183,8 +183,9 @@ actor Recorder {
     private func apply(_ a: RecorderAction) {
         switch a {
         case .rideStarted:
-            hooks.rideStarted()
-            hooks.location(true)
+            hooks.location(true)          // B62: recording in the background from the first roll; quiet until the ride really starts
+        case .ridingStarted:
+            hooks.rideStarted()           // B62: the first real riding movement
         case .rideCancelled:
             hooks.location(false)
         case let .live(input, state):
@@ -196,6 +197,7 @@ actor Recorder {
             return
         case let .rideConfirmed(seq, _, by):
             hooks.log("Ride \(seq) confirmed by \(by.rawValue)")
+            if by == .manual { hooks.rideStarted() }      // Start pressed: the rider is engaged
         case let .sameRideOffered(seq, previous):
             hooks.log("Same ride? offered for \(seq) (after \(previous))")
         default:
@@ -284,7 +286,7 @@ actor Recorder {
                 try q.setSetting(key: "t80.batteryRanOut", json: "{\"pct\":\(pct),\"rideId\":\"\(id)\"}")
             case let .rideEnded(c):
                 close(c)
-            case .rideConfirmed, .sameRideOffered, .live, .rideActive, .snapshot:
+            case .rideConfirmed, .ridingStarted, .sameRideOffered, .live, .rideActive, .snapshot:
                 break
             }
         } catch {
@@ -294,16 +296,26 @@ actor Recorder {
 
     /// Closes the ride row from the engine's end and the stored samples (the totals are the stored ones, M1-06).
     private func close(_ c: RecorderClose) {
-        let end = c.end
-        let seq = end.ride.seq
+        let seq = c.end.ride.seq
         defer {
             gapRowIds[seq] = nil
             hooks.location(false)
         }
         guard let db = database, let id = rideIds[seq] else { return }
         let q = RideQueries(db)
+        var end = c.end
         do {
             guard var r = try q.ride(id: id) else { return }
+            // B62: the ride starts at its first real riding movement: the row's start moves there and the samples follow
+            // (what was recorded before it, standing or wheeling the scooter out, is not the ride; the raw packets keep it)
+            if let rs = end.ride.ridingStartT, let orig = rideStartT[seq], rs - orig >= 1 {
+                let deltaMs = Int64(((rs - orig) * 1000).rounded())
+                try q.rebaseSamples(rideId: id, byMs: deltaMs)
+                r.startAt += deltaMs
+                rideStartT[seq] = rs
+                end.ride.startT = rs
+                hooks.log("B62: ride \(seq) starts \(deltaMs / 1000) s after the first roll")
+            }
             let samples = try q.samples(rideId: id).map(Self.sample(from:))
             let m = end.metrics(samples, ignoredReadings: c.ignoredReadings)
             Self.fill(&r, m, topSpeedKmh: c.topSpeedKmh)
@@ -505,6 +517,7 @@ extension RecorderAction {
         switch self {
         case .rideStarted: return "ride start"
         case .rideConfirmed: return "confirm"
+        case .ridingStarted: return "riding started"
         case .rideCancelled: return "cancel"
         case .samples: return "samples"
         case .rawChunk: return "raw chunk"

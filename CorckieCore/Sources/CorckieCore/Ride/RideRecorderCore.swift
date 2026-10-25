@@ -48,6 +48,8 @@ public enum RecorderAction: Equatable, Sendable {
     /// Stage 1: create the ride row (`recording`), location on, `Notifier.rideStarted()`
     case rideStarted(seq: Int, startT: Double, manual: Bool)
     case rideConfirmed(seq: Int, at: Double, by: RideConfirmSignal)
+    /// B62: the first real riding movement (`at` = its beginning): the ride-start messages may go (quiet until then, P-4)
+    case ridingStarted(seq: Int, at: Double)
     /// Silent cancel: delete the ride row (samples, chunks, gaps go with it)
     case rideCancelled(seq: Int)
     /// A batch of samples (t = seconds from the ride start)
@@ -253,6 +255,8 @@ public struct RideRecorderCore {
                 lastSnapshotT = -Double.infinity
             case let .rideConfirmed(s, at, by):
                 out.append(.rideConfirmed(seq: s, at: at, by: by))
+            case let .ridingStarted(s, at):
+                out.append(.ridingStarted(seq: s, at: at))
             case let .rideCancelled(s, _, _):
                 clearRide()
                 out.append(.rideCancelled(seq: s))

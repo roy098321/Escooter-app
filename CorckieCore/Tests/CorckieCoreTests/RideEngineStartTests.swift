@@ -82,18 +82,19 @@ final class RideEngineStartTests: XCTestCase {
     }
 
     func test_T12_gpsSpeed_3s_justInsideAndOutside() {
-        var (e, _) = started(kmh: 9)
+        // B62: a wheel above 8 km/h is riding by itself, so the wheel stays at 7 here (GPS confirms the stage-2 rule alone)
+        var (e, _) = started(kmh: 7)
         for t in stride(from: 1.0, through: 3.9, by: 1.0) {
-            e.handle(.frame(frame(t + 0.2, 9)), at: t + 0.2)
+            e.handle(.frame(frame(t + 0.2, 7)), at: t + 0.2)
             e.handle(.fix(fix(t, kmh: 8.1)), at: t)
         }
         XCTAssertEqual(e.phase, .starting, "8.1 km/h for 2.9 s")
         let out = e.handle(.fix(fix(4.0, kmh: 8.1)), at: 4.0)
         XCTAssertEqual(out, [.rideConfirmed(seq: 1, at: 4.0, by: .gpsSpeed)])
 
-        var (f, _) = started(kmh: 9)
+        var (f, _) = started(kmh: 7)
         for t in stride(from: 1.0, through: 9.0, by: 1.0) {
-            f.handle(.frame(frame(t + 0.2, 9)), at: t + 0.2)
+            f.handle(.frame(frame(t + 0.2, 7)), at: t + 0.2)
             f.handle(.fix(fix(t, kmh: 8.0)), at: t)
         }
         XCTAssertEqual(f.phase, .starting, "8.0 km/h is not above T12")

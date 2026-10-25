@@ -814,6 +814,12 @@ struct CheckGuide {
                             steps: ["Rides \u{2192} scroll to the bottom \u{2192} Restore discarded ride.", "Find the 24 Oct 18:00 ride, tap Restore, tap Done: it is back in the list. Open it: Recorded by phone with a note. Tap Pass or Fail with a note."], place: .noScooter),
         "u132": CheckGuide(proves: "A short ride right after switching on never shows the battery going up (the boot reading is not used).",
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the boot 100 % never reaches the ride, and a ride whose end reading is higher shows its start once."], place: .noScooter),
+        "u133": CheckGuide(proves: "A ride ends when you last moved, and a stop in the middle still counts in its Time.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the made-up ride ends at its last movement, its stop is kept and Time includes it."], place: .noScooter),
+        "u134": CheckGuide(proves: "A ride starts when you really start riding, not when the scooter is switched on or wheeled out.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: pushing first then riding starts at the first riding second, pushing only saves nothing, a lifted wheel is not riding. The real thing is check ui134."], place: .noScooter),
+        "ui134": CheckGuide(proves: "Switching the scooter on early no longer starts the ride clock early.",
+                            steps: ["Switch the scooter on at home (or in the lift) and wait a minute, or wheel it out.", "Ride as usual. Afterwards open the ride: its start time is when you set off. A minute of wheeling without riding saves no ride. Tap Pass or Fail with a note."], place: .ride),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

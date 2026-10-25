@@ -123,6 +123,20 @@ struct RideQueries {
         }
     }
 
+    /// B62: the ride's start moved later by `byMs`: every sample's time follows, the ones from before the new start go.
+    /// Two steps through negative times, so no two rows ever share a (ride, t) on the way.
+    func rebaseSamples(rideId: String, byMs: Int64) throws {
+        try requireWritable()
+        guard byMs > 0 else { return }
+        try writer.write { db in
+            try db.execute(sql: "DELETE FROM ride_sample WHERE rideId = ? AND t < ?", arguments: [rideId, byMs])
+            try db.execute(sql: "UPDATE ride_sample SET t = -(t - ?) - 1 WHERE rideId = ?", arguments: [byMs, rideId])
+            try db.execute(sql: "UPDATE ride_sample SET t = -t - 1 WHERE rideId = ? AND t < 0", arguments: [rideId])
+            try db.execute(sql: "UPDATE gap SET startT = MAX(0, startT - ?), endT = CASE WHEN endT IS NULL THEN NULL ELSE MAX(0, endT - ?) END WHERE rideId = ?",
+                           arguments: [byMs, byMs, rideId])
+        }
+    }
+
     /// `setting` row (key → JSON text).
     func setSetting(key: String, json: String) throws {
         try requireWritable()

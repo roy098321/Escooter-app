@@ -35,7 +35,7 @@ final class RecorderCoreTests: XCTestCase {
             case let .snapshot(s): snapshots.append(s)
             case let .live(_, state): lives.append(state)
             case let .rideActive(on): active.append(on)
-            case .rideConfirmed, .sameRideOffered, .rideMerged, .batteryRanOut: break
+            case .rideConfirmed, .ridingStarted, .sameRideOffered, .rideMerged, .batteryRanOut: break
             }
         }
 

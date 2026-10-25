@@ -5,7 +5,9 @@ import Foundation
 /// Batch 101.251026.00 chunk A checks ("never lose a ride"), on made-up input only (nothing real is read or written):
 /// u130 the battery % flip filter and its per-scooter auto-detect (B56, B56b),
 /// u131 a ride the phone took over is kept with its GPS distance and top speed, "Recorded by phone", restore list (B57),
-/// u132 a ride's start / end battery are settled readings: the boot 100 % never reaches them; "went up" shows the start once (B54).
+/// u132 a ride's start / end battery are settled readings: the boot 100 % never reaches them; "went up" shows the start once (B54),
+/// u133 a ride ends at its last movement and a stop inside it counts in its Time (F-38),
+/// u134 the ride starts at the first real riding movement, back-dated; pushing, standing and a lifted wheel do not start it (B62).
 @MainActor
 enum B101Checks {
     private final class Expect {
@@ -22,6 +24,78 @@ enum B101Checks {
         runFlipFilter()
         runPhoneRide()
         runSettledBattery()
+        runEndTime()
+        runRidingStart()
+    }
+
+    /// Made-up frames and fixes one a second: `kmh` on the wheel with `amps`; the phone moves too unless `lifted`
+    private struct Feed {
+        var e = RideEngine()
+        var events: [RideEngineEvent] = []
+        var t = 0.0
+        var odo = 100.0
+        var north = 0.0
+
+        init() {
+            e.handle(.connected, at: 0)
+            events += e.handle(.frame(ScooterFrame(t: 0)), at: 0)
+        }
+
+        mutating func go(for seconds: Double, kmh: Double, amps: Double, lifted: Bool = false) {
+            let end = t + seconds
+            while t < end {
+                t += 1
+                if !lifted { odo += kmh / 3600; north += kmh / 3.6 }
+                var f = ScooterFrame(t: t)
+                f.speedKmh = kmh
+                f.currentA = amps
+                f.batteryPct = 80
+                f.odometerKm = odo
+                f.voltage = 50
+                events += e.handle(.frame(f), at: t)
+                events += e.handle(.fix(PhoneFix(t: t, lat: 10 + north / 111_320, lon: -30, hAccM: 5, speedMps: lifted ? 0 : kmh / 3.6)), at: t)
+            }
+        }
+
+        var end: RideEnd? { events.compactMap { if case .rideEnded(let x) = $0 { return x } else { return nil } }.first }
+        var ridingAt: Double? { events.compactMap { if case let .ridingStarted(_, at) = $0 { return at } else { return nil } }.first }
+    }
+
+    // MARK: u133
+
+    private static func runEndTime() {
+        let expect = Expect()
+        var f = Feed()
+        f.go(for: 300, kmh: 20, amps: 8)
+        f.go(for: 120, kmh: 0, amps: 0)
+        f.go(for: 280, kmh: 20, amps: 8)
+        f.go(for: 700, kmh: 0, amps: 0)
+        let end = f.end
+        expect(end?.reason == .standstill && abs((end?.endT ?? 0) - 700) <= 1.5, "F-38: standing 10 min after the last movement ends the ride at the last movement (\(Int(end?.endT ?? 0)) s)")
+        expect(end?.ride.stops.count == 1, "the 2 min stop inside the ride is kept")
+        let time = RideEndTime.timeS(firstMoveS: end?.ride.firstMoveT, lastMoveS: end?.endT) ?? 0
+        expect(abs(time - 699) <= 2, "Time is start to last movement with the stop in it (\(Int(time)) s)")
+        CheckResults.shared.set("u133", expect.ok ? .pass : .fail, expect.line)
+    }
+
+    // MARK: u134
+
+    private static func runRidingStart() {
+        let expect = Expect()
+        var a = Feed()
+        a.go(for: 60, kmh: 4, amps: 0)
+        let before = a.ridingAt
+        a.go(for: 300, kmh: 20, amps: 8)
+        expect(before == nil && a.ridingAt == 61, "B62: pushing it out for a minute is not riding; the ride starts at the first riding second (\(a.ridingAt.map { String(Int($0)) } ?? "none"))")
+        var b = Feed()
+        b.go(for: 90, kmh: 5, amps: 0)
+        b.go(for: 700, kmh: 0, amps: 0)
+        expect(b.end == nil, "only pushing at walking pace: nothing is saved")
+        var c = Feed()
+        c.go(for: 30, kmh: 25, amps: 6, lifted: true)
+        expect(c.ridingAt == nil, "a lifted wheel spinning while the phone stays still is not riding")
+        expect(RideStartRule.ridingKmh == 8 && RideStartRule.ridingHoldS == 3, "the thresholds: 8 km/h, 3 s in a row")
+        CheckResults.shared.set("u134", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u132
