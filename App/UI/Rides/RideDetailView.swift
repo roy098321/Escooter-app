@@ -158,7 +158,7 @@ struct RideDetailView: View {
             if let id = activeId { ReplayView(rideId: id, startDownload: replayDownload) }
         }
         .fullScreenCover(isPresented: $showCharts) {
-            if let s = previewSeries ?? series { RideChartsFullScreen(points: s.points) }
+            if let s = previewSeries ?? series { RideGraphView(data: s.layerData) }   // note 13: one graph with chips
         }
         .sheet(item: $exportFile) { file in ShareSheet(url: file.url) }
         .overlay(alignment: .bottom) { toastBar }

@@ -886,6 +886,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the count, the range and the pages each say ok. The real thing is check ui155."], place: .noScooter),
         "ui155": CheckGuide(proves: "You can see how close each insight is, and the sure ones get their own page.",
                             steps: ["Open Stats and scroll to Insights.", "Each card has a bar with two marks and a count; early reads show a range. Confident ones are rows that open a page. Tap Pass or Fail with a note."], place: .noScooter),
+        "u156": CheckGuide(proves: "The ride graph's numbers, links and hill selection are right.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: chips, incline, map tap, hill and link each say ok. The real thing is check ui156."], place: .noScooter),
+        "ui156": CheckGuide(proves: "You can read any two things on one ride graph and find where on the map they happened.",
+                            steps: ["Open a ride, tap the Ride graph panel.", "Add Incline; touch a hill on the map: it is selected and the cursor jumps there. Tap Scatter.", "Pinch sideways and up-down, then double tap. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

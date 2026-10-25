@@ -60,12 +60,12 @@ struct RideSeriesPanels: View {
     private var chartsPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Speed and battery").font(.headline)
+                Text("Ride graph").font(.headline)
                 Spacer()
                 if let onExpand {
                     Button(action: onExpand) { Image(systemName: "arrow.up.left.and.arrow.down.right").font(.subheadline.weight(.semibold)) }
                         .foregroundStyle(Theme.accentInk)
-                        .accessibilityLabel("Open the charts full screen")
+                        .accessibilityLabel("Open the ride graph")
                 }
             }
             Chart {
@@ -81,21 +81,8 @@ struct RideSeriesPanels: View {
             .chartYAxisLabel("km/h")
             .frame(height: 110)
             .accessibilityLabel("Speed chart, kilometres per hour against minutes")
-            Chart {
-                ForEach(Array(series.chart.enumerated()), id: \.offset) { _, p in
-                    if let b = p.batteryPct {
-                        LineMark(x: .value("Minutes", p.t / 60), y: .value("Battery", b))
-                            .foregroundStyle(Color.green)
-                            .interpolationMethod(.stepEnd)
-                    }
-                }
-            }
-            .chartYScale(domain: batteryAxis.domain)
-            .chartYAxis { AxisMarks(values: batteryAxis.ticks) }   // B37: three labels, never crowded
-            .chartXAxisLabel("min")
-            .chartYAxisLabel("%")
-            .frame(height: 110)
-            .accessibilityLabel("Battery chart, percent against minutes")
+            // note 13: one chart here; battery, height, incline and more are chips in the full ride graph
+            Text("Tap for battery, height, incline and more").font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)

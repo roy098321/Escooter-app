@@ -259,7 +259,7 @@ enum UIShot {
             case "replay":
                 ReplayView(rideId: nil, previewData: ReplayDataLoader.sample())
             case "ride-charts-full":
-                RideChartsFullScreen(points: RideDetailPreview.series().points)
+                RideGraphView(data: RideDetailPreview.series().layerData)
             case "ride-compare":
                 CompareSheet(rideId: "a", preview: RideToolsPreview.compare())
             case "ride-merge":

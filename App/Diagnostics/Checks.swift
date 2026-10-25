@@ -779,7 +779,11 @@ enum CheckList {
         m("u155", p6M, "Insight progress and pages (note 9)", "Nothing to do \u{00B7} Run all automatic marks it",
           "A learning insight reads 5 of 12 steady stretches to a first read; an early read shows its range (26\u{2013}30 km/h); only confident insights become pages"),
         m("ui155", p6M, "Insights show how far along they are (note 9)", "Stats \u{2192} Insights",
-          "Each insight has a bar with early read and confident marks and a count; an early read shows a range tagged early read that narrows with more rides (and says so if it widens); a confident insight is a row (Speed, Battery \u{2026}) that opens its own page", manual: true)
+          "Each insight has a bar with early read and confident marks and a count; an early read shows a range tagged early read that narrows with more rides (and says so if it widens); a confident insight is a row (Speed, Battery \u{2026}) that opens its own page", manual: true),
+        m("u156", p6M, "Ride graph maths (note 13)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "A made-up ride with a climb: Speed is the only line at first; incline, acceleration and battery per km are chips; the incline on the hill is about 4 %; a map tap finds its moment; the hill can be selected; the scatter says how strong the link is"),
+        m("ui156", p6M, "One ride graph with chips (note 13)", "Open a ride \u{2192} tap the Ride graph panel",
+          "One chart with Speed; chips add Battery, Height, Incline, Acceleration, Battery per km, Power, Temp (Wind with weather), each in its colour, the outlined chip's scale on the axis; touching the map moves the cursor (a touch on a hill selects it), touching the chart moves the dot; Select marks a stretch, Scatter shows two lines against each other with a plain-words link; pinch sideways zooms time, up-down the outlined line, double tap resets", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

@@ -10,7 +10,8 @@ import Foundation
 /// u152 the ride review card snaps to full / default / one line / hidden with a lip (note 11),
 /// u153 Plug in after every ride: when it shows, − / +, the alert time with its margin, why it is estimated (F-31b),
 /// u154 one Stats chart: title, metric switch, reference lines, a readout per bar (note 8),
-/// u155 insights show progress with early read / confident marks, a shrinking range, pages once confident (note 9).
+/// u155 insights show progress with early read / confident marks, a shrinking range, pages once confident (note 9),
+/// u156 the ride graph: Speed by default, chips with own scales, map ↔ chart, hills, scatter link, zoom (note 13).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -34,6 +35,31 @@ enum B101LateChecks {
         runPlugIn()
         runStatsChart()
         runInsightProgress()
+        runRideGraph()
+    }
+
+    // MARK: u156
+
+    /// Note 13: a made-up ride with a climb: the chips, incline on the hill, the map tap's time, the hill selection, the link words
+    private static func runRideGraph() {
+        let expect = Expect()
+        let pts = madeUpRide(400, power: { (100..<250).contains($0) ? 700 : 250 }, battery: { 80 - $0 / 50 },
+                             alt: { $0 < 100 ? 10 : ($0 < 250 ? 10 + Double($0 - 100) * 0.2 : 40) },
+                             speed: { (100..<250).contains($0) ? 12 + Double($0 % 7) : 25 + Double($0 % 5) })
+        let data = RideLayerData(points: pts, energy: EnergyTrack.build(pts), weather: [], rideStartMs: 0)
+        expect(GraphSeries.defaultChips == [.speed], "Speed is the only line at first")
+        let chips = RideGraph.available(data)
+        expect(chips.contains(.incline) && chips.contains(.accel) && chips.contains(.batteryPerKm), "chips: " + chips.map(\.title).joined(separator: ", "))
+        let incline = RideGraph.line(.incline, data).value(at: 175) ?? 0
+        expect(abs(incline - 4) < 0.6, String(format: "incline on the hill %.1f %%", incline))
+        let tapped = pts[200].lat.flatMap { lat in pts[200].lon.map { GeoPoint(lat: lat, lon: $0) } }.flatMap { RideGraph.time(near: $0, points: pts) }
+        expect(tapped == 200, "a map tap on the route moves the cursor to its moment")
+        let hills = RideGraph.hills(pts, energy: data.energy)
+        expect(hills.count == 1 && RideGraph.hill(at: 175, hills: hills) != nil, "the hill can be selected: " + (hills.first?.name ?? "none"))
+        let r = RideGraph.correlation(RideGraph.pairs(x: RideGraph.line(.incline, data), y: RideGraph.line(.speed, data), in: hills.first))
+            ?? RideGraph.correlation(RideGraph.pairs(x: RideGraph.line(.incline, data), y: RideGraph.line(.speed, data), in: nil))
+        expect(r != nil, RideGraph.linkText(r, x: .incline, y: .speed))
+        expect.report("u156")
     }
 
     // MARK: u155
