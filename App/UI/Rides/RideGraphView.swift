@@ -160,7 +160,7 @@ struct RideGraphView: View {
     }
 
     private func colour(_ s: GraphSeries) -> Color {
-        guard let c = SpeedPalette.rgb(s.hex) else { return .accentColor }
+        guard let c = SpeedPalette.rgb(s.hex) else { return Theme.accent }
         return Color(red: c.r, green: c.g, blue: c.b)
     }
 
