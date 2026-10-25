@@ -37,6 +37,7 @@ struct DeveloperView: View {
                 tool("Readability", "sun.max", ["f2", "f3"]) { ReadabilityView() }
                 tool("Insights (simulated windy week)", "text.bubble", ["u32", "mi1"]) { InsightsView() }
                 tool("Accuracy (estimate errors)", "scope", ["u47", "u48", "u49"]) { AccuracyView() }
+                tool("Ride screen preview", "play.rectangle", ["ui159"]) { RideScreenPreview() }   // F-37: never records
             }
                 .glassRows()
         }
