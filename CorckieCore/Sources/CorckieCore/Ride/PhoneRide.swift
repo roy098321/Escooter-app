@@ -73,7 +73,7 @@ public struct RideExtras: Codable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey { case recordedByPhone, formatReason, formatPacketHex }
 
     /// Every field may be missing (older rows, later fields)
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: Swift.Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         recordedByPhone = try c.decodeIfPresent(Bool.self, forKey: .recordedByPhone) ?? false
         formatReason = try c.decodeIfPresent(String.self, forKey: .formatReason)
