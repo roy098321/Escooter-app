@@ -169,6 +169,7 @@ struct HomeView: View {
             }
             .defaultScrollAnchor(UIShot.requested == "home-bottom" ? .bottom : nil)   // the ui-shot of the very bottom (B23)
         }
+        .onChange(of: showWhereTo) { _, open in if open { reloadLastRide() } }   // B58: fresh times when the sheet opens
         .sheet(isPresented: $showWhereTo) {
             WhereToSheet(rows: shownRows, selected: selectedRoute, editable: preview == nil, onPick: { id in
                 pickRoute(id)
@@ -769,12 +770,15 @@ private struct WhereToSheet: View {
             PlaceIconView(icon: r.icon, size: 34, selected: r.key == selected, colourId: r.placeId == nil ? nil : r.colourId, here: r.here)
             Text(r.name).font(.body.weight(r.key == selected ? .semibold : .regular)).lineLimit(1)
             Spacer(minLength: 6)
-            Text(trailing(r))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+            // B58: the arrival clock moves on every minute while the sheet is open
+            TimelineView(.everyMinute) { tl in
+                Text(trailing(r, at: tl.date))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
@@ -784,10 +788,16 @@ private struct WhereToSheet: View {
         .accessibilityLabel("\(r.name), \(trailing(r))")
     }
 
-    /// "17 min \u{00B7} arrive 17:11", the reason there is no time, or "You are here"
-    private func trailing(_ r: WhereToRow) -> String {
+    /// "17 min \u{00B7} arrive 17:11", the reason there is no time, or "You are here". B58: the arrival is leaving now (`at`), not the
+    /// clock of the moment the list was loaded.
+    private func trailing(_ r: WhereToRow, at now: Date = Date()) -> String {
         if r.here { return PlaceHere.hereWord }
-        if let t = r.timeText, let a = r.arriveText { return "\(t) \u{00B7} arrive \(a)" }
+        if let t = r.timeText {
+            let a = r.timeS.map { WhereTo.arriveText(timeS: $0, nowMs: Int64(now.timeIntervalSince1970 * 1000),
+                                                     utcOffsetMin: TimeZone.current.secondsFromGMT(for: now) / 60) } ?? r.arriveText
+            if let a { return "\(t) \u{00B7} arrive \(a)" }
+            return t
+        }
         return r.note ?? ""
     }
 
@@ -827,11 +837,11 @@ enum HomePreview {
     static func chips(_ name: String) -> [WhereToChip]? {
         guard hasQuick(name) else { return nil }
         var work = WhereToChip(routeId: "a", label: "Work", detail: "Work")
-        work.timeText = "13 min"; work.arriveText = "8:56"; work.usedText = "11%"; work.usualNeedPct = 11
+        work.timeText = "13 min"; work.arriveText = "8:56"; work.usedText = "11%"; work.usualNeedPct = 11; work.timeS = 780
         var home = WhereToChip(routeId: "b", label: "Home", detail: "Home")
         home.timeText = "14 min"; home.arriveText = "9:02"; home.usedText = "12%"; home.here = true
         var maya = WhereToChip(routeId: "place:m", label: "Maya's house", detail: "Maya's house")
-        maya.timeText = "12 min"; maya.arriveText = "9:00"; maya.usedText = "9%"; maya.usualNeedPct = 9
+        maya.timeText = "12 min"; maya.arriveText = "9:00"; maya.usedText = "9%"; maya.usualNeedPct = 9; maya.timeS = 720
         var gran = WhereToChip(routeId: "place:g", label: "Grandma", detail: "Grandma")
         gran.note = "no rides there yet"
         var old = WhereToChip(routeId: "place:o", label: "Old workplace", detail: "Old workplace")
@@ -857,7 +867,7 @@ enum HomePreview {
         return chips.map { c in
             let look = looks[c.routeId] ?? (.letters("?"), "orange", nil)
             return WhereToRow(key: c.routeId, name: c.label, icon: look.0, colourId: look.1, placeId: c.routeId, here: c.here, pin: look.2,
-                              timeText: c.timeText, arriveText: c.arriveText, note: c.note)
+                              timeText: c.timeText, arriveText: c.arriveText, note: c.note, timeS: c.timeS)
         }
     }
 

@@ -14,6 +14,7 @@ import GRDB
 /// Chunk B ("Where to? + places"): u137 "Riding to Uni, 8 km." and changing the destination at a stop (F-35),
 /// u138 a ride is not ended while the scooter is connected and sending, or while GPS shows movement (B63),
 /// u139 the Scooter-on notification's destination buttons, Continue first (F-36),
+/// u141 the Where to? arrival clock is leaving now, never hours old (B58),
 /// u140 the Where to? list never has two rows for one destination: routes link to the place they end in (B61).
 @MainActor
 enum B101Checks {
@@ -39,6 +40,20 @@ enum B101Checks {
         runKeptOpen()
         runScooterOnButtons()
         runOneRowPerDestination()
+        runFreshArrival()
+    }
+
+    // MARK: u141
+
+    /// B58: the Where to? arrival is leaving now plus the ride time, not the clock of the moment the list was loaded
+    private static func runFreshArrival() {
+        let expect = Expect()
+        let day: Int64 = 1_790_000_000 / 86_400 * 86_400
+        func at(_ h: Int64, _ m: Int64) -> Int64 { (day + h * 3600 + m * 60) * 1000 }
+        expect(WhereTo.arriveText(timeS: 1_860, nowMs: at(15, 54), utcOffsetMin: 0) == "16:25"
+               && WhereTo.arriveText(timeS: 1_860, nowMs: at(21, 16), utcOffsetMin: 0) == "21:47",
+               "B58: 31 min loaded at 15:54 and shown at 21:16 says arrive 21:47, not 16:25")
+        CheckResults.shared.set("u141", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u140

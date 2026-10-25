@@ -169,10 +169,11 @@ enum QuickDialLoader {
         var rows: [WhereToRow] = chips.map { chip in
             if let p = places.first(where: { keyForPlace[$0.id] == chip.routeId }) {
                 return WhereToRow(key: chip.routeId, name: chip.label, icon: iconMap[p.id] ?? PlaceIcon.automatic(name: p.name), colourId: colourMap[p.id] ?? "orange",
-                                  placeId: p.id, here: chip.here, pin: pinMap[p.id], timeText: chip.timeText, arriveText: chip.arriveText, note: chip.note)
+                                  placeId: p.id, here: chip.here, pin: pinMap[p.id], timeText: chip.timeText, arriveText: chip.arriveText, note: chip.note,
+                                  timeS: chip.timeS)
             }
             return WhereToRow(key: chip.routeId, name: chip.label, icon: PlaceIcon.automatic(name: chip.label), colourId: "grey", placeId: nil,
-                              here: false, pin: nil, timeText: chip.timeText, arriveText: chip.arriveText, note: chip.note)
+                              here: false, pin: nil, timeText: chip.timeText, arriveText: chip.arriveText, note: chip.note, timeS: chip.timeS)
         }
         // B61 last guard: never two rows with the same name (a place row wins over a route row that ends at no named place)
         let kept = WhereToDedupe.keepOnePerName(rows.map { WhereToDedupe.Row(key: $0.key, name: $0.name, placeId: $0.placeId) }).map(\.key)
@@ -201,6 +202,7 @@ enum QuickDialLoader {
             let minute = Int((((local % 86_400) + 86_400) % 86_400) / 60)
             chip.timeText = "\(minutes) min"
             chip.arriveText = DayClock.clockText(minuteOfDay: minute)
+            chip.timeS = timeS
             chip.usedText = used.map { "\(Int($0.rounded()))%" }
             chip.usualNeedPct = used
             chip.note = nil
@@ -240,5 +242,7 @@ struct WhereToRow: Identifiable, Equatable {
     var timeText: String?
     var arriveText: String?
     var note: String?
+    /// B58: the ride time in seconds; the sheet shows the arrival as now + this, never the stored `arriveText`
+    var timeS: Double? = nil
     var id: String { key }
 }

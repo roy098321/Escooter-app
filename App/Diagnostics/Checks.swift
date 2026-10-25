@@ -733,7 +733,11 @@ enum CheckList {
         m("ui139", p6M, "Pick where you're going from the notification (F-36)", "Switch the scooter on with the app closed; long-press the Scooter on notification",
           "The buttons are your quick-dial places and No destination (\u{21BB} Continue to \u{2026} first after a trip that stopped short); tapping one sets the destination without opening the app: the ride says Riding to <place>, N km", scooter: true, manual: true),
         m("u140", p6M, "One Where to? row per destination (B61)", "Nothing to do \u{00B7} Run all automatic marks it",
-          "Made-up Home, Uni, an unnamed spot inside Home's circle and two saved routes ending at Home give one Home row with Home's icon; the route ending inside Home's circle is linked to Home; this phone's own list has no two rows for the same spot or name")
+          "Made-up Home, Uni, an unnamed spot inside Home's circle and two saved routes ending at Home give one Home row with Home's icon; the route ending inside Home's circle is linked to Home; this phone's own list has no two rows for the same spot or name"),
+        m("u141", p6M, "Where to? arrival time is never stale (B58)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "A made-up 31 min estimate loaded at 15:54 and shown at 21:16 says arrive 21:47, not 16:25"),
+        m("ui141", p6M, "Arrival time in Where to? is current (B58)", "Leave the app open for a while, then open Where to?",
+          "Every row's arrive time is now plus its minutes, and it moves on by itself every minute while the sheet stays open", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

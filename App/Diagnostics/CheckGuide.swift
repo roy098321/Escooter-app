@@ -840,6 +840,10 @@ struct CheckGuide {
                             steps: ["With the app in the background, switch the scooter on.", "Long-press the Scooter on notification and tap a place.", "Ride: the voice says Riding to that place. Tap Pass or Fail with a note."], place: .ride),
         "u140": CheckGuide(proves: "Where to? never lists the same destination twice.",
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the made-up list has one Home row, the route is linked to Home, and this phone's own list has no duplicates (any found are named)."], place: .noScooter),
+        "u141": CheckGuide(proves: "The arrival time in Where to? is worked out from the time you look, not when the list was loaded.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the made-up estimate shown hours later gives the later arrival. The real thing is check ui141."], place: .noScooter),
+        "ui141": CheckGuide(proves: "Where to? never shows an arrival time from hours ago.",
+                            steps: ["Open the app, leave it a few hours (or go back to it the next time).", "Open Where to?: each arrive time is now plus its minutes; keep it open a minute and it moves on. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

@@ -190,7 +190,10 @@ public struct WhereToChip: Equatable, Sendable {
     public var detail: String
     /// H5: the three facts for the chips ("13 min", "8:56", "11%"); nil while there is no estimate yet
     public var timeText: String?
+    /// the arrival clock when the chip was made; B58: shown screens use `timeS` and the clock of NOW instead (`WhereTo.arriveText`)
     public var arriveText: String?
+    /// B58: the estimated ride time in seconds (nil without an estimate)
+    public var timeS: Double?
     public var usedText: String?
     /// F-22: the route's usual battery need, % (today's estimate), for the pre-ride check
     public var usualNeedPct: Double?
@@ -207,6 +210,14 @@ public struct WhereToChip: Equatable, Sendable {
 }
 
 public enum WhereTo {
+    /// B58 (owner screenshot 21 Oct: "31 min, arrive 16:25" at 21:16): the arrival clock is always leaving NOW plus the ride time,
+    /// computed when it is shown (the sheet ticks every minute), never the clock of the moment the list was loaded.
+    public static func arriveText(timeS: Double, nowMs: Int64, utcOffsetMin: Int) -> String {
+        let local = Int64(Double(nowMs) / 1000 + timeS) + Int64(utcOffsetMin) * 60
+        let minute = Int((((local % 86_400) + 86_400) % 86_400) / 60)
+        return DayClock.clockText(minuteOfDay: minute)
+    }
+
     public static func label(toName: String?, title: String) -> String {
         if let n = toName?.trimmingCharacters(in: .whitespacesAndNewlines), !n.isEmpty { return n }
         return title
@@ -224,6 +235,7 @@ public enum WhereTo {
                 let minute = Int((((local % 86_400) + 86_400) % 86_400) / 60)
                 chip.timeText = "\(RouteCardBuilder.minutes(e.timeS)) min"
                 chip.arriveText = DayClock.clockText(minuteOfDay: minute)
+                chip.timeS = e.timeS
                 chip.usedText = e.usedPct.map { "\(Int($0.rounded()))%" }
                 chip.usualNeedPct = e.usedPct
             }
