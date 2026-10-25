@@ -171,37 +171,69 @@ struct RideGraphView: View {
         return RideGraph.yZoomed(RideGraph.range(line, within: domain), scale: yZoom[s] ?? 1)
     }
 
-    private var chart: some View {
-        let hl = scale(highlighted)
-        return Chart {
-            if let sel = selection {
-                RectangleMark(xStart: .value("From", sel.from / 60), xEnd: .value("To", sel.to / 60))
-                    .foregroundStyle(Theme.accent.opacity(0.12))
-            }
-            ForEach(chips, id: \.self) { s in
-                let r = scale(s)
-                ForEach(Array(RideGraph.visible(lines[s] ?? GraphLine(series: s, times: [], values: []), domain: domain).enumerated()), id: \.offset) { _, p in
-                    LineMark(x: .value("Minutes", p.t / 60), y: .value("Height", RideGraph.normalised(p.v, in: r)), series: .value("Line", s.title))
-                        .foregroundStyle(colour(s))
-                        .lineStyle(StrokeStyle(lineWidth: s == highlighted ? 2.5 : 1.6))
-                        .interpolationMethod(s == .battery ? .stepEnd : .linear)
-                }
-            }
-            if let cursor {
-                RuleMark(x: .value("Cursor", cursor / 60)).foregroundStyle(Color.primary.opacity(0.6))
+    /// One drawn reading (flattened so the chart stays simple for the compiler)
+    private struct Plot: Identifiable {
+        let id: Int
+        let name: String
+        let minutes: Double
+        let y: Double
+        let colour: Color
+        let width: CGFloat
+    }
+
+    private var plots: [Plot] {
+        var out: [Plot] = []
+        for s in chips {
+            guard let line = lines[s] else { continue }
+            let r = scale(s)
+            let c = colour(s)
+            let w: CGFloat = s == highlighted ? 2.5 : 1.6
+            for p in RideGraph.visible(line, domain: domain) {
+                out.append(Plot(id: out.count, name: s.title, minutes: p.t / 60, y: RideGraph.normalised(p.v, in: r), colour: c, width: w))
             }
         }
-        .chartXScale(domain: (domain.lowerBound / 60)...(max(domain.upperBound, domain.lowerBound + 1) / 60))
+        return out
+    }
+
+    private var axisLabels: [String] {
+        let hl = scale(highlighted)
+        return [0.0, 0.5, 1.0].map { highlighted.text(hl.lowerBound + $0 * (hl.upperBound - hl.lowerBound)) }
+    }
+
+    private var xDomain: ClosedRange<Double> { (domain.lowerBound / 60)...(max(domain.upperBound, domain.lowerBound + 1) / 60) }
+
+    @ChartContentBuilder private var lineMarks: some ChartContent {
+        ForEach(plots) { p in
+            LineMark(x: .value("Minutes", p.minutes), y: .value("Height", p.y), series: .value("Line", p.name))
+                .foregroundStyle(p.colour)
+                .lineStyle(StrokeStyle(lineWidth: p.width))
+        }
+    }
+
+    @ChartContentBuilder private var marks: some ChartContent {
+        if let sel = selection {
+            RectangleMark(xStart: .value("From", sel.from / 60), xEnd: .value("To", sel.to / 60))
+                .foregroundStyle(Theme.accent.opacity(0.12))
+        }
+        lineMarks
+        if let cursor {
+            RuleMark(x: .value("Cursor", cursor / 60)).foregroundStyle(Color.primary.opacity(0.6))
+        }
+    }
+
+    private var chart: some View {
+        let labels = axisLabels
+        let tint = colour(highlighted)
+        return Chart { marks }
+        .chartXScale(domain: xDomain)
         .chartYScale(domain: 0...1)
         .chartPlotStyle { $0.clipped() }
         .chartXAxisLabel("min")
         .chartYAxis {
-            AxisMarks(position: .leading, values: [0, 0.5, 1]) { v in
+            AxisMarks(position: .leading, values: [0.0, 0.5, 1.0]) { v in
                 AxisGridLine()
                 AxisValueLabel {
-                    if let f = v.as(Double.self) {
-                        Text(highlighted.text(hl.lowerBound + f * (hl.upperBound - hl.lowerBound))).foregroundStyle(colour(highlighted))
-                    }
+                    Text(labels[min(2, max(0, Int(((v.as(Double.self) ?? 0) * 2).rounded())))]).foregroundStyle(tint)
                 }
             }
         }
