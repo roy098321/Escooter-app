@@ -45,7 +45,10 @@ final class ScenarioTests: XCTestCase {
     /// SC-04: 30% corrupt packets → "Scooter data format changed" (T07).
     func test_SC04_corruptPackets_tripTheFormatWatch() throws {
         let p = try ride2([.corruptBytes(from: 120, to: 400, share: 0.3)])
-        XCTAssertTrue(p.plausibility.formatChanged)
+        // note 12: the watch tripped; once the readings look normal again after 400 s, trust comes back
+        XCTAssertTrue(p.plausibility.formatChangeSeen)
+        XCTAssertGreaterThan(p.plausibility.trustRecovered, 0)
+        XCTAssertFalse(p.plausibility.formatChanged)
         XCTAssertGreaterThan(p.plausibility.ignoredReadings, 50)
     }
 

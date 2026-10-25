@@ -285,6 +285,8 @@ public enum RideEngineInput: Equatable, Sendable {
     case sameRideAnswer(Bool)
     /// G1b format-change watch tripped: the scooter readings are untrusted until the next connect (SC-04)
     case formatChanged
+    /// Note 12: the readings look normal again: they are trusted again (the scooter's numbers come back, the gap closes)
+    case formatRecovered
     /// About once a second, so the timeouts run without data
     case tick
 }
@@ -427,6 +429,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
                 if linkLive(at: t) { heldSpeedKmh = speedKmh }
                 untrustedSince = t
             }
+        case .formatRecovered:
+            untrustedSince = nil
         case .tick:
             break
         }

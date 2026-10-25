@@ -36,6 +36,10 @@ public struct RideDetailInput: Equatable, Sendable {
     public var recordedByPhone = false
     /// B57: why the scooter's readings were not used (the format watch's reason), for ⋯ → Ride info
     public var formatReason: String?
+    /// Note 10: the plain-words lines for readings that changed a visible number (nil = not known: a ride from before note 10)
+    public var ignoredNotes: [String]?
+    /// Note 10: "Ignored readings: speed 3 · battery 1" for ⋯ → Ride info
+    public var ignoredInfo: String?
 
     public init(startAt: Int64, utcOffsetMin: Int? = nil, kind: String = "ride", status: String = "ended",
                 endReason: String? = nil, distanceM: Double? = nil, totalS: Double? = nil, movingS: Double? = nil,
@@ -269,7 +273,10 @@ public enum RideSummaryBuilder {
                 notes.append(SummaryNote(kind: .heat, text: "The scooter got hot (peak \(Int(peak.rounded())) \u{00B0}C)."))
             }
         }
-        if input.ignoredReadings > 0 {
+        if let lines = input.ignoredNotes {
+            // Note 10: only when an ignored reading changed a number you see, said plainly
+            for line in lines { notes.append(SummaryNote(kind: .ignored, text: line + ".")) }
+        } else if input.ignoredReadings > 0 {
             notes.append(SummaryNote(kind: .ignored, text: "Some scooter readings were ignored (they did not look real)."))
         }
         if input.isSimulated {
@@ -282,6 +289,7 @@ public enum RideSummaryBuilder {
         }
         if let reason = endReasonText(input.endReason) { info.append(reason) }
         if let f = input.formatReason { info.append("Phone took over: " + f) }
+        if let i = input.ignoredInfo { info.append(i) }
 
         return RideSummaryModel(title: title(startAt: input.startAt, utcOffsetMin: offset), subtitle: subtitle,
                                 mainStats: main, scooterStats: scooter, notes: notes, noGps: noGps, path: path,

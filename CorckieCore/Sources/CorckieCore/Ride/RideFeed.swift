@@ -39,6 +39,9 @@ public struct RideFeed {
             // lab log F1 trips it while standing with the scooter on)
             if pipeline.plausibility.failedShareTripped, engine.untrustedSince == nil, engine.connected {
                 out += engine.handle(.formatChanged, at: e.t)
+            } else if engine.untrustedSince != nil, !pipeline.plausibility.failedShareTripped {
+                // Note 12: never scrap the scooter for the rest of the ride: trust returns once the readings look normal
+                out += engine.handle(.formatRecovered, at: e.t)
             }
             guard after > before, let f = pipeline.frame else { return out + engine.handle(.tick, at: e.t) }
             if engine.untrustedSince == nil { lastNewFrame = f }

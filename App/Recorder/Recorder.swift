@@ -342,6 +342,16 @@ actor Recorder {
                 if r.kind != end.sizeClass.rawValue { hooks.log("B57: ride \(seq) kept as \(r.kind) (GPS \(Int(m.gpsDistanceM)) m)") }
             }
             formatNotes[seq] = nil
+            // Note 10: which readings were ignored, and a plain-words line only where that changed a number on the screen
+            if c.ignored.total > 0 {
+                var extras = RideExtras.parse(try? q.setting(key: RideExtras.key(rideId: id)))
+                extras.ignored = c.ignored
+                extras.ignoredNotes = c.ignored.notes(topSpeedKmh: r.topSpeedMps.map { $0 * 3.6 }, startPct: r.startRestPct,
+                                                      endPct: r.endRestPct, tempPeakC: r.tempPeakC)
+                try? q.setSetting(key: RideExtras.key(rideId: id), json: extras.json)
+                // many on one ride is a connection matter (note 12), not the rider's
+                if c.ignored.total >= IgnoredReadings.connectionNoteFrom { hooks.log("Connection: \(c.ignored.infoLine ?? "") on ride \(seq)") }
+            }
             r.endAt = ms(end.endT)
             r.endReason = end.reason.rawValue
             r.firstMoveAt = end.ride.firstMoveT.map { ms($0) }

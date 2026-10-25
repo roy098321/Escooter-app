@@ -583,6 +583,9 @@ enum RideDetailLoader {
         let extras = RideExtras.parse(try? q.setting(key: RideExtras.key(rideId: id)))
         input.recordedByPhone = extras.recordedByPhone
         input.formatReason = extras.formatReason
+        // Note 10: rides closed since note 10 carry their lines (an empty list = nothing visible changed: no note)
+        if extras.ignored != nil { input.ignoredNotes = extras.ignoredNotes ?? [] }
+        input.ignoredInfo = extras.ignored?.infoLine
         let gaps = ((try? q.gaps(rideId: id)) ?? []).map { RideGapSpan(kind: $0.kind, startT: $0.startT, endT: $0.endT) }
         let points = ((try? q.samples(rideId: id)) ?? []).map { (s: RideSampleRecord) -> RidePoint in
             RidePoint(t: s.t, lat: s.lat, lon: s.lon, hAccM: s.hAccM, speedKmh: s.speedMps.map { v in v * 3.6 },

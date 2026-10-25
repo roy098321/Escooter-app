@@ -820,6 +820,8 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: pushing first then riding starts at the first riding second, pushing only saves nothing, a lifted wheel is not riding. The real thing is check ui134."], place: .noScooter),
         "ui134": CheckGuide(proves: "Switching the scooter on early no longer starts the ride clock early.",
                             steps: ["Switch the scooter on at home (or in the lift) and wait a minute, or wheel it out.", "Ride as usual. Afterwards open the ride: its start time is when you set off. A minute of wheeling without riding saves no ride. Tap Pass or Fail with a note."], place: .ride),
+        "u136": CheckGuide(proves: "A few bad scooter readings never throw away the ride, and the ride summary only mentions them when they changed a number you see.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the warm-up, the real format change, trust coming back and the plain-words line each say ok."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

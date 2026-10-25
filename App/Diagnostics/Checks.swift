@@ -713,7 +713,9 @@ enum CheckList {
         m("u134", p6M, "The ride starts at the first real riding movement (B62)", "Nothing to do \u{00B7} Run all automatic marks it",
           "Made-up inputs: a minute of pushing at 4 km/h then riding: the ride starts at the first riding second; only pushing saves nothing; a lifted wheel spinning is not riding; 8 km/h and 3 s are the named thresholds"),
         m("ui134", p6M, "Scooter on early, ride later (B62)", "Switch the scooter on at home or in the lift, wait or wheel it out, then ride",
-          "The Scooter on notification stays until you really ride; the ride's start time and its clock begin when you set off (motor or faster than walking), not when you switched on; wheeling it out without riding saves no ride", scooter: true, manual: true)
+          "The Scooter on notification stays until you really ride; the ride's start time and its clock begin when you set off (motor or faster than walking), not when you switched on; wheeling it out without riding saves no ride", scooter: true, manual: true),
+        m("u136", p6M, "Bad scooter readings are trimmed, never the ride (notes 12 + 10)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Garbled readings in the first 25 s after scooter-on are dropped one by one without the Scooter data format changed alarm; a real change after the warm-up still trips it and trust returns once readings look normal; a new connection starts afresh; an ignored 87 km/h jump gives the line Top speed ignores a jump to 87 km/h that wasn't real, an ignored voltage gives no line; the counts per kind are in Ride info")
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

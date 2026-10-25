@@ -67,10 +67,13 @@ public struct RideExtras: Codable, Equatable, Sendable {
     /// B57: the format watch's reason, and one raw packet (hex) from when it fired
     public var formatReason: String?
     public var formatPacketHex: String?
+    /// Note 10: the ride's ignored readings per kind, and the summary lines they earned (only what changed a visible number)
+    public var ignored: IgnoredReadings?
+    public var ignoredNotes: [String]?
 
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case recordedByPhone, formatReason, formatPacketHex }
+    enum CodingKeys: String, CodingKey { case recordedByPhone, formatReason, formatPacketHex, ignored, ignoredNotes }
 
     /// Every field may be missing (older rows, later fields)
     public init(from decoder: Swift.Decoder) throws {
@@ -78,6 +81,8 @@ public struct RideExtras: Codable, Equatable, Sendable {
         recordedByPhone = try c.decodeIfPresent(Bool.self, forKey: .recordedByPhone) ?? false
         formatReason = try c.decodeIfPresent(String.self, forKey: .formatReason)
         formatPacketHex = try c.decodeIfPresent(String.self, forKey: .formatPacketHex)
+        ignored = try c.decodeIfPresent(IgnoredReadings.self, forKey: .ignored)
+        ignoredNotes = try c.decodeIfPresent([String].self, forKey: .ignoredNotes)
     }
 
     public static func key(rideId: String) -> String { "ride.extras." + rideId }

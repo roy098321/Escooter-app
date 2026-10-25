@@ -35,11 +35,14 @@ public struct RecorderClose: Equatable, Sendable {
     public var end: RideEnd
     public var topSpeedKmh: Double
     public var ignoredReadings: Int
+    /// Note 10: the same readings per kind, with the values that would have shown
+    public var ignored: IgnoredReadings
 
-    public init(end: RideEnd, topSpeedKmh: Double, ignoredReadings: Int) {
+    public init(end: RideEnd, topSpeedKmh: Double, ignoredReadings: Int, ignored: IgnoredReadings = IgnoredReadings()) {
         self.end = end
         self.topSpeedKmh = topSpeedKmh
         self.ignoredReadings = ignoredReadings
+        self.ignored = ignored
     }
 }
 
@@ -82,6 +85,8 @@ public struct RecorderSnapshot: Codable, Equatable, Sendable {
     public var ignoredAtStart: Int
     /// Newest sample time of the open ride (absolute), for `RideRecovery.decide`
     public var lastSampleT: Double?
+    /// Note 10: the open ride's ignored readings per kind (optional: older saved states have none)
+    public var ignored: IgnoredReadings?
 }
 
 /// Raw packet chunk format v1 (before zlib): per packet a little-endian UInt32 of ms since the chunk start,
@@ -129,6 +134,8 @@ public struct RideRecorderCore {
     public private(set) var startT = 0.0
     public private(set) var topSpeedKmh = 0.0
     var ignoredAtStart = 0
+    /// Note 10: this ride's ignored readings per kind
+    public private(set) var ignored = IgnoredReadings()
     var pending: [RecorderSample] = []
     var raw: [(t: Double, bytes: [UInt8])] = []
     var rawStartT: Double?
@@ -167,7 +174,13 @@ public struct RideRecorderCore {
     public mutating func scooter(_ e: TimedScooterEvent) -> [RecorderAction] {
         var out: [RecorderAction] = []
         if case .packet(let bytes) = e.event { lastRawPacket = bytes }
-        take(feed.scooter(e), at: e.t, &out)
+        let ignoredBefore = feed.pipeline.plausibility.ignoredReadings
+        let events = feed.scooter(e)
+        let p = feed.pipeline.plausibility
+        if seq != nil, p.ignoredReadings > ignoredBefore {
+            ignored.add(feed.pipeline.lastDropped, speedKmh: p.lastDroppedSpeedKmh, batteryPct: p.lastDroppedBatteryPct, tempC: p.lastDroppedTempC)
+        }
+        take(events, at: e.t, &out)
         if case .packet(let bytes) = e.event, seq != nil {
             if rawStartT == nil { rawStartT = e.t }
             raw.append((t: e.t, bytes: bytes))
@@ -246,6 +259,7 @@ public struct RideRecorderCore {
                 sampler = RideSampler(intervalS: Self.sampleIntervalS)
                 topSpeedKmh = 0
                 ignoredAtStart = feed.pipeline.plausibility.ignoredReadings
+                ignored = IgnoredReadings()
                 pending = []
                 raw = []
                 rawStartT = nil
@@ -276,8 +290,8 @@ public struct RideRecorderCore {
                 out.append(.batteryRanOut(seq: s, pct: pct))
             case let .rideEnded(end):
                 flush(at: t, &out)
-                let ignored = max(0, feed.pipeline.plausibility.ignoredReadings - ignoredAtStart)
-                out.append(.rideEnded(RecorderClose(end: end, topSpeedKmh: topSpeedKmh, ignoredReadings: ignored)))
+                let ignoredCount = max(0, feed.pipeline.plausibility.ignoredReadings - ignoredAtStart)
+                out.append(.rideEnded(RecorderClose(end: end, topSpeedKmh: topSpeedKmh, ignoredReadings: ignoredCount, ignored: self.ignored)))
                 clearRide()
                 out.append(.snapshot(snapshot()))
                 lastSnapshotT = t
@@ -342,7 +356,7 @@ public struct RideRecorderCore {
 
     public func snapshot() -> RecorderSnapshot {
         RecorderSnapshot(engine: feed.engine, seq: seq, startT: seq != nil ? startT : nil, topSpeedKmh: topSpeedKmh,
-                         ignoredAtStart: ignoredAtStart, lastSampleT: lastSampleT)
+                         ignoredAtStart: ignoredAtStart, lastSampleT: lastSampleT, ignored: seq != nil ? ignored : nil)
     }
 
     /// At launch, from the last saved snapshot: what recovery decided (M2 "Recovery") and the core to go on with.
@@ -360,6 +374,7 @@ public struct RideRecorderCore {
                 core.startT = st
                 core.sampler = RideSampler(intervalS: sampleIntervalS)
                 core.topSpeedKmh = snap.topSpeedKmh
+                core.ignored = snap.ignored ?? IgnoredReadings()
                 core.lastFlushT = now
                 core.lastSampleT = last
                 core.wasActive = engine.rideActive

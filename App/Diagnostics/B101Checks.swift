@@ -7,7 +7,8 @@ import Foundation
 /// u131 a ride the phone took over is kept with its GPS distance and top speed, "Recorded by phone", restore list (B57),
 /// u132 a ride's start / end battery are settled readings: the boot 100 % never reaches them; "went up" shows the start once (B54),
 /// u133 a ride ends at its last movement and a stop inside it counts in its Time (F-38),
-/// u134 the ride starts at the first real riding movement, back-dated; pushing, standing and a lifted wheel do not start it (B62).
+/// u134 the ride starts at the first real riding movement, back-dated; pushing, standing and a lifted wheel do not start it (B62),
+/// u136 bad readings are trimmed, never the ride: warm-up after scooter-on, trust returns, plain-words ignored notes (notes 12 + 10).
 @MainActor
 enum B101Checks {
     private final class Expect {
@@ -26,6 +27,40 @@ enum B101Checks {
         runSettledBattery()
         runEndTime()
         runRidingStart()
+        runBadReadings()
+    }
+
+    // MARK: u136
+
+    private static func runBadReadings() {
+        let expect = Expect()
+        func frame(_ t: Double, bad: Bool) -> ScooterFrame {
+            var f = ScooterFrame(t: t)
+            f.speedKmh = 20
+            f.voltage = bad ? 0 : 50
+            f.batteryPct = 80
+            return f
+        }
+        var lift = Plausibility()
+        lift.connected(at: 0)
+        for i in 0..<250 { _ = lift.check(frame(Double(i) / 10, bad: i % 2 == 0), isPacketA: true) }
+        expect(!lift.formatChanged && lift.ignoredReadings > 0, "note 12: garbled readings in the first 25 s (the lift) are dropped one by one but do not trip the watch")
+        var real = Plausibility()
+        real.connected(at: 0)
+        for i in 0..<20 { _ = real.check(frame(Double(i) / 10, bad: false), isPacketA: true) }
+        for i in 20..<300 { _ = real.check(frame(Double(i) / 10, bad: true), isPacketA: true) }
+        let tripped = real.formatChanged
+        for i in 300..<1_200 { _ = real.check(frame(Double(i) / 10, bad: false), isPacketA: true) }
+        expect(tripped && !real.formatChanged && real.trustRecovered == 1, "a real change after the warm-up still trips, and trust returns once readings look normal")
+        real.connected(at: 200)
+        expect(!real.failedShareTripped, "a new connection is judged afresh")
+        var x = IgnoredReadings()
+        x.add([.speed], speedKmh: 87, batteryPct: nil, tempC: nil)
+        x.add([.voltage], speedKmh: nil, batteryPct: nil, tempC: nil)
+        expect(x.notes(topSpeedKmh: 32, startPct: 80, endPct: 74, tempPeakC: 40) == ["Top speed ignores a jump to 87 km/h that wasn't real"],
+               "note 10: only the speed jump changed a number on the screen, said in plain words")
+        expect(x.infoLine == "Ignored readings: speed 1 \u{00B7} voltage 1", "the full counts for \u{22EF} \u{2192} Ride info")
+        CheckResults.shared.set("u136", expect.ok ? .pass : .fail, expect.line)
     }
 
     /// Made-up frames and fixes one a second: `kmh` on the wheel with `amps`; the phone moves too unless `lifted`
