@@ -95,7 +95,8 @@ final class ThemeGuardTests: XCTestCase {
         }
         for file in ["UI/Rides/RideDetailView.swift", "UI/Routes/RouteCardView.swift", "UI/Routes/PlaceMapView.swift"] {
             let source = try text(file)
-            XCTAssertTrue(source.contains("MapScreen {"), "\(file) is a fixed map with a scroll view below")
+            // B52: the ride review's map is taller (~55 %)
+            XCTAssertTrue(source.contains("MapScreen {") || source.contains("MapScreen(tallMap: true) {"), "\(file) is a fixed map with a scroll view below")
             for gone in ["MapSheet", "SheetDetent", "DockedSheet"] { XCTAssertFalse(source.contains(gone), "\(file) must not contain \(gone)") }
         }
         let home = try text("UI/Home/HomeView.swift")
