@@ -27,6 +27,8 @@ final class RecorderService {
     private(set) var livePosition: LivePath.Coord?
     /// "Ready" (D2): the live view was asked for (notification tap) before any ride
     private(set) var readyRequested = false
+    /// F-35: the destination of the ride on now, as the live screen shows it (nil = none: the screen shows "Where to?", B62)
+    private(set) var destination: LiveDestination?
     @ObservationIgnored private var driver = LiveScreenDriver()
     @ObservationIgnored private var lastLiveMode: LiveMode = .ready
     @ObservationIgnored private var followChecked = false
@@ -199,6 +201,14 @@ final class RecorderService {
         }
         let screen = driver.update(input, at: time ?? Self.now())
         RideVoice.shared.update(input, screen: screen, at: time ?? Self.now(), database: AppModel.shared.displayDatabase)   // F-19 sounds, P-4 warnings
+        // F-35: the destination line of the live screen, and "Riding to Uni, 8 km." once after the start and after a change at a stop
+        let key = rideOn ? RouteFollowSelection.shared.chosenKey : nil
+        if destination?.key != key { destination = key.flatMap { resolveDestination($0) } }
+        let here = (input.lat != nil && input.lon != nil) ? GeoPoint(lat: input.lat!, lon: input.lon!) : nil
+        RideVoice.shared.destination(key: destination?.key, name: destination?.name,
+                                     distanceM: DestinationLive.distanceM(progress: screen.routeProgress, position: here,
+                                                                          end: destination?.end ?? driver.followedPath?.last),
+                                     riding: input.phase == .riding, at: time ?? Self.now())
         if !fromSimulator, driver.etaMarks.count > etaLogged, let real = AppModel.shared.database {
             // T-00 part 2: the arrival time shown at 25 / 50 / 75% of the followed route (Q-E)
             FieldKitService.logEta(real, routeId: RouteFollowSelection.shared.routeId, marks: Array(driver.etaMarks.dropFirst(etaLogged)))
@@ -214,6 +224,53 @@ final class RecorderService {
             }
         }
         liveScreen = screen
+    }
+
+    // MARK: F-35 destination during the ride
+
+    /// The name, icon and end point for a destination key ("place:<id>" or a saved route's id)
+    private func resolveDestination(_ key: String) -> LiveDestination? {
+        guard let db = AppModel.shared.displayDatabase else { return nil }
+        let store = RouteQueries(db)
+        var placeId = QuickDialLoader.placeId(fromKey: key)
+        var name: String?
+        if placeId == nil, let route = try? store.route(id: key) {
+            placeId = route.toPlaceId
+            let to = route.toPlaceId.flatMap { try? store.place(id: $0) }?.name
+            name = WhereTo.label(toName: to, title: RouteService.title(routeId: key, database: db))
+        }
+        let place = placeId.flatMap { try? store.place(id: $0) }
+        guard let shown = name ?? place?.name, !shown.isEmpty else { return nil }
+        return LiveDestination(key: key, name: shown, icon: placeId.flatMap { QuickDialLoader.icons(db)[$0] } ?? PlaceIcon.automatic(name: shown),
+                               colourId: placeId.flatMap { PlaceColourStore.colours(database: db)[$0] },
+                               end: place.map { GeoPoint(lat: $0.lat, lon: $0.lon) })
+    }
+
+    /// The quick-dial places the live screen offers at a stop (the same ones as on Home)
+    func destinationChoices() -> [QuickDialItem] {
+        guard let db = AppModel.shared.displayDatabase else { return [] }
+        let phone = livePosition.map { GeoPoint(lat: $0.lat, lon: $0.lon) }
+        return QuickDialLoader.load(database: db, routeChips: RouteFollowLoader.chips(database: db, log: false),
+                                    slots: QuickDial.slotCount(accessibilitySize: false), from: phone).items
+    }
+
+    /// F-35 (b): the rider picked another destination at a stop (nil = no destination). The arrival line and the F-22 check switch at once;
+    /// the voice says the new one on the next update. The live view only calls this while stopped (`DestinationLive.canChange`).
+    func changeDestination(_ key: String?) {
+        let selection = RouteFollowSelection.shared
+        guard key != selection.chosenKey else { return }
+        selection.choose(key: key)
+        TripService.shared.picked(key: selection.chosenKey)       // F-39: another destination closes the open trip
+        var usual: Double?
+        if let id = selection.routeId, let db = AppModel.shared.displayDatabase {
+            usual = RouteFollowLoader.usualPctPerKm(routeId: id, database: db)
+            driver.follow(RouteFollowLoader.follower(routeId: id, database: db), utcOffsetMin: RouteCardLoader.currentOffsetMin())
+        } else {
+            driver.follow(nil)
+        }
+        RideVoice.shared.destinationChanged(usualPctPerKm: usual)
+        destination = selection.chosenKey.flatMap { resolveDestination($0) }
+        Log.info(source: "recorder", "F-35: destination changed at a stop (\(destination?.name ?? "none"))")
     }
 
     /// The rider taps the shown banner (refused at 5 km/h or more).
@@ -256,6 +313,7 @@ final class RecorderService {
         lastLiveMode = .ready
         followChecked = false
         etaLogged = 0
+        destination = nil
     }
 
     /// M1-13: the rider closed the summary (Done) or it could not load
@@ -278,6 +336,17 @@ final class RecorderService {
             locationByRecorder = false
         }
     }
+}
+
+/// F-35: the destination of the ride on now, as the live screen shows it
+struct LiveDestination: Equatable {
+    var key: String
+    var name: String
+    var icon: PlaceIcon
+    /// an id of `PlaceColours`; nil for a route that ends at no named place
+    var colourId: String?
+    /// the saved place's centre (nil: a route's end is taken from the followed path)
+    var end: GeoPoint?
 }
 
 extension Recorder {

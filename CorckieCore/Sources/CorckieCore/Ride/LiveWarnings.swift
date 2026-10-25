@@ -366,6 +366,9 @@ public struct LiveVoiceDirector: Equatable, Sendable {
 
     public mutating func beginRide() { self = LiveVoiceDirector() }
 
+    /// F-35: another destination was picked during the ride: the F-22 check starts over for the new one (the battery levels keep their state)
+    public mutating func destinationChanged() { destination.reset() }
+
     public mutating func update(_ i: LiveVoiceInput) -> [LiveUtterance] {
         var out: [LiveUtterance] = []
         if motor.update(tempC: i.tempC) { out.append(LiveUtterance(alerts: [.motorHot])) }

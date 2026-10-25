@@ -54,8 +54,9 @@ final class RouteFollowSelection {
 
 /// Reads the route tables into the Core builders of M2-06 (`WhereTo`, `RouteFollower`). Compiled into AppTests too.
 enum RouteFollowLoader {
+    /// - log: F-35: false when read during a ride (the live screen's picker), so the prediction log only gets what Home showed
     static func chips(database: AppDatabase, nowMs: Int64 = RouteCardLoader.currentMs(),
-                      utcOffsetMin: Int = RouteCardLoader.currentOffsetMin()) -> [WhereToChip] {
+                      utcOffsetMin: Int = RouteCardLoader.currentOffsetMin(), log: Bool = true) -> [WhereToChip] {
         let store = RouteQueries(database)
         var inputs: [WhereToInput] = []
         for route in (try? store.routes()) ?? [] where route.state == "saved" {
@@ -64,7 +65,7 @@ enum RouteFollowLoader {
                                        rides: RouteCardLoader.stats((try? store.routeRides(routeId: route.id)) ?? [])))
         }
         // T-00 part 2: the "today ~N min · uses about N%" shown on each chip is written down for the prediction log
-        for i in inputs where !i.rides.isEmpty {
+        for i in inputs where log && !i.rides.isEmpty {
             FieldKitService.logToday(database, routeId: i.routeId, rides: i.rides, nowMs: nowMs, utcOffsetMin: utcOffsetMin,
                                      departureMinute: DayClock.minuteOfDay(startAtMs: nowMs, utcOffsetMin: utcOffsetMin))
         }

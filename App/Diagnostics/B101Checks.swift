@@ -10,7 +10,7 @@ import Foundation
 /// u134 the ride starts at the first real riding movement, back-dated; pushing, standing and a lifted wheel do not start it (B62),
 /// u135 what is a ride: legs to a picked destination merge where the trip ended, Continue, detours out of estimates, trim line, widen (F-39),
 /// u136 bad readings are trimmed, never the ride: warm-up after scooter-on, trust returns, plain-words ignored notes (notes 12 + 10).
-/// u138 a ride is not ended while the scooter is connected and sending, or while GPS shows movement (B63).
+/// Chunk B ("Where to? + places"): u137 "Riding to Uni, 8 km." and changing the destination at a stop (F-35).
 @MainActor
 enum B101Checks {
     private final class Expect {
@@ -31,6 +31,7 @@ enum B101Checks {
         runRidingStart()
         runBadReadings()
         runWhatIsARide()
+        runDestinationLive()
         runKeptOpen()
     }
 
@@ -59,6 +60,30 @@ enum B101Checks {
         expect(!ended && e.ride != nil, "B63: untrusted but connected, riding on GPS 10 min with a 60 s stop: the ride stays open")
         expect(e.scooterOnline(at: 603), "packets still arriving: the scooter counts as on")
         CheckResults.shared.set("u138", expect.ok ? .pass : .fail, expect.line)
+    }
+
+    // MARK: u137
+
+    private static func runDestinationLive() {
+        let expect = Expect()
+        var a = DestinationAnnouncer()
+        var said: [Double] = []
+        for t in 0..<20 {
+            if a.update(riding: true, key: "place:uni", at: Double(t)) { said.append(Double(t)) }
+        }
+        expect(said == [5], "F-35: said once, 5 s after riding began")
+        expect(DestinationLive.ridingLine(name: "Uni", distanceM: 8_040) == "Riding to Uni, 8 km.", "the owner's line: Riding to Uni, 8 km.")
+        expect(a.update(riding: true, key: "place:b", at: 120) && DestinationLive.ridingLine(name: "B", distanceM: 2_960) == "Riding to B, 3 km.",
+               "a change at a stop is said at once: Riding to B, 3 km.")
+        expect(DestinationLive.canChange(speedKmh: 0) && !DestinationLive.canChange(speedKmh: 12) && DestinationLive.stopToChange == "Stop to change",
+               "the picker opens only when stopped; moving shows Stop to change")
+        var b = DestinationAnnouncer()
+        var silent = true
+        for t in 0..<20 {
+            if b.update(riding: true, key: nil, at: Double(t)) { silent = false }
+        }
+        expect(silent, "no destination (B62: Where to?) says nothing")
+        CheckResults.shared.set("u137", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u135

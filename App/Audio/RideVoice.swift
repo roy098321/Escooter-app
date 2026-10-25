@@ -14,6 +14,8 @@ final class RideVoice {
     private var arrivalPlayed = false
     private var recentPctPerKm: Double?
     private var reservePct = T.t80ReserveDefaultPct
+    /// F-35: "Riding to Uni, 8 km." once after the start and after a change at a stop
+    private var announcer = DestinationAnnouncer()
     /// F-22: the followed route's usual %/km (set when the route is picked up at ride start)
     var usualRoutePctPerKm: Double?
     /// The Start button already played the start sound (and the A3 transition) this moment
@@ -76,5 +78,20 @@ final class RideVoice {
             arrivalPlayed = true
             SoundPlayer.shared.play(.arrival)
         }
+    }
+
+    /// F-35: once a second after `update`: the destination as it stands (key, name, distance left); speaks the line when the announcer says so
+    func destination(key: String?, name: String?, distanceM: Double?, riding: Bool, at t: Double) {
+        guard announcer.update(riding: on && riding, key: key, at: t), let name else { return }
+        let line = DestinationLive.ridingLine(name: name, distanceM: distanceM)
+        SoundPlayer.shared.say(line)
+        Log.info(source: "voice", "F-35: said \"\(line)\"")
+    }
+
+    /// F-35: another destination was picked at a stop: the F-22 check starts over for it, and the arrival sound can play for it
+    func destinationChanged(usualPctPerKm: Double?) {
+        usualRoutePctPerKm = usualPctPerKm
+        director.destinationChanged()
+        arrivalPlayed = false
     }
 }

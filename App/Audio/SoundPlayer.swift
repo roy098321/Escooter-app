@@ -163,6 +163,15 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
         if !start(kind, speaking: u.text) { speak(u.text) }
     }
 
+    /// F-35: a plain spoken line ("Riding to Uni, 8 km.") on the same channel as the battery lines: no ping and no haptic
+    func say(_ text: String) {
+        warningsInFlight += 1
+        let s = AVAudioSession.sharedInstance()
+        try? s.setCategory(RideAudio.category, mode: .spokenAudio, options: RideAudio.warningOptions)
+        try? s.setActive(true)
+        speak(text)
+    }
+
     private func speak(_ text: String) {
         let u = AVSpeechUtterance(string: text)
         u.voice = AVSpeechSynthesisVoice(language: RideAudio.voiceLanguage)

@@ -27,6 +27,11 @@ struct LiveRideView: View {
     @State private var track = LiveCameraTrack()
     @State private var tilesTop: CGFloat?
     @State private var lastHeading: Double?
+    /// F-35: the quick-dial icons are up (only while stopped), and the short "Stop to change" hint after a tap while moving
+    @State private var picking = false
+    @State private var choices: [QuickDialItem] = []
+    @State private var stopHint = false
+    @State private var pickTap = 0
     private let ticker = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     private var screen: LiveScreenState {
@@ -57,6 +62,7 @@ struct LiveRideView: View {
                 Color.clear
                     .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .named("liveRide")).maxY }) { tilesTop = $0 + 12 }
                 tiles(s)
+                if picking { destinationPicker }
                 controls(s)
             }
             .padding(.horizontal, 16)
@@ -72,6 +78,11 @@ struct LiveRideView: View {
         }
         .onReceive(ticker) { _ in tickHold() }
         .onChange(of: position) { _, _ in follow() }
+        .onChange(of: s.tiles.speedKmh) { _, v in
+            // F-35: the picker is for a stop only; moving off closes it
+            if picking, !DestinationLive.canChange(speedKmh: v) { withAnimation(.easeInOut(duration: 0.2)) { picking = false } }
+        }
+        .sensoryFeedback(.selection, trigger: pickTap)
         .screen("Live ride")
     }
 
@@ -179,16 +190,91 @@ struct LiveRideView: View {
                     chip(c == .noGps ? "No GPS" : "Offline map", dot: nil, symbol: c == .noGps ? "location.slash" : "map")
                 }
             }
-            if let a = s.arrival {
-                // M2-06 arrival strip (M28); under the banner, never over the speed and battery tiles
-                Label(a.short, systemImage: "mappin.and.ellipse")
-                    .font(.headline.monospacedDigit())
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .sunPanel(Capsule())
+            if stopHint {
+                destinationCapsule(Text(DestinationLive.stopToChange), symbol: "hand.raised")
+                    .accessibilityLabel(DestinationLive.stopToChange)
+            } else if let a = s.arrival {
+                // M2-06 arrival strip (M28); under the banner, never over the speed and battery tiles. F-35: tap it at a stop to change.
+                destinationCapsule(Text(a.short).monospacedDigit(), symbol: "mappin.and.ellipse")
+                    .onTapGesture { destinationTapped(s) }
                     .accessibilityLabel(a.text)
+                    .accessibilityHint("Tap when stopped to change the destination")
+                    .accessibilityAddTraits(.isButton)
+            } else if s.mode != .ready, preview == nil {
+                // F-35: a place with no route to follow shows its name; B62: no destination (a ride that started by itself) shows Where to?
+                let name = RecorderService.shared.destination?.name
+                destinationCapsule(Text(name ?? DestinationLive.whereTo), symbol: name == nil ? "questionmark" : "mappin.and.ellipse")
+                    .onTapGesture { destinationTapped(s) }
+                    .accessibilityLabel(name.map { "Riding to \($0)" } ?? DestinationLive.whereTo)
+                    .accessibilityHint("Tap when stopped to pick the destination")
+                    .accessibilityAddTraits(.isButton)
             }
         }
+    }
+
+    private func destinationCapsule(_ text: Text, symbol: String) -> some View {
+        Label { text } icon: { Image(systemName: symbol) }
+            .font(.headline)
+            .lineLimit(1)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .sunPanel(Capsule())
+            .contentShape(Capsule())
+    }
+
+    // MARK: F-35 change the destination at a stop
+
+    /// Stopped: the quick-dial icons slide up. Moving: only "Stop to change" for a moment.
+    private func destinationTapped(_ s: LiveScreenState) {
+        guard preview == nil, s.mode != .ready else { return }
+        pickTap += 1
+        if DestinationLive.canChange(speedKmh: s.tiles.speedKmh) {
+            choices = RecorderService.shared.destinationChoices()
+            withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.3)) { picking.toggle() }
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) { stopHint = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { withAnimation(.easeInOut(duration: 0.2)) { stopHint = false } }
+        }
+    }
+
+    private func pickDestination(_ key: String?) {
+        pickTap += 1
+        RecorderService.shared.changeDestination(key)
+        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.3)) { picking = false }
+    }
+
+    /// The quick dial of Home in one glass row: ? (no destination) first, then the places; the place the phone is in cannot be picked
+    private var destinationPicker: some View {
+        let chosen = RouteFollowSelection.shared.chosenKey
+        return GlassCard {
+            HStack(spacing: 12) {
+                FreeRideIcon(size: 52, selected: chosen == nil)
+                    .frame(minWidth: DS.hit, minHeight: DS.hit)
+                    .contentShape(Circle())
+                    .onTapGesture { pickDestination(nil) }
+                    .accessibilityElement()
+                    .accessibilityLabel(QuickDialSlot.freeRideName)
+                    .accessibilityAddTraits(.isButton)
+                ForEach(choices) { item in
+                    PlaceIconView(icon: item.icon, size: 52, selected: item.key == chosen, colourId: item.colourId, here: item.here)
+                        .frame(minWidth: DS.hit, minHeight: DS.hit)
+                        .contentShape(Circle())
+                        .onTapGesture { if !item.here { pickDestination(item.key) } }
+                        .accessibilityElement()
+                        .accessibilityLabel(item.name)
+                        .accessibilityAddTraits(item.key == chosen ? [.isButton, .isSelected] : .isButton)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "xmark")
+                    .font(.headline)
+                    .frame(width: DS.hit, height: DS.hit)
+                    .contentShape(Rectangle())
+                    .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { picking = false } }
+                    .accessibilityLabel("Close")
+                    .accessibilityAddTraits(.isButton)
+            }
+        }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     private func chip(_ text: String, dot: Color?, symbol: String? = nil) -> some View {
