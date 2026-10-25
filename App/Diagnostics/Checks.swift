@@ -741,7 +741,11 @@ enum CheckList {
         m("u142", p6M, "A destination shows time and battery (note 14)", "Nothing to do \u{00B7} Run all automatic marks it",
           "Home \u{2022} 30 mins \u{2022} 27% battery with a usual estimate; Home \u{2022} 30 mins without a usual battery need; Grandma \u{00B7} no rides there yet without an estimate"),
         m("ui142", p6M, "Where to? shows time and battery (note 14)", "Home: tap a place on the quick dial, then open Where to?",
-          "The line under the icons reads like Home \u{2022} 30 mins \u{2022} 27% battery; each row of Where to? shows its minutes and battery the same way; a place with no rides keeps no rides there yet", manual: true)
+          "The line under the icons reads like Home \u{2022} 30 mins \u{2022} 27% battery; each row of Where to? shows its minutes and battery the same way; a place with no rides keeps no rides there yet", manual: true),
+        m("u143", p6M, "The quick dial is never hidden (B55)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "A made-up empty database loads without a failure; this phone's places load (or the failure is named and logged)"),
+        m("ui143", p6M, "Quick dial always on Home (B55)", "Home with the scooter connected, before riding",
+          "The row of round buttons is always there: at least No destination (?) and the dots, even right after connecting or when an auto-started ride just ended", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

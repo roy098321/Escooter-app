@@ -19,6 +19,8 @@ struct QuickDialItem: Identifiable, Equatable {
 /// a parameter and never reads a sensor itself.
 enum QuickDialLoader {
     static let placePrefix = "place:"
+    /// B55: why the last `load` could not read the places or routes (nil = it could); the caller logs it, the row is shown anyway
+    private(set) static var lastFailure: String?
 
     static func placeId(fromKey key: String?) -> String? {
         guard let key, key.hasPrefix(placePrefix) else { return nil }
@@ -105,8 +107,15 @@ enum QuickDialLoader {
                      nowMs: Int64 = RouteCardLoader.currentMs(), utcOffsetMin: Int = RouteCardLoader.currentOffsetMin())
         -> (chips: [WhereToChip], items: [QuickDialItem], rows: [WhereToRow]) {
         let store = RouteQueries(database)
-        let places = ((try? store.places()) ?? []).filter { !($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
-        let savedRoutes = ((try? store.routes()) ?? []).filter { $0.state == "saved" }
+        // B55: a failed read used to vanish silently (try?) and hid the whole quick dial; it is kept for the log now
+        var failures: [String] = []
+        var allPlaces: [PlaceRecord] = []
+        var allRoutes: [RouteRecord] = []
+        do { allPlaces = try store.places() } catch { failures.append("places: \(error.localizedDescription)") }
+        do { allRoutes = try store.routes() } catch { failures.append("routes: \(error.localizedDescription)") }
+        lastFailure = failures.isEmpty ? nil : failures.joined(separator: "; ")
+        let places = allPlaces.filter { !($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
+        let savedRoutes = allRoutes.filter { $0.state == "saved" }
         let visitCounts = visits(database)
         let iconMap = icons(database)
         let pinMap = QuickDialSlot.normalized(pins(database))

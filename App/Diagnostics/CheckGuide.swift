@@ -848,6 +848,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the three line forms each say ok. The real thing is check ui142."], place: .noScooter),
         "ui142": CheckGuide(proves: "You see time and battery for a destination before you ride.",
                             steps: ["On Home tap a place you ride to often: the line reads like Home \u{2022} 30 mins \u{2022} 27% battery.", "Open Where to?: the rows show minutes and battery the same way. Tap Pass or Fail with a note."], place: .noScooter),
+        "u143": CheckGuide(proves: "Home always has the quick dial, and if the places cannot be read the reason is logged.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the made-up and this phone's loads say ok (a failure would be named)."], place: .noScooter),
+        "ui143": CheckGuide(proves: "The quick dial never disappears from Home.",
+                            steps: ["Connect the scooter and look at Home before riding, also right after connecting.", "The round buttons are there each time (at least ? and the dots). Tap Pass or Fail with a note."], place: .scooterHome),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

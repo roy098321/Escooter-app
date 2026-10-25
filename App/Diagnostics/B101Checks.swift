@@ -14,6 +14,7 @@ import GRDB
 /// Chunk B ("Where to? + places"): u137 "Riding to Uni, 8 km." and changing the destination at a stop (F-35),
 /// u138 a ride is not ended while the scooter is connected and sending, or while GPS shows movement (B63),
 /// u139 the Scooter-on notification's destination buttons, Continue first (F-36),
+/// u143 the quick dial is never hidden; a failed read is logged (B55),
 /// u142 a destination shows time and battery: Home • 30 mins • 27% battery (note 14),
 /// u141 the Where to? arrival clock is leaving now, never hours old (B58),
 /// u140 the Where to? list never has two rows for one destination: routes link to the place they end in (B61).
@@ -43,6 +44,27 @@ enum B101Checks {
         runOneRowPerDestination()
         runFreshArrival()
         runTimeAndBattery()
+        runQuickDialShown()
+    }
+
+    // MARK: u143
+
+    /// B55: the quick dial loads (or says why not); the row itself is always on Home
+    private static func runQuickDialShown() {
+        let expect = Expect()
+        do {
+            let temp = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { temp.discardTemporary() }
+            _ = QuickDialLoader.load(database: temp, routeChips: [], slots: 3, from: nil)
+            expect(QuickDialLoader.lastFailure == nil, "B55: an empty made-up database loads without a failure (the row shows No destination and the dots)")
+        } catch {
+            expect(false, "the temporary database failed: \(error.localizedDescription)")
+        }
+        if let db = AppModel.shared.displayDatabase {
+            let loaded = QuickDialLoader.load(database: db, routeChips: RouteFollowLoader.chips(database: db, log: false), slots: 3, from: nil)
+            expect(QuickDialLoader.lastFailure == nil, "this phone: \(loaded.items.count) quick-dial places" + (QuickDialLoader.lastFailure.map { ", failed: \($0)" } ?? ""))
+        }
+        CheckResults.shared.set("u143", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u142

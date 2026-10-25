@@ -206,7 +206,8 @@ struct HomeView: View {
     private func bottomBlock(_ m: HomeModel) -> some View {
         VStack(spacing: DS.Space.row) {
             if m.state != .riding, preview == nil, let trip = TripService.shared.offer { continueRow(trip) }
-            if !(shownChips.isEmpty && shownQuick.isEmpty) && m.state != .riding { whereToRow }
+            // B55: the quick dial is never hidden (No destination and the dots are always there), even when the places could not be read
+            if m.state != .riding { whereToRow.onAppear { if preview == nil, quick.isEmpty { reloadLastRide() } } }
             if m.state != .riding { loadRow }
         }
     }
@@ -588,13 +589,18 @@ struct HomeView: View {
     }
 
     private func reloadLastRide() {
-        guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
+        guard preview == nil else { return }
+        guard let db = AppModel.shared.displayDatabase else {
+            Log.info(source: "home", "B55: quick dial not loaded: the database is not open yet (the row shows No destination and the list button)")
+            return
+        }
         let phone = PhoneSensors.shared.lastKnown.map { GeoPoint(lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) }
         let loaded = QuickDialLoader.load(database: db, routeChips: RouteFollowLoader.chips(database: db),
                                           slots: QuickDial.slotCount(accessibilitySize: typeSize.isAccessibilitySize), from: phone)
         chips = loaded.chips
         quick = loaded.items
         rows = loaded.rows
+        if let failure = QuickDialLoader.lastFailure { Log.error(source: "home", "B55: quick dial load failed: \(failure)") }
         if let id = RouteFollowSelection.shared.chosenKey, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.choose(key: nil) }
         parked = ParkedResolver.current(database: db, simulated: ScreenSimulator.shared.active)
         gap = ScreenSimulator.shared.active ? nil : ConnectionWatch.visibleGap(db)
