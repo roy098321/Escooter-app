@@ -783,9 +783,13 @@ enum CheckList {
         m("u156", p6M, "Ride graph maths (note 13)", "Nothing to do \u{00B7} Run all automatic marks it",
           "A made-up ride with a climb: Speed is the only line at first; incline, acceleration and battery per km are chips; the incline on the hill is about 4 %; a map tap finds its moment; the hill can be selected; the scatter says how strong the link is"),
         m("ui156", p6M, "One ride graph with chips (note 13)", "Open a ride \u{2192} tap the Ride graph panel",
-          "One chart with Speed; chips add Battery, Height, Incline, Acceleration, Battery per km, Power, Temp (Wind with weather), each in its colour, the outlined chip's scale on the axis; touching the map moves the cursor (a touch on a hill selects it), touching the chart moves the dot; Select marks a stretch, Scatter shows two lines against each other with a plain-words link; pinch sideways zooms time, up-down the outlined line, double tap resets", manual: true),
+          "One chart with Speed; chips add Battery, Height, Incline, Acceleration, Battery per km, Power, Temp (Wind with weather), each in its colour, the outlined chip's scale on the axis; touching the map moves the cursor (a touch on a hill selects it), touching the chart moves the dot; Select marks a stretch, Scatter shows two lines against each other with a plain-words link; a pinch stretches the value scale of every line while the whole ride stays visible, double tap fits again", manual: true),
         m("u158", p6M, "Release name everywhere (F-30b)", "Nothing to do \u{00B7} Run all automatic marks it",
-          "The build's version is a release name like 101.251026.00 (About, build stamp, report zip name), its What's new code is 251026, the IPA is CorckieApp-101.251026.00.ipa")
+          "The build's version is a release name like 101.251026.00 (About, build stamp, report zip name), its What's new code is 251026, the IPA is CorckieApp-101.251026.00.ipa"),
+        m("u157", p6M, "What's new card (F-32)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "The bundled list has an entry for this build with 3 or 4 items and its full list; the card shows once for a new build, never during a ride, not again after it was seen"),
+        m("ui157", p6M, "What's new after the update (F-32)", "Open the app for the first time after installing this build",
+          "A card over the dimmed Home: What's new \u{00B7} 251026, four items and the smaller-changes line; \u{2715} or a tap outside closes it; it does not come back; Settings \u{2192} What's new lists everything", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

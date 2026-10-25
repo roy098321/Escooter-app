@@ -194,6 +194,7 @@ struct SettingsView: View {
     private var aboutSection: some View {
         group("About") {
             LabeledContent("Version") { VersionLabel() }   // G4: the only place the version tag shows
+            NavigationLink("What's new") { WhatsNewListView() }   // F-32: every build's list
         }
     }
 

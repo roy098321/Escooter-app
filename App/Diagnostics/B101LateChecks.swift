@@ -37,6 +37,23 @@ enum B101LateChecks {
         runInsightProgress()
         runRideGraph()
         runReleaseName()
+        runWhatsNew()
+    }
+
+    // MARK: u157
+
+    /// F-32: this build's entry is bundled; the card shows once, never during a ride
+    private static func runWhatsNew() {
+        let expect = Expect()
+        let entries = WhatsNewStore.entries
+        let mine = WhatsNew.entry(for: AppInfo.releaseName, in: entries)
+        expect(mine != nil, "bundled entry for \(AppInfo.releaseName): \(mine?.title ?? "missing")")
+        expect((3...4).contains(mine?.items.count ?? 0) && !(mine?.full.isEmpty ?? true), "\(mine?.items.count ?? 0) items, \(mine?.full.count ?? 0) lines in the full list")
+        let v = AppInfo.releaseName
+        expect(WhatsNew.shouldShow(current: v, lastSeen: "100.000000.00", riding: false, entries: entries)
+               && !WhatsNew.shouldShow(current: v, lastSeen: "100.000000.00", riding: true, entries: entries)
+               && !WhatsNew.shouldShow(current: v, lastSeen: v, riding: false, entries: entries), "once per build, never during a ride")
+        expect.report("u157")
     }
 
     // MARK: u158

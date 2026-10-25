@@ -1,0 +1,44 @@
+[
+  {
+    "version": "101.251026.00",
+    "headline": "Rides are never lost, and the map says more",
+    "items": [
+      { "symbol": "checkmark.shield", "title": "No more lost rides", "line": "A ride starts when you really ride, stays on while you ride, and is kept even if the phone took over." },
+      { "symbol": "mappin.and.ellipse", "title": "Where to? from anywhere", "line": "Pick your destination from the Scooter on notification, or change it at a stop." },
+      { "symbol": "map", "title": "Ride map layers", "line": "Speed, Hills, Wind, Battery and Temp on one smooth line; tap a layer again for a deeper view." },
+      { "symbol": "bolt.fill", "title": "Plug in after every ride", "line": "One tap starts the charge timer; the small pill sets when to tell you." }
+    ],
+    "smallerFixes": 26,
+    "full": [
+      "Battery % no longer jumps between 100 and 99.",
+      "A ride with real GPS distance is never thrown away; Restore discarded ride in Rides.",
+      "Ride start and end battery use settled readings: no more 99 % → 100 %.",
+      "A ride ends at your last movement; short stops still count in its time.",
+      "Auto-started rides begin at your first real riding movement.",
+      "Legs to the same destination become one ride, with ↻ Continue to … when you did not arrive.",
+      "Bad scooter readings are trimmed, never the whole ride, and trust comes back by itself.",
+      "A ride is not ended while the scooter is on or you are moving.",
+      "Riding to Uni, 8 km: the destination is said when you set off; change it at a stop.",
+      "Pick your destination from the Scooter on notification.",
+      "Never two rows for the same place in Where to?.",
+      "Arrival times in Where to? are always current.",
+      "Destinations show time and battery: Home • 30 mins • 27% battery.",
+      "The quick dial is always on Home.",
+      "Hold a place to drag it into a new order; let go for its menu.",
+      "The › in the Places list sits inside its card.",
+      "No parked pin on Home's map.",
+      "Shared energy track: battery use spread along the ride by power.",
+      "Map layers Speed · Hills · Wind · Battery · Temp, tap again for a deeper view, stops as dots.",
+      "The route is one smooth gradient line.",
+      "The ride summary map takes about half the screen.",
+      "The route draws itself smoothly after a ride.",
+      "Drag the ride card like Apple Maps, down to a small lip.",
+      "Plug in after every ride: one tap, an alert you choose, an honest time.",
+      "One clear Stats chart with km, rides, time or ₪ saved.",
+      "Insights show how far along they are; sure ones get their own page.",
+      "One ride graph with chips, linked to the map, with a scatter view.",
+      "Version names like 101.251026.00 everywhere.",
+      "This card: what is new after each update."
+    ]
+  }
+]

@@ -62,6 +62,8 @@ struct HomeView: View {
     @State private var lastRideEndMs: Int64?
     @State private var plugAlert: PlugAlert = PlugInStore.alert
     @State private var showPlugAlert = false
+    /// F-32: the What's new card, once per build, never during a ride
+    @State private var whatsNew: WhatsNewEntry?
     @State private var oldestRideMs: Int64?
     /// F-02: the Load for the next ride (None / Light / Heavy / Exact), kept until the next ride starts
     @State private var loadSel = "none"
@@ -110,7 +112,16 @@ struct HomeView: View {
                     }
                 }
         }
+        .overlay {
+            if let entry = whatsNew {
+                WhatsNewCard(entry: entry) {
+                    WhatsNewStore.markSeen()
+                    withAnimation(.easeOut(duration: 0.2)) { whatsNew = nil }
+                }
+            }
+        }
         .onAppear {
+            if preview == nil, whatsNew == nil, WhatsNewStore.shouldShow(riding: RecorderService.shared.rideActive) { whatsNew = WhatsNewStore.current }
             loadSelectorFromStore()
             reloadLastRide()
             if previewSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showWhereTo = true } }

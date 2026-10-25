@@ -892,6 +892,10 @@ struct CheckGuide {
                             steps: ["Open a ride, tap the Ride graph panel.", "Add Incline; touch a hill on the map: it is selected and the cursor jumps there. Tap Scatter.", "Pinch sideways and up-down, then double tap. Tap Pass or Fail with a note."], place: .noScooter),
         "u158": CheckGuide(proves: "The app carries one release name everywhere.",
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the name, the code and the IPA name each say ok; Settings \u{2192} About shows the same name."], place: .noScooter),
+        "u157": CheckGuide(proves: "Every build brings its What's new card, shown once.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the entry, its items and the show-once rule each say ok. The real thing is check ui157."], place: .noScooter),
+        "ui157": CheckGuide(proves: "After an update you see in one card what changed.",
+                            steps: ["Open the app right after installing the update.", "The card says What's new \u{00B7} 251026; close it; reopen the app: it stays closed. Settings \u{2192} What's new has the full list. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]
