@@ -727,7 +727,11 @@ enum CheckList {
         m("u138", p6M, "A ride never ends while the scooter is on or you are moving (B63)", "Nothing to do \u{00B7} Run all automatic marks it",
           "Made-up ride: scooter connected and sending but its readings untrusted, Start pressed, 10 min on GPS with a 60 s stop at a light: the ride stays open; the scooter counts as on while packets arrive"),
         m("ui138", p6M, "A long ride in phone mode is kept whole (B63)", "Ride as usual; if the ride screen shows Phone took over, keep riding and stop at lights",
-          "The ride stays on until you really stop (or switch the scooter off); afterwards it is one ride with its full GPS distance, not discarded", scooter: true, manual: true)
+          "The ride stays on until you really stop (or switch the scooter off); afterwards it is one ride with its full GPS distance, not discarded", scooter: true, manual: true),
+        m("u139", p6M, "Destination buttons on Scooter on (F-36)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Made-up places give the buttons Uni, Home, Grandma, No destination; after a trip that did not arrive \u{21BB} Continue to Uni is first and Uni is not repeated; each button maps back to its destination"),
+        m("ui139", p6M, "Pick where you're going from the notification (F-36)", "Switch the scooter on with the app closed; long-press the Scooter on notification",
+          "The buttons are your quick-dial places and No destination (\u{21BB} Continue to \u{2026} first after a trip that stopped short); tapping one sets the destination without opening the app: the ride says Riding to <place>, N km", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

@@ -10,7 +10,9 @@ import Foundation
 /// u134 the ride starts at the first real riding movement, back-dated; pushing, standing and a lifted wheel do not start it (B62),
 /// u135 what is a ride: legs to a picked destination merge where the trip ended, Continue, detours out of estimates, trim line, widen (F-39),
 /// u136 bad readings are trimmed, never the ride: warm-up after scooter-on, trust returns, plain-words ignored notes (notes 12 + 10).
-/// Chunk B ("Where to? + places"): u137 "Riding to Uni, 8 km." and changing the destination at a stop (F-35).
+/// Chunk B ("Where to? + places"): u137 "Riding to Uni, 8 km." and changing the destination at a stop (F-35),
+/// u138 a ride is not ended while the scooter is connected and sending, or while GPS shows movement (B63),
+/// u139 the Scooter-on notification's destination buttons, Continue first (F-36).
 @MainActor
 enum B101Checks {
     private final class Expect {
@@ -33,6 +35,26 @@ enum B101Checks {
         runWhatIsARide()
         runDestinationLive()
         runKeptOpen()
+        runScooterOnButtons()
+    }
+
+    // MARK: u139
+
+    /// F-36: the "Scooter on" buttons, "Continue to ..." first (F-39), on made-up places
+    private static func runScooterOnButtons() {
+        let expect = Expect()
+        let places = [ScooterOnActions.Place(key: "r1", name: "Uni", placeId: "uni"), ScooterOnActions.Place(key: "place:home", name: "Home", placeId: "home"),
+                      ScooterOnActions.Place(key: "place:gran", name: "Grandma", placeId: "gran")]
+        let plain = ScooterOnActions.actions(continueTo: nil, places: places)
+        expect(plain.map(\.title) == ["Uni", "Home", "Grandma", "No destination"], "F-36: Uni \u{00B7} Home \u{00B7} Grandma \u{00B7} ? on the notification")
+        let resume = ScooterOnActions.actions(continueTo: ScooterOnActions.Place(key: "place:uni", name: "Uni", placeId: "uni"),
+                                              continueTitle: "\u{21BB} Continue to Uni", places: places)
+        expect(resume.first?.title == "\u{21BB} Continue to Uni" && resume.filter { $0.title.contains("Uni") }.count == 1,
+               "after a trip that did not arrive \u{21BB} Continue to Uni is first, Uni not twice")
+        expect(ScooterOnActions.choice(actionId: plain[1].id) == .destination("place:home") && ScooterOnActions.choice(actionId: plain[3].id) == .noDestination
+               && ScooterOnActions.choice(actionId: resume[0].id) == .continueTrip("place:uni"), "each button maps back to its destination")
+        expect(Notifier.destinationActions().last?.title == QuickDialSlot.freeRideName, "this phone's buttons end with No destination")
+        CheckResults.shared.set("u139", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u138

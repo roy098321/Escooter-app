@@ -70,6 +70,9 @@ final class Notifier: NSObject, NotificationSending, MessageLogging {
 
     func send(id: String, title: String, body: String, soundName: String) {
         let center = UNUserNotificationCenter.current()
+        // F-36: "Scooter on" carries the destination buttons (F-39: "Continue to ..." first), made from the places as they are now
+        let scooterOn = id == GoingForARideContent.notificationID
+        if scooterOn { center.setNotificationCategories([Self.scooterOnCategory()]) }
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
                 DispatchQueue.main.async {
@@ -84,6 +87,7 @@ final class Notifier: NSObject, NotificationSending, MessageLogging {
             content.body = body
             content.sound = UNNotificationSound(named: UNNotificationSoundName(soundName))
             content.interruptionLevel = .active   // B36: passive is delivered silently
+            if scooterOn { content.categoryIdentifier = ScooterOnActions.categoryId }
             let request = UNNotificationRequest(identifier: id, content: content, trigger: nil)
             let soundsOn = settings.soundSetting == .enabled
             center.add(request) { error in
@@ -104,6 +108,45 @@ final class Notifier: NSObject, NotificationSending, MessageLogging {
         center.removeDeliveredNotifications(withIdentifiers: [id])
         center.removePendingNotificationRequests(withIdentifiers: [id])
         Log.info(source: "notify", "removed")
+    }
+
+    // MARK: F-36 destination buttons
+
+    /// The buttons: the quick-dial places (not the one the phone is in), "Continue to ..." first after a trip that did not arrive (F-39),
+    /// and No destination. A button sets the destination without opening the app.
+    static func destinationActions() -> [ScooterOnActions.Action] {
+        guard let db = AppModel.shared.displayDatabase else { return ScooterOnActions.actions(continueTo: nil, places: []) }
+        let phone = PhoneSensors.shared.lastKnown.map { GeoPoint(lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) }
+        let items = QuickDialLoader.load(database: db, routeChips: RouteFollowLoader.chips(database: db, log: false),
+                                         slots: QuickDial.slotCount(accessibilitySize: false), from: phone).items.filter { !$0.here }
+        let trip = TripService.shared.offer
+        let resume = trip.map { ScooterOnActions.Place(key: QuickDialLoader.placePrefix + $0.placeId, name: $0.placeName, placeId: $0.placeId) }
+        return ScooterOnActions.actions(continueTo: resume, continueTitle: trip.map(TripRules.continueText),
+                                        places: items.map { ScooterOnActions.Place(key: $0.key, name: $0.name, placeId: $0.id) })
+    }
+
+    private static func scooterOnCategory() -> UNNotificationCategory {
+        let actions = destinationActions().map { UNNotificationAction(identifier: $0.id, title: $0.title, options: []) }
+        return UNNotificationCategory(identifier: ScooterOnActions.categoryId, actions: actions, intentIdentifiers: [], options: [])
+    }
+
+    /// A button of the "Scooter on" notification was tapped (main thread). During a ride that already started it switches like a pick at a stop.
+    func destinationPicked(_ choice: ScooterOnActions.Choice) {
+        let key: String?
+        switch choice {
+        case .destination(let k): key = k
+        case .noDestination: key = nil
+        case .continueTrip(let k): key = k
+        }
+        if RecorderService.shared.rideActive {
+            RecorderService.shared.changeDestination(key)
+        } else if case .continueTrip = choice {
+            TripService.shared.continueTapped()
+        } else {
+            if key != RouteFollowSelection.shared.chosenKey { RouteFollowSelection.shared.choose(key: key) }
+            TripService.shared.picked(key: RouteFollowSelection.shared.chosenKey)     // F-39: another destination closes the open trip
+        }
+        Log.info(source: "notify", "F-36: destination from the notification: \(key == nil ? "none" : (QuickDialLoader.placeId(fromKey: key) == nil ? "a route" : "a place"))")
     }
 
     // MARK: MessageLogging

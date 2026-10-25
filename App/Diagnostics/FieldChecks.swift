@@ -223,6 +223,12 @@ extension FieldChecks: UNUserNotificationCenterDelegate {
             completionHandler()
             return
         }
+        // F-36: a destination button of "Scooter on" sets the destination; the app stays closed
+        if let choice = ScooterOnActions.choice(actionId: response.actionIdentifier) {
+            DispatchQueue.main.async { Notifier.shared.destinationPicked(choice) }
+            completionHandler()
+            return
+        }
         // M1-12 / D2: tapping "Going for a ride?" opens the live view in "Ready" (no ride until the wheel moves)
         DispatchQueue.main.async { RecorderService.shared.requestReady() }
         completionHandler()

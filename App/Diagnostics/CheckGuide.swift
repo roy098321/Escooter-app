@@ -834,6 +834,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the made-up phone-mode ride with a stop at a light stays open. The real thing is check ui138."], place: .noScooter),
         "ui138": CheckGuide(proves: "A ride recorded by the phone is not ended halfway.",
                             steps: ["Ride as usual, with stops at lights.", "If Phone took over shows, keep riding. Afterwards the ride list has one ride for the whole trip. Tap Pass or Fail with a note."], place: .ride),
+        "u139": CheckGuide(proves: "The Scooter on notification offers your places as buttons, Continue first after an unfinished trip.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the button order, Continue first and the mapping back each say ok. The real thing is check ui139."], place: .noScooter),
+        "ui139": CheckGuide(proves: "You can set the destination from the notification without opening the app.",
+                            steps: ["With the app in the background, switch the scooter on.", "Long-press the Scooter on notification and tap a place.", "Ride: the voice says Riding to that place. Tap Pass or Fail with a note."], place: .ride),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]
