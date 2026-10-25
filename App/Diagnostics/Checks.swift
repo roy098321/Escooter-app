@@ -751,7 +751,11 @@ enum CheckList {
         m("u148", p6M, "Map layer row (F-33)", "Nothing to do \u{00B7} Run all automatic marks it",
           "The row reads Speed \u{00B7} Hills \u{00B7} Wind \u{00B7} Battery \u{00B7} Temp; tapping each again gives Steady \u{00B7} Grade \u{00B7} Wind cost \u{00B7} Drain \u{00B7} Heating; a made-up ride draws every view, its 90 s stop is one dot; no weather says No wind data yet"),
         m("ui148", p6M, "Ride map layers, tap again for deeper (F-33)", "Open a ride from Rides",
-          "Over the map one row: Speed \u{00B7} Hills \u{00B7} Wind \u{00B7} Battery \u{00B7} Temp (only what the ride has); tap the active one again: its label changes (Speed \u{2192} Steady \u{2026}) and the legend title and colours follow; stops are white dots on Speed; the hint Tap layer for deeper view shows the first few times", manual: true)
+          "Over the map one row: Speed \u{00B7} Hills \u{00B7} Wind \u{00B7} Battery \u{00B7} Temp (only what the ride has); tap the active one again: its label changes (Speed \u{2192} Steady \u{2026}) and the legend title and colours follow; stops are white dots on Speed; the hint Tap layer for deeper view shows the first few times", manual: true),
+        m("u149", p6M, "The route is one smooth line (B59)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "A made-up ride's speed stretches become one line with its colour stops in order along it; every point once; a gap in the fixes gives a second line"),
+        m("ui149", p6M, "Smooth route line, no blobs (B59)", "Open a ride from Rides, zoom in on the route; also try Replay",
+          "The route is one even line whose colour flows from slow to fast: no round blobs or hard colour steps at the joins, same width everywhere", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

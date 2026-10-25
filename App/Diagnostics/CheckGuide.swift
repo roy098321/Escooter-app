@@ -858,6 +858,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the row, the deeper labels, the made-up ride's views and its stop each say ok. The real thing is check ui148."], place: .noScooter),
         "ui148": CheckGuide(proves: "You can read speed, hills, wind, battery and temperature on the ride map, and a deeper view of each.",
                             steps: ["Open a ride from Rides.", "Tap each layer button, then tap the active one again: the label and the legend change.", "On Speed, stops show as white dots. Tap Pass or Fail with a note."], place: .noScooter),
+        "u149": CheckGuide(proves: "The ride route is drawn as one line, not many overlapping pieces.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: one line, points once, stops in order, a gap splits it. The real thing is check ui149."], place: .noScooter),
+        "ui149": CheckGuide(proves: "The ride route looks like one smooth gradient line.",
+                            steps: ["Open a ride from Rides and zoom in on the route.", "No blobs at the joins, the colour flows; do the same in Replay. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

@@ -2,8 +2,9 @@ import CorckieCore
 import MapKit
 import SwiftUI
 
-/// F-04: continuous gradient paths on the ride maps. The ramps and fixed scales come from Core (`LayerRamps`); the line is one short
-/// coloured stretch after another with round caps, so the shade follows the value without steps.
+/// F-04: continuous gradient paths on the ride maps. The ramps and fixed scales come from Core (`LayerRamps`).
+/// B59: each unbroken run is ONE map polyline stroked with a gradient (a colour stop per stretch, placed by distance along the run;
+/// MapKit draws it with its gradient polyline renderer): uniform width, no overlapping round caps, no blobs at the joins.
 enum GradientPath {
     static func color(_ ramp: GradientRamp, _ value: Double) -> Color {
         let c = ramp.rgb(at: value)
@@ -20,14 +21,20 @@ enum GradientPath {
         lines(stretches, ramp: LayerRamps.ramp(layer, colourBlind: DisplaySettings.colourBlind), width: width)
     }
 
-    /// F-33: any view's stretches on its own ramp
+    /// F-33: any view's stretches on its own ramp. B59: one gradient polyline per unbroken run.
     @MainActor @MapContentBuilder
     static func lines(_ stretches: [ValueStretch], ramp: GradientRamp, width: CGFloat = 5) -> some MapContent {
-        ForEach(Array(stretches.enumerated()), id: \.offset) { _, s in
-            MapPolyline(coordinates: [CLLocationCoordinate2D(latitude: s.a.lat, longitude: s.a.lon),
-                                      CLLocationCoordinate2D(latitude: s.b.lat, longitude: s.b.lon)])
-                .stroke(color(ramp, s.value), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+        let runs = GradientLine.runs(stretches, ramp: ramp)
+        ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
+            MapPolyline(coordinates: run.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                .stroke(gradient(run), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
         }
+    }
+
+    /// B59: the run's colour stops as a gradient along the line
+    static func gradient(_ run: GradientRun) -> LinearGradient {
+        LinearGradient(stops: run.stops.map { Gradient.Stop(color: Color(red: $0.r, green: $0.g, blue: $0.b), location: $0.location) },
+                       startPoint: .leading, endPoint: .trailing)
     }
 }
 

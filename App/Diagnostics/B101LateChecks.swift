@@ -3,7 +3,8 @@ import Foundation
 
 /// Batch 101.251026.00 chunks C-E checks, on made-up input only (nothing real is read or written):
 /// u147 the shared energy track: power shape scaled to the battery drop, battery-only fallback, gaps (F-34),
-/// u148 the map layer row: five buttons, tap again for the derived view, stops as dots, honest legends (F-33).
+/// u148 the map layer row: five buttons, tap again for the derived view, stops as dots, honest legends (F-33),
+/// u149 the route is one gradient line per unbroken run, nothing overlapping (B59).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -20,6 +21,26 @@ enum B101LateChecks {
     static func run() {
         runEnergyTrack()
         runLayerRow()
+        runGradientLine()
+    }
+
+    // MARK: u149
+
+    /// B59: one polyline per unbroken run, a colour stop per stretch along it
+    private static func runGradientLine() {
+        let expect = Expect()
+        let pts = madeUpRide(300, power: { _ in 300 }, battery: { _ in 80 }, speed: { 10 + Double($0 % 60) / 2 })
+        let stretches = RideLayers.smoothedStretches(RideLayers.speedStretches(pts))
+        let runs = GradientLine.runs(stretches, ramp: LayerRamps.speed(colourBlind: false))
+        expect(runs.count == 1, "\(stretches.count) stretches \u{2192} \(runs.count) line(s)")
+        expect(runs.first?.coords.count == stretches.count + 1, "every point once, nothing overlapping")
+        let locations = runs.first?.stops.map(\.location) ?? []
+        expect(locations.first == 0 && locations.last == 1 && zip(locations, locations.dropFirst()).allSatisfy { $0 <= $1 },
+               "\(locations.count) colour stops in order along the line")
+        var broken = stretches
+        if broken.count > 4 { broken.removeSubrange(2...3) }
+        expect(GradientLine.runs(broken, ramp: LayerRamps.speed(colourBlind: false)).count == 2, "a gap in the fixes starts a second line")
+        expect.report("u149")
     }
 
     // MARK: u148
