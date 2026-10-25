@@ -111,6 +111,7 @@ final class AppModel {
         scooter.connectHandlers.append { [weak self] inBackground in
             guard let self else { return }
             self.bootSettle.reset()                      // B50
+            self.loadBatteryDetector()                   // B56b: this scooter's flip history, before its first reading
             Task { @MainActor in for _ in 0..<30 where ChargeTimer.shared.charging { try? await Task.sleep(nanoseconds: 2_000_000_000); ChargeTimer.shared.tick() } }   // F-31: the real % ends the charge timer
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .connected))
             RecorderService.shared.scooterConnected(at: Date())
@@ -132,6 +133,7 @@ final class AppModel {
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .disconnected))
             RecorderService.shared.scooterDisconnected(at: Date())
             LastSeen.note(batteryPct: self.bootSettle.displayPct, force: true)
+            self.saveBatteryDetector()                   // B56b
             ConnectionWatch.shared.disconnected(odoKm: self.live.frame?.odometerKm)   // B34
             FieldChecks.shared.scooterDisconnected(reason: reason)
             C8Recorder.shared.linkDown(at: Date())
@@ -158,6 +160,26 @@ final class AppModel {
     }
 
     private func seconds() -> Double { Date().timeIntervalSince(started) }
+
+    // MARK: B56b battery flip filter, per scooter
+
+    private var batteryDetectorKey: String { "corckie.b56.flips." + (scooter.knownPeripheralID ?? "scooter") }
+
+    /// The stored flip history of this scooter goes into both pipelines (screens and Recorder), so the filter is on from
+    /// the first reading of a scooter that flips, and never on for one that doesn't.
+    private func loadBatteryDetector() {
+        let d = BatteryFlipDetector.parse(UserDefaults.standard.string(forKey: batteryDetectorKey))
+        live.setBatteryDetector(d)
+        let recorder = RecorderService.shared.recorder
+        Task { await recorder.setBatteryDetector(d) }
+        Log.info(source: "battery", "Battery flip filter: \(d.line)")
+    }
+
+    private func saveBatteryDetector() {
+        let d = live.batteryFilter.detector
+        UserDefaults.standard.set(d.json, forKey: batteryDetectorKey)
+        Log.info(source: "battery", "Battery flip filter saved: \(d.line)")
+    }
 
     /// b2–b4, c2: evaluated as packets arrive.
     private func evaluateScooterChecks() {

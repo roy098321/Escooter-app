@@ -804,6 +804,10 @@ struct CheckGuide {
                            steps: ["Switch the phone to light mode. Home: a soft map behind the page with the parked pin, a warm glow behind the disc, quick dial and Load cards in warm sand.", "Stats, Rides and Scooter: cards and tiles are warm sand, no grey outline, a very soft shadow. Scroll a long list under the tab bar: the build number sits on a small pill and the list never shows through it.", "Note: Sunlight mode (bright screen outside) deliberately uses white panels. Tap Pass or Fail with a note."], place: .noScooter),
         "ui78": CheckGuide(proves: "The Scooter on notification and the battery % on Home and the Scooter tab are the real ones, not the boot value.",
                            steps: ["Lock the phone with the app in the background. Switch the scooter off, then on.", "The \"Scooter on · N%\" notification shows the % the scooter's dash settles on (not a stuck 100 %); if it cannot settle within 15 s it says Scooter on without a %.", "Open the app: Home and the Scooter tab show the same %. Tap Pass or Fail with a note."], place: .scooterHome),
+        "u130": CheckGuide(proves: "The battery % flip filter shows the lower of a 100 / 99 pair, and leaves a scooter that doesn't flip alone.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: flipping readings show 99, clean ones pass unchanged, +1 waits 60 s, +2 shows at once. The real thing is check ui130."], place: .noScooter),
+        "ui130": CheckGuide(proves: "The battery % no longer jumps between neighbours on the real scooter.",
+                            steps: ["Switch the scooter on and watch Home for a minute: the % should not flip by one.", "After a ride open its battery chart: no zigzag. Tap Pass or Fail with a note."], place: .scooterHome),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

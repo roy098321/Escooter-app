@@ -697,7 +697,11 @@ enum CheckList {
         m("ui77", p6M, "Light mode: Home map, glow, cards, build stamp (B48, B49)", "Light mode: Home, Stats, Rides, Scooter; scroll a list under the tab bar",
           "Home shows a soft, desaturated map with the parked pin and a warm glow behind the Connect / Start disc; cards and tiles are warm sand with no grey line and a very soft shadow (the ₪ and km tiles a little deeper); the build number sits on a small page-coloured pill and never mixes with content scrolling under it. (Sunlight mode keeps white panels on purpose.)", manual: true),
         m("ui78", p6M, "\"Scooter on\" shows the real battery % (B50)", "Phone locked, app in the background · switch the scooter off, then on",
-          "The \"Scooter on · N%\" notification shows the same % as the scooter's dash after it has settled (not a stuck 100 %), or just \"Scooter on\" if it never settles within 15 s; Home and the Scooter tab show no % for the first few seconds, then the real one", scooter: true, manual: true)
+          "The \"Scooter on · N%\" notification shows the same % as the scooter's dash after it has settled (not a stuck 100 %), or just \"Scooter on\" if it never settles within 15 s; Home and the Scooter tab show no % for the first few seconds, then the real one", scooter: true, manual: true),
+        m("u130", p6M, "Battery % flip filter, per scooter (B56)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Made-up readings 100, 99, 100, 99 \u{2026} turn the filter on and show 99; a scooter whose % only goes down is used as it is; +1 is believed after 60 s, +2 at once; the flip history is kept per scooter"),
+        m("ui130", p6M, "Battery % no longer jumps 100 \u{2194} 99 (B56)", "Scooter on, Home and a ride's battery chart",
+          "The % on Home and the Scooter tab stays put instead of flipping by one; after a ride the battery line goes down in steps without a zigzag; charging still makes it go up", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

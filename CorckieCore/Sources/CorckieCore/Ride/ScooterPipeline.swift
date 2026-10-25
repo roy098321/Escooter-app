@@ -9,6 +9,8 @@ public struct ScooterPipeline {
     public private(set) var plausibility = Plausibility()
     public private(set) var totals = RideTotals()
     public private(set) var frame: ScooterFrame?
+    /// B56: the battery % after the flip filter (per-scooter auto-detect); `frame.batteryPct` is the filtered value
+    public private(set) var batteryFilter = BatteryFilter()
     public private(set) var connected = false
     public private(set) var connects = 0
     public private(set) var disconnects = 0
@@ -29,6 +31,7 @@ public struct ScooterPipeline {
             // frame of the previous connection is no live reading any more
             assembler.reset()
             frame = nil
+            batteryFilter.newConnection()          // B56: the boot readings come again
         case .disconnected:
             connected = false
             disconnects += 1
@@ -44,10 +47,17 @@ public struct ScooterPipeline {
                 plausibility.tick(at: e.t)
                 return
             }
-            let checked = plausibility.check(raw, isPacketA: kind == .a)
+            var checked = plausibility.check(raw, isPacketA: kind == .a)
+            // B56: everything after this point sees the flip-filtered %
+            if let pct = checked.frame.batteryPct { checked.frame.batteryPct = batteryFilter.reading(pct, at: e.t) }
             frame = checked.frame
             totals.add(checked.frame, kind: kind)
         }
+    }
+
+    /// B56b: the scooter's stored flip history (the app keeps it per scooter); the hysteresis keeps its state.
+    public mutating func setBatteryDetector(_ d: BatteryFlipDetector) {
+        batteryFilter.detector = d
     }
 
     public mutating func handle(_ events: [TimedScooterEvent]) {

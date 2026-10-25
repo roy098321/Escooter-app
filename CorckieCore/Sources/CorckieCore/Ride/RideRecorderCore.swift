@@ -147,6 +147,11 @@ public struct RideRecorderCore {
         feed.engine.usualPctPerKm = v
     }
 
+    /// B56b: the scooter's stored battery flip history (set by the app at each connection)
+    public mutating func setBatteryDetector(_ d: BatteryFlipDetector) {
+        feed.setBatteryDetector(d)
+    }
+
     // MARK: Inputs
 
     public mutating func scooter(_ e: TimedScooterEvent) -> [RecorderAction] {

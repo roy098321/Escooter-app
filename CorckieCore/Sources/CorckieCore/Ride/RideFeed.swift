@@ -46,6 +46,11 @@ public struct RideFeed {
         }
     }
 
+    /// B56b: the scooter's stored battery flip history
+    public mutating func setBatteryDetector(_ d: BatteryFlipDetector) {
+        pipeline.setBatteryDetector(d)
+    }
+
     @discardableResult
     public mutating func fix(_ f: PhoneFix) -> [RideEngineEvent] {
         engine.handle(.fix(f), at: f.t)
