@@ -788,15 +788,17 @@ private struct WhereToSheet: View {
         .accessibilityLabel("\(r.name), \(trailing(r))")
     }
 
-    /// "17 min \u{00B7} arrive 17:11", the reason there is no time, or "You are here". B58: the arrival is leaving now (`at`), not the
-    /// clock of the moment the list was loaded.
+    /// "17 mins \u{2022} 9% battery \u{2022} arrive 17:11" (note 14: time and battery, the battery only with a usual need), the reason there is
+    /// no time, or "You are here". B58: the arrival is leaving now (`at`), not the clock of the moment the list was loaded.
     private func trailing(_ r: WhereToRow, at now: Date = Date()) -> String {
         if r.here { return PlaceHere.hereWord }
         if let t = r.timeText {
             let a = r.timeS.map { WhereTo.arriveText(timeS: $0, nowMs: Int64(now.timeIntervalSince1970 * 1000),
                                                      utcOffsetMin: TimeZone.current.secondsFromGMT(for: now) / 60) } ?? r.arriveText
-            if let a { return "\(t) \u{00B7} arrive \(a)" }
-            return t
+            let minutes = Int(t.split(separator: " ").first ?? "")
+            var parts = minutes.map { QuickDial.estimateParts(minutes: $0, needPct: r.needPct) } ?? [t]
+            if let a { parts.append("arrive \(a)") }
+            return parts.joined(separator: QuickDial.estimateSeparator)
         }
         return r.note ?? ""
     }
@@ -867,7 +869,7 @@ enum HomePreview {
         return chips.map { c in
             let look = looks[c.routeId] ?? (.letters("?"), "orange", nil)
             return WhereToRow(key: c.routeId, name: c.label, icon: look.0, colourId: look.1, placeId: c.routeId, here: c.here, pin: look.2,
-                              timeText: c.timeText, arriveText: c.arriveText, note: c.note, timeS: c.timeS)
+                              timeText: c.timeText, arriveText: c.arriveText, note: c.note, timeS: c.timeS, needPct: c.usualNeedPct)
         }
     }
 

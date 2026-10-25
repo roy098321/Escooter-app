@@ -14,6 +14,7 @@ import GRDB
 /// Chunk B ("Where to? + places"): u137 "Riding to Uni, 8 km." and changing the destination at a stop (F-35),
 /// u138 a ride is not ended while the scooter is connected and sending, or while GPS shows movement (B63),
 /// u139 the Scooter-on notification's destination buttons, Continue first (F-36),
+/// u142 a destination shows time and battery: Home • 30 mins • 27% battery (note 14),
 /// u141 the Where to? arrival clock is leaving now, never hours old (B58),
 /// u140 the Where to? list never has two rows for one destination: routes link to the place they end in (B61).
 @MainActor
@@ -41,6 +42,19 @@ enum B101Checks {
         runScooterOnButtons()
         runOneRowPerDestination()
         runFreshArrival()
+        runTimeAndBattery()
+    }
+
+    // MARK: u142
+
+    /// Note 14: a destination shows time AND battery, "Home • 30 mins • 27% battery"; without a usual estimate today's text
+    private static func runTimeAndBattery() {
+        let expect = Expect()
+        expect(QuickDial.summary(name: "Home", minutes: 30, needPct: 27) == "Home \u{2022} 30 mins \u{2022} 27% battery", "note 14: Home \u{2022} 30 mins \u{2022} 27% battery")
+        expect(QuickDial.summary(name: "Home", minutes: 30, needPct: nil) == "Home \u{2022} 30 mins", "no usual battery need: no battery part")
+        expect(QuickDial.summary(name: "Grandma", minutes: nil, needPct: nil, note: "no rides there yet") == "Grandma \u{00B7} no rides there yet",
+               "no estimate: today's text")
+        CheckResults.shared.set("u142", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u141

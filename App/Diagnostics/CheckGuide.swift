@@ -704,7 +704,7 @@ struct CheckGuide {
         "u83": CheckGuide(proves: "The app notices when the scooter's odometer shows riding that no recorded ride explains, and notes it once.",
                           steps: ["Developer → Checks → Run all automatic.", "Result: the gap, the three non-gaps, the stored gap and the no-duplicate case each say ok. The real thing is check ui43."], place: .noScooter),
         "ui40": CheckGuide(proves: "Home's Where to? is a row of round icon buttons, and the line under them always says what is chosen.",
-                           steps: ["Home, scooter not riding: you see up to 3 round buttons (2 at the biggest text size) and a dots button. The most visited places come first unless you pinned others.", "Tap one: it fills with the orange and the line reads, for example, Maya's house \u{00B7} 12 min \u{00B7} needs ~9 %. Tap it again: No destination. If the battery is too low the line turns into the orange warning.", "Tap the dots: the full list opens. Settings app, Display, Text Size biggest: two buttons. VoiceOver reads the place name. Tap Pass or Fail with a note."], place: .scooterHome),
+                           steps: ["Home, scooter not riding: you see up to 3 round buttons (2 at the biggest text size) and a dots button. The most visited places come first unless you pinned others.", "Tap one: it fills with the orange and the line reads, for example, Maya's house \u{2022} 12 mins \u{2022} 9% battery. Tap it again: No destination. If the battery is too low the line turns into the orange warning.", "Tap the dots: the full list opens. Settings app, Display, Text Size biggest: two buttons. VoiceOver reads the place name. Tap Pass or Fail with a note."], place: .scooterHome),
         "ui41": CheckGuide(proves: "Each place can have its own icon and a place on Home.",
                            steps: ["Routes, Places, open a named place. Turn on Show on Home and pick position 1, 2 or 3; pick a symbol from the grid; then type MA in the letters box and tap Use letters.", "Go to Home: the place is on the quick dial with that icon. Back to automatic: the first letter of the name.", "Add a place by hand with a name: it is listed under Where to? on Home. Tap Pass or Fail with a note."], place: .noScooter),
         "ui42": CheckGuide(proves: "Where you were when the scooter last connected or disconnected is remembered, so the parked spot is right even when the app did not record a ride.",
@@ -844,6 +844,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the made-up estimate shown hours later gives the later arrival. The real thing is check ui141."], place: .noScooter),
         "ui141": CheckGuide(proves: "Where to? never shows an arrival time from hours ago.",
                             steps: ["Open the app, leave it a few hours (or go back to it the next time).", "Open Where to?: each arrive time is now plus its minutes; keep it open a minute and it moves on. Tap Pass or Fail with a note."], place: .noScooter),
+        "u142": CheckGuide(proves: "Picking a destination tells you how long it takes and how much battery it needs.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the three line forms each say ok. The real thing is check ui142."], place: .noScooter),
+        "ui142": CheckGuide(proves: "You see time and battery for a destination before you ride.",
+                            steps: ["On Home tap a place you ride to often: the line reads like Home \u{2022} 30 mins \u{2022} 27% battery.", "Open Where to?: the rows show minutes and battery the same way. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

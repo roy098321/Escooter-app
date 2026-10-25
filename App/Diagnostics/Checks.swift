@@ -607,13 +607,13 @@ enum CheckList {
         m("u80", p6M, "A saved place is a destination (B31)", "Nothing to do · Run all automatic marks it",
           "On made-up places in a temporary database: a named place without a route is listed under Where to? and says \"no rides there yet\" (P6-5: no time from the straight line any more); a nameless place is not; without a phone location it is listed without numbers; the +10 % margin is applied only by the F-22 warning"),
         m("u81", p6M, "Quick dial ranking and place icons (F-29)", "Nothing to do · Run all automatic marks it",
-          "3 slots (2 at the largest text sizes); pinned places first in the owner's order, then the most visited ride end places; 16 different symbols that all exist on this iOS, or 1-2 typed letters, never an emoji; icon and slot are stored per place and removed again; the line under the icons reads \"Maya's house \u{00B7} 12 min \u{00B7} needs ~9 %\" or \"No destination\""),
+          "3 slots (2 at the largest text sizes); pinned places first in the owner's order, then the most visited ride end places; 16 different symbols that all exist on this iOS, or 1-2 typed letters, never an emoji; icon and slot are stored per place and removed again; the line under the icons reads \"Maya's house \u{2022} 12 mins \u{2022} 9% battery\" (note 14) or \"No destination\""),
         m("u82", p6M, "Parked spot: newest of ride end and last seen (B34)", "Nothing to do · Run all automatic marks it",
           "The newer of the last ride's end and the last-seen spot wins (\"Last seen here \u{00B7} 2 h ago\" or \"Parked \u{00B7} Work \u{00B7} 5 h ago\"); when the odometer went up since that spot it reads \"Last seen\" with no confident pin; a phone fix counts only within 50 m and 2 minutes"),
         m("u83", p6M, "Riding that was not recorded (B35)", "Nothing to do · Run all automatic marks it",
           "On a temporary database: 4.2 km more on the odometer than at the end of the last ride is stored once as a gap and reads \"4.2 km ridden without recording\" / \"Not recorded \u{00B7} 4.2 km\"; 0.2 km, an unknown ride end odometer and a gap already noted are not gaps"),
         m("ui40", p6M, "Quick dial on Home (F-29)", "Home with at least two saved places that rides ended at",
-          "Round icon buttons (3; 2 at the biggest text size) and a dots button; a tap fills the icon with the orange and the line under the icons reads the place, the time and the battery need, e.g. Maya's house \u{00B7} 12 min \u{00B7} needs ~9 %; a second tap on it reads No destination; the dots open the full list; VoiceOver reads the place name", manual: true),
+          "Round icon buttons (3; 2 at the biggest text size) and a dots button; a tap fills the icon with the orange and the line under the icons reads the place, the time and the battery need, e.g. Maya's house \u{2022} 12 mins \u{2022} 9% battery; a second tap on it reads No destination; the dots open the full list; VoiceOver reads the place name", manual: true),
         m("ui41", p6M, "Place icon and Show on Home (F-29)", "Routes → Places → a named place",
           "A Show on Home switch with a position 1 to 3, a grid of 16 symbols and a box for 1-2 letters; the choice shows on Home's quick dial at once; Back to automatic goes to the first letter of the name; a place you added by hand also appears under Where to?", manual: true),
         m("ui42", p6M, "Last seen here (B34)", "Switch the scooter on away from where you last parked, wait for Connected, then switch it off; open the Scooter tab and Home",
@@ -737,7 +737,11 @@ enum CheckList {
         m("u141", p6M, "Where to? arrival time is never stale (B58)", "Nothing to do \u{00B7} Run all automatic marks it",
           "A made-up 31 min estimate loaded at 15:54 and shown at 21:16 says arrive 21:47, not 16:25"),
         m("ui141", p6M, "Arrival time in Where to? is current (B58)", "Leave the app open for a while, then open Where to?",
-          "Every row's arrive time is now plus its minutes, and it moves on by itself every minute while the sheet stays open", manual: true)
+          "Every row's arrive time is now plus its minutes, and it moves on by itself every minute while the sheet stays open", manual: true),
+        m("u142", p6M, "A destination shows time and battery (note 14)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Home \u{2022} 30 mins \u{2022} 27% battery with a usual estimate; Home \u{2022} 30 mins without a usual battery need; Grandma \u{00B7} no rides there yet without an estimate"),
+        m("ui142", p6M, "Where to? shows time and battery (note 14)", "Home: tap a place on the quick dial, then open Where to?",
+          "The line under the icons reads like Home \u{2022} 30 mins \u{2022} 27% battery; each row of Where to? shows its minutes and battery the same way; a place with no rides keeps no rides there yet", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

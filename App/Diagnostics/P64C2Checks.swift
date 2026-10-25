@@ -70,7 +70,7 @@ enum P64C2Checks {
         let ranked = QuickDial.slots([QuickDialPlace(id: "a", name: "A", visits: 9), QuickDialPlace(id: "b", name: "B", visits: 20),
                                       QuickDialPlace(id: "c", name: "C", visits: 2, pinOrder: 1)], count: 3)
         expect(ranked == ["c", "b", "a"], "pinned first, then the most visited (\(ranked.joined()))")
-        expect(QuickDial.summary(name: "Maya's house", minutes: 12, needPct: 9) == "Maya's house \u{00B7} 12 min \u{00B7} needs ~9 %"
+        expect(QuickDial.summary(name: "Maya's house", minutes: 12, needPct: 9) == "Maya's house \u{2022} 12 mins \u{2022} 9% battery"
                && QuickDial.summary(name: nil, minutes: nil, needPct: nil) == "No destination", "the line reads as agreed")
         do {
             let temp = try AppDatabase.openTemporary(build: AppInfo.build)

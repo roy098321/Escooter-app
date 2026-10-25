@@ -88,13 +88,28 @@ public enum QuickDial {
         return Array((pinned + rest).map(\.id).prefix(max(0, count)))
     }
 
-    /// The line under the icons: always what was chosen. "Maya's house · 12 min · needs ~9 %" or "No destination".
+    /// The line under the icons: always what was chosen. Note 14 (owner 25 Oct): with an estimate it is time AND battery,
+    /// "Home • 30 mins • 27% battery" (the battery part only with a usual need); without one today's text, "Grandma · no rides there yet";
+    /// nothing chosen: "No destination".
     public static func summary(name: String?, minutes: Int?, needPct: Double?, note: String? = nil) -> String {
         guard let name, !name.isEmpty else { return "No destination" }
+        if let minutes { return ([name] + estimateParts(minutes: minutes, needPct: needPct)).joined(separator: estimateSeparator) }
         var parts = [name]
-        if let minutes { parts.append("\(minutes) min") } else if let note { parts.append(note) }
-        if let needPct { parts.append("needs ~\(Int(needPct.rounded())) %") }
+        if let note { parts.append(note) }
         return parts.joined(separator: " \u{00B7} ")
+    }
+
+    /// Note 14: the separator of the time-and-battery line
+    public static let estimateSeparator = " \u{2022} "
+
+    /// Note 14: "30 mins", "1 min"
+    public static func minutesText(_ minutes: Int) -> String { minutes == 1 ? "1 min" : "\(minutes) mins" }
+
+    /// Note 14: ["30 mins", "27% battery"]; the battery part only with a usual need
+    public static func estimateParts(minutes: Int, needPct: Double?) -> [String] {
+        var parts = [minutesText(minutes)]
+        if let needPct { parts.append("\(Int(needPct.rounded()))% battery") }
+        return parts
     }
 }
 

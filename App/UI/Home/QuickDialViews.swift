@@ -84,7 +84,7 @@ struct FreeRideIcon: View {
 
 /// F-29: Home's quick dial. Round buttons: "No destination" first (P6-5, always there), then the places (3, or 2 at the largest text sizes),
 /// and "..." for the full list. Tap = choose; the first slot clears. The line under the buttons always says what is chosen ("Maya's house,
-/// 12 min, needs ~9 %" or "No destination"); when the battery may not fit (F-22) that line is the orange warning instead.
+/// 12 mins, 9% battery", note 14, or "No destination"); when the battery may not fit (F-22) that line is the orange warning instead.
 struct QuickDialRow: View {
     let items: [QuickDialItem]
     let selectedKey: String?

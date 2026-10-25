@@ -170,10 +170,11 @@ enum QuickDialLoader {
             if let p = places.first(where: { keyForPlace[$0.id] == chip.routeId }) {
                 return WhereToRow(key: chip.routeId, name: chip.label, icon: iconMap[p.id] ?? PlaceIcon.automatic(name: p.name), colourId: colourMap[p.id] ?? "orange",
                                   placeId: p.id, here: chip.here, pin: pinMap[p.id], timeText: chip.timeText, arriveText: chip.arriveText, note: chip.note,
-                                  timeS: chip.timeS)
+                                  timeS: chip.timeS, needPct: chip.usualNeedPct)
             }
             return WhereToRow(key: chip.routeId, name: chip.label, icon: PlaceIcon.automatic(name: chip.label), colourId: "grey", placeId: nil,
-                              here: false, pin: nil, timeText: chip.timeText, arriveText: chip.arriveText, note: chip.note, timeS: chip.timeS)
+                              here: false, pin: nil, timeText: chip.timeText, arriveText: chip.arriveText, note: chip.note, timeS: chip.timeS,
+                              needPct: chip.usualNeedPct)
         }
         // B61 last guard: never two rows with the same name (a place row wins over a route row that ends at no named place)
         let kept = WhereToDedupe.keepOnePerName(rows.map { WhereToDedupe.Row(key: $0.key, name: $0.name, placeId: $0.placeId) }).map(\.key)
@@ -244,5 +245,7 @@ struct WhereToRow: Identifiable, Equatable {
     var note: String?
     /// B58: the ride time in seconds; the sheet shows the arrival as now + this, never the stored `arriveText`
     var timeS: Double? = nil
+    /// note 14: the usual battery need, % (nil = no usual estimate: no battery part)
+    var needPct: Double? = nil
     var id: String { key }
 }

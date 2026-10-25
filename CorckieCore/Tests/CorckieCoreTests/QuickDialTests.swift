@@ -47,7 +47,11 @@ final class QuickDialTests: XCTestCase {
 
     func test_summaryLineAlwaysSaysWhatWasChosen() {
         XCTAssertEqual(QuickDial.summary(name: nil, minutes: nil, needPct: nil), "No destination")
-        XCTAssertEqual(QuickDial.summary(name: "Maya's house", minutes: 12, needPct: 9), "Maya's house \u{00B7} 12 min \u{00B7} needs ~9 %")
+        XCTAssertEqual(QuickDial.summary(name: "Maya's house", minutes: 12, needPct: 9), "Maya's house \u{2022} 12 mins \u{2022} 9% battery")
+        // note 14: the owner's example, the battery part only with a usual need, one minute singular
+        XCTAssertEqual(QuickDial.summary(name: "Home", minutes: 30, needPct: 27.4), "Home \u{2022} 30 mins \u{2022} 27% battery")
+        XCTAssertEqual(QuickDial.summary(name: "Home", minutes: 30, needPct: nil), "Home \u{2022} 30 mins")
+        XCTAssertEqual(QuickDial.summary(name: "Shop", minutes: 1, needPct: 1), "Shop \u{2022} 1 min \u{2022} 1% battery")
         XCTAssertEqual(QuickDial.summary(name: "Gym", minutes: nil, needPct: nil), "Gym")
     }
 
