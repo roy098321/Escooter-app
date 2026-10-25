@@ -213,7 +213,7 @@ struct RideDetailView: View {
     // MARK: Layout
 
     private func content(_ m: RideSummaryModel) -> some View {
-        MapScreen {
+        MapScreen(tallMap: true) {
             mapLayer(m)
         } topBar: {
             topBar(m)
@@ -573,7 +573,8 @@ struct RideDetailView: View {
         var points: [GeoPoint] = []
         for seg in path.segments { for c in seg.coords { points.append(GeoPoint(lat: c.lat, lon: c.lon)) } }
         for run in path.walks { for c in run { points.append(GeoPoint(lat: c.lat, lon: c.lon)) } }
-        guard let r = MapFit.region(points, padding: 0.12, topCover: 0.4, sideCover: 0.22) else { return position(path) }
+        // B52: the taller map; the top bar, layer row and legend cover its upper part (F-33: the row spans the width)
+        guard let r = MapFit.region(points, padding: 0.12, topCover: 0.42, sideCover: 0.1) else { return position(path) }
         return .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: r.centerLat, longitude: r.centerLon),
                                           span: MKCoordinateSpan(latitudeDelta: r.latSpan, longitudeDelta: r.lonSpan)))
     }

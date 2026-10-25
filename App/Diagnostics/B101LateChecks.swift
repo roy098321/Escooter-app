@@ -4,7 +4,8 @@ import Foundation
 /// Batch 101.251026.00 chunks C-E checks, on made-up input only (nothing real is read or written):
 /// u147 the shared energy track: power shape scaled to the battery drop, battery-only fallback, gaps (F-34),
 /// u148 the map layer row: five buttons, tap again for the derived view, stops as dots, honest legends (F-33),
-/// u149 the route is one gradient line per unbroken run, nothing overlapping (B59).
+/// u149 the route is one gradient line per unbroken run, nothing overlapping (B59),
+/// u150 the ride summary's map takes ~55 % of the screen, the tiles sit in the lower part (B52).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -22,6 +23,20 @@ enum B101LateChecks {
         runEnergyTrack()
         runLayerRow()
         runGradientLine()
+        runSummaryLayout()
+    }
+
+    // MARK: u150
+
+    /// B52: map ~55 % of the screen on the ride summary / detail, the scroll area keeps its room on small phones
+    private static func runSummaryLayout() {
+        let expect = Expect()
+        for (name, h) in [("iPhone 15", 852.0), ("Pro Max", 932.0), ("SE", 667.0)] {
+            let map = MapScreenLayout.rideMapHeight(screenHeight: h)
+            expect(map / h >= 0.5 && map / h <= 0.56 && h - map >= MapScreenLayout.minScrollHeight,
+                   String(format: "%@: map %.0f of %.0f pt (%.0f %%)", name, map, h, map / h * 100))
+        }
+        expect.report("u150")
     }
 
     // MARK: u149

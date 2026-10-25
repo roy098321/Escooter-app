@@ -755,7 +755,11 @@ enum CheckList {
         m("u149", p6M, "The route is one smooth line (B59)", "Nothing to do \u{00B7} Run all automatic marks it",
           "A made-up ride's speed stretches become one line with its colour stops in order along it; every point once; a gap in the fixes gives a second line"),
         m("ui149", p6M, "Smooth route line, no blobs (B59)", "Open a ride from Rides, zoom in on the route; also try Replay",
-          "The route is one even line whose colour flows from slow to fast: no round blobs or hard colour steps at the joins, same width everywhere", manual: true)
+          "The route is one even line whose colour flows from slow to fast: no round blobs or hard colour steps at the joins, same width everywhere", manual: true),
+        m("u150", p6M, "Ride summary map ~55 % of the screen (B52)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "On an iPhone 15, a Pro Max and an SE the ride map is 50 to 56 % of the screen and the tiles keep at least 300 pt"),
+        m("ui150", p6M, "Balanced ride summary (B52)", "Finish a ride (or open one from Rides)",
+          "The map takes about half the screen with the whole route visible; the six tiles and More sit below it; no empty half screen at the bottom", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

@@ -13,8 +13,11 @@ struct MapScreen<MapContent: View, TopBar: View, Side: View, Content: View>: Vie
     private let topBar: TopBar
     private let side: Side
     private let content: Content
+    /// B52: the ride review uses a taller map (~55 %)
+    private let tallMap: Bool
 
-    init(@ViewBuilder map: () -> MapContent,
+    init(tallMap: Bool = false,
+         @ViewBuilder map: () -> MapContent,
          @ViewBuilder topBar: () -> TopBar,
          @ViewBuilder side: () -> Side,
          @ViewBuilder content: () -> Content) {
@@ -22,6 +25,7 @@ struct MapScreen<MapContent: View, TopBar: View, Side: View, Content: View>: Vie
         self.topBar = topBar()
         self.side = side()
         self.content = content()
+        self.tallMap = tallMap
     }
 
     /// how far the scroll area reaches up over the foot of the map (rounded corners)
@@ -30,7 +34,8 @@ struct MapScreen<MapContent: View, TopBar: View, Side: View, Content: View>: Vie
     var body: some View {
         GeometryReader { geo in
             let inset = geo.safeAreaInsets.top
-            let mapHeight = CGFloat(MapScreenLayout.mapHeight(screenHeight: Double(geo.size.height + inset)))
+            let screenHeight = Double(geo.size.height + inset)
+            let mapHeight = CGFloat(tallMap ? MapScreenLayout.rideMapHeight(screenHeight: screenHeight) : MapScreenLayout.mapHeight(screenHeight: screenHeight))
             ZStack(alignment: .top) {
                 Theme.background.ignoresSafeArea()
                 map
@@ -80,7 +85,7 @@ extension MapScreen where Side == EmptyView {
     init(@ViewBuilder map: () -> MapContent,
          @ViewBuilder topBar: () -> TopBar,
          @ViewBuilder content: () -> Content) {
-        self.init(map: map, topBar: topBar, side: { EmptyView() }, content: content)
+        self.init(tallMap: false, map: map, topBar: topBar, side: { EmptyView() }, content: content)
     }
 }
 

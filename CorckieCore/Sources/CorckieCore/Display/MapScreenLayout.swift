@@ -10,9 +10,19 @@ public enum MapScreenLayout {
     /// The scroll area below the map never gets smaller than this (small phones, big text)
     public static let minScrollHeight = 300.0
 
+    /// B52 (owner 21 Oct): the ride summary / ride detail map takes ~55 % of the screen (the whole route visible), the six tiles and
+    /// More sit in the lower part: no empty bottom half
+    public static let rideShare = 0.55
+    public static let rideMaxMapHeight = 620.0
+
     /// Height of the map from the very top of the screen (status bar included)
-    public static func mapHeight(screenHeight: Double) -> Double {
-        let wanted = min(max(screenHeight * share, minMapHeight), maxMapHeight)
+    public static func mapHeight(screenHeight: Double, share: Double = share, maxHeight: Double = maxMapHeight) -> Double {
+        let wanted = min(max(screenHeight * share, minMapHeight), maxHeight)
         return max(120, min(wanted, screenHeight - minScrollHeight))
+    }
+
+    /// B52: the ride review's map height
+    public static func rideMapHeight(screenHeight: Double) -> Double {
+        mapHeight(screenHeight: screenHeight, share: rideShare, maxHeight: rideMaxMapHeight)
     }
 }

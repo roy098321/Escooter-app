@@ -862,6 +862,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: one line, points once, stops in order, a gap splits it. The real thing is check ui149."], place: .noScooter),
         "ui149": CheckGuide(proves: "The ride route looks like one smooth gradient line.",
                             steps: ["Open a ride from Rides and zoom in on the route.", "No blobs at the joins, the colour flows; do the same in Replay. Tap Pass or Fail with a note."], place: .noScooter),
+        "u150": CheckGuide(proves: "The ride summary gives the map about half the screen.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: three phone sizes each say ok. The real thing is check ui150."], place: .noScooter),
+        "ui150": CheckGuide(proves: "After a ride the summary looks balanced: big map, tiles below.",
+                            steps: ["Open a ride from Rides (or finish one).", "The map shows the whole route in about half the screen, the tiles below, no empty bottom half. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

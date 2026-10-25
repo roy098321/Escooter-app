@@ -18,6 +18,25 @@ final class MapScreenLayoutTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(tiny, 120)
     }
 
+    /// B52: the ride review's map is ~55 % of the screen, the scroll area keeps its room
+    func test_rideMapHeight_isAboutHalfTheScreen() {
+        XCTAssertEqual(MapScreenLayout.rideMapHeight(screenHeight: 852), 468.6, accuracy: 0.01)    // iPhone 15
+        XCTAssertEqual(MapScreenLayout.rideMapHeight(screenHeight: 932), 512.6, accuracy: 0.01)    // Pro Max
+        XCTAssertEqual(MapScreenLayout.rideMapHeight(screenHeight: 667), 366.85, accuracy: 0.01)   // SE: the tiles keep 300 pt
+        XCTAssertEqual(MapScreenLayout.rideMapHeight(screenHeight: 1_400), MapScreenLayout.rideMaxMapHeight)
+        XCTAssertGreaterThan(MapScreenLayout.rideMapHeight(screenHeight: 852), MapScreenLayout.mapHeight(screenHeight: 852))
+    }
+
+    func test_bottomCover_movesThePathAboveTheCard() {
+        let pts = [GeoPoint(lat: 10, lon: 20), GeoPoint(lat: 10.01, lon: 20.01)]
+        let plain = MapFit.region(pts, padding: 0.1)!
+        let covered = MapFit.region(pts, padding: 0.1, bottomCover: 0.45)!
+        XCTAssertGreaterThan(covered.latSpan, plain.latSpan)
+        XCTAssertLessThan(covered.centerLat, plain.centerLat, "the centre moves south so the path sits in the free top part")
+        // the path's south end is still inside the uncovered part
+        XCTAssertGreaterThan(10.0, covered.centerLat - covered.latSpan / 2 + covered.latSpan * 0.45 - 1e-9)
+    }
+
     func test_mapHeight_isFixed_notDependingOnAnything_butTheScreen() {
         XCTAssertEqual(MapScreenLayout.mapHeight(screenHeight: 852), MapScreenLayout.mapHeight(screenHeight: 852))
     }

@@ -361,8 +361,9 @@ public enum MapFit {
     /// `topCover`: the share of the map hidden under the floating top bar; the region grows by it and moves north so the path sits
     /// in the visible part.
     /// `sideCover`: the same for the layer control on the right edge (the path sits in the part left of it).
+    /// `bottomCover` (B52 / note 11): the share hidden under the ride card at the bottom; the region grows and moves south.
     public static func region(_ points: [GeoPoint], padding: Double = 0.15, minSpanDeg: Double = 0.003, topCover: Double = 0,
-                              sideCover: Double = 0) -> MapFitRegion? {
+                              sideCover: Double = 0, bottomCover: Double = 0) -> MapFitRegion? {
         let kept = inliers(points)
         guard let first = kept.first else { return nil }
         var minLat = first.lat, maxLat = first.lat, minLon = first.lon, maxLon = first.lon
@@ -373,10 +374,11 @@ public enum MapFit {
         let latSpan = max((maxLat - minLat) * (1 + 2 * padding), minSpanDeg)
         let lonSpan = max((maxLon - minLon) * (1 + 2 * padding), minSpanDeg)
         let cover = min(0.6, max(0, topCover))
-        let total = latSpan / (1 - cover)
+        let below = min(0.85 - cover, max(0, bottomCover))
+        let total = latSpan / (1 - cover - below)
         let side = min(0.6, max(0, sideCover))
         let wide = lonSpan / (1 - side)
-        return MapFitRegion(centerLat: (minLat + maxLat) / 2 + cover * total / 2, centerLon: (minLon + maxLon) / 2 + side * wide / 2,
+        return MapFitRegion(centerLat: (minLat + maxLat) / 2 + (cover - below) * total / 2, centerLon: (minLon + maxLon) / 2 + side * wide / 2,
                             latSpan: total, lonSpan: wide)
     }
 }
