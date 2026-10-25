@@ -698,9 +698,13 @@ public struct RideEngine: Codable, Equatable, Sendable {
         let since = ridingRunSince ?? t
         ridingRunSince = since
         guard t - since >= RideStartRule.ridingHoldS else { return }
-        if linkLive(at: t), gpsStill(window: RideStartRule.liftedWindowS, at: t) == true {
-            ridingRunSince = nil
-            return
+        if linkLive(at: t), freshFix(at: t) != nil {
+            // with GPS: the phone must have moved (a lifted wheel spins while the phone stays still); too few fixes yet = wait
+            switch gpsStill(window: RideStartRule.liftedWindowS, at: t) {
+            case true?: ridingRunSince = nil; return
+            case nil: return
+            case false?: break
+            }
         }
         r.ridingStartT = since
         ride = r
