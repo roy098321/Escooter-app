@@ -248,10 +248,10 @@ enum InstallChecks {
         FuelPriceSetting.ensureDefault(database: database)
         CalibrationUpdater.refreshAtOpen(database)
 
-        // u2 (M1-01): version 1.0 and the decided thresholds (T101 margin; the SLOW limit T99 went with the SLOW warning, P-4)
+        // u2 (M1-01, F-30b): the version is a release name (101.251026.00) and the decided thresholds (T101 margin; the SLOW limit T99 went with the SLOW warning, P-4)
         let thresholdsOk = T.t101SafetyMarginShare == 0.10
         let line = "Version \(AppInfo.version) \u{00B7} margin +\(Int((T.t101SafetyMarginShare * 100).rounded()))%"
-        results.set("u2", thresholdsOk && AppInfo.version == "1.0" ? .pass : .fail, line)
+        results.set("u2", thresholdsOk && ReleaseName.isValid(AppInfo.version) ? .pass : .fail, line)
 
         if let db = database {
             let migrations = (try? db.appliedMigrations())?.joined(separator: ", ") ?? "?"

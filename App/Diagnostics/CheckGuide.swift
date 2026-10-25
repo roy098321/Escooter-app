@@ -125,7 +125,7 @@ struct CheckGuide {
                                  "Look at b9, c5, c6 and c7: each has a Steps list (\"0 of 5\" …) with empty circles.",
                                  "With the scooter: start b8 (Scooter → Start 4-min test): a bar with \"3:20 left\" counts down.",
                                  "Tap Pass if the bars move and the steps tick as you do them, Fail if not (add a Note)."], place: .noScooter),
-        "u2": CheckGuide(proves: "This build is 1.0 and carries the decided safety margin of +10% on decisions (T101).",
+        "u2": CheckGuide(proves: "This build carries its release name (like 101.251026.00) and the decided safety margin of +10% on decisions (T101).",
                          steps: ["Nothing to do: it marks itself when the app opens.", "Look at Settings → About for the version line (v1 · 1.0)."], place: .noScooter),
         "u3": CheckGuide(proves: "The fake scooter can also replay the phone's own GPS and barometer from a real ride, on the same clock as the scooter data. Later steps use this to test the ride engine without riding.",
                          steps: ["Developer → Checks → Run all automatic (it runs this check in a second).", "Or just open the app: nothing else to do.",
@@ -890,6 +890,8 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: chips, incline, map tap, hill and link each say ok. The real thing is check ui156."], place: .noScooter),
         "ui156": CheckGuide(proves: "You can read any two things on one ride graph and find where on the map they happened.",
                             steps: ["Open a ride, tap the Ride graph panel.", "Add Incline; touch a hill on the map: it is selected and the cursor jumps there. Tap Scatter.", "Pinch sideways and up-down, then double tap. Tap Pass or Fail with a note."], place: .noScooter),
+        "u158": CheckGuide(proves: "The app carries one release name everywhere.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the name, the code and the IPA name each say ok; Settings \u{2192} About shows the same name."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

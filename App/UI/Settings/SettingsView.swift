@@ -380,6 +380,9 @@ enum AppInfo {
     static let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
     static let displayName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "?"
     static var versionLine: String { "\(version) (\(build))" }
+    /// F-30b: the release name ("101.251026.00") and its middle code ("251026", What's new)
+    static var releaseName: String { version }
+    static var releaseCode: String { ReleaseName.code(version) }
     /// Owner, P4 D3: "v1" is the product version (the Home Screen name is just "CorckieApp"); G4: shown in Settings → About only.
     static let productVersion = "v1"
     static var v1Line: String { "\(productVersion) · \(versionLine)" }

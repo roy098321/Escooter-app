@@ -144,7 +144,7 @@ enum CheckList {
 
         CheckItem(id: "u1", group: phone, title: "Checks show progress and step ticks (M1-00b)", how: "Start the 4-min test (b8) or Run all automatic, and watch this screen",
                   expected: "A bar with time left on the 4-min test and on Run all automatic; b9 / c5 / c6 / c7 show a checklist that ticks itself", needsScooter: false, manual: true, tool: .none),
-        CheckItem(id: "u2", group: phone, title: "Version 1.0 and thresholds (M1-01)", how: "Nothing to do · Run all automatic also marks it",
+        CheckItem(id: "u2", group: phone, title: "Release name and thresholds (M1-01, F-30b)", how: "Nothing to do · Run all automatic also marks it",
                   expected: "Version 1.0; safety margin +10% (T101)", needsScooter: false, manual: false, tool: .none),
         CheckItem(id: "u3", group: phone, title: "Fake scooter replays phone GPS + barometer (M1-02)", how: "Nothing to do · Run all automatic marks it",
                   expected: "The ride-2 phone track lines up with the scooter samples (≤ 5 m); GPS and barometer replay on the same clock", needsScooter: false, manual: false, tool: .none),
@@ -783,7 +783,9 @@ enum CheckList {
         m("u156", p6M, "Ride graph maths (note 13)", "Nothing to do \u{00B7} Run all automatic marks it",
           "A made-up ride with a climb: Speed is the only line at first; incline, acceleration and battery per km are chips; the incline on the hill is about 4 %; a map tap finds its moment; the hill can be selected; the scatter says how strong the link is"),
         m("ui156", p6M, "One ride graph with chips (note 13)", "Open a ride \u{2192} tap the Ride graph panel",
-          "One chart with Speed; chips add Battery, Height, Incline, Acceleration, Battery per km, Power, Temp (Wind with weather), each in its colour, the outlined chip's scale on the axis; touching the map moves the cursor (a touch on a hill selects it), touching the chart moves the dot; Select marks a stretch, Scatter shows two lines against each other with a plain-words link; pinch sideways zooms time, up-down the outlined line, double tap resets", manual: true)
+          "One chart with Speed; chips add Battery, Height, Incline, Acceleration, Battery per km, Power, Temp (Wind with weather), each in its colour, the outlined chip's scale on the axis; touching the map moves the cursor (a touch on a hill selects it), touching the chart moves the dot; Select marks a stretch, Scatter shows two lines against each other with a plain-words link; pinch sideways zooms time, up-down the outlined line, double tap resets", manual: true),
+        m("u158", p6M, "Release name everywhere (F-30b)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "The build's version is a release name like 101.251026.00 (About, build stamp, report zip name), its What's new code is 251026, the IPA is CorckieApp-101.251026.00.ipa")
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

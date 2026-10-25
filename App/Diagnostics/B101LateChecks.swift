@@ -36,6 +36,18 @@ enum B101LateChecks {
         runStatsChart()
         runInsightProgress()
         runRideGraph()
+        runReleaseName()
+    }
+
+    // MARK: u158
+
+    /// F-30b: this build carries its release name, and the report zip / IPA use it
+    private static func runReleaseName() {
+        let expect = Expect()
+        expect(ReleaseName.isValid(AppInfo.releaseName), "this build: \(AppInfo.releaseName) (build \(AppInfo.build))")
+        expect(AppInfo.releaseCode.count == 6, "What's new code: \(AppInfo.releaseCode)")
+        expect(ReleaseName.fileStem(AppInfo.releaseName).hasPrefix("CorckieApp-1"), "IPA name: \(ReleaseName.fileStem(AppInfo.releaseName)).ipa")
+        expect.report("u158")
     }
 
     // MARK: u156
