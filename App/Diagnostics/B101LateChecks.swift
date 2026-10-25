@@ -2,7 +2,8 @@ import CorckieCore
 import Foundation
 
 /// Batch 101.251026.00 chunks C-E checks, on made-up input only (nothing real is read or written):
-/// u147 the shared energy track: power shape scaled to the battery drop, battery-only fallback, gaps (F-34).
+/// u147 the shared energy track: power shape scaled to the battery drop, battery-only fallback, gaps (F-34),
+/// u148 the map layer row: five buttons, tap again for the derived view, stops as dots, honest legends (F-33).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -18,6 +19,30 @@ enum B101LateChecks {
 
     static func run() {
         runEnergyTrack()
+        runLayerRow()
+    }
+
+    // MARK: u148
+
+    /// F-33: Speed · Hills · Wind · Battery · Temp; tap again → Steady · Grade · Wind cost · Drain · Heating; stops on Speed
+    private static func runLayerRow() {
+        let expect = Expect()
+        let labels = MapLayer.allCases.map { LayerView($0).buttonLabel }
+        expect(labels == ["Speed", "Hills", "Wind", "Battery", "Temp"], "the row: " + labels.joined(separator: " \u{00B7} "))
+        let deep = MapLayer.allCases.map { LayerView($0).tapped($0).buttonLabel }
+        expect(deep == ["Steady", "Grade", "Wind cost", "Drain", "Heating"], "tap again: " + deep.joined(separator: " \u{00B7} "))
+        expect(LayerView(.temp).title == "Controller temp", "Temp is labelled as the controller's temperature")
+        let pts = madeUpRide(400, power: { _ in 300 }, battery: { 80 - $0 / 40 }, alt: { 10 + Double($0) / 20 },
+                             temp: { 30 + Double($0) / 30 }, speed: { (100..<190).contains($0) ? 0 : 18 })
+        let data = RideLayerData(points: pts, energy: EnergyTrack.build(pts), weather: [], rideStartMs: 0)
+        expect(LayerViews.available(data) == MapLayer.allCases, "a ride with every reading shows all five buttons")
+        let empty = MapLayer.allCases.filter { $0 != .wind }.flatMap { [LayerView($0), LayerView($0, deep: true)] }
+            .filter { LayerViews.stretches($0, data).isEmpty }.map(\.title)
+        expect(empty.isEmpty, "every view draws" + (empty.isEmpty ? "" : ", empty: " + empty.joined(separator: ", ")))
+        expect(LayerViews.stops(pts).count == 1, "one 90 s stop = one dot")
+        expect(LayerViews.stretches(LayerView(.wind), data).isEmpty && LayerViews.emptyText(LayerView(.wind)).hasPrefix("No wind data yet"),
+               "no weather yet: No wind data yet")
+        expect.report("u148")
     }
 
     /// A made-up straight ride, one reading a second at 18 km/h (not a real place)

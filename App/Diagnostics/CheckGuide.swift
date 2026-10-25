@@ -854,6 +854,10 @@ struct CheckGuide {
                             steps: ["Connect the scooter and look at Home before riding, also right after connecting.", "The round buttons are there each time (at least ? and the dots). Tap Pass or Fail with a note."], place: .scooterHome),
         "u147": CheckGuide(proves: "Battery use is spread along the ride by the scooter's power and adds up to what the battery really dropped.",
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the four lines each say ok."], place: .noScooter),
+        "u148": CheckGuide(proves: "The ride map has the five layer buttons and each one has a deeper view.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the row, the deeper labels, the made-up ride's views and its stop each say ok. The real thing is check ui148."], place: .noScooter),
+        "ui148": CheckGuide(proves: "You can read speed, hills, wind, battery and temperature on the ride map, and a deeper view of each.",
+                            steps: ["Open a ride from Rides.", "Tap each layer button, then tap the active one again: the label and the legend change.", "On Speed, stops show as white dots. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

@@ -17,22 +17,12 @@ struct RideSeries {
     var windValues: [ValueStretch]?
     /// F-34: the shared energy track (power shape scaled to the battery drop)
     var energy: EnergyTrack = .empty
+    /// F-33: the ride's weather rows (Wind, Wind cost) and its start
+    var weather: [WeatherRow] = []
+    var rideStartMs: Int64 = 0
 
-    func values(_ layer: MapLayer) -> [ValueStretch] {
-        switch layer {
-        case .speed: return speedValues
-        case .hills: return hillValues
-        case .wind: return windValues ?? []
-        }
-    }
-
-    func segments(_ layer: MapLayer) -> [LayerSegment] {
-        switch layer {
-        case .speed: return []
-        case .hills: return hills
-        case .wind: return wind ?? []
-        }
-    }
+    /// F-33: what the layer row draws from
+    var layerData: RideLayerData { RideLayerData(points: points, energy: energy, weather: weather, rideStartMs: rideStartMs) }
 }
 
 enum RideSeriesLoader {
@@ -48,6 +38,7 @@ enum RideSeriesLoader {
         }
         var series = RideSeries()
         series.points = points
+        series.rideStartMs = ride.startAt
         series.hasAltitude = points.contains { $0.altM != nil }
         series.hills = RideLayers.hills(points)
         series.speedValues = RideLayers.smoothedStretches(RideLayers.speedStretches(points))
@@ -61,6 +52,7 @@ enum RideSeriesLoader {
         if let first = points.first(where: { $0.hasFixForLayers }), let lat = first.lat, let lon = first.lon {
             let end = ride.endAt ?? (ride.startAt + Int64((points.last?.t ?? 0) * 1000))
             let weather = FactorUpdater.weatherRows(OutsideQueries(db), cell: GeoCell.key(lat: lat, lon: lon), startMs: ride.startAt, endMs: end)
+            series.weather = weather
             series.wind = RideLayers.wind(points, rideStartMs: ride.startAt, rows: weather)
             series.windValues = RideLayers.windStretches(points, rideStartMs: ride.startAt, rows: weather).map { RideLayers.smoothedStretches($0) }
         }

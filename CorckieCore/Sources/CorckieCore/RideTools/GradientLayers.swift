@@ -57,6 +57,8 @@ public enum LayerRamps {
         case .speed: return speed(colourBlind: colourBlind)
         case .hills: return hills(colourBlind: colourBlind)
         case .wind: return wind(colourBlind: colourBlind)
+        case .battery: return GradientRamp(lo: 0, hi: 100, hex: colourBlind ? ["#BDBDBD", "#0072B2"] : ["#9E9E9E", "#22B24C"])
+        case .temp: return GradientRamp(lo: 20, hi: 80, hex: colourBlind ? ["#0072B2", "#BDBDBD", "#D55E00"] : ["#1E88E5", "#F28C1B", "#E53935"])
         }
     }
 
@@ -66,6 +68,8 @@ public enum LayerRamps {
         case .speed: return ("0", "25", "50 km/h")
         case .hills: return ("\u{2212}8% downhill", "flat", "+8% uphill")
         case .wind: return ("tailwind 20", "across", "headwind 20 km/h")
+        case .battery: return ("0%", "50%", "100%")
+        case .temp: return ("20 \u{00B0}C", "50 \u{00B0}C", "80 \u{00B0}C")
         }
     }
 }

@@ -52,6 +52,10 @@ public enum MapLayer: String, CaseIterable, Sendable {
     case speed = "Speed"
     case hills = "Hills"
     case wind = "Wind"
+    /// F-33: battery % along the route (derived: drain)
+    case battery = "Battery"
+    /// F-33: the controller temperature the scooter reports (derived: heating rate)
+    case temp = "Temp"
 
     /// The line under the map
     public var legend: String {
@@ -59,6 +63,8 @@ public enum MapLayer: String, CaseIterable, Sendable {
         case .speed: return "Colour = speed (light green slow, red fast)"
         case .hills: return "Colour = slope (blue downhill, grey flat, red uphill)"
         case .wind: return "Colour = wind (blue with you, grey across, red against you)"
+        case .battery: return "Colour = battery (green full, grey low)"
+        case .temp: return "Colour = controller temperature (blue cool, red hot)"
         }
     }
 }

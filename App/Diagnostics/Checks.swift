@@ -747,7 +747,11 @@ enum CheckList {
         m("ui143", p6M, "Quick dial always on Home (B55)", "Home with the scooter connected, before riding",
           "The row of round buttons is always there: at least No destination (?) and the dots, even right after connecting or when an auto-started ride just ended", scooter: true, manual: true),
         m("u147", p6M, "Shared energy track (F-34)", "Nothing to do \u{00B7} Run all automatic marks it",
-          "A made-up ride on 200 W then 600 W with a 10 % drop: the stretches add up to 10 %, the 600 W ones cost more; without power the battery % alone is used; the phone's stretch is a gap")
+          "A made-up ride on 200 W then 600 W with a 10 % drop: the stretches add up to 10 %, the 600 W ones cost more; without power the battery % alone is used; the phone's stretch is a gap"),
+        m("u148", p6M, "Map layer row (F-33)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "The row reads Speed \u{00B7} Hills \u{00B7} Wind \u{00B7} Battery \u{00B7} Temp; tapping each again gives Steady \u{00B7} Grade \u{00B7} Wind cost \u{00B7} Drain \u{00B7} Heating; a made-up ride draws every view, its 90 s stop is one dot; no weather says No wind data yet"),
+        m("ui148", p6M, "Ride map layers, tap again for deeper (F-33)", "Open a ride from Rides",
+          "Over the map one row: Speed \u{00B7} Hills \u{00B7} Wind \u{00B7} Battery \u{00B7} Temp (only what the ride has); tap the active one again: its label changes (Speed \u{2192} Steady \u{2026}) and the legend title and colours follow; stops are white dots on Speed; the hint Tap layer for deeper view shows the first few times", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

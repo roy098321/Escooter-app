@@ -98,7 +98,7 @@ final class RideLayersTests: XCTestCase {
     }
 
     func testLayerLegendsAndNames() {
-        XCTAssertEqual(MapLayer.allCases.map(\.rawValue), ["Speed", "Hills", "Wind"])
+        XCTAssertEqual(MapLayer.allCases.map(\.rawValue), ["Speed", "Hills", "Wind", "Battery", "Temp"])
         for layer in MapLayer.allCases { XCTAssertTrue(layer.legend.hasPrefix("Colour =")) }
     }
 }

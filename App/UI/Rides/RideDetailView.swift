@@ -54,7 +54,12 @@ struct RideDetailView: View {
     // M5-03: map layers, elevation, charts
     @State private var series: RideSeries?
     @State private var pins: [PlacePin] = []
-    @State private var layer: MapLayer = .speed
+    /// F-33: the layer row's view (Speed, or tap again for Steady …) and what it draws
+    @State private var layerView: LayerView = .default
+    @State private var drawn: [ValueStretch] = []
+    @State private var drawnScale: LayerScale?
+    @State private var stopDots: [StopDot] = []
+    @State private var showHint = false
     /// A4: right after a ride the path draws itself (about 1 s) and the six tiles fade in one by one after it (60 ms apart)
     @State private var pathReveal = 1.0
     @State private var tilesShown = 99
@@ -102,7 +107,8 @@ struct RideDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .stiffBounce()
         .onAppear {
-            if let l = previewLayer { layer = l }
+            if let l = previewLayer { layerView = LayerView(l) }
+            if previewSeries != nil { paintLayer() }
             if previewSeries != nil { moreOpen = true }
             if onDone != nil, preview == nil, !reduceMotion, model == nil {
                 pathReveal = 0
@@ -112,6 +118,7 @@ struct RideDetailView: View {
         .onChange(of: model == nil) { _, isNil in
             if !isNil { playSummaryReveal() }
         }
+        .onChange(of: layerView) { _, _ in paintLayer() }
         .confirmationDialog("Delete this ride?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete ride", role: .destructive) { delete() }
             Button("Keep it", role: .cancel) {}
@@ -211,11 +218,19 @@ struct RideDetailView: View {
         } topBar: {
             topBar(m)
         } side: {
-            if !m.noGps, previewSeries != nil || series != nil {
-                VStack(alignment: .trailing, spacing: 8) {
-                    GlassLayerControl(options: MapLayer.allCases.map { ($0, $0.rawValue) }, selection: $layer)
-                    GradientLegend(layer: layer)
+            if !m.noGps, let s = previewSeries ?? series {
+                VStack(alignment: .trailing, spacing: 6) {
+                    LayerRow(layers: LayerViews.available(s.layerData), view: $layerView)
+                    if showHint {
+                        Text(LayerViews.hintText).font(.caption2).foregroundStyle(.secondary)
+                            .padding(.horizontal, 8).padding(.vertical, 2)
+                            .glassCard(radius: 8, padding: 0, thin: true)
+                    }
+                    if let scale = drawnScale {
+                        LayerLegend(scale: scale, emptyText: drawn.isEmpty ? LayerViews.emptyText(layerView) : nil)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
         } content: {
             sheetContent(m)
@@ -495,16 +510,19 @@ struct RideDetailView: View {
     }
 
     private func mapView(_ path: RidePathModel) -> some View {
-        let fullGradient = (previewSeries ?? series)?.values(layer) ?? []   // F-04: continuous gradient when the readings are there
+        let fullGradient = drawn   // F-04 / F-33: continuous gradient of the chosen view when the readings are there
         let gradient = pathReveal >= 1 ? fullGradient : Array(fullGradient.prefix(Int(Double(fullGradient.count) * pathReveal)))
+        let ramp = drawnScale?.ramp ?? LayerRamps.speed(colourBlind: DisplaySettings.colourBlind)
         return Map(initialPosition: Self.fitted(path), interactionModes: [.pan, .zoom]) {
-            GradientPath.lines(gradient, layer: layer)
+            GradientPath.lines(gradient, ramp: ramp)
             PlacePinMarks(pins: preview != nil ? RideDetailPreview.pins : pins)
-            ForEach(Array((fullGradient.isEmpty ? layerSegments : []).enumerated()), id: \.offset) { _, seg in
-                MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
-                    .stroke(MapLayer.color(level: seg.level), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            ForEach(Array((layerView.showsStops && pathReveal >= 1 ? stopDots : []).enumerated()), id: \.offset) { _, stop in
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: stop.point.lat, longitude: stop.point.lon), anchor: .center) {
+                    StopDotMark(stop: stop)
+                }
             }
-            ForEach(Array((layer == .speed && fullGradient.isEmpty ? path.segments : []).enumerated()), id: \.offset) { _, seg in
+            // no series (or no fixes for it): the stored speed path, on the Speed view only
+            ForEach(Array((layerView == .default && fullGradient.isEmpty ? path.segments : []).enumerated()), id: \.offset) { _, seg in
                 MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                     .stroke(LiveRideView.color(seg.bucket),
                             style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round, dash: seg.dashed ? [2, 9] : []))
@@ -526,13 +544,28 @@ struct RideDetailView: View {
         .accessibilityLabel("Map of the ride. \(layerLegend(path))")
     }
 
-    /// Hills / Wind stretches for the chosen layer (empty for Speed)
-    private var layerSegments: [LayerSegment] { (previewSeries ?? series)?.segments(layer) ?? [] }
-
     private func layerLegend(_ path: RidePathModel) -> String {
-        if layer == .speed { return Self.legend(path) }
-        if layer == .wind, (previewSeries ?? series)?.wind == nil { return "No wind data yet. It arrives with the weather, a little after the ride." }
-        return layer.legend
+        if layerView == .default { return Self.legend(path) }
+        if drawn.isEmpty { return LayerViews.emptyText(layerView) }
+        return drawnScale.map { "\($0.title), \($0.low) to \($0.high)" } ?? layerView.title
+    }
+
+    /// F-33: the chosen view's stretches and legend (made once per tap, not per frame)
+    private func paintLayer() {
+        guard let s = previewSeries ?? series else { drawn = []; drawnScale = nil; return }
+        let data = s.layerData
+        if !LayerViews.available(data).contains(layerView.layer) { layerView = .default }
+        drawn = LayerViews.stretches(layerView, data)
+        drawnScale = LayerViews.scale(layerView, stretches: drawn, energy: s.energy, colourBlind: DisplaySettings.colourBlind)
+        if stopDots.isEmpty { stopDots = LayerViews.stops(s.points) }
+    }
+
+    /// F-33: "Tap layer for deeper view" the first few times a ride with layers is opened
+    private func countHint() {
+        let key = "corckie.f33.hintShown"
+        let shown = UserDefaults.standard.integer(forKey: key)
+        showHint = LayerViews.showsHint(timesShown: shown)
+        if showHint { UserDefaults.standard.set(shown + 1, forKey: key) }
     }
 
     /// B39: framed on the path itself (a stray GPS fix far away is ignored), padded, with room for the floating top bar
@@ -577,6 +610,9 @@ struct RideDetailView: View {
         if let full = RideSeriesLoader.toFull(db, rideId: id) { withExtras.scooterStats.append(SummaryStat("To full", full)) }
         model = withExtras
         series = RideSeriesLoader.load(db, rideId: id)
+        stopDots = []
+        paintLayer()
+        if series != nil, !showHint { countHint() }
         pins = PlaceMapLoader.pins(rideId: id, database: db)
         placeNames = Self.names(db, rideId: id)
         refreshTools(id, db)
@@ -698,6 +734,9 @@ extension RideDetailPreview {
                     WeatherRow(cellKey: "preview", hourAt: hour + 3_600_000, source: "preview", kind: .history, windKmh: 22, windFromDeg: 250, fetchedAt: 0)]
         series.wind = RideLayers.wind(points, rideStartMs: start, rows: rows)
         series.windValues = RideLayers.windStretches(points, rideStartMs: start, rows: rows).map { RideLayers.smoothedStretches($0) }
+        series.weather = rows
+        series.rideStartMs = start
+        series.energy = EnergyTrack.build(points)
         return series
     }
 }
