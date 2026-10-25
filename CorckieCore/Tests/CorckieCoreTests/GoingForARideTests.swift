@@ -64,7 +64,8 @@ final class GoingForARideTests: XCTestCase {
         p.handle(TimedScooterEvent(t: 0, event: .connected))
         var values = PacketEncoder.Values()
         values.batteryPct = 11
-        p.handle(TimedScooterEvent(t: 1, event: .packet(PacketEncoder.packetA(values))))
+        // B54: the pipeline hands a battery % on once it has settled (3 equal readings)
+        for t in [1.0, 1.1, 1.2] { p.handle(TimedScooterEvent(t: t, event: .packet(PacketEncoder.packetA(values)))) }
         XCTAssertEqual(p.frame?.batteryPct, 11)
         p.handle(TimedScooterEvent(t: 2, event: .connected))
         XCTAssertNil(p.frame, "no frame from before this connection")
