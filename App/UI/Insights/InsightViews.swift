@@ -105,23 +105,114 @@ struct InsightsSection: View {
     let board: InsightBoard
 
     var body: some View {
-        if !board.cards.isEmpty || board.learningLine != nil {
+        if !board.progress.isEmpty || !board.pages.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 SectionHeader("Insights")
-                VStack(alignment: .leading, spacing: DS.Space.block) {
-                    ForEach(board.cards) { c in
-                        NavigationLink { InsightDetailView(card: c) } label: { InsightCardView(card: c) }
+                VStack(alignment: .leading, spacing: DS.Space.row) {
+                    // Note 9: confident insights are pages of their own (the bar is gone)
+                    ForEach(board.pages) { entry in
+                        NavigationLink { InsightDetailView(card: entry.card).navigationTitle(entry.page.rawValue) } label: { InsightPageRow(entry: entry) }
                             .buttonStyle(.plain)
                     }
-                    if let line = board.learningLine {
-                        Label(line, systemImage: "hourglass")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 4)
+                    ForEach(board.progress) { p in
+                        if let c = p.card {
+                            NavigationLink { InsightDetailView(card: c) } label: { InsightProgressCard(progress: p, tappable: true) }
+                                .buttonStyle(.plain)
+                        } else {
+                            InsightProgressCard(progress: p, tappable: false)
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+/// Note 9: one graduated insight page in the Stats list ("Speed · Sweet spot between 26 and 30 km/h")
+struct InsightPageRow: View {
+    let entry: InsightPageEntry
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: entry.page.symbol).foregroundStyle(Theme.accentInk).frame(width: 26)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.page.rawValue).font(.headline)
+                Text(entry.card.headline).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
+        }
+        .padding(DS.Space.cardPad)
+        .glassCard(padding: 0)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Note 9: an insight on its way: title, the early read's range (tagged), a bar with the early read and confident marks, the count
+struct InsightProgressCard: View {
+    let progress: InsightProgress
+    var tappable: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(progress.title).font(.headline)
+                Spacer(minLength: 8)
+                if progress.stage == .early {
+                    Text("early read").font(.caption.weight(.semibold)).foregroundStyle(Theme.accentInk)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(Theme.accent.opacity(0.15), in: Capsule())
+                }
+            }
+            if let range = progress.range {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(range).scaledFont(30, weight: .semibold, relativeTo: .title).lineLimit(1).minimumScaleFactor(0.6)
+                    if let ctx = progress.rangeContext { Text(ctx).font(.subheadline).foregroundStyle(.secondary).lineLimit(1) }
+                }
+            } else {
+                Text("No answer yet").font(.subheadline).foregroundStyle(.secondary)
+            }
+            ProgressMarks(fraction: progress.fraction, earlyMark: progress.earlyMark)
+            Text(progress.countLine).font(.footnote).foregroundStyle(.secondary)
+            if let w = progress.widenedLine { Text(w).font(.footnote).foregroundStyle(.secondary) }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(radius: DS.Radius.hero, padding: 0)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(tappable ? "Opens how this was worked out" : "")
+    }
+}
+
+/// The bar with its two marks, "early read" and "confident" under them
+struct ProgressMarks: View {
+    let fraction: Double
+    let earlyMark: Double
+
+    var body: some View {
+        VStack(spacing: 4) {
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.chip)
+                    Capsule().fill(Theme.accent).frame(width: max(8, g.size.width * fraction))
+                    Rectangle().fill(Color.secondary).frame(width: 2, height: 14).offset(x: g.size.width * earlyMark - 1)
+                    Rectangle().fill(Color.secondary).frame(width: 2, height: 14).offset(x: g.size.width - 2)
+                }
+                .frame(height: 8)
+                .frame(maxHeight: .infinity)
+            }
+            .frame(height: 16)
+            GeometryReader { g in
+                Text("early read").font(.caption2).foregroundStyle(.secondary).fixedSize()
+                    .position(x: min(g.size.width - 60, max(30, g.size.width * earlyMark)), y: 6)
+                Text("confident").font(.caption2).foregroundStyle(.secondary).fixedSize()
+                    .position(x: g.size.width - 26, y: 6)
+            }
+            .frame(height: 12)
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Progress \(Int((fraction * 100).rounded())) percent of the way to confident")
     }
 }
 
@@ -395,10 +486,19 @@ struct InsightChartCard: View {
 
 /// Made-up insights for the CI ui-shots and previews (the engines run on `InsightSamplesF21`, synthetic only).
 enum InsightsPreview {
-    static func board() -> InsightBoard { InsightBoard.make(InsightSamplesF21.outcomes()) }
+    static func board() -> InsightBoard {
+        let all = InsightSamplesF21.outcomes()
+        var b = InsightBoard.make(all)
+        let made = InsightProgressBuilder.make(all)
+        b.progress = made.progress
+        b.pages = made.pages
+        return b
+    }
 
     static func learning() -> InsightBoard {
-        InsightBoard(cards: [], learning: [.sweetSpot, .departure, .creep])
+        let all: [InsightOutcome] = [.learning(.sweetSpot, "5 of 12 steady stretches"), .learning(.departure, "2 of 6 rides on your usual route"),
+                                     .learning(.creep, "3 of 8 recent rides")]
+        return InsightBoard(cards: [], learning: [.sweetSpot, .departure, .creep], progress: InsightProgressBuilder.make(all).progress)
     }
 
     static func card(_ topic: InsightCard.Topic) -> InsightCard? {

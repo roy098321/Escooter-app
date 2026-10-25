@@ -140,7 +140,16 @@ enum InsightBoardLoader {
     }
 
     static func board(_ db: AppDatabase, nowMs: Int64 = FactorUpdater.nowMs()) -> InsightBoard {
-        InsightBoard.make(outcomes(db, nowMs: nowMs))
+        let all = outcomes(db, nowMs: nowMs)
+        var board = InsightBoard.make(all)
+        // Note 9: progress cards and graduated pages; the last range width per insight is kept to say when it widened
+        let key = "corckie.note9.rangeWidths"
+        let before = (UserDefaults.standard.dictionary(forKey: key) as? [String: Double]) ?? [:]
+        let made = InsightProgressBuilder.make(all, previousWidths: before)
+        board.progress = made.progress
+        board.pages = made.pages
+        if made.widths != before { UserDefaults.standard.set(made.widths, forKey: key) }
+        return board
     }
 
     // MARK: today's wind (Home)

@@ -9,7 +9,8 @@ import Foundation
 /// u151 the route draws itself smoothly: eased, by distance, small steps per frame (B53),
 /// u152 the ride review card snaps to full / default / one line / hidden with a lip (note 11),
 /// u153 Plug in after every ride: when it shows, − / +, the alert time with its margin, why it is estimated (F-31b),
-/// u154 one Stats chart: title, metric switch, reference lines, a readout per bar (note 8).
+/// u154 one Stats chart: title, metric switch, reference lines, a readout per bar (note 8),
+/// u155 insights show progress with early read / confident marks, a shrinking range, pages once confident (note 9).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -32,6 +33,22 @@ enum B101LateChecks {
         runRideCard()
         runPlugIn()
         runStatsChart()
+        runInsightProgress()
+    }
+
+    // MARK: u155
+
+    /// Note 9: a learning insight counts to its first read, an early read shows a range, a confident one is a page
+    private static func runInsightProgress() {
+        let expect = Expect()
+        let learning = InsightProgressBuilder.make([.learning(.sweetSpot, "5 of 12 steady stretches")]).progress.first
+        expect(learning?.countLine == "5 of 12 steady stretches to a first read", "learning: \(learning?.countLine ?? "nothing")")
+        expect(InsightProgressBuilder.range("Sweet spot between 26 and 30 km/h.")?.text == "26\u{2013}30 km/h", "the early read's range: 26\u{2013}30 km/h")
+        let samples = InsightProgressBuilder.make(InsightSamplesF21.outcomes())
+        expect(samples.progress.filter { $0.stage == .early }.allSatisfy { $0.range != nil && $0.card != nil },
+               "made-up insights: \(samples.progress.count) on their way, \(samples.pages.count) page(s): " + samples.pages.map(\.page.rawValue).joined(separator: ", "))
+        expect(samples.pages.allSatisfy { $0.card.certainty.level == .high }, "only confident insights become pages")
+        expect.report("u155")
     }
 
     // MARK: u154

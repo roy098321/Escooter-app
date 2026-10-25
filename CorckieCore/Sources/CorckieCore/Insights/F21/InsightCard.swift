@@ -274,10 +274,16 @@ public enum InsightOutcome: Equatable, Sendable {
 public struct InsightBoard: Equatable, Sendable {
     public var cards: [InsightCard]
     public var learning: [InsightCard.Topic]
+    /// Note 9: one progress card per insight still learning or at an early read
+    public var progress: [InsightProgress] = []
+    /// Note 9: the confident insights, each its own page opened from Stats
+    public var pages: [InsightPageEntry] = []
 
-    public init(cards: [InsightCard], learning: [InsightCard.Topic]) {
+    public init(cards: [InsightCard], learning: [InsightCard.Topic], progress: [InsightProgress] = [], pages: [InsightPageEntry] = []) {
         self.cards = cards
         self.learning = learning
+        self.progress = progress
+        self.pages = pages
     }
 
     public static let maxCards = 3

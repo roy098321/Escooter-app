@@ -882,6 +882,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: title, readout, reference lines and the switch each say ok. The real thing is check ui154."], place: .noScooter),
         "ui154": CheckGuide(proves: "Stats has one clear chart instead of two.",
                             steps: ["Open Stats. Switch Week / Month / Year and km / rides / time / \u{20AA} saved: the title follows.", "Tap a bar: it reads like 13 Oct \u{00B7} 18 km. The Past weeks row opens the history. Tap Pass or Fail with a note."], place: .noScooter),
+        "u155": CheckGuide(proves: "Insights say how far along they are and graduate to pages.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the count, the range and the pages each say ok. The real thing is check ui155."], place: .noScooter),
+        "ui155": CheckGuide(proves: "You can see how close each insight is, and the sure ones get their own page.",
+                            steps: ["Open Stats and scroll to Insights.", "Each card has a bar with two marks and a count; early reads show a range. Confident ones are rows that open a page. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

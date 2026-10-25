@@ -775,7 +775,11 @@ enum CheckList {
         m("u154", p6M, "One Stats chart (note 8)", "Nothing to do \u{00B7} Run all automatic marks it",
           "A made-up week: the title reads km per day with 7 bars; tapping the day with two 9 km rides reads 18 km; dashed lines at 5, 10 and 15 km; rides and time give 2 rides and 45 min"),
         m("ui154", p6M, "One labelled Stats chart (note 8)", "Stats: try Week, Month, Year and the km \u{00B7} rides \u{00B7} time \u{00B7} \u{20AA} saved switch; tap a bar",
-          "One chart at the top with a title like km per day (per month for Year), dashed lines with their values behind the bars, a tap shows like 13 Oct \u{00B7} 18 km; no Past weeks card on Stats, a Past weeks row opens the history", manual: true)
+          "One chart at the top with a title like km per day (per month for Year), dashed lines with their values behind the bars, a tap shows like 13 Oct \u{00B7} 18 km; no Past weeks card on Stats, a Past weeks row opens the history", manual: true),
+        m("u155", p6M, "Insight progress and pages (note 9)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "A learning insight reads 5 of 12 steady stretches to a first read; an early read shows its range (26\u{2013}30 km/h); only confident insights become pages"),
+        m("ui155", p6M, "Insights show how far along they are (note 9)", "Stats \u{2192} Insights",
+          "Each insight has a bar with early read and confident marks and a count; an early read shows a range tagged early read that narrows with more rides (and says so if it widens); a confident insight is a row (Speed, Battery \u{2026}) that opens its own page", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }
