@@ -103,4 +103,34 @@ final class QuickDialStoreTests: XCTestCase {
         XCTAssertEqual(GapStore.all(db).count, 1)
         XCTAssertEqual(GapStore.all(db).first?.km ?? 0, 4.2, accuracy: 1e-9)
     }
+
+    /// B61: "Home" twice. Made-up places: Home and Uni, an unnamed spot just inside Home's circle, and two saved routes that end at Home
+    /// (one linked to the unnamed spot, one to Home). The Where to? list must have one row per destination: fails on the same spot or name.
+    func test_B61_whereToNeverHasTwoRowsForOneDestination() throws {
+        let db = try open()
+        try addPlace(db, "home", "Home", lat: 10.0)
+        try addPlace(db, "uni", "Uni", lat: 10.05)
+        try addPlace(db, "spot", nil, lat: 10.0008)
+        let store = RouteQueries(db)
+        try store.save(route: RouteRecord(id: "r1", fromPlaceId: "uni", toPlaceId: "spot", name: nil, state: "saved", createdAt: 1))
+        try store.save(route: RouteRecord(id: "r2", fromPlaceId: nil, toPlaceId: "home", name: nil, state: "saved", createdAt: 2))
+        var c1 = WhereToChip(routeId: "r1", label: "Home", detail: "Home")
+        c1.timeText = "14 min"; c1.arriveText = "9:02"
+        let c2 = WhereToChip(routeId: "r2", label: "Home", detail: "Home")
+        let before = QuickDialLoader.load(database: db, routeChips: [c1, c2], slots: 3, from: nil, nowMs: base, utcOffsetMin: 0)
+        let rows = before.rows.map { WhereToDedupe.Row(key: $0.key, name: $0.name, placeId: $0.placeId) }
+        XCTAssertEqual(WhereToDedupe.duplicates(rows), [], "layer 2: one row per destination")
+        XCTAssertEqual(before.rows.filter { $0.name == "Home" }.count, 1)
+        XCTAssertEqual(before.rows.first { $0.name == "Home" }?.key, "r1", "the route with an estimate is Home's row")
+        XCTAssertEqual(before.rows.first { $0.name == "Home" }?.placeId, "home", "with Home's icon and pin, not a grey letter")
+        XCTAssertEqual(try RouteRelink.linkRouteEnds(database: db), 1, "layer 1: the route ending in Home's circle is linked to Home")
+        XCTAssertEqual(try store.route(id: "r1")?.toPlaceId, "home")
+        XCTAssertEqual(try RouteRelink.linkRouteEnds(database: db), 0, "again changes nothing")
+        // a saved route to no named place with the same name as a place is no second row either
+        try store.save(route: RouteRecord(id: "r3", fromPlaceId: nil, toPlaceId: nil, name: nil, state: "saved", createdAt: 3))
+        let c3 = WhereToChip(routeId: "r3", label: "uni ", detail: "Uni")
+        let after = QuickDialLoader.load(database: db, routeChips: [c1, c2, c3], slots: 3, from: nil, nowMs: base, utcOffsetMin: 0)
+        XCTAssertEqual(WhereToDedupe.duplicates(after.rows.map { WhereToDedupe.Row(key: $0.key, name: $0.name, placeId: $0.placeId) }), [])
+        XCTAssertEqual(Set(after.rows.map(\.name)), ["Home", "Uni"])
+    }
 }

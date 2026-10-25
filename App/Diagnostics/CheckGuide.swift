@@ -838,6 +838,8 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the button order, Continue first and the mapping back each say ok. The real thing is check ui139."], place: .noScooter),
         "ui139": CheckGuide(proves: "You can set the destination from the notification without opening the app.",
                             steps: ["With the app in the background, switch the scooter on.", "Long-press the Scooter on notification and tap a place.", "Ride: the voice says Riding to that place. Tap Pass or Fail with a note."], place: .ride),
+        "u140": CheckGuide(proves: "Where to? never lists the same destination twice.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the made-up list has one Home row, the route is linked to Home, and this phone's own list has no duplicates (any found are named)."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

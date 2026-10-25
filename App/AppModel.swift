@@ -74,6 +74,13 @@ final class AppModel {
             do { try RouteRelink.runOnce(database: db) { Log.info(source: "routes", $0) } } catch {
                 Log.error(source: "routes", "Re-link of stored rides: \(error.localizedDescription)")
             }
+            // B61: saved routes point at the saved place their end falls inside (one Where to? row per destination)
+            do {
+                let n = try RouteRelink.linkRouteEnds(database: db)
+                if n > 0 { Log.info(source: "routes", "B61: \(n) saved route(s) linked to the place they end in") }
+            } catch {
+                Log.error(source: "routes", "B61 route-end link: \(error.localizedDescription)")
+            }
         }
         if let db = database, !db.isReadOnly { RecorderService.shared.attach(db) }
         OutsideDataService.shared.refresh(database: database, reason: "app open")

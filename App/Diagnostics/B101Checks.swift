@@ -1,6 +1,7 @@
 import CorckieCore
 import CorckieSim
 import Foundation
+import GRDB
 
 /// Batch 101.251026.00 chunk A checks ("never lose a ride"), on made-up input only (nothing real is read or written):
 /// u130 the battery % flip filter and its per-scooter auto-detect (B56, B56b),
@@ -12,7 +13,8 @@ import Foundation
 /// u136 bad readings are trimmed, never the ride: warm-up after scooter-on, trust returns, plain-words ignored notes (notes 12 + 10).
 /// Chunk B ("Where to? + places"): u137 "Riding to Uni, 8 km." and changing the destination at a stop (F-35),
 /// u138 a ride is not ended while the scooter is connected and sending, or while GPS shows movement (B63),
-/// u139 the Scooter-on notification's destination buttons, Continue first (F-36).
+/// u139 the Scooter-on notification's destination buttons, Continue first (F-36),
+/// u140 the Where to? list never has two rows for one destination: routes link to the place they end in (B61).
 @MainActor
 enum B101Checks {
     private final class Expect {
@@ -36,6 +38,46 @@ enum B101Checks {
         runDestinationLive()
         runKeptOpen()
         runScooterOnButtons()
+        runOneRowPerDestination()
+    }
+
+    // MARK: u140
+
+    /// B61: made-up Home + Uni, an unnamed spot inside Home's circle, two saved routes ending at Home: one Where to? row per destination.
+    /// This phone's own list is checked too (read only).
+    private static func runOneRowPerDestination() {
+        let expect = Expect()
+        func dupes(_ rows: [WhereToRow]) -> [String] { WhereToDedupe.duplicates(rows.map { WhereToDedupe.Row(key: $0.key, name: $0.name, placeId: $0.placeId) }) }
+        do {
+            let temp = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { temp.discardTemporary() }
+            try temp.writer.write { d in
+                try PlaceRecord(id: "home", name: "Home", lat: 10.0, lon: 20.0, createdAt: 1).insert(d)
+                try PlaceRecord(id: "uni", name: "Uni", lat: 10.05, lon: 20.0, createdAt: 2).insert(d)
+                try PlaceRecord(id: "spot", name: nil, lat: 10.0008, lon: 20.0, createdAt: 3).insert(d)
+            }
+            let store = RouteQueries(temp)
+            try store.save(route: RouteRecord(id: "r1", fromPlaceId: "uni", toPlaceId: "spot", name: nil, state: "saved", createdAt: 1))
+            try store.save(route: RouteRecord(id: "r2", fromPlaceId: nil, toPlaceId: "home", name: nil, state: "saved", createdAt: 2))
+            let chips = [WhereToChip(routeId: "r1", label: "Home", detail: "Home"), WhereToChip(routeId: "r2", label: "Home", detail: "Home")]
+            let loaded = QuickDialLoader.load(database: temp, routeChips: chips, slots: 3, from: nil)
+            expect(dupes(loaded.rows).isEmpty && loaded.rows.filter { $0.name == "Home" }.count == 1,
+                   "B61: two routes to Home and Home itself give one Home row (\(loaded.rows.map(\.name).joined(separator: ", ")))")
+            expect(loaded.rows.first { $0.name == "Home" }?.placeId == "home", "that row has Home's icon and pin, not a grey letter")
+            let linked = try RouteRelink.linkRouteEnds(database: temp)
+            let r1To = try store.route(id: "r1")?.toPlaceId
+            expect(linked == 1 && r1To == "home", "the route ending inside Home's circle is linked to Home")
+        } catch {
+            expect(false, "the temporary database failed: \(error.localizedDescription)")
+        }
+        var mine = "no data"
+        if let db = AppModel.shared.displayDatabase {
+            let rows = QuickDialLoader.load(database: db, routeChips: RouteFollowLoader.chips(database: db, log: false), slots: 3, from: nil).rows
+            let d = dupes(rows)
+            expect(d.isEmpty, "this phone's Where to? list: \(rows.count) rows, " + (d.isEmpty ? "no duplicates" : d.joined(separator: "; ")))
+            mine = "\(rows.count) rows"
+        }
+        CheckResults.shared.set("u140", expect.ok ? .pass : .fail, expect.line + " \u{00B7} this phone: " + mine)
     }
 
     // MARK: u139

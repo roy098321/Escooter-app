@@ -45,6 +45,25 @@ enum RouteRelink {
         return result
     }
 
+    /// B61 layer 1: every saved route is linked to the named place its end falls inside ("where you ended counts", as in note 7), so its
+    /// row and the place's row are one. Only `route.toPlaceId` changes, no row is removed. Returns how many routes were linked.
+    @discardableResult
+    static func linkRouteEnds(database: AppDatabase) throws -> Int {
+        guard !database.isReadOnly else { return 0 }
+        let store = RouteQueries(database)
+        let named = try store.places().filter { !($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
+            .map { WhereToDedupe.NamedPlace(id: $0.id, name: $0.name ?? "", center: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM) }
+        guard !named.isEmpty else { return 0 }
+        var changed = 0
+        for var route in try store.routes() where route.state == "saved" {
+            guard let to = WhereToDedupe.relink(toPlaceId: route.toPlaceId, end: QuickDialLoader.routeEnd(route, store: store), places: named) else { continue }
+            route.toPlaceId = to
+            try store.save(route: route)
+            changed += 1
+        }
+        return changed
+    }
+
     private struct RelinkRow: Decodable, FetchableRecord {
         var id: String
         var routeId: String?
