@@ -161,7 +161,8 @@ actor Recorder {
             Self.fill(&r, m, topSpeedKmh: m.topSpeedKmh)
             r.status = "recovered"
             r.endReason = RideEndReason.recovered.rawValue
-            r.endAt = ride.startAt + last.t
+            // F-38: a ride ends at its last movement, not at its last stored sample (the standing tail is not ride time)
+            r.endAt = ride.startAt + Int64(((RideEndTime.endS(samples.map(Self.sample(from:))) ?? Double(last.t) / 1000) * 1000).rounded())
             r.kind = RideSizeClass.of(distanceM: m.distanceM).rawValue
             try q.save(r)
             let notes = SampleAnnotator.annotate(samples.map(Self.sample(from:)), stops: [])
