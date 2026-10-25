@@ -771,7 +771,11 @@ enum CheckList {
         m("u153", p6M, "Plug in after every ride (F-31b)", "Nothing to do \u{00B7} Run all automatic marks it",
           "The pill shows right after a ride, not after 2 h, during a ride or after the next connect; 100% by default, \u{2212} / + by 5 % or 1 km; the 100 % alert includes the +5 % margin; estimated explains the charge rate"),
         m("ui153", p6M, "Plug in after a ride (F-31b)", "Finish a ride, switch the scooter off, look at Home",
-          "One big \u{26A1} Plug in pill and a small 100% pill (no bell); one tap on Plug in starts the timer from the last reading; the small pill opens Battery | Range with \u{2212} number + and 18:02 estimated (tap estimated for why), ticks on every tap; while charging the spot shows the charge line, the alert time and Unplugged", scooter: true, manual: true)
+          "One big \u{26A1} Plug in pill and a small 100% pill (no bell); one tap on Plug in starts the timer from the last reading; the small pill opens Battery | Range with \u{2212} number + and 18:02 estimated (tap estimated for why), ticks on every tap; while charging the spot shows the charge line, the alert time and Unplugged", scooter: true, manual: true),
+        m("u154", p6M, "One Stats chart (note 8)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "A made-up week: the title reads km per day with 7 bars; tapping the day with two 9 km rides reads 18 km; dashed lines at 5, 10 and 15 km; rides and time give 2 rides and 45 min"),
+        m("ui154", p6M, "One labelled Stats chart (note 8)", "Stats: try Week, Month, Year and the km \u{00B7} rides \u{00B7} time \u{00B7} \u{20AA} saved switch; tap a bar",
+          "One chart at the top with a title like km per day (per month for Year), dashed lines with their values behind the bars, a tap shows like 13 Oct \u{00B7} 18 km; no Past weeks card on Stats, a Past weeks row opens the history", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }

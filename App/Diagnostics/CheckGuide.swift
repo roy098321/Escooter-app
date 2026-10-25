@@ -878,6 +878,10 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: when it shows, the steps, the margin and the explanation each say ok. The real thing is check ui153."], place: .noScooter),
         "ui153": CheckGuide(proves: "After a ride, one tap starts the charge timer.",
                             steps: ["Finish a ride and switch the scooter off.", "Home shows \u{26A1} Plug in and a small 100% pill: tap the small pill, try \u{2212} / +, tap estimated.", "Tap Plug in: the charge line shows with the alert time and Unplugged. Tap Pass or Fail with a note."], place: .scooterHome),
+        "u154": CheckGuide(proves: "The Stats chart says what it measures and can be read bar by bar.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: title, readout, reference lines and the switch each say ok. The real thing is check ui154."], place: .noScooter),
+        "ui154": CheckGuide(proves: "Stats has one clear chart instead of two.",
+                            steps: ["Open Stats. Switch Week / Month / Year and km / rides / time / \u{20AA} saved: the title follows.", "Tap a bar: it reads like 13 Oct \u{00B7} 18 km. The Past weeks row opens the history. Tap Pass or Fail with a note."], place: .noScooter),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

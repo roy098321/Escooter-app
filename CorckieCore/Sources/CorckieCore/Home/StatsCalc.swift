@@ -97,6 +97,10 @@ public struct StatsTotals: Equatable, Sendable {
     public var fuelSavedIls: Double?
     /// km per local day of the period (week: 7 bars, month: its days, rolling: 7 / 30)
     public var barsKm: [Double] = []
+    /// Note 8: the same days for the chart's other metrics (rides, seconds, ₪ saved)
+    public var barsRides: [Double] = []
+    public var barsSeconds: [Double] = []
+    public var barsSaved: [Double] = []
     public var isEmpty: Bool { rides == 0 && shortHops == 0 }
 
     public init() {}
@@ -179,6 +183,7 @@ public enum StatsCalc {
     public static func totals(_ all: [StatsRide], period p: StatsPeriod, prices: StatsPrices, utcOffsetMin: Int) -> StatsTotals {
         var t = StatsTotals()
         var bars = [Double](repeating: 0, count: max(1, p.dayCount))
+        var barsRides = bars, barsSeconds = bars, barsSaved = bars
         var fuel = 0.0
         var anyFuel = false
         var elec = 0.0
@@ -193,7 +198,11 @@ public enum StatsCalc {
                 t.rides += 1
                 t.km += km
                 t.seconds += r.totalS
-                if bars.indices.contains(index) { bars[index] += km }
+                if bars.indices.contains(index) {
+                    bars[index] += km
+                    barsRides[index] += 1
+                    barsSeconds[index] += r.totalS
+                }
             }
             let used = r.usedPct ?? 0
             let dayKey = RideListLogic.dayKey(RideListLogic.localDay(startAt: r.startAt, utcOffsetMin: r.utcOffsetMin))
@@ -203,13 +212,18 @@ public enum StatsCalc {
             // M35b: rides over 2 km, the same distance by car minus what the ride cost in electricity
             if r.kind == "ride", km > 2,
                let price = prices.fuelHistory?.value(on: dayKey) ?? fuelPrice(forStart: r.startAt, offsetMin: r.utcOffsetMin, prices: prices) {
-                fuel += km * prices.fuelLPer100km / 100 * price - used * kwhPerPct * rate
+                let saved = km * prices.fuelLPer100km / 100 * price - used * kwhPerPct * rate
+                fuel += saved
+                if bars.indices.contains(index) { barsSaved[index] += saved }
                 anyFuel = true
             }
         }
         t.electricityIls = prices.electricityHistory != nil ? elec : t.charges * prices.packWh / 1000 * prices.electricityIlsPerKwh
         t.fuelSavedIls = anyFuel ? fuel : (prices.fuelFallbackIls != nil || !prices.fuelIlsByMonth.isEmpty || !(prices.fuelHistory?.isEmpty ?? true) ? 0 : nil)
         t.barsKm = bars
+        t.barsRides = barsRides
+        t.barsSeconds = barsSeconds
+        t.barsSaved = barsSaved
         return t
     }
 

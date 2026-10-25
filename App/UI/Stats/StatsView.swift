@@ -20,6 +20,8 @@ struct StatsView: View {
     @AppStorage(PastWeeksMetric.settingKey) private var metricRaw = PastWeeksMetric.km.rawValue
     @State private var back = 0
     @State private var model: StatsModel?
+    /// Note 8: the tapped bar (its readout shows above the chart)
+    @State private var selectedBar: Int?
 
     private var span: StatsSpan { StatsSpan(rawValue: spanRaw) ?? .week }
     private var mode: StatsMode { StatsMode(rawValue: modeRaw) ?? .calendar }
@@ -43,9 +45,10 @@ struct StatsView: View {
                 ToolbarItem(placement: .topBarTrailing) { modeSwitch }
             }
             .onAppear(perform: load)
-            .onChange(of: spanRaw) { _, _ in back = 0; load(); Haptics.tick(); replayBars(model.map { Self.barData($0).values.count } ?? 0) }
+            .onChange(of: spanRaw) { _, _ in back = 0; selectedBar = nil; load(); Haptics.tick(); replayBars(model.map { Self.barData($0).values.count } ?? 0) }
+            .onChange(of: metricRaw) { _, _ in selectedBar = nil }
             .onChange(of: modeRaw) { _, _ in back = 0; load() }
-            .onChange(of: back) { _, _ in load() }
+            .onChange(of: back) { _, _ in selectedBar = nil; load() }
             .screen("Stats")
         }
     }
@@ -190,24 +193,63 @@ struct StatsView: View {
         return InfoFormula.shownSaved(gross: net + t.electricityIls, electricity: t.electricityIls)
     }
 
+    /// Note 8: ONE chart: a clear title ("km per day"), the km · rides · time · \u{20AA} saved switch, dashed reference lines with their
+    /// values behind the bars, a tap on a bar reads it ("13 Oct · 18 km"). Built in Core (`StatsChart`).
     private func bars(_ m: StatsModel) -> some View {
-        let data = Self.barData(m)
-        return Chart(Array(data.values.enumerated()), id: \.offset) { item in
-            BarMark(x: .value("Day", item.offset + 1), y: .value("km", item.element * (grownBars?.contains(item.offset) ?? true ? 1 : 0)))
-                .foregroundStyle(Theme.accent)
-                .cornerRadius(4)
+        let metric = PastWeeksMetric.from(stored: metricRaw)
+        let chart = StatsChart.make(m.totals, metric: metric, period: m.period, span: m.span, mode: m.mode, utcOffsetMin: m.utcOffsetMin)
+        let values = chart.bars.map(\.value)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(chart.title).font(.subheadline.weight(.semibold))
+                Spacer(minLength: 8)
+                if let i = selectedBar, let text = chart.readout(i) {
+                    Text(text).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.accentInk)
+                }
+            }
+            PastWeeksSwitch()
+            Chart {
+                ForEach(chart.references, id: \.self) { r in
+                    RuleMark(y: .value("Reference", r))
+                        .foregroundStyle(Color.secondary.opacity(0.5))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                        .annotation(position: .top, alignment: .leading, spacing: 1) {
+                            Text(StatsChart.valueText(r, metric)).font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                ForEach(Array(values.enumerated()), id: \.offset) { item in
+                    BarMark(x: .value("Day", item.offset + 1), y: .value(chart.title, item.element * (grownBars?.contains(item.offset) ?? true ? 1 : 0)))
+                        .foregroundStyle(selectedBar == nil || selectedBar == item.offset ? Theme.accent : Theme.accent.opacity(0.35))
+                        .cornerRadius(4)
+                }
+            }
+            .chartYScale(domain: 0...max(values.max() ?? 1, 0.001))
+            .onAppear { replayBars(values.count) }
+            .chartXScale(domain: 0.4...(Double(max(values.count, 1)) + (values.count > 12 ? 1.3 : 0.6)))      // all bars inside the plot, and room for the last label ("31") at the right edge
+            .chartXAxis { barAxis(chart.bars.map(\.axisLabel)) }
+            .chartYAxis(.hidden)
+            .chartOverlay { proxy in
+                GeometryReader { geo in
+                    Rectangle().fill(Color.clear).contentShape(Rectangle())
+                        .gesture(SpatialTapGesture().onEnded { tap in
+                            guard let plot = proxy.plotFrame else { return }
+                            let x = tap.location.x - geo[plot].origin.x
+                            guard let v: Double = proxy.value(atX: x) else { return }
+                            let i = Int(v.rounded()) - 1
+                            guard values.indices.contains(i) else { selectedBar = nil; return }
+                            selectedBar = selectedBar == i ? nil : i
+                            Haptics.tick()
+                        })
+                }
+            }
+            .frame(height: 150)
         }
-        .chartYScale(domain: 0...max(data.values.max() ?? 1, 0.001))
-        .onAppear { replayBars(data.values.count) }
-        .chartXScale(domain: 0.4...(Double(max(data.values.count, 1)) + (data.values.count > 12 ? 1.3 : 0.6)))      // all bars inside the plot, and room for the last label ("31") at the right edge
-        .chartXAxis { barAxis(data.labels) }
-        .chartYAxis(.hidden)
-        .frame(height: 130)
         .padding(.horizontal, DS.Space.cardPad)
         .padding(.vertical, 12)
         .glassCard(padding: 0)
         .padding(.top, DS.Space.row)
-        .accessibilityLabel("Distance per day, bar chart")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(chart.title), bar chart")
     }
 
     private func replayBars(_ count: Int) {
@@ -252,26 +294,19 @@ struct StatsView: View {
         .padding(.top, DS.Space.block)
     }
 
-    /// ST10 + P6-5: the finished weeks as a bar chart with a switch (km, rides, time, \u{20AA} saved); the title row opens the compact table
+    /// Note 8: the Past weeks card left Stats (the one chart above has its switch); its long history stays one tap away
     @ViewBuilder private func pastWeeksLink(_ m: StatsModel) -> some View {
         if !m.weekBars.isEmpty {
-            let metric = PastWeeksMetric.from(stored: metricRaw)
-            VStack(alignment: .leading, spacing: 10) {
-                NavigationLink { PastWeeksView(weeks: m.pastWeeks, bars: m.weekBars, utcOffsetMin: m.utcOffsetMin) } label: {
-                    HStack {
-                        Label(metric.cardTitle, systemImage: "calendar")
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
-                    }
-                    .frame(minHeight: 28)
-                    .contentShape(Rectangle())
+            NavigationLink { PastWeeksView(weeks: m.pastWeeks, bars: m.weekBars, utcOffsetMin: m.utcOffsetMin) } label: {
+                HStack {
+                    Label("Past weeks", systemImage: "calendar")
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
-                PastWeeksSwitch()
-                PastWeeksChart(bars: m.weekBars, metric: metric, height: 180, utcOffsetMin: m.utcOffsetMin)
+                .padding(DS.Space.cardPad)
+                .glassCard(padding: 0)
             }
-            .padding(DS.Space.cardPad)
-            .glassCard(padding: 0)
+            .buttonStyle(.plain)
             .padding(.top, DS.Space.row)
         }
     }

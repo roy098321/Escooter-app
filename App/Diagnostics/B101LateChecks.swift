@@ -8,7 +8,8 @@ import Foundation
 /// u150 the ride summary's map takes ~55 % of the screen, the tiles sit in the lower part (B52),
 /// u151 the route draws itself smoothly: eased, by distance, small steps per frame (B53),
 /// u152 the ride review card snaps to full / default / one line / hidden with a lip (note 11),
-/// u153 Plug in after every ride: when it shows, − / +, the alert time with its margin, why it is estimated (F-31b).
+/// u153 Plug in after every ride: when it shows, − / +, the alert time with its margin, why it is estimated (F-31b),
+/// u154 one Stats chart: title, metric switch, reference lines, a readout per bar (note 8).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -30,6 +31,30 @@ enum B101LateChecks {
         runSmoothDraw()
         runRideCard()
         runPlugIn()
+        runStatsChart()
+    }
+
+    // MARK: u154
+
+    /// Note 8: one chart with km · rides · time · ₪ saved, "km per day", dashed reference lines, "13 Oct · 18 km"
+    private static func runStatsChart() {
+        let expect = Expect()
+        let off = 0
+        let day: Int64 = 86_400_000
+        let start: Int64 = 1_791_158_400_000 / day * day   // a made-up week
+        let p = StatsPeriod(startMs: start, endMs: start + 7 * day, label: "This week", isPartial: false, dayCount: 7)
+        let prices = StatsPrices(packWh: 800, electricityIlsPerKwh: 0.64, fuelIlsByMonth: [:], fuelFallbackIls: 8, fuelLPer100km: 7)
+        let rides = [StatsRide(startAt: start + 2 * day + 8 * 3_600_000, utcOffsetMin: off, kind: "ride", distanceM: 9_000, totalS: 1_200, usedPct: 10),
+                     StatsRide(startAt: start + 2 * day + 17 * 3_600_000, utcOffsetMin: off, kind: "ride", distanceM: 9_000, totalS: 1_500, usedPct: 10)]
+        let t = StatsCalc.totals(rides, period: p, prices: prices, utcOffsetMin: off)
+        let km = StatsChart.make(t, metric: .km, period: p, span: .week, mode: .calendar, utcOffsetMin: off)
+        expect(km.title == "km per day" && km.bars.count == 7, "title \(km.title), \(km.bars.count) bars")
+        expect(km.readout(2)?.hasSuffix("\u{00B7} 18 km") == true, "tap a bar: \(km.readout(2) ?? "nothing")")
+        expect(km.references == [5, 10, 15], "dashed lines at " + km.references.map { StatsChart.valueText($0, .km) }.joined(separator: ", "))
+        let rideBars = StatsChart.make(t, metric: .rides, period: p, span: .week, mode: .calendar, utcOffsetMin: off)
+        let time = StatsChart.make(t, metric: .time, period: p, span: .week, mode: .calendar, utcOffsetMin: off)
+        expect(rideBars.bars[2].value == 2 && abs(time.bars[2].value - 45) < 0.01, "the switch: 2 rides, 45 min on that day")
+        expect.report("u154")
     }
 
     // MARK: u153
