@@ -330,6 +330,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
     public private(set) var connected = false
     public private(set) var disconnectedAt: Double?
     public private(set) var lastFrameT: Double?
+    /// B63: the newest frame of any kind, trusted or not: packets still arriving mean the scooter is on and connected
+    public private(set) var lastAnyFrameT: Double?
     public private(set) var speedKmh: Double?
     public private(set) var currentA: Double?
     public private(set) var batteryPct: Int?
@@ -478,6 +480,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
     }
 
     private mutating func ingest(_ f: ScooterFrame, at t: Double, _ out: inout [RideEngineEvent]) {
+        lastAnyFrameT = t
         if untrustedSince != nil, connected {
             integrate(to: t)
             return                         // untrusted readings (SC-04): stored raw by the Recorder, never used
@@ -669,10 +672,25 @@ public struct RideEngine: Codable, Equatable, Sendable {
         ride = r
     }
 
-    /// Any movement at all (walking counts, D3): wheel ≥ 1 km/h, or GPS ≥ 2 km/h without the scooter.
+    /// Any movement at all (walking counts, D3): wheel ≥ 1 km/h, or without trusted scooter readings the best phone source:
+    /// GPS ≥ 2 km/h, or (B63) the position moved T27's 15 m within the last `movedWindowS` (fixes without a speed still count).
     func movingNow(at t: Double) -> Bool {
         if linkLive(at: t) { return (speedKmh ?? 0) >= T.t102PushingMinKmh }
-        return (gpsSpeedNow(at: t) ?? 0) >= T.t27GpsStillKmh
+        if (gpsSpeedNow(at: t) ?? 0) >= T.t27GpsStillKmh { return true }
+        guard freshFix(at: t) != nil else { return false }
+        let recent = fixes.filter { $0.t >= t - Self.movedWindowS - 0.001 && $0.t <= t + 0.001 }
+        guard let first = recent.first else { return false }
+        return (recent.map { first.metres(to: $0) }.max() ?? 0) >= T.t27GpsStillM
+    }
+
+    /// B63: the window in which a position change counts as moving
+    static let movedWindowS = 10.0
+
+    /// B63: the scooter is connected and its packets keep arriving (trusted or not): it is on, so the ride is not over because of
+    /// a lost or switched-off scooter; only the standstill rule (no movement from the best source) can end it.
+    public func scooterOnline(at t: Double) -> Bool {
+        guard connected, let last = lastAnyFrameT else { return false }
+        return t - last <= T.t07NoPacketAS
     }
 
     private mutating func trackMovement(at t: Double) {
@@ -828,8 +846,13 @@ public struct RideEngine: Codable, Equatable, Sendable {
         let goneSince = scooterGoneSince(at: t)
         let lastMove = r.lastMoveT ?? r.startT
         var reason: RideEndReason?
+        // B63 (owner 25 Oct): with untrusted readings the scooter counted as "gone" while it was connected and sending, so a 30 s stop
+        // at a light ended two rides mid-way. While packets arrive only the standstill rule (best movement source) ends a ride.
+        let online = scooterOnline(at: t)
         if !live, shuttingDownSeen {
             reason = .scooterOff                                 // A2: 0x80, then gone: at once
+        } else if online {
+            if t - lastMove >= T.t20EndStandstillS { reason = .standstill }   // C
         } else if let g = goneSince, t - g >= T.t17EndDisconnectedS, gpsStill(window: T.t17EndDisconnectedS, at: t) == true {
             reason = .disconnected                               // A: gone 30 s and GPS still
         } else if let g = goneSince, t - g >= T.t18EndNoGpsS, t - lastMove >= T.t17EndDisconnectedS {
@@ -965,6 +988,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         connected = false
         disconnectedAt = t
         lastFrameT = nil
+        lastAnyFrameT = nil
         speedKmh = nil
         currentA = nil
         currentAboveSince = nil

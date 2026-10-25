@@ -10,6 +10,7 @@ import Foundation
 /// u134 the ride starts at the first real riding movement, back-dated; pushing, standing and a lifted wheel do not start it (B62),
 /// u135 what is a ride: legs to a picked destination merge where the trip ended, Continue, detours out of estimates, trim line, widen (F-39),
 /// u136 bad readings are trimmed, never the ride: warm-up after scooter-on, trust returns, plain-words ignored notes (notes 12 + 10).
+/// u138 a ride is not ended while the scooter is connected and sending, or while GPS shows movement (B63).
 @MainActor
 enum B101Checks {
     private final class Expect {
@@ -30,6 +31,34 @@ enum B101Checks {
         runRidingStart()
         runBadReadings()
         runWhatIsARide()
+        runKeptOpen()
+    }
+
+    // MARK: u138
+
+    /// B63: connected scooter with untrusted readings, Start pressed, 10 min on GPS with a 60 s stop at a light: the ride stays open
+    private static func runKeptOpen() {
+        let expect = Expect()
+        var e = RideEngine()
+        var events: [RideEngineEvent] = []
+        var north = 0.0
+        func second(_ t: Double, kmh: Double) {
+            var f = ScooterFrame(t: t)
+            f.speedKmh = 0
+            f.voltage = 50
+            events += e.handle(.frame(f), at: t)
+            north += kmh / 3.6
+            events += e.handle(.fix(PhoneFix(t: t, lat: 10 + north / 111_320, lon: -30, hAccM: 5, speedMps: kmh / 3.6)), at: t)
+        }
+        e.handle(.connected, at: 0)
+        second(1, kmh: 0)
+        events += e.handle(.formatChanged, at: 2)
+        events += e.handle(.startPressed, at: 3)
+        for i in 4..<604 { second(Double(i), kmh: (240..<300).contains(i) ? 0 : 20) }
+        let ended = events.contains { if case .rideEnded = $0 { return true } else { return false } }
+        expect(!ended && e.ride != nil, "B63: untrusted but connected, riding on GPS 10 min with a 60 s stop: the ride stays open")
+        expect(e.scooterOnline(at: 603), "packets still arriving: the scooter counts as on")
+        CheckResults.shared.set("u138", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u135

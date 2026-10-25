@@ -826,6 +826,10 @@ struct CheckGuide {
                             steps: ["Pick a saved place on Home and ride part of the way; switch the scooter off for a few minutes.", "Home shows \u{21BB} Continue to that place: tap it and ride on to the place.", "The ride summary shows one ride with Includes a N min stop, trim it? Tap it, then Undo. Tap Pass or Fail with a note."], place: .ride),
         "u136": CheckGuide(proves: "A few bad scooter readings never throw away the ride, and the ride summary only mentions them when they changed a number you see.",
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the warm-up, the real format change, trust coming back and the plain-words line each say ok."], place: .noScooter),
+        "u138": CheckGuide(proves: "A ride is not cut short while the scooter is still on or while you are still moving.",
+                           steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the made-up phone-mode ride with a stop at a light stays open. The real thing is check ui138."], place: .noScooter),
+        "ui138": CheckGuide(proves: "A ride recorded by the phone is not ended halfway.",
+                            steps: ["Ride as usual, with stops at lights.", "If Phone took over shows, keep riding. Afterwards the ride list has one ride for the whole trip. Tap Pass or Fail with a note."], place: .ride),
         "g1": CheckGuide(proves: "Everything reaches Claude in one file.",
                          steps: ["Developer → Results → Prepare export → Share → send to Claude."], place: .noScooter)
     ]

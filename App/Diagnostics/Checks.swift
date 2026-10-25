@@ -719,7 +719,11 @@ enum CheckList {
         m("ui135", p6M, "Stop halfway, then continue (F-39)", "Pick a saved place, ride part of the way, switch the scooter off for a while, then ride on",
           "Home shows \u{21BB} Continue to the place first; after you arrive the two legs are one ride to it with the line Includes a N min stop, trim it? (tap trims, Undo puts it back); picking another place or No destination removes the offer; on a place where rides end just outside, Your rides end a bit outside \u{2026} Widen it? appears", manual: true),
         m("u136", p6M, "Bad scooter readings are trimmed, never the ride (notes 12 + 10)", "Nothing to do \u{00B7} Run all automatic marks it",
-          "Garbled readings in the first 25 s after scooter-on are dropped one by one without the Scooter data format changed alarm; a real change after the warm-up still trips it and trust returns once readings look normal; a new connection starts afresh; an ignored 87 km/h jump gives the line Top speed ignores a jump to 87 km/h that wasn't real, an ignored voltage gives no line; the counts per kind are in Ride info")
+          "Garbled readings in the first 25 s after scooter-on are dropped one by one without the Scooter data format changed alarm; a real change after the warm-up still trips it and trust returns once readings look normal; a new connection starts afresh; an ignored 87 km/h jump gives the line Top speed ignores a jump to 87 km/h that wasn't real, an ignored voltage gives no line; the counts per kind are in Ride info"),
+        m("u138", p6M, "A ride never ends while the scooter is on or you are moving (B63)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "Made-up ride: scooter connected and sending but its readings untrusted, Start pressed, 10 min on GPS with a 60 s stop at a light: the ride stays open; the scooter counts as on while packets arrive"),
+        m("ui138", p6M, "A long ride in phone mode is kept whole (B63)", "Ride as usual; if the ride screen shows Phone took over, keep riding and stop at lights",
+          "The ride stays on until you really stop (or switch the scooter off); afterwards it is one ride with its full GPS distance, not discarded", scooter: true, manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }
