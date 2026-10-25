@@ -673,11 +673,12 @@ public struct RideEngine: Codable, Equatable, Sendable {
     }
 
     /// Any movement at all (walking counts, D3): wheel ≥ 1 km/h, or without trusted scooter readings the best phone source:
-    /// GPS ≥ 2 km/h, or (B63) the position moved T27's 15 m within the last `movedWindowS` (fixes without a speed still count).
+    /// GPS ≥ 2 km/h, or (B63) for a fix without a speed, the position moved T27's 15 m within the last `movedWindowS`.
     func movingNow(at t: Double) -> Bool {
         if linkLive(at: t) { return (speedKmh ?? 0) >= T.t102PushingMinKmh }
-        if (gpsSpeedNow(at: t) ?? 0) >= T.t27GpsStillKmh { return true }
-        guard freshFix(at: t) != nil else { return false }
+        guard let fix = freshFix(at: t) else { return false }
+        if let v = fix.speedKmh { return v >= T.t27GpsStillKmh }
+        // a fix without a speed: the position change says it
         let recent = fixes.filter { $0.t >= t - Self.movedWindowS - 0.001 && $0.t <= t + 0.001 }
         guard let first = recent.first else { return false }
         return (recent.map { first.metres(to: $0) }.max() ?? 0) >= T.t27GpsStillM
