@@ -73,6 +73,8 @@ struct PlaceMapView: View {
     @State private var renaming = false
     @State private var nameDraft = ""
     @State private var errorText: String?
+    /// F-39 flaw 6: a wider circle to offer, nil = none
+    @State private var widenTo: Double?
     @Environment(\.dismiss) private var dismiss
 
     private var shown: PlaceMapItem? { preview ?? item }
@@ -152,6 +154,14 @@ struct PlaceMapView: View {
 
     private func settingsCard(_ place: PlaceMapItem) -> some View {
         VStack(alignment: .leading, spacing: 8) {
+            if let w = widenTo {
+                // F-39 flaw 6: one tap, never silent
+                Button(TripRules.widenText(placeName: place.row.title)) {
+                    save { try PlaceService.setRadius(placeId: $0.id, radiusM: w, database: $1) }
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.accentInk)
+            }
             Toggle(isOn: Binding(get: { place.row.canCharge },
                                  set: { on in save { try PlaceService.setCanCharge(placeId: $0.id, canCharge: on, database: $1) } })) {
                 Label {
@@ -185,6 +195,7 @@ struct PlaceMapView: View {
     private func reload() {
         guard preview == nil, let id = placeId, let db = AppModel.shared.displayDatabase else { return }
         item = PlaceMapLoader.item(placeId: id, database: db)
+        widenTo = ScreenSimulator.shared.active ? nil : PlaceWiden.suggestion(placeId: id, database: db)
     }
 
     private func save(_ action: (PlaceMapItem, AppDatabase) throws -> Void) {

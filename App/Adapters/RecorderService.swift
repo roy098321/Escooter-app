@@ -64,8 +64,10 @@ final class RecorderService {
             },
             location: { on in DispatchQueue.main.async { RecorderService.shared.setLocation(on) } },
             live: { input, state in DispatchQueue.main.async { RecorderService.shared.handleLive(input, state) } },
-            rideClosed: { id, status in
+            rideClosed: { closedId, status in
                 DispatchQueue.main.async {
+                    // F-39: an arrived trip's legs become one ride; the summary shows that one
+                    let id = TripService.shared.rideClosed(id: closedId, database: AppModel.shared.database)
                     RecorderService.shared.lastClosedRideId = id
                     RecorderService.shared.summaryRideId = id
                     PhoneBatteryWatch.shared.rideEnded()
@@ -156,6 +158,7 @@ final class RecorderService {
         // M2-06: the route chosen with Where to? is followed from the start of the ride to its end (once per ride).
         // M2-09 (Q9): at ride start, when the way back will not fit, one warning (needs the battery reading, so it waits for it).
         let rideOn = input.phase == .starting || input.phase == .riding
+        if rideOn, !fromSimulator { TripService.shared.noteDestination(RouteFollowSelection.shared.chosenKey) }   // F-39
         if rideOn, !followChecked, input.scooterBatteryPct != nil || input.phase == .riding {
             followChecked = true
             etaLogged = 0

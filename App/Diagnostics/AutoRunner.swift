@@ -100,7 +100,7 @@ final class AutoRunner {
         P65Checks.run()                          // P6-5: u110 place estimates (B44, B45, B46), u111 boot battery reading (B50), u112 Past weeks metrics, photo frame, pins
         P64C3Checks.run()                        // P6-4 chunk 3: u90 info sheets add up (B32), u91 Past weeks buckets (B33), u92 scooter colour stored
         P64C3bChecks.run()                       // P6-4 chunk 3b (F-21): u100 sweet spot, u101 departure + creep, u102 wind, u103 certainty gate
-        B101Checks.run()                         // batch 101 chunk A: u130 battery flip filter (B56), u131 phone rides kept (B57), u132 settled ride battery (B54), u133 end at last movement (F-38), u134 riding start (B62), u136 bad readings (notes 12 + 10)
+        B101Checks.run()                         // batch 101 chunk A: u130 battery flip filter (B56), u131 phone rides kept (B57), u132 settled ride battery (B54), u133 end at last movement (F-38), u134 riding start (B62), u135 what is a ride (F-39), u136 bad readings (notes 12 + 10)
         ChargeEtaChecks.run()                    // P6-6 (F-31 / F-27): u120 charge timer maths, u121 targets + notification times, u122 charge log data
         P61UiChecks.run(real: model.database)   // chunk 2: u55 bounce, u56 live tiles + camera, u57 saved way back
         await P61PlaceChecks.run()               // chunk 3: u58 place colours, u59 places by hand + labels, u60 street lookup
@@ -165,5 +165,5 @@ enum AutomaticChecks {
                       "e2", "e3", "e3b", "e4", "e5", "e6", "e6b", "e7",
                       "u80", "u81", "u82", "u83", "u90", "u91", "u92",
                       "u100", "u101", "u102", "u103", "u110", "u111", "u112", "u120", "u121", "u122",
-                      "u130", "u131", "u132", "u133", "u134", "u136"]
+                      "u130", "u131", "u132", "u133", "u134", "u135", "u136"]
 }

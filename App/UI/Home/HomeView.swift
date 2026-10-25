@@ -204,6 +204,7 @@ struct HomeView: View {
 
     private func bottomBlock(_ m: HomeModel) -> some View {
         VStack(spacing: DS.Space.row) {
+            if m.state != .riding, preview == nil, let trip = TripService.shared.offer { continueRow(trip) }
             if !(shownChips.isEmpty && shownQuick.isEmpty) && m.state != .riding { whereToRow }
             if m.state != .riding { loadRow }
         }
@@ -399,6 +400,7 @@ struct HomeView: View {
         } else {
             RouteFollowSelection.shared.choose(key: nil)
         }
+        TripService.shared.picked(key: RouteFollowSelection.shared.chosenKey)      // F-39: another destination closes the open trip
     }
 
     /// F-29: the quick dial. Tap = choose, tap again = no destination. A light tick on every tap; the place the phone is in gives a soft
@@ -412,6 +414,7 @@ struct HomeView: View {
         Haptics.tick()
         guard preview == nil else { return }
         RouteFollowSelection.shared.choose(key: item.key)
+        TripService.shared.picked(key: RouteFollowSelection.shared.chosenKey)      // F-39
     }
 
     /// the first slot of the quick dial: no destination
@@ -419,6 +422,7 @@ struct HomeView: View {
         Haptics.tick()
         guard preview == nil else { return }
         RouteFollowSelection.shared.choose(key: nil)
+        TripService.shared.picked(key: nil)                                         // F-39: No destination closes the open trip
     }
 
     private func flashHere(_ name: String) {
@@ -442,6 +446,29 @@ struct HomeView: View {
     private var preRideWarning: String? {
         guard let chip = shownChips.first(where: { $0.routeId == selectedRoute }) else { return nil }
         return DestinationRules.preRideWarning(name: chip.label, usualNeedPct: chip.usualNeedPct, batteryPct: input.connected ? input.batteryPct.map(Double.init) : nil)
+    }
+
+    /// F-39 flaw 1: the trip did not arrive: "↻ Continue to Uni" first, one tap sets the destination again (ignoring it keeps it open)
+    private func continueRow(_ trip: TripRules.OpenTrip) -> some View {
+        Button {
+            Haptics.tick()
+            TripService.shared.continueTapped()
+        } label: {
+            HStack(spacing: 10) {
+                Text(TripRules.continueText(trip)).font(.body.weight(.semibold)).lineLimit(1)
+                Spacer(minLength: 4)
+                if RouteFollowSelection.shared.chosenKey == QuickDialLoader.placePrefix + trip.placeId {
+                    Image(systemName: "checkmark").font(.footnote.weight(.semibold)).foregroundStyle(Theme.accentInk)
+                }
+            }
+            .foregroundStyle(Theme.accentInk)
+            .padding(.horizontal, 16)
+            .frame(minHeight: DS.hit)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .glassCard(radius: 22, padding: 0)
+        .accessibilityLabel("Continue to \(trip.placeName)")
     }
 
     private var whereToRow: some View {

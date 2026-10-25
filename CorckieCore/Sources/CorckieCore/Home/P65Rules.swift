@@ -18,7 +18,8 @@ public enum PlaceRides {
 
     /// - rides: every ride that ended at the place (a saved route's rides and rides whose end place is this one, each once)
     public static func verdict(rides: [RouteRideStats], nowMs: Int64, utcOffsetMin: Int) -> Verdict {
-        let usable = rides.filter { !$0.excluded && ($0.totalS ?? 0) > 0 }
+        // F-39 flaw 3 / 5: a detour or a clearly-too-short ride still counts as a ride there, but not for the estimate
+        let usable = TripRules.estimateRides(rides.filter { !$0.excluded && ($0.totalS ?? 0) > 0 })
         if usable.isEmpty { return rides.isEmpty ? .none : .tooFew(have: 0) }
         if usable.count < roughMinRides { return .tooFew(have: usable.count) }
         if case .estimate(let e) = TodayEstimator.estimate(rides: usable, nowMs: nowMs, utcOffsetMin: utcOffsetMin,

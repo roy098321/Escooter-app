@@ -22,6 +22,8 @@ struct RideDetailView: View {
     var previewLayer: MapLayer?
 
     @State private var model: RideSummaryModel?
+    /// F-39: the scooter-off stop between merged legs (nil = none)
+    @State private var stopTrim: StopTrimState?
     @State private var offer: RouteOfferModel?
     @State private var missing = false
     @State private var prompt: SmartPromptCard?
@@ -321,11 +323,40 @@ struct RideDetailView: View {
             ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in
                 if n.kind != .heat { note(n) }
             }
+            if let s = stopTrim { stopTrimRow(s) }
             if previewPrompt == nil, prompt == nil, let o = previewOffer ?? offer { offerCard(o) }
             if let p = previewPrompt ?? prompt { promptCard(p) }
             moreSection(m)
         }
         .padding(.top, 2)
+    }
+
+    /// F-39 flaw 7: a merged trip with a scooter-off stop between its legs: one line, tap = trim the stop out of Time, undoable
+    private func stopTrimRow(_ s: StopTrimState) -> some View {
+        HStack(spacing: 10) {
+            if s.trimmed {
+                Text("Stop trimmed from Time").font(.footnote).foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                Button("Undo") { setStopTrim(false) }.font(.footnote.weight(.semibold))
+            } else if let line = TripRules.stopTrimLine(stopS: s.stopS) {
+                Button(line) { setStopTrim(true) }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.accentInk)
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func setStopTrim(_ on: Bool) {
+        guard preview == nil, let id = activeId, let db = AppModel.shared.database else { return }
+        do {
+            try RideToolsService.trimStops(db, rideId: id, on: on)
+            Haptics.tick()
+            load()
+        } catch {
+            errorText = error.localizedDescription
+        }
     }
 
     /// P-4: "Same ride?" is asked here, on the summary, and never during the ride. Yes opens the Merge sheet (it can be undone).
@@ -549,6 +580,7 @@ struct RideDetailView: View {
         pins = PlaceMapLoader.pins(rideId: id, database: db)
         placeNames = Self.names(db, rideId: id)
         refreshTools(id, db)
+        stopTrim = RideToolsService.stopTrimState(db, rideId: id)        // F-39
         offer = RouteService.offer(rideId: id, database: db)
         refreshSmart(id, db)
         refreshInsights(id, db)

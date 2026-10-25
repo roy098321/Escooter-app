@@ -17,6 +17,12 @@ enum RideToolsError: Error, LocalizedError {
     }
 }
 
+/// F-39: the stop between merged legs on the ride summary
+struct StopTrimState: Equatable {
+    var stopS: Double
+    var trimmed: Bool
+}
+
 enum RideToolsService {
     // MARK: Compare (M5-01)
 
@@ -266,6 +272,36 @@ enum RideToolsService {
             r.trimEndAt = nil
         }
         try q.save(r)
+    }
+
+    // MARK: F-39 the stop between merged legs
+
+    /// The scooter-off stops between merged legs (the merge's bridges), s, and whether they are trimmed out of Time; nil = none
+    static func stopTrimState(_ database: AppDatabase, rideId: String) -> StopTrimState? {
+        let q = RideQueries(database)
+        let bridges = ((try? q.stops(rideId: rideId)) ?? []).filter { $0.id.hasPrefix("bridge-") }
+        let ms = bridges.reduce(Int64(0)) { $0 + max(0, ($1.endT ?? $1.startT) - $1.startT) }
+        guard ms >= 60_000 else { return nil }
+        let extras = RideExtras.parse(try? q.setting(key: RideExtras.key(rideId: rideId)))
+        return StopTrimState(stopS: Double(ms) / 1000, trimmed: (extras.stopTrimmedS ?? 0) > 0)
+    }
+
+    /// F-39 flaw 7: "Includes a 25 min stop, trim it?" tapped (on = trim the stop out of Time) or undone (on = false)
+    static func trimStops(_ database: AppDatabase, rideId: String, on: Bool) throws {
+        let q = RideQueries(database)
+        guard var r = try q.ride(id: rideId), let state = stopTrimState(database, rideId: rideId) else { return }
+        var extras = RideExtras.parse(try? q.setting(key: RideExtras.key(rideId: rideId)))
+        if on, !state.trimmed {
+            r.totalS = max(0, (r.totalS ?? 0) - state.stopS)
+            extras.stopTrimmedS = state.stopS
+        } else if !on, state.trimmed {
+            r.totalS = (r.totalS ?? 0) + (extras.stopTrimmedS ?? state.stopS)
+            extras.stopTrimmedS = nil
+        } else {
+            return
+        }
+        try q.save(r)
+        try q.setSetting(key: RideExtras.key(rideId: rideId), json: extras.json)
     }
 
     // MARK: B57 Restore discarded ride

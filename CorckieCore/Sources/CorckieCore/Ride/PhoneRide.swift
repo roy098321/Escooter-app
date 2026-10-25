@@ -70,10 +70,12 @@ public struct RideExtras: Codable, Equatable, Sendable {
     /// Note 10: the ride's ignored readings per kind, and the summary lines they earned (only what changed a visible number)
     public var ignored: IgnoredReadings?
     public var ignoredNotes: [String]?
+    /// F-39 flaw 7: the scooter-off stop trimmed out of Time (s), nil = not trimmed
+    public var stopTrimmedS: Double?
 
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case recordedByPhone, formatReason, formatPacketHex, ignored, ignoredNotes }
+    enum CodingKeys: String, CodingKey { case recordedByPhone, formatReason, formatPacketHex, ignored, ignoredNotes, stopTrimmedS }
 
     /// Every field may be missing (older rows, later fields)
     public init(from decoder: Swift.Decoder) throws {
@@ -83,6 +85,7 @@ public struct RideExtras: Codable, Equatable, Sendable {
         formatPacketHex = try c.decodeIfPresent(String.self, forKey: .formatPacketHex)
         ignored = try c.decodeIfPresent(IgnoredReadings.self, forKey: .ignored)
         ignoredNotes = try c.decodeIfPresent([String].self, forKey: .ignoredNotes)
+        stopTrimmedS = try c.decodeIfPresent(Double.self, forKey: .stopTrimmedS)
     }
 
     public static func key(rideId: String) -> String { "ride.extras." + rideId }

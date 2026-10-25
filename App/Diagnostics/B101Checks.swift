@@ -8,6 +8,7 @@ import Foundation
 /// u132 a ride's start / end battery are settled readings: the boot 100 % never reaches them; "went up" shows the start once (B54),
 /// u133 a ride ends at its last movement and a stop inside it counts in its Time (F-38),
 /// u134 the ride starts at the first real riding movement, back-dated; pushing, standing and a lifted wheel do not start it (B62),
+/// u135 what is a ride: legs to a picked destination merge where the trip ended, Continue, detours out of estimates, trim line, widen (F-39),
 /// u136 bad readings are trimmed, never the ride: warm-up after scooter-on, trust returns, plain-words ignored notes (notes 12 + 10).
 @MainActor
 enum B101Checks {
@@ -28,6 +29,29 @@ enum B101Checks {
         runEndTime()
         runRidingStart()
         runBadReadings()
+        runWhatIsARide()
+    }
+
+    // MARK: u135
+
+    private static func runWhatIsARide() {
+        let expect = Expect()
+        func leg(_ id: String, dest: String?, end: String?) -> TripRules.Leg {
+            TripRules.Leg(rideId: id, destinationPlaceId: dest, destinationName: dest == nil ? nil : "Uni", endPlaceId: end,
+                          startLat: 10, startLon: 20, endLat: 10, endLon: 20, dayKey: "2026-10-24")
+        }
+        let first = TripRules.afterRide(leg("a", dest: "uni", end: nil), open: nil)
+        expect(first.open.map(TripRules.continueText) == "\u{21BB} Continue to Uni", "F-39: stopped short of Uni: \u{21BB} Continue to Uni is offered")
+        expect(TripRules.afterRide(leg("b", dest: nil, end: "uni"), open: first.open).merge == ["a", "b"], "the next leg arrives: one ride to Uni")
+        expect(TripRules.afterRide(leg("a", dest: nil, end: nil), open: nil).open == nil, "no destination picked: legs never merge")
+        expect(TripRules.picked(placeId: "home", open: first.open) == nil && TripRules.offered(first.open, dayKey: "2026-10-25") == nil,
+               "picking another place, or the next day, closes the trip")
+        expect(TripRules.isDetour(distanceM: 10_000, othersM: [8_000, 8_100, 8_200]) && !TripRules.isDetour(distanceM: 8_900, othersM: [8_000, 8_100, 8_200]),
+               "a 10 km ride where 8.1 km is usual is a detour (kept out of the estimates); 8.9 km is not")
+        expect(TripRules.stopTrimLine(stopS: 1_500) == "Includes a 25 min stop, trim it?", "the owner's wording for the stop")
+        expect(TripRules.widenRadius(endDistancesM: [230, 260], radiusM: 200, choices: PlaceListBuilder.radiusChoices) == 300,
+               "two rides ending just outside a 200 m circle offer 300 m")
+        CheckResults.shared.set("u135", expect.ok ? .pass : .fail, expect.line)
     }
 
     // MARK: u136
