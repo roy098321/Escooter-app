@@ -60,8 +60,12 @@ struct RideDetailView: View {
     @State private var drawnScale: LayerScale?
     @State private var stopDots: [StopDot] = []
     @State private var showHint = false
-    /// A4: right after a ride the path draws itself (about 1 s) and the six tiles fade in one by one after it (60 ms apart)
+    /// A4: right after a ride the path draws itself (about 1 s) and the six tiles fade in one by one after it (60 ms apart).
+    /// B53: 0 = drawing (a canvas over the map, `revealStart`), 1 = done (the real map line)
     @State private var pathReveal = 1.0
+    @State private var revealStart: Date?
+    /// B53, Reduce Motion: no draw, the map fades in
+    @State private var mapShown = true
     @State private var tilesShown = 99
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dismiss) private var dismiss
@@ -114,6 +118,7 @@ struct RideDetailView: View {
                 pathReveal = 0
                 tilesShown = 0
             }
+            if onDone != nil, preview == nil, reduceMotion, model == nil { mapShown = false }
         }
         .onChange(of: model == nil) { _, isNil in
             if !isNil { playSummaryReveal() }
@@ -299,15 +304,18 @@ struct RideDetailView: View {
         return first.replacingOccurrences(of: "~", with: "")
     }
 
-    /// A4: the path draws itself, then a soft tap and the tiles fade in one by one
+    /// A4: the path draws itself, then a soft tap and the tiles fade in one by one.
+    /// B53: the drawing runs on the display's timeline (RouteRevealView), not 30 steps of re-added map lines.
     private func playSummaryReveal() {
+        if !mapShown { withAnimation(.easeIn(duration: 0.35)) { mapShown = true } }
         guard onDone != nil, preview == nil, !reduceMotion, pathReveal < 1 else { return }
         Task { @MainActor in
-            let steps = 30
-            for i in 1...steps {
-                try? await Task.sleep(nanoseconds: 33_000_000)
-                pathReveal = Double(i) / Double(steps)
+            if !drawn.isEmpty {
+                revealStart = Date()
+                try? await Task.sleep(nanoseconds: UInt64(RouteReveal.durationS * 1_000_000_000))
             }
+            pathReveal = 1
+            revealStart = nil
             Haptics.soft()
             for n in 1...6 {
                 withAnimation(.easeOut(duration: 0.25)) { tilesShown = n }
@@ -511,9 +519,10 @@ struct RideDetailView: View {
 
     private func mapView(_ path: RidePathModel) -> some View {
         let fullGradient = drawn   // F-04 / F-33: continuous gradient of the chosen view when the readings are there
-        let gradient = pathReveal >= 1 ? fullGradient : Array(fullGradient.prefix(Int(Double(fullGradient.count) * pathReveal)))
+        let gradient = pathReveal >= 1 ? fullGradient : []   // B53: while drawing, the canvas shows the route
         let ramp = drawnScale?.ramp ?? LayerRamps.speed(colourBlind: DisplaySettings.colourBlind)
-        return Map(initialPosition: Self.fitted(path), interactionModes: [.pan, .zoom]) {
+        return MapReader { proxy in
+        Map(initialPosition: Self.fitted(path), interactionModes: [.pan, .zoom]) {
             GradientPath.lines(gradient, ramp: ramp)
             PlacePinMarks(pins: preview != nil ? RideDetailPreview.pins : pins)
             ForEach(Array((layerView.showsStops && pathReveal >= 1 ? stopDots : []).enumerated()), id: \.offset) { _, stop in
@@ -541,7 +550,14 @@ struct RideDetailView: View {
             }
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+        .overlay {
+            if pathReveal < 1, let start = revealStart {
+                RouteRevealView(stretches: fullGradient, ramp: ramp, start: start, proxy: proxy)
+            }
+        }
+        .opacity(mapShown ? 1 : 0)
         .accessibilityLabel("Map of the ride. \(layerLegend(path))")
+        }
     }
 
     private func layerLegend(_ path: RidePathModel) -> String {

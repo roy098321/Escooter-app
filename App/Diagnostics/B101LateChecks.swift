@@ -5,7 +5,8 @@ import Foundation
 /// u147 the shared energy track: power shape scaled to the battery drop, battery-only fallback, gaps (F-34),
 /// u148 the map layer row: five buttons, tap again for the derived view, stops as dots, honest legends (F-33),
 /// u149 the route is one gradient line per unbroken run, nothing overlapping (B59),
-/// u150 the ride summary's map takes ~55 % of the screen, the tiles sit in the lower part (B52).
+/// u150 the ride summary's map takes ~55 % of the screen, the tiles sit in the lower part (B52),
+/// u151 the route draws itself smoothly: eased, by distance, small steps per frame (B53).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -24,6 +25,24 @@ enum B101LateChecks {
         runLayerRow()
         runGradientLine()
         runSummaryLayout()
+        runSmoothDraw()
+    }
+
+    // MARK: u151
+
+    /// B53: the drawing front moves in small, even steps at 120 Hz (no jumps), ends exactly, a partial stretch at the front
+    private static func runSmoothDraw() {
+        let expect = Expect()
+        var last = 0.0, biggest = 0.0
+        for f in 1...120 {
+            let p = RouteReveal.progress(elapsedS: Double(f) / 120)
+            biggest = max(biggest, p - last)
+            last = p
+        }
+        expect(biggest < 0.02 && last == 1, String(format: "largest step per 1/120 s frame %.3f of the route, ends at 100 %%", biggest))
+        let shown = RouteReveal.visible(ends: [0.25, 0.5, 0.75, 1], progress: 0.6)
+        expect(shown.whole == 2 && abs(shown.partial - 0.4) < 0.001, "the front stretch is drawn in part")
+        expect.report("u151")
     }
 
     // MARK: u150

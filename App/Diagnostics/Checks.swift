@@ -759,7 +759,11 @@ enum CheckList {
         m("u150", p6M, "Ride summary map ~55 % of the screen (B52)", "Nothing to do \u{00B7} Run all automatic marks it",
           "On an iPhone 15, a Pro Max and an SE the ride map is 50 to 56 % of the screen and the tiles keep at least 300 pt"),
         m("ui150", p6M, "Balanced ride summary (B52)", "Finish a ride (or open one from Rides)",
-          "The map takes about half the screen with the whole route visible; the six tiles and More sit below it; no empty half screen at the bottom", manual: true)
+          "The map takes about half the screen with the whole route visible; the six tiles and More sit below it; no empty half screen at the bottom", manual: true),
+        m("u151", p6M, "Smooth route draw (B53)", "Nothing to do \u{00B7} Run all automatic marks it",
+          "The drawing front moves less than 2 % of the route per 1/120 s frame, ends exactly at 100 %, and draws the front stretch in part"),
+        m("ui151", p6M, "The route draws smoothly after a ride (B53)", "Finish a ride and watch the summary open",
+          "The route draws itself in about a second without stutter, then the tiles fade in; with Reduce Motion on there is no drawing, the map just fades in", manual: true)
     ]
 
     static func item(_ id: String) -> CheckItem? { all.first { $0.id == id } }
