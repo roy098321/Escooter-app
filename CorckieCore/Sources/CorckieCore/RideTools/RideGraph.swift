@@ -203,6 +203,24 @@ public enum RideGraph {
         }
     }
 
+    /// Note 13 scale fix (owner): the pinch changes the VALUE SCALE, not the view. `factor` 1 = auto-fit to the whole ride; above 1
+    /// the range narrows around the line's own data (its median), so a line that looks flat on ±30 shows its detail on ±5; below 1 it
+    /// widens. The time axis always shows the whole ride.
+    public static func scaledRange(_ line: GraphLine, factor: Double) -> ClosedRange<Double> {
+        let base = range(line, within: (line.times.first ?? 0)...(line.times.last ?? 0))
+        let f = clampedScale(factor)
+        guard f != 1, !line.values.isEmpty else { return base }
+        let sorted = line.values.sorted()
+        let median = sorted[sorted.count / 2]
+        let mid = (base.lowerBound + base.upperBound) / 2
+        let centre = mid + (median - mid) * (1 - 1 / max(1, f))
+        let half = (base.upperBound - base.lowerBound) / 2 / f
+        return (centre - half)...(centre + half)
+    }
+
+    /// The value scale stays between half and 20 × the auto-fit
+    public static func clampedScale(_ s: Double) -> Double { min(20, max(0.5, s.isFinite ? s : 1)) }
+
     /// A vertical pinch on the highlighted line: `scale` > 1 zooms in around the middle
     public static func yZoomed(_ r: ClosedRange<Double>, scale: Double) -> ClosedRange<Double> {
         let s = min(20, max(0.2, scale))

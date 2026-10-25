@@ -85,3 +85,39 @@ final class RideGraphTests: XCTestCase {
         XCTAssertEqual(GraphSeries.incline.text(3.24), "3.2 %")
     }
 }
+
+/// Note 13 scale fix: the pinch changes the value scale around the line's data; the whole ride stays visible.
+final class RideGraphScaleTests: XCTestCase {
+    /// A made-up speed-change line: small wiggles within ±2 for 10 minutes, one ±30 spike
+    private func line() -> GraphLine {
+        let times = (0..<600).map(Double.init)
+        let values = times.map { t -> Double in t == 300 ? 30 : (t == 301 ? -30 : 2 * sin(t / 7)) }
+        return GraphLine(series: .accel, times: times, values: values)
+    }
+
+    func testAutoFitShowsTheSpikeSoTheWigglesLookFlat() {
+        let fit = RideGraph.scaledRange(line(), factor: 1)
+        XCTAssertLessThanOrEqual(fit.lowerBound, -30)
+        XCTAssertGreaterThanOrEqual(fit.upperBound, 30)
+        XCTAssertEqual(fit, RideGraph.range(line(), within: 0...599), "factor 1 = auto-fit")
+        let wiggle = RideGraph.normalised(2, in: fit) - RideGraph.normalised(-2, in: fit)
+        XCTAssertLessThan(wiggle, 0.1, "on ±30 the ±2 detail uses under a tenth of the height")
+    }
+
+    func testStretchingShowsTheDetailAroundTheData() {
+        let six = RideGraph.scaledRange(line(), factor: 6)
+        XCTAssertLessThan(six.upperBound - six.lowerBound, 12, "about ±5 instead of ±30")
+        XCTAssertTrue(six.contains(0), "centred on the line's own data")
+        let wiggle = RideGraph.normalised(2, in: six) - RideGraph.normalised(-2, in: six)
+        XCTAssertGreaterThan(wiggle, 0.35, "the same full-length line now shows its detail")
+        let wider = RideGraph.scaledRange(line(), factor: 0.5)
+        XCTAssertGreaterThan(wider.upperBound - wider.lowerBound, 100, "it can relax wider too")
+    }
+
+    func testTheScaleIsClampedAndResets() {
+        XCTAssertEqual(RideGraph.clampedScale(100), 20)
+        XCTAssertEqual(RideGraph.clampedScale(0.01), 0.5)
+        XCTAssertEqual(RideGraph.clampedScale(.nan), 1)
+        XCTAssertEqual(RideGraph.scaledRange(line(), factor: 1), RideGraph.scaledRange(line(), factor: RideGraph.clampedScale(1)))
+    }
+}
