@@ -1,5 +1,26 @@
 [
   {
+    "version": "101.251026.01",
+    "headline": "Hotfix: route colours, sweet spot and clearer charts",
+    "items": [
+      { "symbol": "map", "title": "Route colours along the line", "line": "The ride map shows the colour changing along the route again, not one shade for the whole ride." },
+      { "symbol": "speedometer", "title": "Speed sweet spot works", "line": "It now finds your steady stretches, so it can start learning your best cruising speed." },
+      { "symbol": "chart.bar", "title": "Clearer Stats chart", "line": "Round dashed lines on the bars' own scale, centred wider bars, your best day in red." },
+      { "symbol": "chart.xyaxis.line", "title": "Ride graph", "line": "Pinch sideways for time, up-down for values; tap a chip again for its deeper line; the map shows the part you look at." }
+    ],
+    "smallerFixes": 1,
+    "full": [
+      "The ride map and Replay show the colour changing along the route again.",
+      "Developer: Route line lab compares three ways of drawing the route.",
+      "Speed sweet spot finds steady stretches again (it wanted readings closer together than rides store).",
+      "Stats: dashed lines in round steps, the top one about at the tallest bar, on the bars' own scale.",
+      "Stats: bars centred on their day, wider with a gap; the tallest is red.",
+      "Ride graph: pinch sideways to zoom time, up-down to stretch the values; drag to move along the ride.",
+      "Ride graph: tap Speed, Battery or Height again for acceleration, battery per km or incline.",
+      "Ride graph: the part of the ride on the graph is orange on the map; Hills jumps to a climb; Select and Scatter are gone."
+    ]
+  },
+  {
     "version": "101.251026.00",
     "headline": "Rides are never lost, and the map says more",
     "items": [

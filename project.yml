@@ -9,7 +9,7 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "101.251026.00"   # F-30b release name VB.DDMMYY.HH: v1, batch 01, due 25 Oct 2026, no hotfix (was 1.0, frozen at T-02)
+    MARKETING_VERSION: "101.251026.01"   # F-30b release name VB.DDMMYY.HH: v1, batch 01, due 25 Oct 2026, hotfix 01 (was 1.0, frozen at T-02)
     CURRENT_PROJECT_VERSION: "1"      # CI passes the run number (ARCHITECTURE §1.3)
     SWIFT_VERSION: "5.0"              # Swift 6 toolchain, Swift 5 language mode (§1.1)
     TARGETED_DEVICE_FAMILY: "1"

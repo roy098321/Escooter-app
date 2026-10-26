@@ -33,6 +33,7 @@ final class WhatsNewTests: XCTestCase {
         XCTAssertFalse(WhatsNew.shouldShow(current: v, lastSeen: nil, riding: true, entries: list), "waits for the next launch")
         XCTAssertFalse(WhatsNew.shouldShow(current: v, lastSeen: v, riding: false, entries: list), "once per build")
         XCTAssertFalse(WhatsNew.shouldShow(current: "199.010199.00", lastSeen: v, riding: false, entries: list), "no card without an entry")
-        XCTAssertEqual(list.first?.smallerFixesLine, "+ 26 smaller changes")
+        XCTAssertEqual(list.first?.smallerFixesLine, "+ 1 smaller change")
+        XCTAssertEqual(list.first(where: { $0.version == "101.251026.00" })?.smallerFixesLine, "+ 26 smaller changes")
     }
 }
