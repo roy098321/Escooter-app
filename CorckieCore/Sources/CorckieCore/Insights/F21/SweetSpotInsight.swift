@@ -80,9 +80,11 @@ public struct SweetSpotContext: Equatable, Sendable {
 /// with an interval (delta method), and what cruising 5 / 10 km/h slower or faster does to the range from full and the usual trip.
 public enum SweetSpotInsight {
     public static let minKmh = 10.0
-    /// a stretch: speed within ±2.5 km/h of its running mean, readings at most 3 s apart, 60–120 s long
+    /// a stretch: speed within ±2.5 km/h of its running mean, readings at most 2.5 recorder samples apart, 60–120 s long
     public static let steadyBandKmh = 2.5
-    public static let maxGapS = 3.0
+    /// Hotfix 01 (H6): was 3 s, but rides store a reading every 5 s, so every stretch was cut after one reading and the count stayed 0
+    /// for every rider. Derived from the recorder so it follows any future interval (12.5 s at 5 s samples).
+    public static let maxGapS = 2.5 * RideRecorderCore.sampleIntervalS
     public static let minStretchS = 60.0
     public static let maxStretchS = 120.0
     /// a climb (or a descent): more than 2 % average grade over the stretch

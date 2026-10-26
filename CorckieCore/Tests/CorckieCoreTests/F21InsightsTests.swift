@@ -131,8 +131,8 @@ final class F21InsightsTests: XCTestCase {
         XCTAssertEqual(cuts.climbs, 1)
         let short = (0..<50).map { SpeedSample(tS: Double($0), speedKmh: 28, powerW: 200) }
         XCTAssertTrue(SweetSpotInsight.stretches(rideId: "c", samples: short, cuts: &cuts).isEmpty, "under a minute is not steady")
-        let gap = (0..<90).map { SpeedSample(tS: Double($0) + ($0 >= 45 ? 10 : 0), speedKmh: 28, powerW: 200) }
-        XCTAssertTrue(SweetSpotInsight.stretches(rideId: "d", samples: gap, cuts: &cuts).isEmpty, "a 10 s gap breaks the stretch")
+        let gap = (0..<90).map { SpeedSample(tS: Double($0) + ($0 >= 45 ? 30 : 0), speedKmh: 28, powerW: 200) }
+        XCTAssertTrue(SweetSpotInsight.stretches(rideId: "d", samples: gap, cuts: &cuts).isEmpty, "a 30 s gap breaks the stretch")
         let changing = (0..<90).map { SpeedSample(tS: Double($0), speedKmh: 15 + Double($0) / 5, powerW: 200) }
         XCTAssertTrue(SweetSpotInsight.stretches(rideId: "e", samples: changing, cuts: &cuts).isEmpty, "speeding up is not steady")
         let long = (0..<300).map { SpeedSample(tS: Double($0), speedKmh: 28, powerW: 200) }
