@@ -38,6 +38,7 @@ struct DeveloperView: View {
                 tool("Insights (simulated windy week)", "text.bubble", ["u32", "mi1"]) { InsightsView() }
                 tool("Accuracy (estimate errors)", "scope", ["u47", "u48", "u49"]) { AccuracyView() }
                 tool("Ride screen preview", "play.rectangle", ["ui159"]) { RideScreenPreview() }   // F-37: never records
+                tool("Route line lab", "scribble.variable", ["ui160"]) { RouteLineLab() }   // hotfix 01: A / B / C on a made-up ride
             }
                 .glassRows()
         }

@@ -21,7 +21,7 @@ struct ReplayView: View {
     @State private var missing = false
     @State private var layer: ReplayLayer = .speed
     /// B59: one gradient line per unbroken run
-    @State private var runs: [(coords: [CLLocationCoordinate2D], gradient: LinearGradient)] = []
+    @State private var runs: [(coords: [CLLocationCoordinate2D], gradient: Gradient)] = []
     @State private var strip: [TimeChart.Point] = []
     @State private var camera: MapCameraPosition = .automatic
     @State private var playback = ComparePlayback(durationS: 0)

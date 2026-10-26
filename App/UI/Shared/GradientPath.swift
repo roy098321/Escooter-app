@@ -3,8 +3,10 @@ import MapKit
 import SwiftUI
 
 /// F-04: continuous gradient paths on the ride maps. The ramps and fixed scales come from Core (`LayerRamps`).
-/// B59: each unbroken run is ONE map polyline stroked with a gradient (a colour stop per stretch, placed by distance along the run;
-/// MapKit draws it with its gradient polyline renderer): uniform width, no overlapping round caps, no blobs at the joins.
+/// B59: each unbroken run is ONE map polyline stroked with a gradient (a colour stop per stretch, placed by distance along the run):
+/// uniform width, no overlapping round caps, no blobs at the joins.
+/// Hotfix 01 (owner, 25 Oct): the stroke is a plain `Gradient` (option A), NOT a `LinearGradient`: a LinearGradient is laid across
+/// the screen box, so the phone showed one shade for the whole ride. Developer → Route line lab compares A / B / C on a made-up ride.
 enum GradientPath {
     static func color(_ ramp: GradientRamp, _ value: Double) -> Color {
         let c = ramp.rgb(at: value)
@@ -31,10 +33,9 @@ enum GradientPath {
         }
     }
 
-    /// B59: the run's colour stops as a gradient along the line
-    static func gradient(_ run: GradientRun) -> LinearGradient {
-        LinearGradient(stops: run.stops.map { Gradient.Stop(color: Color(red: $0.r, green: $0.g, blue: $0.b), location: $0.location) },
-                       startPoint: .leading, endPoint: .trailing)
+    /// B59 + hotfix 01 (A): the run's colour stops as a plain gradient along the line (never a LinearGradient on a map stroke)
+    static func gradient(_ run: GradientRun) -> Gradient {
+        Gradient(stops: run.stops.map { Gradient.Stop(color: Color(red: $0.r, green: $0.g, blue: $0.b), location: $0.location) })
     }
 }
 
