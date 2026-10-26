@@ -18,8 +18,10 @@ struct RideGraphView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var lines: [GraphSeries: GraphLine] = [:]
     @State private var available: [GraphSeries] = []
-    @State private var chips: [GraphSeries] = GraphSeries.defaultChips
-    @State private var highlighted: GraphSeries = .speed
+    /// Hotfix 01 (H2): the chips (Core `GraphChips`): a selected chip tapped again shows its derived series ("Speed → Accel")
+    @State private var picks = GraphChips(available: [])
+    private var chips: [GraphSeries] { picks.shownSeries }
+    private var highlighted: GraphSeries { picks.highlightedSeries }
     @State private var full: ClosedRange<Double> = 0...1
     @State private var domain: ClosedRange<Double> = 0...1
     /// Note 13 scale fix: 1 = auto-fit; above 1 the value ranges narrow around each line's data
@@ -130,38 +132,37 @@ struct RideGraphView: View {
     private var chipRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(available, id: \.self) { s in
-                    let on = chips.contains(s)
+                ForEach(picks.row, id: \.self) { s in
+                    let on = picks.isOn(s)
+                    let c = colour(picks.shown(s))
+                    let axis = on && picks.highlighted == s
                     Button { tap(s) } label: {
                         HStack(spacing: 6) {
-                            Circle().fill(colour(s)).frame(width: 8, height: 8)
-                            Text(s.title).font(.subheadline.weight(on ? .semibold : .regular))
+                            Circle().fill(c).frame(width: 8, height: 8)
+                            Text(picks.label(s)).font(.subheadline.weight(on ? .semibold : .regular))
                         }
                         .padding(.horizontal, 12)
                         .frame(minHeight: 36)
-                        .background(on ? colour(s).opacity(0.18) : Theme.chip, in: Capsule())
-                        .overlay(Capsule().strokeBorder(on && highlighted == s ? colour(s) : .clear, lineWidth: 2))
+                        .background(on ? c.opacity(0.18) : Theme.chip, in: Capsule())
+                        .overlay(Capsule().strokeBorder(axis ? c : .clear, lineWidth: 2))
                         .foregroundStyle(Color.primary)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(s.title)
-                    .accessibilityValue(on ? (highlighted == s ? "On, its scale is shown" : "On") : "Off")
+                    .contextMenu {
+                        if on, picks.on.count > 1 { Button("Hide \(s.title)") { picks.remove(s); Haptics.tick() } }
+                    }
+                    .accessibilityLabel(picks.label(s))
+                    .accessibilityValue(on ? (axis ? "On, its scale is shown" : "On") : "Off")
+                    .accessibilityHint(s.derived != nil && axis ? "Tap again for \(picks.shown(s) == s ? (s.derived?.title ?? "") : s.title)" : "")
                 }
             }
         }
     }
 
-    /// Off → on (and it gets the scale); on and highlighted → off; on → highlighted
+    /// Off → on (and it gets the scale); on → it gets the scale; on with the scale → its derived series and back (H2; a chip with
+    /// none goes off); hold a chip to hide it
     private func tap(_ s: GraphSeries) {
-        if !chips.contains(s) {
-            chips.append(s)
-            highlighted = s
-        } else if highlighted == s, chips.count > 1 {
-            chips.removeAll { $0 == s }
-            highlighted = chips.last ?? .speed
-        } else {
-            highlighted = s
-        }
+        picks.tap(s)
         Haptics.tick()
     }
 
@@ -357,9 +358,7 @@ struct RideGraphView: View {
         }
         lines = all
         available = GraphSeries.allCases.filter { all[$0] != nil }
-        chips = GraphSeries.defaultChips.filter { all[$0] != nil }
-        if chips.isEmpty, let first = available.first { chips = [first] }
-        highlighted = chips.first ?? .speed
+        picks = GraphChips(available: available)
         let end = data.points.map(\.t).max() ?? 1
         full = 0...max(1, end)
         domain = full

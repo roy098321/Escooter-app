@@ -47,3 +47,62 @@ final class Hotfix01TimeZoomTests: XCTestCase {
         XCTAssertEqual(RideGraph.scaledRange(line, factor: 1), RideGraph.range(line, within: 0...1_200), "no window: the whole ride as before")
     }
 }
+
+/// Hotfix 01 (H2): tap a selected chip again for its derived series, again for the base.
+final class Hotfix01DerivedChipTests: XCTestCase {
+    /// A made-up ride, one reading a second: speeding up, a climb, the battery going down (not a real place)
+    private func data() -> RideLayerData {
+        let pts = (0..<300).map { i in
+            SeriesPoint(t: Double(i), lat: 10.0 + Double(i) * 5 / Geo.mPerDegLat, lon: 20.0, hAccM: 5,
+                        speedKmh: min(30, 5 + Double(i) / 4), batteryPct: 80 - i / 30,
+                        altM: i < 100 ? 10 : 10 + Double(i - 100) * 0.2, powerW: 300, tempC: 25)
+        }
+        return RideLayerData(points: pts, energy: EnergyTrack.build(pts), weather: [], rideStartMs: 1_790_000_000_000)
+    }
+
+    func test_theRowHasOnlyBaseChips() {
+        let chips = GraphChips(available: RideGraph.available(data()))
+        XCTAssertEqual(chips.on, [.speed])
+        XCTAssertEqual(chips.row.first, .speed)
+        XCTAssertFalse(chips.row.contains(.accel) || chips.row.contains(.incline) || chips.row.contains(.batteryPerKm), "derived series live on their base chip")
+        XCTAssertTrue(chips.row.contains(.battery) && chips.row.contains(.height) && chips.row.contains(.power))
+    }
+
+    func test_speedAgainIsAcceleration_andBack() {
+        var chips = GraphChips(available: RideGraph.available(data()))
+        chips.tap(.speed)
+        XCTAssertEqual(chips.shownSeries, [.accel])
+        XCTAssertEqual(chips.label(.speed), "Speed \u{2192} Accel")
+        XCTAssertEqual(chips.highlightedSeries.unit, "m/s\u{00B2}", "the axis follows the derived series")
+        chips.tap(.speed)
+        XCTAssertEqual(chips.shownSeries, [.speed])
+        XCTAssertEqual(chips.label(.speed), "Speed")
+    }
+
+    func test_batteryAndHeightHaveTheirOwn() {
+        var chips = GraphChips(available: RideGraph.available(data()))
+        chips.tap(.battery)          // on, gets the axis
+        chips.tap(.battery)          // again: per km
+        XCTAssertEqual(chips.shown(.battery), .batteryPerKm)
+        XCTAssertEqual(chips.label(.battery), "Battery \u{2192} per km")
+        chips.tap(.height)
+        chips.tap(.height)
+        XCTAssertEqual(chips.shown(.height), .incline)
+        XCTAssertEqual(chips.shownSeries, [.speed, .batteryPerKm, .incline])
+        chips.tap(.speed)            // speed gets the axis, still speed
+        XCTAssertEqual(chips.highlightedSeries, .speed)
+        chips.tap(.power)
+        chips.tap(.power)            // no derived series: off again
+        XCTAssertFalse(chips.isOn(.power))
+        chips.remove(.battery)
+        XCTAssertEqual(chips.shownSeries, [.speed, .incline])
+    }
+
+    func test_theDerivedValuesAreTheDerivedLine() {
+        let d = data()
+        let accel = RideGraph.line(.accel, d)
+        XCTAssertEqual(accel.value(at: 50) ?? 0, 0.25 / 3.6, accuracy: 0.01, "speeding up by 0.25 km/h a second")
+        let incline = RideGraph.line(.incline, d)
+        XCTAssertEqual(incline.value(at: 200) ?? 0, 4, accuracy: 0.6, "0.2 m per 5 m = 4 %")
+    }
+}

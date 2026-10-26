@@ -68,6 +68,104 @@ public enum GraphSeries: String, CaseIterable, Sendable {
     }
 
     public static let defaultChips: [GraphSeries] = [.speed]
+
+    /// Hotfix 01 (H2, note 13 spec): tap a selected chip again for its derived series (Speed → acceleration, Battery → battery per km,
+    /// Height → incline %); tap again → back. nil when the chip has none.
+    public var derived: GraphSeries? {
+        switch self {
+        case .speed: return .accel
+        case .battery: return .batteryPerKm
+        case .height: return .incline
+        default: return nil
+        }
+    }
+
+    /// The chip a series lives on (a derived series lives on its base chip)
+    public var base: GraphSeries {
+        switch self {
+        case .accel: return .speed
+        case .batteryPerKm: return .battery
+        case .incline: return .height
+        default: return self
+        }
+    }
+
+    /// The short name after the arrow on a chip: "Speed → Accel"
+    public var shortTitle: String {
+        switch self {
+        case .accel: return "Accel"
+        case .batteryPerKm: return "per km"
+        case .incline: return "Incline"
+        default: return title
+        }
+    }
+}
+
+/// Hotfix 01 (H2): the ride graph's chips. Only base chips are in the row (Speed, Battery, Height, Power, Temp, Wind); a chip shows its
+/// base series or, tapped again while selected, its derived one. Pure so the toggling is tested on Linux.
+public struct GraphChips: Equatable, Sendable {
+    /// the base chips that are on, in the order they were added
+    public private(set) var on: [GraphSeries]
+    /// the base chips showing their derived series
+    public private(set) var derivedOn: Set<GraphSeries> = []
+    /// the base chip whose scale is on the axis
+    public private(set) var highlighted: GraphSeries
+    /// the series this ride has data for
+    public let available: Set<GraphSeries>
+
+    public init(available: [GraphSeries]) {
+        self.available = Set(available)
+        let bases = available.filter { $0.base == $0 }
+        let first = GraphSeries.defaultChips.filter { bases.contains($0) }
+        on = first.isEmpty ? Array(bases.prefix(1)) : first
+        highlighted = on.first ?? .speed
+    }
+
+    /// The chips in the row: base series with data, in the usual order
+    public var row: [GraphSeries] { GraphSeries.allCases.filter { $0.base == $0 && available.contains($0) } }
+
+    public func isOn(_ base: GraphSeries) -> Bool { on.contains(base) }
+
+    /// What a chip draws now
+    public func shown(_ base: GraphSeries) -> GraphSeries {
+        guard derivedOn.contains(base), let d = base.derived, available.contains(d) else { return base }
+        return d
+    }
+
+    /// Every drawn series, in chip order
+    public var shownSeries: [GraphSeries] { on.map(shown) }
+
+    /// The series whose scale is on the axis
+    public var highlightedSeries: GraphSeries { shown(highlighted) }
+
+    /// "Speed" or "Speed → Accel"
+    public func label(_ base: GraphSeries) -> String {
+        let s = shown(base)
+        return s == base ? base.title : "\(base.title) \u{2192} \(s.shortTitle)"
+    }
+
+    /// Off → on (and it gets the axis); on → it gets the axis; on with the axis → its derived series and back (a chip without one
+    /// goes off, unless it is the last)
+    public mutating func tap(_ base: GraphSeries) {
+        if !on.contains(base) {
+            on.append(base)
+            highlighted = base
+        } else if highlighted != base {
+            highlighted = base
+        } else if let d = base.derived, available.contains(d) {
+            if derivedOn.contains(base) { derivedOn.remove(base) } else { derivedOn.insert(base) }
+        } else {
+            remove(base)
+        }
+    }
+
+    /// Takes a chip off (never the last one)
+    public mutating func remove(_ base: GraphSeries) {
+        guard on.contains(base), on.count > 1 else { return }
+        on.removeAll { $0 == base }
+        derivedOn.remove(base)
+        if highlighted == base { highlighted = on.last ?? .speed }
+    }
 }
 
 /// One series as times (s from the ride start) and values, sorted by time
