@@ -6,9 +6,9 @@ import UIKit
 
 /// Note 13: the ride graph, full screen (it replaces F-28's two separate charts). ONE chart; chips pick what it shows (Speed by default,
 /// more one tap away), each line in its own colour and on its own scale (the highlighted chip's scale is on the axis). The small map
-/// above is linked both ways: touch the map → the cursor jumps there (a touch on a hill selects the hill); touch the chart → the dot
-/// moves on the map. Select marks a stretch on the chart; Scatter shows two lines against each other over it with a plain-words line on
-/// how strong the link is. Note 13 scale fix (owner): an up-down pinch changes the VALUE SCALE of every shown line around its own
+/// above is linked both ways: touch the map → the cursor jumps there; touch the chart → the dot moves on the map. Hotfix 01 (H3):
+/// the graph's time window is coloured orange on the map (the rest grey; the map itself does not move); Hills jumps the window to a
+/// climb; Select, Scatter and ✕ are gone (owner: the link is read from the overlaid lines). Note 13 scale fix (owner): an up-down pinch changes the VALUE SCALE of every shown line around its own
 /// data (a speed-change line that looks flat on ±30 shows its detail on ±5). Hotfix 01 (H1): a sideways pinch zooms TIME (the window
 /// narrows around the fingers; drag to pan while zoomed in, a tap moves the cursor); both coexist; double tap fits both.
 /// The maths is Core `RideGraph` (unit tested).
@@ -32,11 +32,9 @@ struct RideGraphView: View {
     @State private var pinchStart: (domain: ClosedRange<Double>, anchor: CGFloat)?
     @State private var drag: (x: CGFloat, domain: ClosedRange<Double>, moved: Bool)?
     @State private var cursor: Double?
-    @State private var selecting = false
-    @State private var selectStart: Double?
-    @State private var selection: GraphSelection?
     @State private var hills: [GraphSelection] = []
-    @State private var showScatter = false
+    /// the climb Hills jumped to (its name in the header until the window moves)
+    @State private var hillName: String?
     @State private var ready = false
 
     var body: some View {
@@ -55,15 +53,8 @@ struct RideGraphView: View {
             OrientationLock.allow(landscape: true)
         }
         .onDisappear { OrientationLock.allow(landscape: false) }
-        .sheet(isPresented: $showScatter) {
-            ScatterSheet(lines: lines, chips: available, selection: selection, initialX: scatterX, initialY: scatterY)
-                .glassPresentation(detents: [.medium, .large])
-        }
         .screen("Ride graph")
     }
-
-    private var scatterX: GraphSeries { chips.first { $0 != .speed } ?? (available.contains(.incline) ? .incline : available.first ?? .speed) }
-    private var scatterY: GraphSeries { scatterX == .speed ? (available.first { $0 != .speed } ?? .speed) : .speed }
 
     // MARK: Header
 
@@ -71,7 +62,7 @@ struct RideGraphView: View {
         HStack(spacing: 12) {
             GlassIconButton(symbol: "xmark", label: "Close") { dismiss() }
             VStack(alignment: .leading, spacing: 1) {
-                Text(cursor.map { ChartCursor.clock($0) } ?? (selection?.name ?? "Ride graph")).font(.headline).monospacedDigit()
+                Text(cursor.map { ChartCursor.clock($0) } ?? (hillName ?? "Ride graph")).font(.headline).monospacedDigit()
                 Text(readout).font(.subheadline).foregroundStyle(.secondary).monospacedDigit().lineLimit(2).minimumScaleFactor(0.8)
             }
             .accessibilityElement(children: .combine)
@@ -89,7 +80,7 @@ struct RideGraphView: View {
 
     private var map: some View {
         let route = data.points.filter { $0.lat != nil && $0.lon != nil }.map { CLLocationCoordinate2D(latitude: $0.lat ?? 0, longitude: $0.lon ?? 0) }
-        let selected = selection.map { RideGraph.path($0, points: data.points) } ?? []
+        let selected = RideGraph.window(domain, points: data.points)   // H3: the graph's window, coloured
         let dot = cursor.flatMap { RideGraph.position(at: $0, points: data.points) }
         return MapReader { proxy in
             Map(initialPosition: Self.fit(data.points), interactionModes: [.pan, .zoom]) {
@@ -109,8 +100,10 @@ struct RideGraphView: View {
                 guard let c = proxy.convert(location, from: .local),
                       let t = RideGraph.time(near: GeoPoint(lat: c.latitude, lon: c.longitude), points: data.points) else { return }
                 cursor = t
-                if let hill = RideGraph.hill(at: t, hills: hills) { selection = hill }
-                if !domain.contains(t) { domain = full }
+                if !domain.contains(t) {   // H3: the window moves to the touched moment (same width)
+                    domain = RideGraph.window(domain, centredOn: t, full: full)
+                    hillName = nil
+                }
                 Haptics.tick()
             }
             .accessibilityLabel("Map of the ride; touch the route to move the cursor there")
@@ -218,10 +211,6 @@ struct RideGraphView: View {
     }
 
     @ChartContentBuilder private var marks: some ChartContent {
-        if let sel = selection {
-            RectangleMark(xStart: .value("From", sel.from / 60), xEnd: .value("To", sel.to / 60))
-                .foregroundStyle(Theme.accent.opacity(0.12))
-        }
         lineMarks
         if let cursor {
             RuleMark(x: .value("Cursor", cursor / 60)).foregroundStyle(Color.primary.opacity(0.6))
@@ -257,16 +246,7 @@ struct RideGraphView: View {
     /// The plot sits right of the axis labels; the finger's x is mapped over the whole width (close enough at this size)
     private func touched(x: CGFloat, width: CGFloat, phase: ChartGestures.Phase) {
         let t = ChartCursor.time(atX: Double(x), width: Double(width), domain: domain)
-        if selecting {
-            switch phase {
-            case .began: selectStart = t; selection = GraphSelection(from: t, to: t)
-            case .changed: if let s = selectStart { selection = GraphSelection(from: s, to: t) }
-            case .ended:
-                selecting = false
-                if let sel = selection, sel.to - sel.from < 5 { selection = nil }
-                Haptics.tick()
-            }
-        } else if RideGraph.isZoomed(domain, full: full) {
+        if RideGraph.isZoomed(domain, full: full) {
             // H1: zoomed in, a drag pans the window; a touch without moving moves the cursor
             switch phase {
             case .began:
@@ -276,6 +256,7 @@ struct RideGraphView: View {
                 let dx = x - d.x
                 if abs(dx) > 8 || d.moved {
                     drag?.moved = true
+                    hillName = nil
                     domain = RideGraph.timePanned(d.domain, full: full, fraction: Double(dx / width))
                 }
             case .ended:
@@ -300,6 +281,7 @@ struct RideGraphView: View {
             valueScale = RideGraph.clampedScale((scaleBase ?? valueScale) * Double(scale))
         default:
             if let start = pinchStart {
+                hillName = nil
                 domain = RideGraph.timeZoomed(start.domain, full: full, scale: Double(scale), anchor: Double(start.anchor))
             }
         }
@@ -312,6 +294,7 @@ struct RideGraphView: View {
 
     private func reset() {
         domain = full
+        hillName = nil
         valueScale = 1   // back to auto-fit
         Haptics.tick()
     }
@@ -320,24 +303,18 @@ struct RideGraphView: View {
 
     private var toolRow: some View {
         HStack(spacing: 10) {
-            Button { selecting.toggle(); if selecting { cursor = nil } } label: {
-                Label(selecting ? "Drag over the chart" : "Select", systemImage: "selection.pin.in.out")
-            }
-            .buttonStyle(.bordered)
+            // H3: Hills jumps the graph's window to a climb (the map colours it); no Select / Scatter / ✕ any more
             if !hills.isEmpty {
                 Menu {
                     ForEach(Array(hills.enumerated()), id: \.offset) { _, h in
-                        Button(h.name ?? "Climb") { selection = h; domain = full; Haptics.tick() }
+                        Button(h.name ?? "Climb") {
+                            domain = RideGraph.window(for: h, full: full)
+                            hillName = h.name
+                            Haptics.tick()
+                        }
                     }
                 } label: { Label("Hills", systemImage: "mountain.2") }
                 .buttonStyle(.bordered)
-            }
-            if selection != nil {
-                Button { showScatter = true } label: { Label("Scatter", systemImage: "chart.dots.scatter") }
-                    .buttonStyle(.borderedProminent)
-                Button { selection = nil } label: { Image(systemName: "xmark") }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Clear the selection")
             }
             Spacer(minLength: 0)
         }
@@ -366,51 +343,7 @@ struct RideGraphView: View {
     }
 }
 
-/// Note 13: scatter of two lines over the selected stretch (or the whole ride) with the plain-words link
-private struct ScatterSheet: View {
-    let lines: [GraphSeries: GraphLine]
-    let chips: [GraphSeries]
-    let selection: GraphSelection?
-    @State var x: GraphSeries
-    @State var y: GraphSeries
-
-    init(lines: [GraphSeries: GraphLine], chips: [GraphSeries], selection: GraphSelection?, initialX: GraphSeries, initialY: GraphSeries) {
-        self.lines = lines
-        self.chips = chips
-        self.selection = selection
-        _x = State(initialValue: initialX)
-        _y = State(initialValue: initialY)
-    }
-
-    var body: some View {
-        let pairs = lines[x].flatMap { lx in lines[y].map { RideGraph.pairs(x: lx, y: $0, in: selection) } } ?? []
-        let r = RideGraph.correlation(pairs)
-        VStack(alignment: .leading, spacing: 12) {
-            Text(selection?.name ?? (selection == nil ? "Whole ride" : "Selected stretch")).font(.headline)
-            HStack {
-                Picker("Across", selection: $x) { ForEach(chips, id: \.self) { Text($0.title).tag($0) } }
-                Text("against").foregroundStyle(.secondary)
-                Picker("Up", selection: $y) { ForEach(chips, id: \.self) { Text($0.title).tag($0) } }
-            }
-            .pickerStyle(.menu)
-            Chart {
-                ForEach(Array(pairs.enumerated()), id: \.offset) { _, p in
-                    PointMark(x: .value(x.title, p.x), y: .value(y.title, p.y)).symbolSize(18).foregroundStyle(Theme.accent.opacity(0.7))
-                }
-            }
-            .chartXAxisLabel(x.unit)
-            .chartYAxisLabel(y.unit)
-            .chartXScale(domain: .automatic(includesZero: false))
-            .chartYScale(domain: .automatic(includesZero: false))
-            .frame(minHeight: 200)
-            Text(RideGraph.linkText(r, x: x, y: y)).font(.subheadline.weight(.semibold))
-            Text("Each dot is one moment of the ride. A link is not always a cause.").font(.caption).foregroundStyle(.secondary)
-        }
-        .padding(20)
-    }
-}
-
-/// Note 13: the chart's touches in one UIKit view: one finger moves the cursor (or marks a stretch; hotfix 01: pans a zoomed-in window),
+/// Note 13: the chart's touches in one UIKit view: one finger moves the cursor (hotfix 01: pans a zoomed-in window, a tap moves the cursor),
 /// a pinch zooms time when the fingers are wider than tall and stretches the values when taller than wide (Core `RideGraph.pinchAxis`),
 /// a double tap fits both.
 struct ChartGestures: UIViewRepresentable {

@@ -111,3 +111,41 @@ final class Hotfix01DerivedChipTests: XCTestCase {
         XCTAssertEqual(incline.value(at: 200) ?? 0, 4, accuracy: 0.6, "0.2 m per 5 m = 4 %")
     }
 }
+
+/// Hotfix 01 (H3): the graph's time window is coloured on the map; Hills jumps the window to a climb.
+final class Hotfix01MapWindowTests: XCTestCase {
+    /// A made-up ride north, one reading a second, 600 s (not a real place); readings 200–259 have no fix
+    private func ride() -> [SeriesPoint] {
+        var out: [SeriesPoint] = []
+        for i in 0..<600 {
+            let t = Double(i)
+            if (200..<260).contains(i) {
+                out.append(SeriesPoint(t: t, speedKmh: 18, batteryPct: 80))
+            } else {
+                let lat: Double = 10.0 + t * 5 / Geo.mPerDegLat
+                out.append(SeriesPoint(t: t, lat: lat, lon: 20.0, hAccM: 5, speedKmh: 18, batteryPct: 80))
+            }
+        }
+        return out
+    }
+
+    func test_theWindowIsWhatTheMapColours() {
+        let pts = ride()
+        let lit = RideGraph.window(100...199, points: pts)
+        XCTAssertEqual(lit.count, 100)
+        XCTAssertEqual(lit.first, pts[100].point)
+        XCTAssertEqual(lit.last, pts[199].point)
+        XCTAssertEqual(RideGraph.window(0...599, points: pts).count, 540, "not zoomed: the whole route (fixes only)")
+        XCTAssertTrue(RideGraph.window(210...250, points: pts).isEmpty, "no fixes in the window: nothing coloured")
+    }
+
+    func test_hillsJumpTheWindow_andAMapTouchMovesIt() {
+        let full: ClosedRange<Double> = 0...599
+        XCTAssertEqual(RideGraph.window(for: GraphSelection(from: 300, to: 420, name: "Climb 1"), full: full), 300...420)
+        let short = RideGraph.window(for: GraphSelection(from: 590, to: 595), full: full)
+        XCTAssertEqual(short.upperBound - short.lowerBound, RideGraph.minWindowS, accuracy: 0.001)
+        XCTAssertEqual(short.upperBound, 599, accuracy: 0.001, "kept inside the ride")
+        XCTAssertEqual(RideGraph.window(100...200, centredOn: 150, full: full), 100...200, "inside: the window stays")
+        XCTAssertEqual(RideGraph.window(100...200, centredOn: 400, full: full), 350...450, "outside: the window moves there")
+    }
+}

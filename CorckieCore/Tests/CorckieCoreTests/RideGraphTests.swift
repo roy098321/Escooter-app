@@ -1,7 +1,7 @@
 import XCTest
 @testable import CorckieCore
 
-/// Note 13: one ride graph with chips, own scales, map ↔ chart link, hills, scatter with a plain-words link, zoom.
+/// Note 13: one ride graph with chips, own scales, map ↔ chart link, hills, zoom (hotfix 01: no scatter).
 final class RideGraphTests: XCTestCase {
     /// A made-up ride north, one reading a second: flat 100 s, a 150 s climb (slower), flat again (not a real place)
     private func ride() -> [SeriesPoint] {
@@ -65,18 +65,6 @@ final class RideGraphTests: XCTestCase {
         XCTAssertEqual(RideGraph.hill(at: 175, hills: hills), hills[0], "a tap on the hill selects it")
         XCTAssertNil(RideGraph.hill(at: 50, hills: hills))
         XCTAssertFalse(RideGraph.path(hills[0], points: pts).isEmpty)
-    }
-
-    func testScatterSaysHowStrongTheLinkIs() {
-        let d = data()
-        let pairs = RideGraph.pairs(x: RideGraph.line(.incline, d), y: RideGraph.line(.speed, d), in: nil)
-        XCTAssertGreaterThan(pairs.count, 100)
-        let r = RideGraph.correlation(pairs)
-        XCTAssertLessThan(r ?? 0, -0.6, "steeper goes with slower")
-        XCTAssertEqual(RideGraph.linkText(r, x: .incline, y: .speed), "A strong link: more incline goes with lower speed.")
-        XCTAssertEqual(RideGraph.linkText(0.05, x: .temp, y: .speed), "No real link between temp and speed here.")
-        XCTAssertEqual(RideGraph.linkText(nil, x: .temp, y: .speed), "Not enough readings here to say.")
-        XCTAssertNil(RideGraph.correlation([(1, 1), (2, 2)]))
     }
 
     func testValueWords() {

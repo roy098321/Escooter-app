@@ -11,7 +11,7 @@ import Foundation
 /// u153 Plug in after every ride: when it shows, − / +, the alert time with its margin, why it is estimated (F-31b),
 /// u154 one Stats chart: title, metric switch, reference lines, a readout per bar (note 8),
 /// u155 insights show progress with early read / confident marks, a shrinking range, pages once confident (note 9),
-/// u156 the ride graph: Speed by default, chips with own scales, map ↔ chart, hills, scatter link, zoom (note 13).
+/// u156 the ride graph: Speed by default, chips with own scales and derived lines, map ↔ chart, hills move the window (note 13, hotfix 01).
 @MainActor
 enum B101LateChecks {
     final class Expect {
@@ -104,9 +104,9 @@ enum B101LateChecks {
         expect(tapped == 200, "a map tap on the route moves the cursor to its moment")
         let hills = RideGraph.hills(pts, energy: data.energy)
         expect(hills.count == 1 && RideGraph.hill(at: 175, hills: hills) != nil, "the hill can be selected: " + (hills.first?.name ?? "none"))
-        let r = RideGraph.correlation(RideGraph.pairs(x: RideGraph.line(.incline, data), y: RideGraph.line(.speed, data), in: hills.first))
-            ?? RideGraph.correlation(RideGraph.pairs(x: RideGraph.line(.incline, data), y: RideGraph.line(.speed, data), in: nil))
-        expect(r != nil, RideGraph.linkText(r, x: .incline, y: .speed))
+        let window = RideGraph.window(for: hills.first ?? GraphSelection(from: 0, to: 400), full: 0...399)
+        let lit = RideGraph.window(window, points: pts).count
+        expect(lit > 0 && lit < pts.count, "Hills puts the window on the climb: \(lit) of \(pts.count) map points coloured")
         expect.report("u156")
     }
 

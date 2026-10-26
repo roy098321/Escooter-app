@@ -2,10 +2,10 @@ import Foundation
 
 /// Note 13 (owner 24-25 Oct): the ride graph. ONE chart with chips: Speed by default (P-7: the default stays simple, P-6: for every
 /// rider); add Battery, Height, Incline %, Acceleration, Battery per km, Power, Temp, Wind; each with its own colour and its own scale.
-/// The map and the chart are linked both ways (touch the map → the cursor jumps there; touch the chart → the dot on the map). A
-/// stretch (a hill) can be selected on the map or the chart; a scatter of two series over the selection says in plain words how
-/// strong the link is. Pinch zooms time (the heights auto-fit to the visible stretch) or, pinched vertically, the height of the
-/// highlighted line; a double tap resets. This is the maths; the app draws it. Pure, tested on Linux.
+/// The map and the chart are linked both ways (touch the map → the cursor jumps there; touch the chart → the dot on the map).
+/// Hotfix 01: a sideways pinch zooms time, an up-down pinch the values (H1); a chip tapped again shows its derived line (H2); the
+/// graph's time window is coloured on the map, Hills jumps the window to a climb; Select and Scatter are gone (H3, owner: the link
+/// is read from the overlaid lines). This is the maths; the app draws it. Pure, tested on Linux.
 
 public enum GraphSeries: String, CaseIterable, Sendable {
     case speed, battery, height, incline, accel, batteryPerKm, power, temp, wind
@@ -397,9 +397,28 @@ public enum RideGraph {
         return fixes[i].point
     }
 
-    /// The route fixes inside a selection (the map highlights them)
+    /// The route fixes inside a selection
     public static func path(_ sel: GraphSelection, points: [SeriesPoint]) -> [GeoPoint] {
         points.filter { $0.hasFix && sel.contains($0.t) }.compactMap(\.point)
+    }
+
+    /// Hotfix 01 (H3): the graph's time window t … t + x is what the map colours (orange); the rest of the route stays grey.
+    /// The whole ride when not zoomed. The map itself does not move.
+    public static func window(_ domain: ClosedRange<Double>, points: [SeriesPoint]) -> [GeoPoint] {
+        path(GraphSelection(from: domain.lowerBound, to: domain.upperBound), points: points)
+    }
+
+    /// Hotfix 01 (H3): Hills jumps the window to a climb (at least `minWindowS` long, inside the ride)
+    public static func window(for hill: GraphSelection, full: ClosedRange<Double>) -> ClosedRange<Double> {
+        let span = max(minWindowS, hill.to - hill.from)
+        let mid = (hill.from + hill.to) / 2
+        return ChartCursor.clamp(lo: mid - span / 2, span: span, full: full)
+    }
+
+    /// Hotfix 01 (H3): a map touch outside the window moves the window (same width) so the touched moment is in its middle
+    public static func window(_ domain: ClosedRange<Double>, centredOn t: Double, full: ClosedRange<Double>) -> ClosedRange<Double> {
+        guard !domain.contains(t) else { return domain }
+        return ChartCursor.panned(domain, full: full, byS: t - (domain.lowerBound + domain.upperBound) / 2)
     }
 
     /// The ride's hills as selections ("Climb 1 · +33 m"), from the same climbs as the elevation panel
@@ -420,41 +439,5 @@ public enum RideGraph {
     /// The hill a time falls on (a map tap on a hill selects it)
     public static func hill(at t: Double, hills: [GraphSelection]) -> GraphSelection? {
         hills.first { $0.contains(t) }
-    }
-
-    // MARK: Scatter
-
-    /// x / y pairs at the same moments over the selection (y read at each x reading)
-    public static func pairs(x: GraphLine, y: GraphLine, in sel: GraphSelection?) -> [(x: Double, y: Double)] {
-        var out: [(x: Double, y: Double)] = []
-        for (t, xv) in zip(x.times, x.values) where sel?.contains(t) ?? true {
-            guard let i = ChartCursor.nearestIndex(y.times, to: t), abs(y.times[i] - t) <= 5 else { continue }
-            out.append((xv, y.values[i]))
-        }
-        return out
-    }
-
-    /// Pearson's r; nil with fewer than 5 pairs or no spread
-    public static func correlation(_ pairs: [(x: Double, y: Double)]) -> Double? {
-        guard pairs.count >= 5 else { return nil }
-        let n = Double(pairs.count)
-        let mx = pairs.reduce(0) { $0 + $1.x } / n, my = pairs.reduce(0) { $0 + $1.y } / n
-        var sxy = 0.0, sxx = 0.0, syy = 0.0
-        for p in pairs {
-            sxy += (p.x - mx) * (p.y - my)
-            sxx += (p.x - mx) * (p.x - mx)
-            syy += (p.y - my) * (p.y - my)
-        }
-        guard sxx > 0, syy > 0 else { return nil }
-        return sxy / (sxx * syy).squareRoot()
-    }
-
-    /// The plain-words line under the scatter: "A strong link: more incline goes with lower speed."
-    public static func linkText(_ r: Double?, x: GraphSeries, y: GraphSeries) -> String {
-        guard let r else { return "Not enough readings here to say." }
-        let a = abs(r)
-        let strength = a < 0.2 ? "No real link" : (a < 0.4 ? "A weak link" : (a < 0.7 ? "A clear link" : "A strong link"))
-        guard a >= 0.2 else { return "No real link between \(x.title.lowercased()) and \(y.title.lowercased()) here." }
-        return "\(strength): more \(x.title.lowercased()) goes with \(r > 0 ? "higher" : "lower") \(y.title.lowercased())."
     }
 }
