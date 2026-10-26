@@ -52,10 +52,15 @@ final class Hotfix01TimeZoomTests: XCTestCase {
 final class Hotfix01DerivedChipTests: XCTestCase {
     /// A made-up ride, one reading a second: speeding up, a climb, the battery going down (not a real place)
     private func data() -> RideLayerData {
-        let pts = (0..<300).map { i in
-            SeriesPoint(t: Double(i), lat: 10.0 + Double(i) * 5 / Geo.mPerDegLat, lon: 20.0, hAccM: 5,
-                        speedKmh: min(30, 5 + Double(i) / 4), batteryPct: 80 - i / 30,
-                        altM: i < 100 ? 10 : 10 + Double(i - 100) * 0.2, powerW: 300, tempC: 25)
+        var pts: [SeriesPoint] = []
+        for i in 0..<300 {
+            let t = Double(i)
+            let lat: Double = 10.0 + t * 5 / Geo.mPerDegLat
+            let speed: Double = min(30.0, 5.0 + t / 4)
+            let battery: Int = 80 - i / 30
+            let alt: Double = i < 100 ? 10.0 : 10.0 + (t - 100) * 0.2
+            pts.append(SeriesPoint(t: t, lat: lat, lon: 20.0, hAccM: 5, speedKmh: speed, batteryPct: battery,
+                                   altM: alt, powerW: 300, tempC: 25))
         }
         return RideLayerData(points: pts, energy: EnergyTrack.build(pts), weather: [], rideStartMs: 1_790_000_000_000)
     }
