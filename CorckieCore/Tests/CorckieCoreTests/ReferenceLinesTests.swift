@@ -38,3 +38,22 @@ final class ReferenceLinesTests: XCTestCase {
         }
     }
 }
+
+/// Hotfix 01 (H5): the tallest Stats bar is red, all of them on a tie.
+final class StatsTallestBarTests: XCTestCase {
+    private func data(_ values: [Double]) -> StatsChartData {
+        StatsChartData(title: "km per day", bars: values.map { StatsChartBar(value: $0, axisLabel: "", dateText: "") },
+                       references: ReferenceLines.steps(top: values.max() ?? 0), metric: .km)
+    }
+
+    func test_tallestBars() {
+        XCTAssertEqual(data([3, 9, 4, 0, 2, 1, 5]).tallest, [1])
+        XCTAssertEqual(data([9, 2, 9, 0, 0, 0, 0]).tallest, [0, 2], "ties: every tallest bar")
+        XCTAssertEqual(data([0, 0, 0, 0, 0, 0, 0]).tallest, [], "no rides: nothing red")
+    }
+
+    func test_barsLeaveAGap() {
+        XCTAssertLessThan(data(Array(repeating: 1, count: 7)).barWidthRatio, 0.8)
+        XCTAssertLessThan(data(Array(repeating: 1, count: 31)).barWidthRatio, 0.8)
+    }
+}

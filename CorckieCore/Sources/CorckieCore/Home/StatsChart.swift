@@ -28,6 +28,16 @@ public struct StatsChartData: Equatable, Sendable {
 
     public var maxValue: Double { bars.map(\.value).max() ?? 0 }
 
+    /// Hotfix 01 (H5): the tallest bar(s), drawn red; every bar on a tie, none when all are 0
+    public var tallest: Set<Int> {
+        let top = maxValue
+        guard top > 0 else { return [] }
+        return Set(bars.indices.filter { abs(bars[$0].value - top) < 1e-9 })
+    }
+
+    /// Hotfix 01 (H5): the bar width as a share of its slot, a clear gap between bars (week ~0.6, month ~0.7, year ~0.6)
+    public var barWidthRatio: Double { bars.count > 12 ? 0.7 : 0.6 }
+
     /// Hotfix 01 (H4): the top of the value scale shared by the bars and the lines
     public var scaleTop: Double { ReferenceLines.domainTop(top: maxValue, lines: references) }
 }

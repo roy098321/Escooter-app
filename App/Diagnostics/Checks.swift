@@ -796,6 +796,8 @@ enum CheckList {
           "Each tab shows the same made-up ride; note which one shows the colour changing along the line (slow at both ends, fast in the middle) and which looks best; A is what the ride maps use now", manual: true),
         m("ui164", p6M, "Stats dashed lines sit at their values (hotfix 01)", "Stats: Week and Month, switch km \u{00B7} rides \u{00B7} time \u{00B7} \u{20AA} saved",
           "Three dashed lines in round steps with the top one about at the tallest bar (top 13 km gives 5 / 10 / 15, \u{20AA}99 gives 30 / 60 / 90); a bar of 10 km reaches exactly the 10 km line; rides never show a half step", manual: true),
+        m("ui165", p6M, "Stats bars centred, wider, tallest red (hotfix 01)", "Stats: Week, Month and Year",
+          "Each bar sits centred over its day (or month) letter, about twice as wide as before with a clear gap; the tallest bar is red, the others orange; two equal tallest bars are both red", manual: true),
         m("u144", p6M, "Places order is saved (place drag)", "Nothing to do \u{00B7} Run all automatic marks it",
           "Made-up places: dragging the last to the top gives the new order, it is saved and read back, a new place goes after the ordered ones"),
         m("ui144", p6M, "Hold a place to drag it (place drag)", "Settings \u{2192} Places: hold a place card, drag it up or down, let go",

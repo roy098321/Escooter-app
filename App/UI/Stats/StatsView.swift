@@ -199,6 +199,7 @@ struct StatsView: View {
         let metric = PastWeeksMetric.from(stored: metricRaw)
         let chart = StatsChart.make(m.totals, metric: metric, period: m.period, span: m.span, mode: m.mode, utcOffsetMin: m.utcOffsetMin)
         let values = chart.bars.map(\.value)
+        let tallest = chart.tallest
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text(chart.title).font(.subheadline.weight(.semibold))
@@ -217,15 +218,17 @@ struct StatsView: View {
                             Text(StatsChart.valueText(r, metric)).font(.caption2).foregroundStyle(.secondary)
                         }
                 }
+                // hotfix 01 (H5): one category per bar, so each bar is centred on its label; wider with a clear gap; the tallest red
                 ForEach(Array(values.enumerated()), id: \.offset) { item in
-                    BarMark(x: .value("Day", item.offset + 1), y: .value(chart.title, item.element * (grownBars?.contains(item.offset) ?? true ? 1 : 0)))
-                        .foregroundStyle(selectedBar == nil || selectedBar == item.offset ? Theme.accent : Theme.accent.opacity(0.35))
+                    BarMark(x: .value("Day", Self.slot(item.offset)),
+                            y: .value(chart.title, item.element * (grownBars?.contains(item.offset) ?? true ? 1 : 0)),
+                            width: .ratio(chart.barWidthRatio))
+                        .foregroundStyle(barColour(item.offset, tallest: tallest))
                         .cornerRadius(4)
                 }
             }
             .chartYScale(domain: 0...chart.scaleTop)   // hotfix 01 (H4): bars and dashed lines share one value scale
             .onAppear { replayBars(values.count) }
-            .chartXScale(domain: 0.4...(Double(max(values.count, 1)) + (values.count > 12 ? 1.3 : 0.6)))      // all bars inside the plot, and room for the last label ("31") at the right edge
             .chartXAxis { barAxis(chart.bars.map(\.axisLabel)) }
             .chartYAxis(.hidden)
             .chartOverlay { proxy in
@@ -234,8 +237,8 @@ struct StatsView: View {
                         .gesture(SpatialTapGesture().onEnded { tap in
                             guard let plot = proxy.plotFrame else { return }
                             let x = tap.location.x - geo[plot].origin.x
-                            guard let v: Double = proxy.value(atX: x) else { return }
-                            let i = Int(v.rounded()) - 1
+                            guard let v: String = proxy.value(atX: x), let n = Int(v) else { return }
+                            let i = n - 1
                             guard values.indices.contains(i) else { selectedBar = nil; return }
                             selectedBar = selectedBar == i ? nil : i
                             Haptics.tick()
@@ -266,10 +269,19 @@ struct StatsView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.03 * Double(count) + 0.5) { if token == replayToken { grownBars = nil } }
     }
 
+    /// Hotfix 01 (H5): the bar's category ("1", "2", …): a slot of its own, label centred under it
+    static func slot(_ index: Int) -> String { String(index + 1) }
+
+    /// Hotfix 01 (H5): the tallest bar(s) red (Theme token), the others orange; a tapped bar keeps the others dimmed
+    private func barColour(_ i: Int, tallest: Set<Int>) -> Color {
+        let base = tallest.contains(i) ? Theme.danger : Theme.accent
+        return selectedBar == nil || selectedBar == i ? base : base.opacity(0.35)
+    }
+
     private func barAxis(_ labels: [String]) -> some AxisContent {
-        AxisMarks(values: Array(stride(from: 1, through: labels.count, by: labels.count > 12 ? 5 : 1))) { value in
-            AxisValueLabel {
-                if let i = value.as(Int.self), i >= 1, i <= labels.count { Text(labels[i - 1]).font(.caption2) }
+        AxisMarks(values: Array(stride(from: 1, through: labels.count, by: labels.count > 12 ? 5 : 1)).map { Self.slot($0 - 1) }) { value in
+            AxisValueLabel(centered: true) {
+                if let s = value.as(String.self), let i = Int(s), i >= 1, i <= labels.count { Text(labels[i - 1]).font(.caption2) }
             }
         }
     }
