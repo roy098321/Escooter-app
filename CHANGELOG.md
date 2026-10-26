@@ -2,6 +2,16 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 101.251026.01 — hotfix 1 of batch 1, Mon 26 Oct 2026
+
+- Route colours: the ride map and Replay showed one shade for the whole ride; the line is now drawn with a gradient that follows the route (option A). Developer → Route line lab shows the same made-up ride drawn three ways (A / B / C) to compare on the phone.
+- H6 Speed sweet spot: it always said "0 steady stretches" because it wanted readings at most 3 s apart while rides store one every 5 s. It now follows the recorder (up to 12.5 s apart), so it counts your stretches again, for every rider.
+- H4 Stats dashed lines: three lines in round steps with the top one about at the tallest bar (13 km → 5 / 10 / 15, ₪99 → 30 / 60 / 90, 7 rides → 2 / 4 / 6), drawn on the same scale as the bars.
+- H5 Stats bars: each bar sits centred over its day, wider with a clear gap; the tallest bar is red.
+- H1 Ride graph: time zoom is back. Pinch sideways to zoom time, up-down to stretch the values; drag to move along the ride when zoomed in; double tap fits both.
+- H2 Ride graph: tap a chip that is already on to see its deeper line: Speed → acceleration, Battery → battery per km, Height → incline; tap again to go back. Hold a chip to hide it.
+- H3 Ride graph: the part of the ride shown on the graph is orange on the map, the rest grey; Hills jumps to a climb. Select, Scatter and ✕ are gone.
+
 ## 101.251026.00 — batch 1, due Sun 25 Oct 2026
 
 ### A · Never lose a ride
