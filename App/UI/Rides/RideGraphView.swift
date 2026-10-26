@@ -8,9 +8,10 @@ import UIKit
 /// more one tap away), each line in its own colour and on its own scale (the highlighted chip's scale is on the axis). The small map
 /// above is linked both ways: touch the map → the cursor jumps there (a touch on a hill selects the hill); touch the chart → the dot
 /// moves on the map. Select marks a stretch on the chart; Scatter shows two lines against each other over it with a plain-words line on
-/// how strong the link is. Note 13 scale fix (owner): a pinch changes the VALUE SCALE of every shown line around its own data (a
-/// speed-change line that looks flat on ±30 shows its detail on ±5); the whole ride always stays visible sideways (no time zoom);
-/// double tap resets. The maths is Core `RideGraph` (unit tested).
+/// how strong the link is. Note 13 scale fix (owner): an up-down pinch changes the VALUE SCALE of every shown line around its own
+/// data (a speed-change line that looks flat on ±30 shows its detail on ±5). Hotfix 01 (H1): a sideways pinch zooms TIME (the window
+/// narrows around the fingers; drag to pan while zoomed in, a tap moves the cursor); both coexist; double tap fits both.
+/// The maths is Core `RideGraph` (unit tested).
 struct RideGraphView: View {
     let data: RideLayerData
 
@@ -24,6 +25,10 @@ struct RideGraphView: View {
     /// Note 13 scale fix: 1 = auto-fit; above 1 the value ranges narrow around each line's data
     @State private var valueScale = 1.0
     @State private var scaleBase: Double?
+    /// Hotfix 01 (H1): the pinch's axis and the window when it began; the drag's start when panning a zoomed-in window
+    @State private var pinchAxis: RideGraph.PinchAxis?
+    @State private var pinchStart: (domain: ClosedRange<Double>, anchor: CGFloat)?
+    @State private var drag: (x: CGFloat, domain: ClosedRange<Double>, moved: Bool)?
     @State private var cursor: Double?
     @State private var selecting = false
     @State private var selectStart: Double?
@@ -169,7 +174,7 @@ struct RideGraphView: View {
 
     private func scale(_ s: GraphSeries) -> ClosedRange<Double> {
         guard let line = lines[s] else { return 0...1 }
-        return RideGraph.scaledRange(line, factor: valueScale)
+        return RideGraph.scaledRange(line, factor: valueScale, within: RideGraph.isZoomed(domain, full: full) ? domain : nil)
     }
 
     /// One drawn reading (flattened so the chart stays simple for the compiler)
@@ -260,16 +265,48 @@ struct RideGraphView: View {
                 if let sel = selection, sel.to - sel.from < 5 { selection = nil }
                 Haptics.tick()
             }
+        } else if RideGraph.isZoomed(domain, full: full) {
+            // H1: zoomed in, a drag pans the window; a touch without moving moves the cursor
+            switch phase {
+            case .began:
+                if drag == nil { drag = (x, domain, false) }
+            case .changed:
+                guard let d = drag, width > 0 else { return }
+                let dx = x - d.x
+                if abs(dx) > 8 || d.moved {
+                    drag?.moved = true
+                    domain = RideGraph.timePanned(d.domain, full: full, fraction: Double(dx / width))
+                }
+            case .ended:
+                guard let d = drag else { return }
+                if !d.moved { cursor = ChartCursor.time(atX: Double(d.x), width: Double(width), domain: d.domain) }
+                drag = nil
+            }
         } else {
             cursor = t
         }
     }
 
     private func pinched(vertical: Bool, scale: CGFloat, anchor: CGFloat, phase: ChartGestures.Phase) {
-        // Note 13 scale fix: any pinch stretches or relaxes the value scale; the time axis always shows the whole ride
-        if phase == .began { scaleBase = valueScale }
-        valueScale = RideGraph.clampedScale((scaleBase ?? valueScale) * Double(scale))
-        if phase == .ended { scaleBase = nil }
+        // H1: the axis is decided once, when the pinch begins: up-down = value scale (note 13 scale fix), sideways = time window
+        if phase == .began || pinchAxis == nil {
+            pinchAxis = vertical ? .value : .time
+            scaleBase = valueScale
+            pinchStart = (domain, anchor)
+        }
+        switch pinchAxis {
+        case .value:
+            valueScale = RideGraph.clampedScale((scaleBase ?? valueScale) * Double(scale))
+        default:
+            if let start = pinchStart {
+                domain = RideGraph.timeZoomed(start.domain, full: full, scale: Double(scale), anchor: Double(start.anchor))
+            }
+        }
+        if phase == .ended {
+            scaleBase = nil
+            pinchAxis = nil
+            pinchStart = nil
+        }
     }
 
     private func reset() {
@@ -305,7 +342,7 @@ struct RideGraphView: View {
         }
         .font(.subheadline)
         .overlay(alignment: .bottomTrailing) {
-            Text("Pinch to stretch the values \u{00B7} double tap fits").font(.caption2).foregroundStyle(.secondary).offset(y: 16)
+            Text("Pinch sideways: time \u{00B7} up-down: values \u{00B7} double tap fits").font(.caption2).foregroundStyle(.secondary).offset(y: 16)
         }
         .padding(.bottom, 14)
     }
@@ -374,8 +411,9 @@ private struct ScatterSheet: View {
     }
 }
 
-/// Note 13: the chart's touches in one UIKit view: one finger moves the cursor (or marks a stretch), a pinch zooms time when it is
-/// wider than tall and the highlighted line's height when it is taller than wide, a double tap resets.
+/// Note 13: the chart's touches in one UIKit view: one finger moves the cursor (or marks a stretch; hotfix 01: pans a zoomed-in window),
+/// a pinch zooms time when the fingers are wider than tall and stretches the values when taller than wide (Core `RideGraph.pinchAxis`),
+/// a double tap fits both.
 struct ChartGestures: UIViewRepresentable {
     enum Phase { case began, changed, ended }
     var onTouch: (CGFloat, CGFloat, Phase) -> Void
@@ -432,7 +470,7 @@ struct ChartGestures: UIViewRepresentable {
             guard let view = g.view, let p = phase(g.state) else { return }
             if g.state == .began, g.numberOfTouches >= 2 {
                 let a = g.location(ofTouch: 0, in: view), b = g.location(ofTouch: 1, in: view)
-                vertical = abs(a.y - b.y) > abs(a.x - b.x)
+                vertical = RideGraph.pinchAxis(dx: Double(a.x - b.x), dy: Double(a.y - b.y)) == .value
             }
             let anchor = view.bounds.width > 0 ? g.location(in: view).x / view.bounds.width : 0.5
             parent.onPinch(vertical, g.scale, anchor, p)

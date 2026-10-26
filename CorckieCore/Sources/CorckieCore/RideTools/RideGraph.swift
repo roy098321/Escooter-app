@@ -206,16 +206,52 @@ public enum RideGraph {
     /// Note 13 scale fix (owner): the pinch changes the VALUE SCALE, not the view. `factor` 1 = auto-fit to the whole ride; above 1
     /// the range narrows around the line's own data (its median), so a line that looks flat on ±30 shows its detail on ±5; below 1 it
     /// widens. The time axis always shows the whole ride.
-    public static func scaledRange(_ line: GraphLine, factor: Double) -> ClosedRange<Double> {
-        let base = range(line, within: (line.times.first ?? 0)...(line.times.last ?? 0))
+    /// Hotfix 01 (H1): with a time window (`within`) the auto-fit and the median follow the visible stretch.
+    public static func scaledRange(_ line: GraphLine, factor: Double, within window: ClosedRange<Double>? = nil) -> ClosedRange<Double> {
+        let whole = (line.times.first ?? 0)...(line.times.last ?? 0)
+        let base = range(line, within: window ?? whole)
         let f = clampedScale(factor)
-        guard f != 1, !line.values.isEmpty else { return base }
-        let sorted = line.values.sorted()
+        var inside = line.values
+        if let window {
+            let v = zip(line.times, line.values).filter { window.contains($0.0) }.map { $0.1 }
+            if !v.isEmpty { inside = v }
+        }
+        guard f != 1, !inside.isEmpty else { return base }
+        let sorted = inside.sorted()
         let median = sorted[sorted.count / 2]
         let mid = (base.lowerBound + base.upperBound) / 2
         let centre = mid + (median - mid) * (1 - 1 / max(1, f))
         let half = (base.upperBound - base.lowerBound) / 2 / f
         return (centre - half)...(centre + half)
+    }
+
+    // MARK: Time zoom (hotfix 01, H1)
+
+    /// Which way a two-finger pinch works, from the fingers' spread at its start: wider than tall zooms time, taller than wide
+    /// stretches the value scale (owner: "adjusting scale and zooming in time should coexist").
+    public enum PinchAxis: Equatable, Sendable { case time, value }
+
+    public static func pinchAxis(dx: Double, dy: Double) -> PinchAxis {
+        abs(dy) > abs(dx) ? .value : .time
+    }
+
+    /// The shortest time window a pinch can show, s
+    public static let minWindowS = 30.0
+
+    /// A sideways pinch: `scale` > 1 narrows the window around `anchor` (0 left … 1 right of what was shown when the pinch began),
+    /// never under `minWindowS`, never wider than the ride and always inside it
+    public static func timeZoomed(_ start: ClosedRange<Double>, full: ClosedRange<Double>, scale: Double, anchor: Double) -> ClosedRange<Double> {
+        ChartCursor.zoomed(start, full: full, scale: scale.isFinite ? scale : 1, anchor: anchor, minSpanS: minWindowS)
+    }
+
+    /// A drag across the chart while zoomed in: `fraction` of the chart's width (finger right → earlier part of the ride)
+    public static func timePanned(_ start: ClosedRange<Double>, full: ClosedRange<Double>, fraction: Double) -> ClosedRange<Double> {
+        ChartCursor.panned(start, full: full, byS: -fraction * (start.upperBound - start.lowerBound))
+    }
+
+    /// True when the window shows less than the whole ride
+    public static func isZoomed(_ window: ClosedRange<Double>, full: ClosedRange<Double>) -> Bool {
+        (window.upperBound - window.lowerBound) < (full.upperBound - full.lowerBound) - 0.5
     }
 
     /// The value scale stays between half and 20 × the auto-fit
