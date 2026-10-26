@@ -794,6 +794,8 @@ enum CheckList {
           "The real ride screen full screen with a Preview badge plays a made-up ride (speed, battery, arrival line, moving map); \u{22EF} pauses, triggers battery 20 / 15 / 10 %, Motor hot, Phone took over, switches destination and day / night; no ride appears in Rides afterwards", manual: true),
         m("ui160", p6M, "Route line lab (hotfix 01)", "Settings \u{2192} Developer \u{2192} Route line lab: tap A, B and C (A also with At most 16 colour stops)",
           "Each tab shows the same made-up ride; note which one shows the colour changing along the line (slow at both ends, fast in the middle) and which looks best; A is what the ride maps use now", manual: true),
+        m("ui164", p6M, "Stats dashed lines sit at their values (hotfix 01)", "Stats: Week and Month, switch km \u{00B7} rides \u{00B7} time \u{00B7} \u{20AA} saved",
+          "Three dashed lines in round steps with the top one about at the tallest bar (top 13 km gives 5 / 10 / 15, \u{20AA}99 gives 30 / 60 / 90); a bar of 10 km reaches exactly the 10 km line; rides never show a half step", manual: true),
         m("u144", p6M, "Places order is saved (place drag)", "Nothing to do \u{00B7} Run all automatic marks it",
           "Made-up places: dragging the last to the top gives the new order, it is saved and read back, a new place goes after the ordered ones"),
         m("ui144", p6M, "Hold a place to drag it (place drag)", "Settings \u{2192} Places: hold a place card, drag it up or down, let go",

@@ -16,7 +16,7 @@ public struct StatsChartBar: Equatable, Sendable {
 public struct StatsChartData: Equatable, Sendable {
     public var title: String
     public var bars: [StatsChartBar]
-    /// The dashed lines behind the bars (round values under the tallest bar)
+    /// The dashed lines behind the bars (1, 2, 3 comfortable steps; the top one about at the tallest bar)
     public var references: [Double]
     public var metric: PastWeeksMetric
 
@@ -27,6 +27,9 @@ public struct StatsChartData: Equatable, Sendable {
     }
 
     public var maxValue: Double { bars.map(\.value).max() ?? 0 }
+
+    /// Hotfix 01 (H4): the top of the value scale shared by the bars and the lines
+    public var scaleTop: Double { ReferenceLines.domainTop(top: maxValue, lines: references) }
 }
 
 public enum StatsChart {
@@ -55,19 +58,9 @@ public enum StatsChart {
         }
     }
 
-    /// The reference lines: a round step (1, 2, 2.5, 5 × 10ⁿ) giving up to three lines under the tallest bar
-    public static func references(max: Double) -> [Double] {
-        guard max > 0 else { return [] }
-        let raw = max / 3
-        let magnitude = pow(10, floor(log10(raw)))
-        let step = [1.0, 2.0, 2.5, 5.0, 10.0].map { $0 * magnitude }.last { $0 <= raw + 1e-9 } ?? raw
-        var out: [Double] = []
-        var v = step
-        while v <= max + 1e-9, out.count < 3 {
-            out.append(v)
-            v += step
-        }
-        return out
+    /// The reference lines (hotfix 01, H4: `ReferenceLines`): (top ÷ 3) rounded to the nearest comfortable step, lines at 1, 2, 3 steps
+    public static func references(max: Double, metric: PastWeeksMetric = .km) -> [Double] {
+        ReferenceLines.steps(top: max, metric: metric)
     }
 
     /// The day values of one metric (time in minutes)
@@ -110,6 +103,6 @@ public enum StatsChart {
             bars.append(StatsChartBar(value: v, axisLabel: label, dateText: date))
         }
         let maxV = bars.map(\.value).max() ?? 0
-        return StatsChartData(title: title(metric, span: span), bars: bars, references: references(max: maxV), metric: metric)
+        return StatsChartData(title: title(metric, span: span), bars: bars, references: references(max: maxV, metric: metric), metric: metric)
     }
 }

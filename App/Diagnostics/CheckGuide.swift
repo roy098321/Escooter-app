@@ -900,6 +900,8 @@ struct CheckGuide {
                             steps: ["Settings \u{2192} Developer \u{2192} Ride screen preview.", "Watch it play; try the \u{22EF} events and scenarios; close.", "Rides has no new ride. Tap Pass or Fail with a note."], place: .noScooter),
         "ui160": CheckGuide(proves: "We know which way of drawing the route really shows its colours on this phone.",
                             steps: ["Settings \u{2192} Developer \u{2192} Route line lab.", "Tap A, B and C; on A also switch At most 16 colour stops.", "Pass if A shows the colour change; Fail and write which one looks best (A, B or C)."], place: .noScooter),
+        "ui164": CheckGuide(proves: "The Stats chart's dashed lines are round, about as high as the tallest bar, and drawn on the bars' own scale.",
+                            steps: ["Open Stats; try Week and Month and each of km \u{00B7} rides \u{00B7} time \u{00B7} \u{20AA} saved.", "The top line sits about at the tallest bar; a bar's top matches the line of its value. Tap Pass or Fail with a note."], place: .noScooter),
         "u144": CheckGuide(proves: "A new places order is kept.",
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the drag, the save and the new-place rule each say ok. The real thing is check ui144."], place: .noScooter),
         "ui144": CheckGuide(proves: "You can put your places in the order you like by holding and dragging.",

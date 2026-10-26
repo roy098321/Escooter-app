@@ -41,16 +41,15 @@ final class StatsChartTests: XCTestCase {
         XCTAssertEqual(StatsChart.title(.km, span: .year), "km per month")
     }
 
-    func testReferenceLinesAreRoundAndUnderTheTop() {
+    func testReferenceLinesAreRoundAndAboutAtTheTop() {
         XCTAssertEqual(StatsChart.references(max: 18), [5, 10, 15])
         XCTAssertEqual(StatsChart.references(max: 30), [10, 20, 30])
-        XCTAssertEqual(StatsChart.references(max: 7), [2, 4, 6])
+        XCTAssertEqual(StatsChart.references(max: 7, metric: .rides), [2, 4, 6])
         XCTAssertEqual(StatsChart.references(max: 0), [])
         for m in [0.7, 3.0, 47.0, 260.0] {
             let r = StatsChart.references(max: m)
-            XCTAssertFalse(r.isEmpty)
-            XCTAssertLessThanOrEqual(r.count, 3)
-            XCTAssertLessThanOrEqual(r.last ?? 0, m + 1e-9)
+            XCTAssertEqual(r.count, 3)
+            XCTAssertEqual(r.last ?? 0, m, accuracy: m * 0.4, "the top line is about at the top bar")
         }
     }
 

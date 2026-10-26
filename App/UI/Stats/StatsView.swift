@@ -223,7 +223,7 @@ struct StatsView: View {
                         .cornerRadius(4)
                 }
             }
-            .chartYScale(domain: 0...max(values.max() ?? 1, 0.001))
+            .chartYScale(domain: 0...chart.scaleTop)   // hotfix 01 (H4): bars and dashed lines share one value scale
             .onAppear { replayBars(values.count) }
             .chartXScale(domain: 0.4...(Double(max(values.count, 1)) + (values.count > 12 ? 1.3 : 0.6)))      // all bars inside the plot, and room for the last label ("31") at the right edge
             .chartXAxis { barAxis(chart.bars.map(\.axisLabel)) }
