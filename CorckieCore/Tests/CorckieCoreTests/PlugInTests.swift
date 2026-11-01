@@ -64,4 +64,15 @@ final class PlugInTests: XCTestCase {
         XCTAssertTrue(PlugIn.why(unknown, .range(15), utcOffsetMin: 0).contains("Needs a few rides first"))
         XCTAssertNotNil(PlugIn.chargeLineAlert(s, .battery(100), utcOffsetMin: 0))
     }
+
+    /// R5 / B65: one full time on the screen, the honest 100 % estimate; the notification keeps its margin
+    func testOneFullTimeOnTheScreen() {
+        let s = ChargeSession(startPct: 66, startMs: end, pctPerKm: 2.0, reservePct: 10, scooterName: "Test")
+        XCTAssertEqual(PlugIn.shownMs(s, .battery(100)), ChargeModel.fullMs(s))
+        XCTAssertEqual(PlugIn.alertClock(s, .battery(100), utcOffsetMin: 0), ChargeText.clock(ChargeModel.fullMs(s), utcOffsetMin: 0))
+        XCTAssertEqual(PlugIn.chargeLineAlert(s, .battery(100), utcOffsetMin: 0), "Charge to 100%", "no second full time")
+        XCTAssertEqual(PlugIn.alertMs(s, .battery(100)), ChargeModel.notifyFullMs(s), "the alert still waits +5 %")
+        XCTAssertTrue(PlugIn.chargeLineAlert(s, .battery(80), utcOffsetMin: 0)?.hasPrefix("80% \u{2248} ") == true)
+        XCTAssertEqual(ChargeModel.pct(s, atMs: end), 66, "the estimate starts from the last reading")
+    }
 }

@@ -4,7 +4,8 @@ import Foundation
 /// Batch 102.011126.00 checks, on made-up input only (nothing real is read or written).
 /// u168 the route line is short solid pieces of the lab's B width (R1 / note 17),
 /// u166 the Battery layer marks each first drop below 10 % steps (R2),
-/// u169 Home's last reading with its time and the labelled charge target (R3 / B64).
+/// u169 Home's last reading with its time and the labelled charge target (R3 / B64),
+/// u170 one full time on the charging screen, the estimate starts at the last reading (R5 / B65).
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -13,6 +14,20 @@ enum B102Checks {
         runRoutePieces()
         runBatteryMarks()
         runLastReading()
+        runChargeAgree()
+    }
+
+    // MARK: u170
+
+    /// R5 / B65: the pill and the card show the same honest full time; the notification still waits +5 %
+    private static func runChargeAgree() {
+        let expect = Expect()
+        let s = ChargeSession(startPct: 66, startMs: 1_790_000_000_000, pctPerKm: 2.0, reservePct: 10, scooterName: "Test")
+        expect(ChargeModel.pct(s, atMs: s.startMs) == 66, "the estimate starts at the last reading (66 %)")
+        expect(PlugIn.shownMs(s, .battery(100)) == ChargeModel.fullMs(s), "the sheet shows the same full time as the card")
+        expect(PlugIn.chargeLineAlert(s, .battery(100), utcOffsetMin: 0) == "Charge to 100%", "under the charge line no second full time")
+        expect(PlugIn.alertMs(s, .battery(100)) == ChargeModel.notifyFullMs(s), "the full alert still waits +5 %")
+        expect.report("u170")
     }
 
     // MARK: u169

@@ -90,9 +90,16 @@ public enum PlugIn {
         }
     }
 
+    /// R5 / B65: the time the screens SHOW (honest, P-1): full = the 100 % estimate, the same "full ≈" as the charge card; the
+    /// notification itself still waits the +5 % (`alertMs`).
+    public static func shownMs(_ s: ChargeSession, _ a: PlugAlert) -> Int64? {
+        if case .battery(let p) = a, p >= 100 { return ChargeModel.fullMs(s) }
+        return alertMs(s, a)
+    }
+
     /// The clock part of "18:02 estimated" (the sheet underlines the word "estimated" and puts it after); nil = not known yet
     public static func alertClock(_ s: ChargeSession, _ a: PlugAlert, utcOffsetMin: Int) -> String? {
-        alertMs(s, a).map { ChargeText.clock($0, utcOffsetMin: utcOffsetMin) }
+        shownMs(s, a).map { ChargeText.clock($0, utcOffsetMin: utcOffsetMin) }
     }
 
     /// When the clock is not known yet
@@ -104,7 +111,7 @@ public enum PlugIn {
                      "Started at \(Int(s.startPct.rounded()))% at \(ChargeText.clock(s.startMs, utcOffsetMin: utcOffsetMin)), the last reading."]
         switch a {
         case .battery(let p) where p >= 100:
-            parts.append("For full it waits 5 % longer, so the battery really is full.")
+            parts.append("The full alert itself comes a little later (5 % longer), so the battery really is full.")
         case .battery:
             break
         case .range(let km):
@@ -120,8 +127,10 @@ public enum PlugIn {
 
     static func fmt(_ v: Double) -> String { v == v.rounded() ? "\(Int(v))" : String(format: "%.1f", v) }
 
-    /// The charge line's alert part: "Alert 18:02" (nil when not known)
+    /// The charge line's alert part: "80% ≈ 10:40" (nil when not known). R5 / B65: full is just "Charge to 100%": the charge line
+    /// above already says "full ≈ 11:18", so the screen has ONE full time.
     public static func chargeLineAlert(_ s: ChargeSession, _ a: PlugAlert, utcOffsetMin: Int) -> String? {
-        alertClock(s, a, utcOffsetMin: utcOffsetMin).map { "\(a.pillText) \u{2248} \($0)" }
+        if case .battery(let p) = a, p >= 100 { return a.targetText }
+        return alertClock(s, a, utcOffsetMin: utcOffsetMin).map { "\(a.pillText) \u{2248} \($0)" }
     }
 }
