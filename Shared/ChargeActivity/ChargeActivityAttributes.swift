@@ -8,6 +8,9 @@ struct ChargeActivityAttributes: ActivityAttributes {
         /// Where the 13.6 %/h line crosses 0 % and 100 %: the % at any moment is the share of this span that has passed
         var zeroAt: Date
         var fullAt: Date
+        /// R4 / B68: the countdown runs to the rider's target when it is below 100 % (nil = to full)
+        var targetAt: Date? = nil
+        var targetPct: Int? = nil
     }
 
     var name: String

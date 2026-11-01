@@ -197,7 +197,10 @@ final class LiveActivityController {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let full = Date(timeIntervalSince1970: Double(ChargeModel.fullMs(s)) / 1000)
         let zero = Date(timeIntervalSince1970: Double(s.startMs) / 1000 - s.startPct / ChargeModel.ratePctPerHour * 3600)
-        let state = ChargeActivityAttributes.ContentState(zeroAt: zero, fullAt: full)
+        // R4 / B68: the countdown goes to the target % (or full); a changed estimate moves these dates on the next sync
+        let targetPct = ChargeModel.targetPct(s).flatMap { $0 < 100 ? $0 : nil }
+        let targetAt = targetPct.map { Date(timeIntervalSince1970: Double(ChargeModel.timeMs(toPct: Double($0), s)) / 1000) }
+        let state = ChargeActivityAttributes.ContentState(zeroAt: zero, fullAt: full, targetAt: targetAt, targetPct: targetPct)
         let content = ActivityContent(state: state, staleDate: full.addingTimeInterval(3600))
         if activity == nil { activity = Activity<ChargeActivityAttributes>.activities.first }
         if let a = activity {
