@@ -18,8 +18,21 @@ final class Hotfix01GuardTests: XCTestCase {
         XCTAssertFalse(path.contains("-> LinearGradient"), "no LinearGradient for map strokes")
         XCTAssertFalse(path.contains("LinearGradient(stops:"), "no LinearGradient built from the route's colour stops")
         let replay = try source("UI/Rides/ReplayView.swift")
-        XCTAssertTrue(replay.contains("gradient: Gradient)]"), "Replay strokes its runs with a plain Gradient")
         XCTAssertFalse(replay.contains("gradient: LinearGradient"), "Replay never strokes with a LinearGradient")
+    }
+
+    /// R1 / note 17 (hotfix 02): every ride map draws short solid pieces (lab option B); no ride map strokes with a gradient.
+    func test_rideMapsDrawPiecesNotAGradient() throws {
+        let path = try source("UI/Shared/GradientPath.swift")
+        XCTAssertTrue(path.contains("RoutePieces.pieces(stretches, ramp: ramp)"), "ride map lines are pieces")
+        XCTAssertTrue(path.contains("lineCap: .butt"), "butt caps like the lab's B")
+        XCTAssertFalse(path.contains(".stroke(gradient("), "no gradient stroke on the ride maps")
+        let replay = try source("UI/Rides/ReplayView.swift")
+        XCTAssertTrue(replay.contains("RoutePieces.pieces("), "Replay draws pieces")
+        XCTAssertFalse(replay.contains("gradient: Gradient"), "Replay no longer strokes a gradient")
+        XCTAssertFalse(replay.contains(".stroke(run.gradient"), "Replay no longer strokes a gradient")
+        let detail = try source("UI/Rides/RideDetailView.swift")
+        XCTAssertFalse(detail.contains("GradientPath.gradient("), "ride detail never strokes a gradient")
     }
 
     func test_routeLineLabHasThreeWays() throws {

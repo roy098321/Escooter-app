@@ -19,20 +19,27 @@ enum GradientPath {
 
     /// The stretches of a layer as map lines (MapKit equivalent of a gradient polyline)
     @MainActor @MapContentBuilder
-    static func lines(_ stretches: [ValueStretch], layer: MapLayer, width: CGFloat = 5) -> some MapContent {
+    static func lines(_ stretches: [ValueStretch], layer: MapLayer, width: CGFloat = CGFloat(RoutePieces.width)) -> some MapContent {
         lines(stretches, ramp: LayerRamps.ramp(layer, colourBlind: DisplaySettings.colourBlind), width: width)
     }
 
-    /// F-33: any view's stretches on its own ramp. B59: one gradient polyline per unbroken run.
+    /// F-33: any view's stretches on its own ramp. R1 / note 17: short solid pieces (lab option B, 6 pt, butt caps, round joins);
+    /// same-colour neighbours are one piece (Core `RoutePieces`). The ride maps never stroke with a gradient.
     @MainActor @MapContentBuilder
-    static func lines(_ stretches: [ValueStretch], ramp: GradientRamp, width: CGFloat = 5) -> some MapContent {
-        let runs = GradientLine.runs(stretches, ramp: ramp)
-        ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
-            MapPolyline(coordinates: run.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
-                .stroke(gradient(run), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+    static func lines(_ stretches: [ValueStretch], ramp: GradientRamp, width: CGFloat = CGFloat(RoutePieces.width)) -> some MapContent {
+        let pieces = RoutePieces.pieces(stretches, ramp: ramp)
+        ForEach(Array(pieces.enumerated()), id: \.offset) { _, piece in
+            MapPolyline(coordinates: piece.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                .stroke(Color(red: piece.r, green: piece.g, blue: piece.b), style: pieceStyle(width))
         }
     }
 
+    /// R1: the one stroke style of every ride map line
+    static func pieceStyle(_ width: CGFloat = CGFloat(RoutePieces.width)) -> StrokeStyle {
+        StrokeStyle(lineWidth: width, lineCap: .butt, lineJoin: .round)
+    }
+
+    /// Route line lab only (option A). Ride maps use `lines` (pieces).
     /// B59 + hotfix 01 (A): the run's colour stops as a plain gradient along the line (never a LinearGradient on a map stroke)
     static func gradient(_ run: GradientRun) -> Gradient {
         Gradient(stops: run.stops.map { Gradient.Stop(color: Color(red: $0.r, green: $0.g, blue: $0.b), location: $0.location) })

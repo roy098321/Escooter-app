@@ -77,3 +77,45 @@ public enum GradientLine {
         return GradientRun(coords: coords, stops: stops)
     }
 }
+
+/// R1 / note 17 (hotfix 02, owner 26 Oct): the ride maps draw the route as SHORT SOLID PIECES (Route line lab option B): even, thin
+/// width (6 pt, butt caps, round joins), the colour changes along the line. Next stretches whose colour falls on the same step of the
+/// ramp are joined into one piece, so a long ride stays light to draw and has fewer joins (no seams).
+public struct RoutePiece: Equatable, Sendable {
+    public var coords: [GeoPoint]
+    public var r: Double
+    public var g: Double
+    public var b: Double
+
+    public init(coords: [GeoPoint], r: Double, g: Double, b: Double) {
+        self.coords = coords
+        self.r = r
+        self.g = g
+        self.b = b
+    }
+}
+
+public enum RoutePieces {
+    /// The lab's B width, in points
+    public static let width = 6.0
+    /// Colour steps across the ramp (enough that the eye sees a smooth change)
+    public static let colourSteps = 32
+
+    public static func pieces(_ stretches: [ValueStretch], ramp: GradientRamp) -> [RoutePiece] {
+        var out: [RoutePiece] = []
+        var lastStep = -1
+        var lastEnd: GeoPoint?
+        for s in stretches where s.a != s.b {
+            let step = Int((ramp.position(s.value) * Double(colourSteps)).rounded())
+            if step == lastStep, let end = lastEnd, end == s.a, !out.isEmpty {
+                out[out.count - 1].coords.append(s.b)
+            } else {
+                let c = ramp.rgb(at: ramp.lo + (ramp.hi - ramp.lo) * Double(step) / Double(colourSteps))
+                out.append(RoutePiece(coords: [s.a, s.b], r: c.r, g: c.g, b: c.b))
+            }
+            lastStep = step
+            lastEnd = s.b
+        }
+        return out
+    }
+}

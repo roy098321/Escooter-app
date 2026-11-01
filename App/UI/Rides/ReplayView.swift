@@ -21,7 +21,7 @@ struct ReplayView: View {
     @State private var missing = false
     @State private var layer: ReplayLayer = .speed
     /// B59: one gradient line per unbroken run
-    @State private var runs: [(coords: [CLLocationCoordinate2D], gradient: Gradient)] = []
+    @State private var runs: [(coords: [CLLocationCoordinate2D], colour: Color)] = []   // R1: short solid pieces
     @State private var strip: [TimeChart.Point] = []
     @State private var camera: MapCameraPosition = .automatic
     @State private var playback = ComparePlayback(durationS: 0)
@@ -134,7 +134,7 @@ struct ReplayView: View {
         Map(position: $camera, interactionModes: [.pan, .zoom]) {
             ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
                 MapPolyline(coordinates: run.coords)
-                    .stroke(run.gradient, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                    .stroke(run.colour, style: GradientPath.pieceStyle())
             }
             if let state, let lat = state.lat, let lon = state.lon {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon), anchor: .center) {
@@ -247,8 +247,8 @@ struct ReplayView: View {
         guard let track else { return }
         if !track.has(layer) { layer = .speed }
         let ramp = track.ramp(layer, colourBlind: DisplaySettings.colourBlind)
-        runs = GradientLine.runs(track.stretches(layer), ramp: ramp).map { run in
-            (coords: run.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) }, gradient: GradientPath.gradient(run))
+        runs = RoutePieces.pieces(track.stretches(layer), ramp: ramp).map { piece in
+            (coords: piece.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) }, colour: Color(red: piece.r, green: piece.g, blue: piece.b))
         }
         var times: [Double] = []
         var values: [Double] = []
