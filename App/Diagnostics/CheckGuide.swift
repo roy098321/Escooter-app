@@ -952,6 +952,8 @@ struct CheckGuide {
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the drag axis and the swipe scale each say ok. The real thing is check ui177."], place: .noScooter),
         "ui177": CheckGuide(proves: "Zooming time and changing the scale no longer get mixed up.",
                             steps: ["Ride graph: pinch with two fingers (time zooms).", "Swipe one finger up (lines stretch), down (relax); drag sideways (cursor); double tap (fits). Tap Pass or Fail with a note."], place: .noScooter),
+        "ui178": CheckGuide(proves: "A ride's page plays back like Replay without opening Replay.",
+                            steps: ["Open a ride from Rides; scroll the card to the strip under the tiles.", "Press play: the dot runs along the route; drag the strip: it jumps. Tap Pass or Fail with a note."], place: .noScooter),
         "u144": CheckGuide(proves: "A new places order is kept.",
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the drag, the save and the new-place rule each say ok. The real thing is check ui144."], place: .noScooter),
         "ui144": CheckGuide(proves: "You can put your places in the order you like by holding and dragging.",

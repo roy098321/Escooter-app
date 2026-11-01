@@ -27,4 +27,21 @@ final class Batch102GuardTests: XCTestCase {
         let attrs = try source("Shared/ChargeActivity/ChargeActivityAttributes.swift")
         XCTAssertTrue(attrs.contains("var targetAt: Date?"), "the countdown can run to the rider's target")
     }
+
+    /// Batch 102 (FIN-2 item 6): ride detail works like Replay: Replay's strip, controls and dot, from the same Core pieces
+    func test_rideDetailWorksLikeReplay() throws {
+        let strip = try source("App/UI/Rides/RideReplayStrip.swift")
+        XCTAssertTrue(strip.contains("ReplayTrack.from(") && strip.contains("ComparePlayback(") && strip.contains("TimeChart("), "Replay's pieces")
+        XCTAssertTrue(strip.contains("ReplayView.speeds"), "the same 1x / 5x / 20x")
+        let detail = try source("App/UI/Rides/RideDetailView.swift")
+        XCTAssertTrue(detail.contains("RideReplayStrip(rideId:"), "the strip is in ride detail")
+        XCTAssertTrue(detail.contains("ReplayDotMark()"), "the dot moves on the ride map")
+    }
+
+    /// Note 15: hold-to-hide is gone from the ride graph chips
+    func test_graphChipsHaveNoHoldToHide() throws {
+        let graph = try source("App/UI/Rides/RideGraphView.swift")
+        XCTAssertFalse(graph.contains(".contextMenu"), "no hold menu on the chips")
+        XCTAssertTrue(graph.contains("arrow.left.arrow.right"), "the \u{21C4} button")
+    }
 }

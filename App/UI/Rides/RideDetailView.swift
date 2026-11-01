@@ -60,6 +60,8 @@ struct RideDetailView: View {
     @State private var drawnScale: LayerScale?
     @State private var stopDots: [StopDot] = []
     @State private var batteryMarks: [BatteryMark] = []   // R2
+    /// Batch 102: the dot Replay's strip moves on the map (ride detail works like Replay)
+    @State private var replayDot: CLLocationCoordinate2D?
     @State private var showHint = false
     /// Note 11: the card's height (full / default / one line / hidden with a lip)
     @State private var cardDetent: CardDetent = .standard
@@ -348,6 +350,7 @@ struct RideDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             if onDone != nil, !sameRideAnswered, let info = mergeInfo { sameRideCard(info) }
             keyTiles(m)
+            if preview == nil, !m.noGps { RideReplayStrip(rideId: activeId, dot: $replayDot).id(activeId ?? "") }   // batch 102: works like Replay
             if let hot = m.hotPeakC { HStack { InfoChip("thermometer.high", "\(hot) \u{00B0}C", label: "Temperature"); Spacer(minLength: 0) } }
             if let r = previewInsights ?? ranked { insightCards(r) }
             ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in
@@ -536,6 +539,9 @@ struct RideDetailView: View {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: stop.point.lat, longitude: stop.point.lon), anchor: .center) {
                     StopDotMark(stop: stop)
                 }
+            }
+            if let d = replayDot, pathReveal >= 1 {
+                Annotation("", coordinate: d, anchor: .center) { ReplayDotMark() }
             }
             ForEach(Array((layerView.showsBatteryMarks && pathReveal >= 1 ? batteryMarks : []).enumerated()), id: \.offset) { _, mark in
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: mark.point.lat, longitude: mark.point.lon), anchor: .center) {

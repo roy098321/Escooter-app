@@ -846,6 +846,8 @@ enum CheckList {
           "A one-finger drag is told apart once (up-down = scale, sideways = cursor); up stretches, down relaxes, within limits"),
         m("ui177", p6M, "Pinch for time, swipe for scale (note 16)", "Ride graph: pinch with two fingers; swipe one finger up, then down; drag sideways; double tap",
           "The pinch zooms the time in any direction; a swipe up stretches the lines, down relaxes them; sideways moves the cursor (pans when zoomed in); a tap moves the cursor; double tap fits both", manual: true),
+        m("ui178", p6M, "Ride detail works like Replay (batch 102)", "Open a ride from Rides; under the six tiles press play, then drag the strip",
+          "Under the tiles: Replay's speed strip with its cursor, the play button, the time slider and 1\u{00D7} / 5\u{00D7} / 20\u{00D7}; playing moves a dot along the route on the map and the small tiles show the speed, battery and distance at the dot; dragging the strip moves the dot", manual: true),
         m("u144", p6M, "Places order is saved (place drag)", "Nothing to do \u{00B7} Run all automatic marks it",
           "Made-up places: dragging the last to the top gives the new order, it is saved and read back, a new place goes after the ordered ones"),
         m("ui144", p6M, "Hold a place to drag it (place drag)", "Settings \u{2192} Places: hold a place card, drag it up or down, let go",
