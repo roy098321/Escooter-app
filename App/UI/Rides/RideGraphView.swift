@@ -27,8 +27,7 @@ struct RideGraphView: View {
     /// Note 13 scale fix: 1 = auto-fit; above 1 the value ranges narrow around each line's data
     @State private var valueScale = 1.0
     @State private var scaleBase: Double?
-    /// Hotfix 01 (H1): the pinch's axis and the window when it began; the drag's start when panning a zoomed-in window
-    @State private var pinchAxis: RideGraph.PinchAxis?
+    /// The window when the pinch began; the drag's start when panning a zoomed-in window
     @State private var pinchStart: (domain: ClosedRange<Double>, anchor: CGFloat)?
     @State private var drag: (x: CGFloat, domain: ClosedRange<Double>, moved: Bool)?
     @State private var cursor: Double?
@@ -129,33 +128,50 @@ struct RideGraphView: View {
                     let on = picks.isOn(s)
                     let c = colour(picks.shown(s))
                     let axis = on && picks.highlighted == s
-                    Button { tap(s) } label: {
-                        HStack(spacing: 6) {
-                            Circle().fill(c).frame(width: 8, height: 8)
-                            Text(picks.label(s)).font(.subheadline.weight(on ? .semibold : .regular))
+                    HStack(spacing: 0) {
+                        Button { tap(s) } label: {
+                            HStack(spacing: 6) {
+                                Circle().fill(c).frame(width: 8, height: 8)
+                                Text(picks.label(s)).font(.subheadline.weight(on ? .semibold : .regular))
+                            }
+                            .padding(.leading, 12)
+                            .padding(.trailing, picks.canFlip(s) ? 4 : 12)
+                            .frame(minHeight: 36)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 36)
-                        .background(on ? c.opacity(0.18) : Theme.chip, in: Capsule())
-                        .overlay(Capsule().strokeBorder(axis ? c : .clear, lineWidth: 2))
-                        .foregroundStyle(Color.primary)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(picks.label(s))
+                        .accessibilityValue(on ? (axis ? "On, its scale is shown" : "On") : "Off")
+                        .accessibilityHint(on ? "Tap to take it off" : "Tap to add it")
+                        if picks.canFlip(s) {
+                            // note 15: ⇄ flips base ↔ derived, separate from add / remove
+                            Button { flip(s) } label: {
+                                Image(systemName: "arrow.left.arrow.right")
+                                    .font(.caption.weight(.bold))
+                                    .frame(width: 32, height: 36)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Switch \(s.title) to \(picks.shown(s) == s ? (s.derived?.title ?? "") : s.title)")
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        if on, picks.on.count > 1 { Button("Hide \(s.title)") { picks.remove(s); Haptics.tick() } }
-                    }
-                    .accessibilityLabel(picks.label(s))
-                    .accessibilityValue(on ? (axis ? "On, its scale is shown" : "On") : "Off")
-                    .accessibilityHint(s.derived != nil && axis ? "Tap again for \(picks.shown(s) == s ? (s.derived?.title ?? "") : s.title)" : "")
+                    .background(on ? c.opacity(0.18) : Theme.chip, in: Capsule())
+                    .overlay(Capsule().strokeBorder(axis ? c : .clear, lineWidth: 2))
+                    .foregroundStyle(Color.primary)
                 }
             }
         }
     }
 
-    /// Off → on (and it gets the scale); on → it gets the scale; on with the scale → its derived series and back (H2; a chip with
-    /// none goes off); hold a chip to hide it
+    /// Note 15 (A): a tap adds or removes a line (the last one stays); hold-to-hide is gone
     private func tap(_ s: GraphSeries) {
         picks.tap(s)
+        Haptics.tick()
+    }
+
+    /// Note 15: ⇄ flips the chip between its base and derived line ("Speed ⇄ Accel")
+    private func flip(_ s: GraphSeries) {
+        picks.flip(s)
         Haptics.tick()
     }
 
@@ -237,7 +253,8 @@ struct RideGraphView: View {
         .overlay {
             ChartGestures(
                 onTouch: { x, width, phase in touched(x: x, width: width, phase: phase) },
-                onPinch: { vertical, scale, anchor, phase in pinched(vertical: vertical, scale: scale, anchor: anchor, phase: phase) },
+                onPinch: { scale, anchor, phase in pinched(scale: scale, anchor: anchor, phase: phase) },
+                onSwipe: { dy, phase in swiped(dyFraction: dy, phase: phase) },
                 onDoubleTap: reset)
         }
         .accessibilityLabel("Ride graph: " + chips.map(\.title).joined(separator: ", ") + " against minutes")
@@ -269,27 +286,21 @@ struct RideGraphView: View {
         }
     }
 
-    private func pinched(vertical: Bool, scale: CGFloat, anchor: CGFloat, phase: ChartGestures.Phase) {
-        // H1: the axis is decided once, when the pinch begins: up-down = value scale (note 13 scale fix), sideways = time window
-        if phase == .began || pinchAxis == nil {
-            pinchAxis = vertical ? .value : .time
-            scaleBase = valueScale
-            pinchStart = (domain, anchor)
+    /// Note 16: a two-finger pinch (any direction) zooms TIME around the fingers
+    private func pinched(scale: CGFloat, anchor: CGFloat, phase: ChartGestures.Phase) {
+        if phase == .began || pinchStart == nil { pinchStart = (domain, anchor) }
+        if let start = pinchStart {
+            hillName = nil
+            domain = RideGraph.timeZoomed(start.domain, full: full, scale: Double(scale), anchor: Double(start.anchor))
         }
-        switch pinchAxis {
-        case .value:
-            valueScale = RideGraph.clampedScale((scaleBase ?? valueScale) * Double(scale))
-        default:
-            if let start = pinchStart {
-                hillName = nil
-                domain = RideGraph.timeZoomed(start.domain, full: full, scale: Double(scale), anchor: Double(start.anchor))
-            }
-        }
-        if phase == .ended {
-            scaleBase = nil
-            pinchAxis = nil
-            pinchStart = nil
-        }
+        if phase == .ended { pinchStart = nil }
+    }
+
+    /// Note 16: a one-finger swipe up / down that starts on the graph changes the value scale (up = stretch, down = relax)
+    private func swiped(dyFraction: CGFloat, phase: ChartGestures.Phase) {
+        if phase == .began || scaleBase == nil { scaleBase = valueScale }
+        valueScale = RideGraph.swipeScale(base: scaleBase ?? valueScale, dyFraction: Double(dyFraction))
+        if phase == .ended { scaleBase = nil }
     }
 
     private func reset() {
@@ -320,7 +331,7 @@ struct RideGraphView: View {
         }
         .font(.subheadline)
         .overlay(alignment: .bottomTrailing) {
-            Text("Pinch sideways: time \u{00B7} up-down: values \u{00B7} double tap fits").font(.caption2).foregroundStyle(.secondary).offset(y: 16)
+            Text("Pinch: time \u{00B7} swipe up or down: values \u{00B7} double tap fits").font(.caption2).foregroundStyle(.secondary).offset(y: 16)
         }
         .padding(.bottom, 14)
     }
@@ -343,13 +354,15 @@ struct RideGraphView: View {
     }
 }
 
-/// Note 13: the chart's touches in one UIKit view: one finger moves the cursor (hotfix 01: pans a zoomed-in window, a tap moves the cursor),
-/// a pinch zooms time when the fingers are wider than tall and stretches the values when taller than wide (Core `RideGraph.pinchAxis`),
-/// a double tap fits both.
+/// Note 16 (owner 26 Oct): the chart's touches in one UIKit view: a two-finger pinch zooms time (any direction); a one-finger swipe
+/// up / down changes the value scale; one finger sideways moves the cursor (pans a zoomed-in window); a tap moves the cursor; a double
+/// tap fits both. A one-finger drag is told apart once, by its first 10 pt (Core `RideGraph.dragAxis`).
 struct ChartGestures: UIViewRepresentable {
     enum Phase { case began, changed, ended }
     var onTouch: (CGFloat, CGFloat, Phase) -> Void
-    var onPinch: (Bool, CGFloat, CGFloat, Phase) -> Void
+    var onPinch: (CGFloat, CGFloat, Phase) -> Void
+    /// the vertical travel as a share of the view's height (negative = up)
+    var onSwipe: (CGFloat, Phase) -> Void
     var onDoubleTap: () -> Void
 
     func makeUIView(context: Context) -> UIView {
@@ -357,13 +370,12 @@ struct ChartGestures: UIViewRepresentable {
         v.backgroundColor = .clear
         let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.pan(_:)))
         pan.maximumNumberOfTouches = 1
-        let press = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.press(_:)))
-        press.minimumPressDuration = 0
-        press.delegate = context.coordinator
         let pinch = UIPinchGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.pinch(_:)))
         let double = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.doubleTap(_:)))
         double.numberOfTapsRequired = 2
-        [pan, press, pinch, double].forEach { v.addGestureRecognizer($0) }
+        let single = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tap(_:)))
+        single.require(toFail: double)
+        [pan, pinch, double, single].forEach { v.addGestureRecognizer($0) }
         pan.delegate = context.coordinator
         pinch.delegate = context.coordinator
         return v
@@ -375,7 +387,8 @@ struct ChartGestures: UIViewRepresentable {
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var parent: ChartGestures
-        private var vertical = false
+        /// the one-finger drag's axis, decided once per drag (nil = not decided yet)
+        private var axis: RideGraph.DragAxis?
 
         init(_ parent: ChartGestures) { self.parent = parent }
 
@@ -388,24 +401,34 @@ struct ChartGestures: UIViewRepresentable {
             }
         }
 
-        @objc func press(_ g: UILongPressGestureRecognizer) {
-            guard let view = g.view, g.numberOfTouches <= 1, let p = phase(g.state) else { return }
-            parent.onTouch(g.location(in: view).x, view.bounds.width, p)
+        @objc func tap(_ g: UITapGestureRecognizer) {
+            guard let view = g.view else { return }
+            let x = g.location(in: view).x
+            parent.onTouch(x, view.bounds.width, .began)
+            parent.onTouch(x, view.bounds.width, .ended)
         }
 
         @objc func pan(_ g: UIPanGestureRecognizer) {
             guard let view = g.view, let p = phase(g.state) else { return }
-            parent.onTouch(g.location(in: view).x, view.bounds.width, p)
+            let tr = g.translation(in: view)
+            if axis == nil {
+                axis = RideGraph.dragAxis(dx: Double(tr.x), dy: Double(tr.y))
+                guard let a = axis else { return }
+                // the drag starts now, from where the finger first touched
+                if a == .sideways { parent.onTouch(g.location(in: view).x - tr.x, view.bounds.width, .began) } else { parent.onSwipe(0, .began) }
+            }
+            switch axis {
+            case .sideways: parent.onTouch(g.location(in: view).x, view.bounds.width, p == .began ? .changed : p)
+            case .upDown: parent.onSwipe(view.bounds.height > 0 ? tr.y / view.bounds.height : 0, p == .began ? .changed : p)
+            case nil: break
+            }
+            if p == .ended { axis = nil }
         }
 
         @objc func pinch(_ g: UIPinchGestureRecognizer) {
             guard let view = g.view, let p = phase(g.state) else { return }
-            if g.state == .began, g.numberOfTouches >= 2 {
-                let a = g.location(ofTouch: 0, in: view), b = g.location(ofTouch: 1, in: view)
-                vertical = RideGraph.pinchAxis(dx: Double(a.x - b.x), dy: Double(a.y - b.y)) == .value
-            }
             let anchor = view.bounds.width > 0 ? g.location(in: view).x / view.bounds.width : 0.5
-            parent.onPinch(vertical, g.scale, anchor, p)
+            parent.onPinch(g.scale, anchor, p)
         }
 
         @objc func doubleTap(_ g: UITapGestureRecognizer) { parent.onDoubleTap() }

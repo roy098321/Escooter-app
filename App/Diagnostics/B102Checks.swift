@@ -9,7 +9,8 @@ import GRDB
 /// u170 one full time on the charging screen, the estimate starts at the last reading (R5 / B65),
 /// u172 the export holds every ride of this phone's Rides list (B67; read only),
 /// u173 place outlines: inside / outside, the editor, the outline replaces the circle, "Around" rides (note 18),
-/// u175 a trip time only at the trip's start place (B66).
+/// u175 a trip time only at the trip's start place (B66),
+/// u176 ride graph chips: a tap adds / removes, ⇄ flips (note 15), u177 graph gestures: pinch = time, swipe up / down = scale (note 16).
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -22,6 +23,40 @@ enum B102Checks {
         runExportHoldsList()
         runPlaceOutline()
         runTripFromHere()
+        runChipFlip()
+        runGraphGestures()
+    }
+
+    // MARK: u176
+
+    /// Note 15 (A): tap = add / remove only; a selected chip with a derived line has ⇄ ("Speed ⇄ Accel"); the last chip stays
+    private static func runChipFlip() {
+        let expect = Expect()
+        var picks = GraphChips(available: [.speed, .accel, .battery, .batteryPerKm, .power])
+        picks.tap(.battery)
+        expect(picks.isOn(.battery) && picks.highlighted == .battery, "a tap adds Battery and gives it the axis")
+        picks.tap(.battery)
+        expect(!picks.isOn(.battery), "a second tap takes it off (no derived step any more)")
+        expect(picks.canFlip(.speed) && !picks.canFlip(.battery), "\u{21C4} only on a selected chip with a derived line")
+        picks.flip(.speed)
+        expect(picks.label(.speed) == "Speed \u{2192} Accel", "\u{21C4} on Speed: " + picks.label(.speed))
+        picks.tap(.power)
+        expect(!picks.canFlip(.power), "Power has no \u{21C4}")
+        picks.tap(.speed); picks.tap(.power)
+        expect(picks.on == [.power] || picks.on.count == 1, "the last line stays on")
+        expect.report("u176")
+    }
+
+    // MARK: u177
+
+    /// Note 16: a drag is told apart once; up = stretch, down = relax, clamped
+    private static func runGraphGestures() {
+        let expect = Expect()
+        expect(RideGraph.dragAxis(dx: 2, dy: -14) == .upDown && RideGraph.dragAxis(dx: 14, dy: 5) == .sideways && RideGraph.dragAxis(dx: 3, dy: 4) == nil,
+               "up-down vs sideways decided after 10 pt")
+        expect(RideGraph.swipeScale(base: 1, dyFraction: -0.3) > 1 && RideGraph.swipeScale(base: 2, dyFraction: 0.3) < 2, "swipe up stretches, down relaxes")
+        expect(RideGraph.swipeScale(base: 1, dyFraction: -10) == 20, "clamped")
+        expect.report("u177")
     }
 
     // MARK: u175

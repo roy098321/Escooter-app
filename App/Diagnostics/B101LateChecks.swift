@@ -96,8 +96,8 @@ enum B101LateChecks {
         let chips = RideGraph.available(data)
         expect(chips.contains(.incline) && chips.contains(.accel) && chips.contains(.batteryPerKm), "chips: " + chips.map(\.title).joined(separator: ", "))
         var picks = GraphChips(available: chips)
-        picks.tap(.speed)
-        expect(picks.label(.speed) == "Speed \u{2192} Accel" && picks.highlightedSeries == .accel, "tap Speed again: " + picks.label(.speed))
+        picks.flip(.speed)
+        expect(picks.label(.speed) == "Speed \u{2192} Accel" && picks.highlightedSeries == .accel, "\u{21C4} on Speed: " + picks.label(.speed))
         let incline = RideGraph.line(.incline, data).value(at: 175) ?? 0
         expect(abs(incline - 4) < 0.6, String(format: "incline on the hill %.1f %%", incline))
         let tapped = pts[200].lat.flatMap { lat in pts[200].lon.map { GeoPoint(lat: lat, lon: $0) } }.flatMap { RideGraph.time(near: $0, points: pts) }

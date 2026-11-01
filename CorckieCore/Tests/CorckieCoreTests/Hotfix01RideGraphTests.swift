@@ -73,34 +73,42 @@ final class Hotfix01DerivedChipTests: XCTestCase {
         XCTAssertTrue(chips.row.contains(.battery) && chips.row.contains(.height) && chips.row.contains(.power))
     }
 
-    func test_speedAgainIsAcceleration_andBack() {
+    /// Note 15: ⇄ flips Speed to Accel and back; a tap never flips
+    func test_speedFlipsToAcceleration_andBack() {
         var chips = GraphChips(available: RideGraph.available(data()))
-        chips.tap(.speed)
+        XCTAssertTrue(chips.canFlip(.speed))
+        chips.flip(.speed)
         XCTAssertEqual(chips.shownSeries, [.accel])
         XCTAssertEqual(chips.label(.speed), "Speed \u{2192} Accel")
         XCTAssertEqual(chips.highlightedSeries.unit, "m/s\u{00B2}", "the axis follows the derived series")
-        chips.tap(.speed)
+        chips.flip(.speed)
         XCTAssertEqual(chips.shownSeries, [.speed])
         XCTAssertEqual(chips.label(.speed), "Speed")
+        chips.tap(.speed)
+        XCTAssertEqual(chips.shownSeries, [.speed], "the last chip never goes off")
     }
 
-    func test_batteryAndHeightHaveTheirOwn() {
+    /// Note 15: a tap only adds or removes; ⇄ only on selected chips with a derived series
+    func test_tapAddsOrRemoves_flipIsSeparate() {
         var chips = GraphChips(available: RideGraph.available(data()))
+        XCTAssertFalse(chips.canFlip(.battery), "an off chip has no ⇄")
         chips.tap(.battery)          // on, gets the axis
-        chips.tap(.battery)          // again: per km
+        XCTAssertEqual(chips.highlighted, .battery)
+        chips.flip(.battery)
         XCTAssertEqual(chips.shown(.battery), .batteryPerKm)
         XCTAssertEqual(chips.label(.battery), "Battery \u{2192} per km")
         chips.tap(.height)
-        chips.tap(.height)
+        chips.flip(.height)
         XCTAssertEqual(chips.shown(.height), .incline)
         XCTAssertEqual(chips.shownSeries, [.speed, .batteryPerKm, .incline])
-        chips.tap(.speed)            // speed gets the axis, still speed
-        XCTAssertEqual(chips.highlightedSeries, .speed)
         chips.tap(.power)
-        chips.tap(.power)            // no derived series: off again
+        XCTAssertFalse(chips.canFlip(.power), "Power has no derived line: no ⇄")
+        chips.tap(.power)            // a second tap takes it off
         XCTAssertFalse(chips.isOn(.power))
-        chips.remove(.battery)
+        chips.tap(.battery)
         XCTAssertEqual(chips.shownSeries, [.speed, .incline])
+        chips.tap(.battery)
+        XCTAssertEqual(chips.shown(.battery), .battery, "back on at its base line")
     }
 
     func test_theDerivedValuesAreTheDerivedLine() {

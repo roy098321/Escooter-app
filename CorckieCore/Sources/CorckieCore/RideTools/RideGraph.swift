@@ -101,6 +101,23 @@ public enum GraphSeries: String, CaseIterable, Sendable {
     }
 }
 
+extension RideGraph {
+    /// Note 16: a one-finger drag on the graph is sideways (cursor / pan) or up-down (value scale), decided once after 10 pt
+    public enum DragAxis: Equatable, Sendable { case sideways, upDown }
+
+    public static let dragDecideM = 10.0
+
+    public static func dragAxis(dx: Double, dy: Double) -> DragAxis? {
+        guard (dx * dx + dy * dy).squareRoot() >= dragDecideM else { return nil }
+        return abs(dy) > abs(dx) ? .upDown : .sideways
+    }
+
+    /// Note 16: up = stretch, down = relax; a whole graph height up is about ×7 (clamped like the pinch was)
+    public static func swipeScale(base: Double, dyFraction: Double) -> Double {
+        clampedScale(base * exp(-dyFraction * 2))
+    }
+}
+
 /// Hotfix 01 (H2): the ride graph's chips. Only base chips are in the row (Speed, Battery, Height, Power, Temp, Wind); a chip shows its
 /// base series or, tapped again while selected, its derived one. Pure so the toggling is tested on Linux.
 public struct GraphChips: Equatable, Sendable {
@@ -144,19 +161,27 @@ public struct GraphChips: Equatable, Sendable {
         return s == base ? base.title : "\(base.title) \u{2192} \(s.shortTitle)"
     }
 
-    /// Off → on (and it gets the axis); on → it gets the axis; on with the axis → its derived series and back (a chip without one
-    /// goes off, unless it is the last)
+    /// Note 15 (owner 26 Oct, A): a tap only adds or removes. Off → on (and it gets the axis); on → off (never the last one).
     public mutating func tap(_ base: GraphSeries) {
         if !on.contains(base) {
             on.append(base)
             highlighted = base
-        } else if highlighted != base {
-            highlighted = base
-        } else if let d = base.derived, available.contains(d) {
-            if derivedOn.contains(base) { derivedOn.remove(base) } else { derivedOn.insert(base) }
         } else {
             remove(base)
         }
+    }
+
+    /// Note 15: a selected chip with a derived series shows ⇄
+    public func canFlip(_ base: GraphSeries) -> Bool {
+        guard on.contains(base), let d = base.derived else { return false }
+        return available.contains(d)
+    }
+
+    /// Note 15: ⇄ flips base ↔ derived ("Speed ⇄ Accel"); the flipped chip gets the axis
+    public mutating func flip(_ base: GraphSeries) {
+        guard canFlip(base) else { return }
+        if derivedOn.contains(base) { derivedOn.remove(base) } else { derivedOn.insert(base) }
+        highlighted = base
     }
 
     /// Takes a chip off (never the last one)
