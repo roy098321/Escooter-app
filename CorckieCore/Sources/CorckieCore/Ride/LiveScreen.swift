@@ -96,6 +96,8 @@ public struct LiveScreenDriver: Sendable {
     private var utcOffsetMin = 0
     /// T-00 (prediction log, Q-E): the arrival time shown when the rider passed 25 / 50 / 75% of the followed route
     public private(set) var etaMarks: [EtaMark] = []
+    /// LBP (batch 102): the scooter's learned low-battery power limit (nil = not learned: no change)
+    public var lowBatteryPower: LBPLearned?
 
     public init() {}
 
@@ -158,7 +160,8 @@ public struct LiveScreenDriver: Sendable {
         var progress: RouteLiveProgress?
         var arrived = false
         if let step = step, let f = follower {
-            let shown = arrivalDisplay.show(remainingS: step.remainingS, nowS: t)
+            let slower = LowBatteryPower.timeFactor(batteryPct: input.scooterBatteryPct.map { Int($0.rounded()) }, learned: lowBatteryPower)
+            let shown = arrivalDisplay.show(remainingS: step.remainingS * slower, nowS: t)
             arrival = ArrivalStrip(text: ArrivalStrip.text(destination: f.destinationName, arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin),
                                    offRoute: step.offPath, deadReckoned: step.deadReckoned,
                                    short: ArrivalStrip.shortText(arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin))

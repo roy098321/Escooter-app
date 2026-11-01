@@ -13,7 +13,7 @@ import GRDB
 /// u175 a trip time only at the trip's start place (B66),
 /// u176 ride graph chips: a tap adds / removes, ⇄ flips (note 15), u177 graph gestures: pinch = time, swipe up / down = scale (note 16),
 /// u179 insights from whole rides: About N more rides, partial graph with a band, one-line hints, the plan's order,
-/// u180 the charging speed learned from Plug in.
+/// u180 the charging speed learned from Plug in, u181 the low-battery power limit (LBP).
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -30,6 +30,23 @@ enum B102Checks {
         runGraphGestures()
         runRideLevel()
         runChargeRate()
+        runLBP()
+    }
+
+    // MARK: u181
+
+    /// LBP on made-up rides: 600 W ceiling, 450 W below 25 %; no deep ride = not learned; arrival time stretches below the limit only
+    private static func runLBP() {
+        let expect = Expect()
+        let samples = LBPSamples.made(deep: true)
+        let l = LowBatteryPower.learn(samples)
+        expect(l?.belowPct == 25, "learned: below \(l?.belowPct ?? 0)% at \(Int(((l?.powerShare ?? 0) * 100).rounded()))% power")
+        expect(LowBatteryPower.learn(LBPSamples.made(deep: false)) == nil, "no ride below 15 %: nothing learned, nothing changes")
+        expect(LowBatteryPower.timeFactor(batteryPct: 40, learned: l) == 1 && LowBatteryPower.timeFactor(batteryPct: 20, learned: l) > 1,
+               "arrival counts on slower riding only below the limit")
+        let mine = AppModel.shared.database.flatMap { LBPService.current($0) }
+        expect(true, "this scooter: " + LowBatteryPower.line(mine))
+        expect.report("u181")
     }
 
     // MARK: u180

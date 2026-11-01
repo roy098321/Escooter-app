@@ -15,6 +15,8 @@ struct BatteryView: View {
     @State private var loaded: BatteryOverview?
     /// F-27: the charge log chart
     @State private var chartData: ChargeLogData?
+    /// LBP (batch 102): the learned low-battery power limit (nil = not learned yet)
+    @State private var lbp: LBPLearned?
     private let link = AppModel.shared.scooter
 
     private var overview: BatteryOverview? { preview?.overview ?? loaded }
@@ -26,6 +28,7 @@ struct BatteryView: View {
                     rangeCard(o)
                     tiles(o)
                     calibrationRow(o.calibration)
+                    lbpRow
                     chargeLogSection(o)
                 } else {
                     emptyState("bolt.slash", "No battery data")
@@ -116,6 +119,17 @@ struct BatteryView: View {
     // MARK: Sections
 
     /// B3: calibration is one row, the energy figures and the explanation behind the ⓘ
+    /// LBP: one line, learned or what it waits for
+    private var lbpRow: some View {
+        Label(LowBatteryPower.line(lbp), systemImage: "bolt.badge.clock")
+            .font(.subheadline)
+            .foregroundStyle(lbp == nil ? Color.secondary : Color.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, DS.Space.cardPad)
+            .frame(minHeight: DS.hit)
+            .glassCard(padding: 0)
+    }
+
     @ViewBuilder private func calibrationRow(_ cal: BatteryCalibration) -> some View {
         HStack {
             Label(BatteryText.calibrationStatus(cal), systemImage: cal.checkSuggested ? "exclamationmark.triangle" : "gauge.with.dots.needle.33percent")
@@ -182,6 +196,7 @@ struct BatteryView: View {
         let pct: Double? = connected ? live : LastSeen.load().pct.map { Double($0) }
         loaded = BatteryOverview.load(db, currentPct: pct, connected: connected)
         chartData = ChargeLogData.load(db, charges: loaded?.charges ?? [], entries: ChargeTimer.shared.log, nowMs: ChargeTimer.shared.now)   // F-27
+        lbp = LBPService.update(db)
     }
 }
 

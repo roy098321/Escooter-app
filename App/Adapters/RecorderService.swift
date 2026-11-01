@@ -176,6 +176,7 @@ final class RecorderService {
                 // M4-03: the ride-start insights (Q9, Q1 destination guess, Q2 tight battery, Q15 headwind) are only stored as candidates for the
                 // ride summary; since P-4 nothing of them is shown during the ride.
                 _ = InsightRunner.atRideStart(db, routeId: RouteFollowSelection.shared.routeId, battery: battery, lat: input.lat, lon: input.lon)
+                driver.lowBatteryPower = LBPService.current(db)   // LBP: below the learned limit the arrival time counts on slower riding
                 if let id = RouteFollowSelection.shared.routeId {
                     RideVoice.shared.usualRoutePctPerKm = RouteFollowLoader.usualPctPerKm(routeId: id, database: db)      // F-22
                     driver.follow(RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination),
