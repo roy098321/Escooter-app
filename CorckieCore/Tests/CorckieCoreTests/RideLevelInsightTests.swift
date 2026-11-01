@@ -50,7 +50,7 @@ final class RideLevelInsightTests: XCTestCase {
         XCTAssertEqual(thin?.covered, false, "no rides at 20 km/h: band, not a line")
         XCTAssertGreaterThan((thin?.hi ?? 0) - (thin?.lo ?? 0), 0)
         // nothing below ~33 km/h: the hint asks for the slower part
-        XCTAssertEqual(i.hint, "Ride steady at 15\u{2013}32 km/h to fill this in.")
+        XCTAssertEqual(i.hint, "Ride steady at 15\u{2013}33 km/h to fill this in.")
     }
 
     func testTemperatureWaitsForColderDays() {
