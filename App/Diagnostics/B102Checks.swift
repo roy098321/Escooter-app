@@ -2,13 +2,32 @@ import CorckieCore
 import Foundation
 
 /// Batch 102.011126.00 checks, on made-up input only (nothing real is read or written).
-/// u168 the route line is short solid pieces of the lab's B width (R1 / note 17).
+/// u168 the route line is short solid pieces of the lab's B width (R1 / note 17),
+/// u166 the Battery layer marks each first drop below 10 % steps (R2).
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
 
     static func run() {
         runRoutePieces()
+        runBatteryMarks()
+    }
+
+    // MARK: u166
+
+    /// R2: 100 → 64 % gives 90 / 80 / 70; a 90 ↔ 89 flicker gives one 90; no mark for the start
+    private static func runBatteryMarks() {
+        let expect = Expect()
+        let full = B101LateChecks.madeUpRide(37, power: { _ in 300 }, battery: { 100 - $0 })
+        let levels = BatteryMarks.marks(full).map(\.text)
+        expect(levels == ["90%", "80%", "70%"], "100 \u{2192} 64 %: " + levels.joined(separator: " "))
+        let flicker = [95, 90, 89, 90, 89, 90, 88]
+        let one = BatteryMarks.marks(B101LateChecks.madeUpRide(flicker.count, power: { _ in 300 }, battery: { flicker[$0] }))
+        expect(one.map(\.level) == [90], "a 90 \u{2194} 89 flicker gives one mark")
+        let start = BatteryMarks.marks(B101LateChecks.madeUpRide(3, power: { _ in 300 }, battery: { [90, 89, 85][$0] }))
+        expect(start.isEmpty, "no mark for the starting level")
+        expect(LayerView(.battery).showsBatteryMarks && !LayerView(.speed).showsBatteryMarks, "on the Battery layer only")
+        expect.report("u166")
     }
 
     // MARK: u168

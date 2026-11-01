@@ -55,6 +55,9 @@ public struct LayerView: Hashable, Sendable {
 
     /// Stops are drawn on the Speed views only
     public var showsStops: Bool { layer == .speed }
+
+    /// R2: the "90%" / "80%" … marks are drawn on the Battery views only
+    public var showsBatteryMarks: Bool { layer == .battery }
 }
 
 /// The colour bar and its words for one view of one ride

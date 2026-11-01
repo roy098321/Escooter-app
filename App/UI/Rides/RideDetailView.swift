@@ -59,6 +59,7 @@ struct RideDetailView: View {
     @State private var drawn: [ValueStretch] = []
     @State private var drawnScale: LayerScale?
     @State private var stopDots: [StopDot] = []
+    @State private var batteryMarks: [BatteryMark] = []   // R2
     @State private var showHint = false
     /// Note 11: the card's height (full / default / one line / hidden with a lip)
     @State private var cardDetent: CardDetent = .standard
@@ -536,6 +537,11 @@ struct RideDetailView: View {
                     StopDotMark(stop: stop)
                 }
             }
+            ForEach(Array((layerView.showsBatteryMarks && pathReveal >= 1 ? batteryMarks : []).enumerated()), id: \.offset) { _, mark in
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: mark.point.lat, longitude: mark.point.lon), anchor: .center) {
+                    BatteryMarkPill(mark: mark)
+                }
+            }
             // no series (or no fixes for it): the stored speed path, on the Speed view only
             ForEach(Array((layerView == .default && fullGradient.isEmpty ? path.segments : []).enumerated()), id: \.offset) { _, seg in
                 MapPolyline(coordinates: seg.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
@@ -580,6 +586,7 @@ struct RideDetailView: View {
         drawn = LayerViews.stretches(layerView, data)
         drawnScale = LayerViews.scale(layerView, stretches: drawn, energy: s.energy, colourBlind: DisplaySettings.colourBlind)
         if stopDots.isEmpty { stopDots = LayerViews.stops(s.points) }
+        if batteryMarks.isEmpty { batteryMarks = BatteryMarks.marks(s.points) }
     }
 
     /// F-33: "Tap layer for deeper view" the first few times a ride with layers is opened
@@ -634,6 +641,7 @@ struct RideDetailView: View {
         model = withExtras
         series = RideSeriesLoader.load(db, rideId: id)
         stopDots = []
+        batteryMarks = []
         paintLayer()
         if series != nil, !showHint { countHint() }
         pins = PlaceMapLoader.pins(rideId: id, database: db)

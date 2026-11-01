@@ -78,6 +78,23 @@ struct LayerLegend: View {
 }
 
 /// F-33: a stop as a dot, sized by how long it lasted
+/// R2: "90%" where the battery first dropped below each 10 %, same style as the stop dots
+struct BatteryMarkPill: View {
+    let mark: BatteryMark
+
+    var body: some View {
+        Text(mark.text)
+            .font(.caption2.weight(.bold))
+            .monospacedDigit()
+            .foregroundStyle(Color.black)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Color.white))
+            .overlay(Capsule().stroke(Color.black.opacity(0.7), lineWidth: 1.5))
+            .accessibilityLabel("Battery below \(mark.text) here")
+    }
+}
+
 struct StopDotMark: View {
     let stop: StopDot
 
