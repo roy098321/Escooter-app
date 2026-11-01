@@ -3,7 +3,8 @@ import Foundation
 
 /// Batch 102.011126.00 checks, on made-up input only (nothing real is read or written).
 /// u168 the route line is short solid pieces of the lab's B width (R1 / note 17),
-/// u166 the Battery layer marks each first drop below 10 % steps (R2).
+/// u166 the Battery layer marks each first drop below 10 % steps (R2),
+/// u169 Home's last reading with its time and the labelled charge target (R3 / B64).
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -11,6 +12,24 @@ enum B102Checks {
     static func run() {
         runRoutePieces()
         runBatteryMarks()
+        runLastReading()
+    }
+
+    // MARK: u169
+
+    /// R3 / B64: "66% · 07:49" from the ride's resting reading, not a dip seen at the same stop; the pill says "Charge to 100%"
+    private static func runLastReading() {
+        let expect = Expect()
+        let ride = BatteryReading(pct: 66, ms: 1_000_000_000)
+        let dip = BatteryReading(pct: 62, ms: 1_000_000_000 + 120_000)
+        let picked = LastReading.pick(seen: dip, rideEnd: ride)
+        expect(picked == ride, "the ride's resting 66 % wins over a 62 % seen 2 min later")
+        let later = BatteryReading(pct: 90, ms: 1_000_000_000 + 3 * 3_600_000)
+        expect(LastReading.pick(seen: later, rideEnd: ride) == later, "a reading hours later wins")
+        let text = LastReading.text(ride, utcOffsetMin: 0)
+        expect(text.hasPrefix("66% \u{00B7} ") && text.count == 11, "reads " + text)
+        expect(PlugAlert.default.targetText == "Charge to 100%", "the target pill reads Charge to 100%")
+        expect.report("u169")
     }
 
     // MARK: u166

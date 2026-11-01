@@ -57,8 +57,24 @@ final class ChargeTimer {
     /// The last real reading the sheet pre-fills (nil: none yet, the owner types the start %)
     func lastReading() -> (pct: Int, ms: Int64)? {
         let l = LastSeen.load()
-        guard let p = l.pct, let ms = l.ms else { return nil }
-        return (p, ms)
+        let seen = l.pct.flatMap { p in l.ms.map { BatteryReading(pct: p, ms: $0) } }
+        guard let r = LastReading.pick(seen: seen, rideEnd: lastRideEnd()) else { return nil }
+        return (r.pct, r.ms)
+    }
+
+    /// R3 / R5: the settled reading at the end of the newest real ride (read at most every 10 s; Home asks on every redraw)
+    @ObservationIgnored private var rideEndMemo: (atMs: Int64, reading: BatteryReading?)?
+    private func lastRideEnd() -> BatteryReading? {
+        let t = Self.clock()
+        if let m = rideEndMemo, t - m.atMs < 10_000 { return m.reading }
+        var reading: BatteryReading?
+        if let db = AppModel.shared.database,
+           let r = (try? RideQueries(db).rides(limit: 5))?.first(where: { !$0.isSimulated && $0.kind == "ride" && $0.endAt != nil }),
+           let end = r.endAt, let pct = r.endRestPct {
+            reading = BatteryReading(pct: Int(pct.rounded()), ms: end)
+        }
+        rideEndMemo = (t, reading)
+        return reading
     }
 
     /// The rider's numbers a target needs: blended %/km, reserve, and the usual trip (the named place most rides ended at, there and back)

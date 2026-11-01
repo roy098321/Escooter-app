@@ -72,10 +72,23 @@ enum PlugInStore {
 /// F-31b: Home after a ride: one big "⚡ Plug in" pill and the small alert pill ("100%" / "15 km"), no bell.
 struct PlugInRow: View {
     let alert: PlugAlert
+    /// R3 / B64: "66% · 07:49", the last reading and when (nil: none)
+    var lastReading: String? = nil
     var onPlug: () -> Void
     var onAlert: () -> Void
 
     var body: some View {
+        VStack(spacing: 8) {
+            if let lastReading {
+                StatusPill(symbol: "battery.75percent", text: "Last reading", tint: Theme.canyon, value: lastReading)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Last reading \(lastReading)")
+            }
+            row
+        }
+    }
+
+    private var row: some View {
         HStack(spacing: 10) {
             Button(action: onPlug) {
                 Label("Plug in", systemImage: "bolt.fill")
@@ -88,8 +101,10 @@ struct PlugInRow: View {
             .buttonStyle(.plain)
             .accessibilityHint("Starts the charging timer from the last reading")
             Button(action: onAlert) {
-                Text(alert.pillText)
+                Text(alert.targetText)
                     .font(.headline.monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                     .foregroundStyle(Theme.accentInk)
                     .padding(.horizontal, 18)
                     .frame(minHeight: 52)
@@ -98,7 +113,7 @@ struct PlugInRow: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Tell me at \(alert.pillText)")
+            .accessibilityLabel("\(alert.targetText), tell me then")
             .accessibilityHint("Change when to be told")
         }
     }

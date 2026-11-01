@@ -82,7 +82,7 @@ struct HomeView: View {
                          connectingSinceS: connectingSince?.timeIntervalSince1970,
                          nowS: now.timeIntervalSince1970,
                          batteryPct: AppModel.shared.settledBatteryPct ?? (simulated ? RecorderService.shared.live?.batteryPct : nil),
-                         lastSeenMs: seen.ms, lastSeenPct: seen.pct,
+                         lastSeenMs: seen.ms, lastSeenPct: ChargeTimer.shared.lastReading()?.pct ?? seen.pct,   // R3: the same reading everywhere
                          utcOffsetMin: TimeZone.current.secondsFromGMT() / 60,
                          rideActive: RecorderService.shared.rideActive,
                          locationAlways: PermissionsCheck.shared.locationStatus == .authorizedAlways,
@@ -221,7 +221,9 @@ struct HomeView: View {
                 }
             } else if showsPlugIn(m) {
                 // F-31b: after every ride, one tap starts the charge timer from the last reading (silent when it appears)
-                PlugInRow(alert: plugAlert, onPlug: { PlugInStore.plugIn() }, onAlert: { showPlugAlert = true })
+                PlugInRow(alert: plugAlert,
+                          lastReading: ChargeTimer.shared.lastReading().map { LastReading.text(BatteryReading(pct: $0.pct, ms: $0.ms), utcOffsetMin: ChargeTimer.shared.utcOffsetMin) },
+                          onPlug: { PlugInStore.plugIn() }, onAlert: { showPlugAlert = true })
             } else if m.batteryText != nil {
                 NavigationLink { BatteryView() } label: { statusPill(m) }.buttonStyle(.plain)
             } else {
