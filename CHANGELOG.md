@@ -2,6 +2,33 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 102.011126.00 — batch 2, due Sun 1 Nov 2026 (the last feature build before the finish)
+
+### Hotfix 02 and bugs
+- R1 / note 17: every ride map (and Replay) draws the route as a thin, even line of short pieces, the way you picked in the Route line lab (B); the colour still changes along the ride.
+- R2: the Battery layer marks 90%, 80% … where the battery first dropped below each 10 %; a flicker gives one mark, the level you started at gets none.
+- R3 / B64: with the scooter off, Home shows your last reading and when it was ("Last reading 66% · 07:49"); the small pill reads "Charge to 100%".
+- R5 / B65: charging starts from that same last reading, and the screen shows one full time (the full alert still waits a little longer, as before).
+- R4 + B68: the Lock Screen and Dynamic Island count down to your target ("2:16:05") and fill a battery shape (marks at a quarter, half, three quarters) on their own; the frozen % number is gone.
+- B67: a ride brought back with Restore discarded ride is written to the backup folder like any ride; a lab check names any ride missing from the export.
+
+### Places and the ride graph
+- Note 18: each place is a Circle (default) or an Outline you draw like Google Earth (tap corners, drag one, add one between two, Undo, Reset, area). The outline is used everywhere; you arrive the moment you cross into it; a ride that stays inside is listed as "Around <place>" and stays out of the estimates.
+- B66: a trip's usual time and battery show only at the place the trip starts; anywhere else the quick dial shows just the name.
+- Note 15: on the ride graph a tap adds or removes a line; a selected chip has ⇄ to switch to its deeper line (Speed ⇄ Accel); hold-to-hide is gone.
+- Note 16: pinch with two fingers to zoom time; swipe one finger up or down on the graph to change the scale; drag sideways for the cursor; double tap fits.
+- Ride detail works like Replay: under the tiles, Replay's speed strip, play / pause, 1× / 5× / 20× and a dot moving along the route.
+
+### Insights and the battery
+- Insights now learn from whole rides (battery per km): what hills, speed, cold and wind cost you, battery use over time, best time to leave. Each says how far it is ("About 7 more rides", "Waiting for colder days"), shows a graph solid where you rode and dashed where data is thin, with a one-line hint. The old speed sweet spot is gone.
+- Riding asks: the speed card asks for one small steady stretch ("800 m steady at 35 km/h fills your speed graph") and names a straight, flat part of your usual routes; "Not here" offers another; "Got it ✓" when it is done. These stretches fill only the speed graph.
+- Charging speed is learned from your own Plug ins (after 3 charges with a real reading).
+- LBP: the app learns where your scooter starts holding back power at low battery, only from rides below 15 %; the Battery page says so, and below it the arrival time counts on slower riding. Nothing changes before such a ride.
+
+### Voice
+- V09 voice energy updates while riding: every 10 %, using more than usual, arriving under 20 %, a sharp drop, running late, the point of no return on tight trips, the power limit coming, "Engine hot" at 85 °C and "Engine overheating" at 93 °C (once each), a recording problem, and "Arrived at Uni, battery at 58 percent". Urgent ones at once, the rest at a stop, before a usual stop or on a straight stretch (at most ~2 min later). Switch: Settings → Sounds → Voice energy updates.
+- Lab: Developer → Voice messages plays every line once; the ride screen preview speaks them on its made-up ride and shows "Now" or "At a good moment".
+
 ## 101.251026.01 — hotfix 1 of batch 1, Mon 26 Oct 2026
 
 - Route colours: the ride map and Replay showed one shade for the whole ride; the line is now drawn with a gradient that follows the route (option A). Developer → Route line lab shows the same made-up ride drawn three ways (A / B / C) to compare on the phone.
