@@ -42,6 +42,8 @@ public struct LiveScreenState: Equatable, Sendable {
     public var routeProgress: RouteLiveProgress? = nil
     /// The followed route's end is reached (S5 arrival sound once)
     public var arrived: Bool = false
+    /// V09: the time still to ride on the followed route, s (LBP-stretched), nil = none
+    public var remainingS: Double? = nil
 }
 
 public struct RouteLiveProgress: Equatable, Sendable {
@@ -159,9 +161,11 @@ public struct LiveScreenDriver: Sendable {
         var dotOverride: LivePath.Coord?
         var progress: RouteLiveProgress?
         var arrived = false
+        var remaining: Double?
         if let step = step, let f = follower {
             let slower = LowBatteryPower.timeFactor(batteryPct: input.scooterBatteryPct.map { Int($0.rounded()) }, learned: lowBatteryPower)
             let shown = arrivalDisplay.show(remainingS: step.remainingS * slower, nowS: t)
+            remaining = step.remainingS * slower
             arrival = ArrivalStrip(text: ArrivalStrip.text(destination: f.destinationName, arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin),
                                    offRoute: step.offPath, deadReckoned: step.deadReckoned,
                                    short: ArrivalStrip.shortText(arrivalS: shown, nowS: t, utcOffsetMin: utcOffsetMin))
@@ -186,6 +190,7 @@ public struct LiveScreenDriver: Sendable {
         state.dotOverride = dotOverride
         state.routeProgress = progress
         state.arrived = arrived
+        state.remainingS = remaining
         state.dotHollow = dotOverride != nil
         if dotOverride != nil { state.dotGreyed = false }
         return state

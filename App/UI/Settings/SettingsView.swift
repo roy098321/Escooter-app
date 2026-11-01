@@ -326,6 +326,7 @@ struct DisplaySettingsView: View {
 /// F-19: one switch per sound. The battery, destination and motor warnings are not here: they always play during a ride (P-4).
 struct SoundsSettingsView: View {
     @State private var on: [SoundToggle: Bool] = [:]
+    @State private var v09 = V09Settings.isOn
 
     var body: some View {
         List {
@@ -335,6 +336,12 @@ struct SoundsSettingsView: View {
                 }
             } footer: {
                 Text("Battery, destination and motor warnings always sound during a ride, even with the silent switch on.")
+            }
+            .glassRows()
+            Section {
+                Toggle("Voice energy updates", isOn: Binding(get: { v09 }, set: { v in v09 = v; V09Settings.isOn = v }))
+            } footer: {
+                Text("While riding: every 10 %, using more than usual, arriving low or late, the point of no return, the power limit, engine heat, recording problems and \u{201C}Arrived at \u{2026}\u{201D}. Urgent ones right away, the rest at a stop or a straight stretch.")
             }
             .glassRows()
         }

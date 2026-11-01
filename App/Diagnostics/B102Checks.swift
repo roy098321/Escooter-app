@@ -13,7 +13,8 @@ import GRDB
 /// u175 a trip time only at the trip's start place (B66),
 /// u176 ride graph chips: a tap adds / removes, ⇄ flips (note 15), u177 graph gestures: pinch = time, swipe up / down = scale (note 16),
 /// u179 insights from whole rides: About N more rides, partial graph with a band, one-line hints, the plan's order,
-/// u180 the charging speed learned from Plug in, u181 the low-battery power limit (LBP), u182 riding asks (option b).
+/// u180 the charging speed learned from Plug in, u181 the low-battery power limit (LBP), u182 riding asks (option b),
+/// u183 V09 voice: urgent at once, can-wait at a stop, engine 85 / 93 once, arrival line.
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -32,6 +33,30 @@ enum B102Checks {
         runChargeRate()
         runLBP()
         runRidingAsks()
+        runV09()
+    }
+
+    // MARK: u183
+
+    /// V09 on a made-up ride: 80 % said at once while riding; "using more" waits for the stop; engine hot once; the arrival line
+    private static func runV09() {
+        let expect = Expect()
+        var d = V09Director()
+        _ = d.update(V09Input(t: 0, pct: 90, rideKm: 0, speedKmh: 30, usualPctPerKm: 2))
+        let ten = d.update(V09Input(t: 200, pct: 80, rideKm: 2, speedKmh: 30, usualPctPerKm: 2))
+        expect(ten == [.everyTen(pct: 80)], "urgent at once while riding: " + ten.map(\.line).joined(separator: " "))
+        let riding = d.update(V09Input(t: 300, pct: 81, rideKm: 3, speedKmh: 30, courseDeg: 0, usualPctPerKm: 2))
+        expect(riding.isEmpty && d.waitingCount == 1, "using more than usual waits while riding")
+        let stop = d.update(V09Input(t: 320, pct: 81, rideKm: 3.1, speedKmh: 0, usualPctPerKm: 2))
+        expect(stop.count == 1, "said at the stop: " + (stop.first?.line ?? "nothing"))
+        var e = EngineTempTracker()
+        var said: [V09Message] = []
+        for s in 0..<40 { if let m = e.update(tempC: 86, at: Double(s) * 5) { said.append(m) } }
+        expect(said == [.engineHot(c: 86)], "85 \u{00B0}C held: Engine hot once")
+        var a = ArrivalLineTracker()
+        expect(a.arrived(place: "Uni", pct: 58)?.line == "Arrived at Uni, battery at fifty eight percent.", "arrival line")
+        expect(true, "voice energy updates are " + (V09Settings.isOn ? "on" : "off") + " in Settings")
+        expect.report("u183")
     }
 
     // MARK: u182

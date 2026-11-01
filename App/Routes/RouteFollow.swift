@@ -1,5 +1,6 @@
 import CorckieCore
 import Foundation
+import GRDB
 import Observation
 
 /// M2-06: "Where to?" on Home picks the route the next ride follows. The choice lives in memory only and is cleared when the ride
@@ -106,6 +107,33 @@ extension RouteFollowLoader {
     /// F-22: the route's usual battery use per km (median of its rides), nil without data
     static func usualPctPerKm(routeId: String, database: AppDatabase) -> Double? {
         DestinationRules.usualPctPerKm(rides: RouteCardLoader.stats((try? RouteQueries(database).routeRides(routeId: routeId)) ?? []))
+    }
+
+    /// V09 timing: where riders usually stop on this route (stops of ≥ 20 s on its 3 newest rides)
+    static func usualStops(routeId: String, database: AppDatabase) -> [GeoPoint] {
+        let rides = ((try? RouteQueries(database).routeRides(routeId: routeId)) ?? []).filter { $0.kind == "ride" }.sorted { $0.startAt > $1.startAt }
+        var out: [GeoPoint] = []
+        for r in rides.prefix(3) {
+            let rows = (try? database.writer.read { d in
+                try Row.fetchAll(d, sql: "SELECT t, lat, lon, hAccM, speedMps, gpsSpeedMps FROM ride_sample WHERE rideId = ? ORDER BY t", arguments: [r.id])
+            }) ?? []
+            let pts = rows.map { row -> SeriesPoint in
+                let t: Int64 = row["t"] ?? 0
+                let scooter: Double? = row["speedMps"]
+                let gps: Double? = row["gpsSpeedMps"]
+                let lat: Double? = row["lat"], lon: Double? = row["lon"], acc: Double? = row["hAccM"]
+                return SeriesPoint(t: Double(t) / 1000, lat: lat, lon: lon, hAccM: acc, speedKmh: (scooter ?? gps).map { $0 * 3.6 })
+            }
+            out += LayerViews.stops(pts).map(\.point)
+        }
+        return out
+    }
+
+    /// V09 running late: the route's usual ride time (median of its rides), s
+    static func usualTripS(routeId: String, database: AppDatabase) -> Double? {
+        let times = ((try? RouteQueries(database).routeRides(routeId: routeId)) ?? []).filter { !$0.excludedFromUsual && $0.kind == "ride" }
+            .compactMap(\.totalS).filter { $0 > 0 }
+        return Geo.median(times)
     }
 
     /// M2-09 (Q9): the one line shown at ride start when the way back will not fit, from `neededPct` (with the margin) of both legs.

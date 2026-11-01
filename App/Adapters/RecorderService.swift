@@ -177,8 +177,11 @@ final class RecorderService {
                 // ride summary; since P-4 nothing of them is shown during the ride.
                 _ = InsightRunner.atRideStart(db, routeId: RouteFollowSelection.shared.routeId, battery: battery, lat: input.lat, lon: input.lon)
                 driver.lowBatteryPower = LBPService.current(db)   // LBP: below the learned limit the arrival time counts on slower riding
+                RideVoice.shared.powerLimitPct = driver.lowBatteryPower?.belowPct   // V09 "power limit coming"
                 if let id = RouteFollowSelection.shared.routeId {
                     RideVoice.shared.usualRoutePctPerKm = RouteFollowLoader.usualPctPerKm(routeId: id, database: db)      // F-22
+                    RideVoice.shared.usualTripS = RouteFollowLoader.usualTripS(routeId: id, database: db)                // V09 running late
+                    RideVoice.shared.usualStops = RouteFollowLoader.usualStops(routeId: id, database: db)                // V09 timing
                     driver.follow(RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination),
                                   utcOffsetMin: RouteCardLoader.currentOffsetMin())
                 }
@@ -205,6 +208,7 @@ final class RecorderService {
         if let shape = destination?.shape, let lat = input.lat, let lon = input.lon, shape.contains(GeoPoint(lat: lat, lon: lon)) {
             screen.arrived = true
         }
+        RideVoice.shared.arrivalPlace = destination?.placeName   // V09 arrival line: the rider's own place name
         RideVoice.shared.update(input, screen: screen, at: time ?? Self.now(), database: AppModel.shared.displayDatabase)   // F-19 sounds, P-4 warnings
         // F-35: the destination line of the live screen, and "Riding to Uni, 8 km." once after the start and after a change at a stop
         let key = rideOn ? RouteFollowSelection.shared.chosenKey : nil
