@@ -24,10 +24,13 @@ public enum PlaceListBuilder {
         return "Circle: \(Int(r.rounded())) m"
     }
 
+    /// Note 18: "Outline: 8.0 ha"
+    public static func outlineText(_ areaM2: Double) -> String { "Outline: " + PlaceOutline.areaText(areaM2) }
+
     public static func row(id: String, name: String?, radiusM: Double?, canCharge: Bool, routeCount: Int,
-                           colourId: String = "orange") -> PlaceRowModel {
+                           colourId: String = "orange", outlineAreaM2: Double? = nil) -> PlaceRowModel {
         let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        var parts = [radiusText(radiusM)]
+        var parts = [outlineAreaM2.map(outlineText) ?? radiusText(radiusM)]
         if canCharge { parts.append("you can charge here") }
         parts.append("\(routeCount) \(routeCount == 1 ? "route" : "routes")")
         return PlaceRowModel(id: id, title: trimmed.isEmpty ? RouteLabels.place(nil) : trimmed,

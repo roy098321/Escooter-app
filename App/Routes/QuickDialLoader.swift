@@ -125,7 +125,9 @@ enum QuickDialLoader {
         var keyForPlace: [String: String] = [:]
         // B61: the named place each saved route ends at (the circle its end falls inside, else its link, else the same name); the route and
         // the place are then one row, and a second route to the same place is not a second row
-        let named = places.map { WhereToDedupe.NamedPlace(id: $0.id, name: $0.name ?? "", center: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM) }
+        let outlines = PlaceOutlineStore.all(database)   // note 18
+        let named = places.map { WhereToDedupe.NamedPlace(id: $0.id, name: $0.name ?? "", center: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM,
+                                                          outline: outlines[$0.id]) }
         var endOf: [String: String] = [:]
         for route in savedRoutes {
             let label = routeChips.first { $0.routeId == route.id }?.label ?? ""
@@ -144,7 +146,7 @@ enum QuickDialLoader {
             }
             for r in (try? store.placeRides(placeId: p.id)) ?? [] where seen.insert(r.id).inserted { rows.append(r) }
             let verdict = PlaceRides.verdict(rides: RouteCardLoader.stats(rows), nowMs: nowMs, utcOffsetMin: utcOffsetMin)
-            let here = PlaceHere.isHere(phone: from, place: GeoPoint(lat: p.lat, lon: p.lon), radiusM: p.radiusM)
+            let here = PlaceHere.isHere(phone: from, place: GeoPoint(lat: p.lat, lon: p.lon), radiusM: p.radiusM, outline: outlines[p.id])
 
             // a saved route that ends here (and has a chip) is used as it is; without a usual estimate it takes the place's rides (B45).
             // B61: with two routes here (from different starts) the one with an estimate is the row; the other is no second row.

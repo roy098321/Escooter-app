@@ -34,8 +34,11 @@ struct PlaceMapItem: Equatable {
     var lat: Double
     var lon: Double
     var colourId: String
+    /// Note 18: the drawn outline (≥ 3 points) that replaces the circle; nil = circle
+    var outline: [GeoPoint]? = nil
 
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: lat, longitude: lon) }
+    var outlineCoords: [CLLocationCoordinate2D]? { outline?.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) } }
 
     /// the circle drawn for a place with an automatic size: the tolerance of a typical 4 km trip
     static let automaticCircleM = 200.0
@@ -57,12 +60,14 @@ enum PlaceMapLoader {
         let store = RouteQueries(database)
         let colours = PlaceColourStore.colours(database: database)
         let routes = ((try? store.routes()) ?? []).filter { $0.state != "dismissed" }
+        let outlines = PlaceOutlineStore.all(database)   // note 18
         return ((try? store.places()) ?? []).map { p in
             let count = routes.filter { $0.fromPlaceId == p.id || $0.toPlaceId == p.id }.count
             let colour = colours[p.id] ?? "orange"
             return PlaceMapItem(id: p.id, row: PlaceListBuilder.row(id: p.id, name: p.name, radiusM: p.radiusM, canCharge: p.canCharge,
-                                                                    routeCount: count, colourId: colour),
-                                lat: p.lat, lon: p.lon, colourId: colour)
+                                                                    routeCount: count, colourId: colour,
+                                                                    outlineAreaM2: outlines[p.id].map(PlaceOutline.areaM2)),
+                                lat: p.lat, lon: p.lon, colourId: colour, outline: outlines[p.id])
         }
     }
 

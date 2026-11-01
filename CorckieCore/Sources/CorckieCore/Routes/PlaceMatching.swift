@@ -7,13 +7,16 @@ public struct PlaceInfo: Codable, Equatable, Sendable {
     public var point: GeoPoint
     public var radiusM: Double?
     public var canCharge: Bool
+    /// Note 18: the drawn outline (≥ 3 points) that replaces the circle; nil = circle
+    public var outline: [GeoPoint]?
 
-    public init(id: String, name: String? = nil, point: GeoPoint, radiusM: Double? = nil, canCharge: Bool = false) {
+    public init(id: String, name: String? = nil, point: GeoPoint, radiusM: Double? = nil, canCharge: Bool = false, outline: [GeoPoint]? = nil) {
         self.id = id
         self.name = name
         self.point = point
         self.radiusM = radiusM
         self.canCharge = canCharge
+        self.outline = PlaceOutline.isValid(outline) ? outline : nil
     }
 }
 
@@ -98,12 +101,18 @@ public enum PlaceMatcher {
         place.radiusM ?? toleranceM(tripLengthM: tripLengthM)
     }
 
+    /// The place reaches the point: inside its outline (note 18), else inside its circle for a trip of this length
+    public static func reaches(_ place: PlaceInfo, _ point: GeoPoint, tripLengthM: Double) -> Bool {
+        if let poly = place.outline { return PlaceOutline.contains(poly, point) }
+        return Geo.distanceM(point, place.point) <= radiusM(of: place, tripLengthM: tripLengthM)
+    }
+
     /// Overlaps → the nearest place wins (M11). nil when no place reaches the point.
     public static func nearest(to point: GeoPoint, in places: [PlaceInfo], tripLengthM: Double) -> PlaceInfo? {
         var best: (place: PlaceInfo, d: Double)?
         for p in places {
             let d = Geo.distanceM(point, p.point)
-            if d <= radiusM(of: p, tripLengthM: tripLengthM), best == nil || d < best!.d {
+            if reaches(p, point, tripLengthM: tripLengthM), best == nil || d < best!.d {
                 best = (p, d)
             }
         }

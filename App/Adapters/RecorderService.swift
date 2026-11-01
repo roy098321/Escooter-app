@@ -199,7 +199,11 @@ final class RecorderService {
             if UIApplication.shared.applicationState == .active { mark(RideMarks.screenOn) }
             if ProcessInfo.processInfo.isLowPowerModeEnabled { mark(RideMarks.lowPower) }
         }
-        let screen = driver.update(input, at: time ?? Self.now())
+        var screen = driver.update(input, at: time ?? Self.now())
+        // note 18: arrived = the moment the rider crosses into the destination's outline (or circle), not only the route's last metres
+        if let shape = destination?.shape, let lat = input.lat, let lon = input.lon, shape.contains(GeoPoint(lat: lat, lon: lon)) {
+            screen.arrived = true
+        }
         RideVoice.shared.update(input, screen: screen, at: time ?? Self.now(), database: AppModel.shared.displayDatabase)   // F-19 sounds, P-4 warnings
         // F-35: the destination line of the live screen, and "Riding to Uni, 8 km." once after the start and after a change at a stop
         let key = rideOn ? RouteFollowSelection.shared.chosenKey : nil
@@ -243,7 +247,10 @@ final class RecorderService {
         guard let shown = name ?? place?.name, !shown.isEmpty else { return nil }
         return LiveDestination(key: key, name: shown, icon: placeId.flatMap { QuickDialLoader.icons(db)[$0] } ?? PlaceIcon.automatic(name: shown),
                                colourId: placeId.flatMap { PlaceColourStore.colours(database: db)[$0] },
-                               end: place.map { GeoPoint(lat: $0.lat, lon: $0.lon) })
+                               end: place.map { GeoPoint(lat: $0.lat, lon: $0.lon) },
+                               shape: place.map { PlaceShape(center: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM,
+                                                             outline: PlaceOutlineStore.outline(db, placeId: $0.id)) },
+                               placeName: place?.name)
     }
 
     /// The quick-dial places the live screen offers at a stop (the same ones as on Home)
@@ -347,6 +354,10 @@ struct LiveDestination: Equatable {
     var colourId: String?
     /// the saved place's centre (nil: a route's end is taken from the followed path)
     var end: GeoPoint?
+    /// note 18: the saved place's outline or circle (arrival = crossing into it); nil = no saved place
+    var shape: PlaceShape? = nil
+    /// the saved place's own name (V09 arrival line), nil = no saved place
+    var placeName: String? = nil
 }
 
 extension Recorder {

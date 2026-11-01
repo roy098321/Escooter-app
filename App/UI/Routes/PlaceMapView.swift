@@ -8,12 +8,20 @@ struct PlaceMarks: MapContent {
     let radiusM: Double
     let colourId: String
     var name: String = ""
+    /// Note 18: drawn instead of the circle when the place has an outline
+    var outline: [CLLocationCoordinate2D]? = nil
 
     var body: some MapContent {
         let c = PlaceColourStore.color(colourId)
-        MapCircle(center: coordinate, radius: radiusM)
-            .foregroundStyle(c.opacity(0.22))
-            .stroke(c, lineWidth: 2)
+        if let outline, outline.count >= PlaceOutline.minPoints {
+            MapPolygon(coordinates: outline)
+                .foregroundStyle(c.opacity(0.22))
+                .stroke(c, lineWidth: 2)
+        } else {
+            MapCircle(center: coordinate, radius: radiusM)
+                .foregroundStyle(c.opacity(0.22))
+                .stroke(c, lineWidth: 2)
+        }
         Marker(name, systemImage: "mappin", coordinate: coordinate).tint(c)
     }
 }
@@ -25,7 +33,7 @@ struct PlaceThumb: View {
     var body: some View {
         Map(initialPosition: .region(MKCoordinateRegion(center: item.coordinate, latitudinalMeters: item.circleM * 4, longitudinalMeters: item.circleM * 4)),
             interactionModes: []) {
-            PlaceMarks(coordinate: item.coordinate, radiusM: item.circleM, colourId: item.colourId)
+            PlaceMarks(coordinate: item.coordinate, radiusM: item.circleM, colourId: item.colourId, outline: item.outlineCoords)
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .frame(width: 64, height: 64)
@@ -75,6 +83,9 @@ struct PlaceMapView: View {
     @State private var errorText: String?
     /// F-39 flaw 6: a wider circle to offer, nil = none
     @State private var widenTo: Double?
+    /// Note 18: the outline editor is open / "Use the circle again?" is asked
+    @State private var editingOutline = false
+    @State private var askCircle = false
     @Environment(\.dismiss) private var dismiss
 
     private var shown: PlaceMapItem? { preview ?? item }
@@ -105,6 +116,20 @@ struct PlaceMapView: View {
         }
         .onAppear(perform: reload)
         .task(id: placeId) { await lookUpStreet() }
+        .fullScreenCover(isPresented: $editingOutline) {
+            if let place = shown {
+                PlaceOutlineEditor(title: place.row.title, centre: place.coordinate, circleM: place.circleM, colourId: place.colourId,
+                                   points: place.outline ?? []) { points in
+                    save { try PlaceOutlineStore.save($1, placeId: $0.id, outline: points) }
+                }
+            }
+        }
+        .confirmationDialog("Use the circle again?", isPresented: $askCircle, titleVisibility: .visible) {
+            Button("Use the circle", role: .destructive) { save { try PlaceOutlineStore.save($1, placeId: $0.id, outline: nil) } }
+            Button("Keep the outline", role: .cancel) {}
+        } message: {
+            Text("The outline you drew is removed.")
+        }
         .hidesTabBar()                // B28: the place screen has actions; nothing may sit under the bar
         .screen("Place")
     }
@@ -114,7 +139,8 @@ struct PlaceMapView: View {
         MapScreen {
             Map(initialPosition: .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: place.circleM * 8, longitudinalMeters: place.circleM * 8)),
                 interactionModes: [.pan, .zoom]) {
-                PlaceMarks(coordinate: place.coordinate, radiusM: place.circleM, colourId: place.colourId, name: place.row.hasName ? place.row.title : "")
+                PlaceMarks(coordinate: place.coordinate, radiusM: place.circleM, colourId: place.colourId, name: place.row.hasName ? place.row.title : "",
+                           outline: place.outlineCoords)
             }
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
             .accessibilityLabel("Map of \(place.row.title)")
@@ -154,7 +180,7 @@ struct PlaceMapView: View {
 
     private func settingsCard(_ place: PlaceMapItem) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let w = widenTo {
+            if let w = widenTo, place.outline == nil {
                 // F-39 flaw 6: one tap, never silent
                 Button(TripRules.widenText(placeName: place.row.title)) {
                     save { try PlaceService.setRadius(placeId: $0.id, radiusM: w, database: $1) }
@@ -170,17 +196,36 @@ struct PlaceMapView: View {
                     Image(systemName: "powerplug").foregroundStyle(Theme.canyon)
                 }
             }
-            HStack {
-                Text("Circle")
-                Spacer()
-            Picker("Circle", selection: Binding(get: { place.row.radiusM ?? 0 },
-                                                set: { r in save { try PlaceService.setRadius(placeId: $0.id, radiusM: r > 0 ? r : nil, database: $1) } })) {
-                Text("Automatic").tag(0.0)
-                ForEach(PlaceListBuilder.radiusChoices, id: \.self) { r in
-                    Text("\(Int(r)) m").tag(r)
-                }
+            // note 18: Circle (default) | Outline you draw
+            Picker("Shape", selection: Binding(get: { place.outline != nil },
+                                               set: { outline in
+                                                   if outline { editingOutline = true } else if place.outline != nil { askCircle = true }
+                                               })) {
+                Text("Circle").tag(false)
+                Text("Outline").tag(true)
             }
-            .labelsHidden()
+            .pickerStyle(.segmented)
+            if let poly = place.outline {
+                HStack {
+                    Text(PlaceListBuilder.outlineText(PlaceOutline.areaM2(poly))).monospacedDigit()
+                    Spacer()
+                    Button("Edit outline") { editingOutline = true }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            } else {
+                HStack {
+                    Text("Circle")
+                    Spacer()
+                    Picker("Circle", selection: Binding(get: { place.row.radiusM ?? 0 },
+                                                        set: { r in save { try PlaceService.setRadius(placeId: $0.id, radiusM: r > 0 ? r : nil, database: $1) } })) {
+                        Text("Automatic").tag(0.0)
+                        ForEach(PlaceListBuilder.radiusChoices, id: \.self) { r in
+                            Text("\(Int(r)) m").tag(r)
+                        }
+                    }
+                    .labelsHidden()
+                }
             }
             Text("Colour").font(.subheadline).foregroundStyle(.secondary)
             PlaceColourPicker(selected: place.colourId) { id in

@@ -30,7 +30,7 @@ enum RouteProcessor {
         let store = RouteQueries(database)
         guard let ride = try rides.ride(id: rideId), ride.kind != "discarded", ride.mergeGroupId == nil else { return nil }
 
-        var book = try loadBook(store)
+        var book = try loadBook(store, outlines: PlaceOutlineStore.all(database))
         let routed = try routedRide(ride, store)
         var pool: [RoutedRide] = []
         for other in try store.unassignedRides(limit: poolLimit, excluding: rideId, simulated: ride.isSimulated) {
@@ -54,6 +54,15 @@ enum RouteProcessor {
         }
         var touched: [String] = []
         for a in update.assignments {
+            if a.outcome == .around {
+                // note 18: kept and listed as "Around <place>", but no start / end place, so no trip time, battery estimate or destination
+                // learning counts it
+                try store.setPlaces(rideId: a.rideId, startPlaceId: nil, endPlaceId: nil)
+                try PlaceOutlineStore.setAround(database, rideId: a.rideId, placeId: a.startPlaceId)
+                continue
+            } else if a.rideId == rideId {
+                try PlaceOutlineStore.setAround(database, rideId: a.rideId, placeId: nil)
+            }
             guard let routeId = a.routeId else {
                 // B24: a ride on no route still gets its start / end place from the place circles
                 if a.startPlaceId != nil || a.endPlaceId != nil {
@@ -88,10 +97,11 @@ enum RouteProcessor {
 
     // MARK: Loading
 
-    static func loadBook(_ store: RouteQueries) throws -> RouteBook {
+    static func loadBook(_ store: RouteQueries, outlines: [String: [GeoPoint]] = [:]) throws -> RouteBook {
         var book = RouteBook()
         for p in try store.places() {
-            book.places.append(PlaceInfo(id: p.id, name: p.name, point: GeoPoint(lat: p.lat, lon: p.lon), radiusM: p.radiusM, canCharge: p.canCharge))
+            book.places.append(PlaceInfo(id: p.id, name: p.name, point: GeoPoint(lat: p.lat, lon: p.lon), radiusM: p.radiusM, canCharge: p.canCharge,
+                                         outline: outlines[p.id]))
         }
         for r in try store.routes() {
             guard let from = r.fromPlaceId, let to = r.toPlaceId else { continue }

@@ -48,9 +48,10 @@ public enum PlaceHere {
     /// the circle of a place with an automatic size (the same 200 m the maps draw)
     public static let automaticRadiusM = 200.0
 
-    public static func isHere(phone: GeoPoint?, place: GeoPoint, radiusM: Double?) -> Bool {
+    /// Note 18: inside the outline when the place has one, else inside the circle
+    public static func isHere(phone: GeoPoint?, place: GeoPoint, radiusM: Double?, outline: [GeoPoint]? = nil) -> Bool {
         guard let phone else { return false }
-        return Geo.distanceM(phone, place) <= (radiusM ?? automaticRadiusM)
+        return PlaceShape(center: place, radiusM: radiusM, outline: outline).contains(phone, automaticRadiusM: automaticRadiusM)
     }
 
     public static let hereWord = "You are here"

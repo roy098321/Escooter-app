@@ -57,6 +57,8 @@ public enum RideOutcome: Equatable, Sendable {
     case tooShort
     /// Matches a route the owner said "Not a route" to
     case dismissedRoute
+    /// Note 18: the whole ride stayed inside one place's outline ("Around Uni")
+    case around
 }
 
 public struct RideAssignment: Equatable, Sendable {
@@ -103,6 +105,11 @@ public struct RouteBook: Equatable, Sendable {
         let ends = endPlaces(of: ride)
         func plain(_ outcome: RideOutcome) -> RouteUpdate {
             Self.plainUpdate(ride.id, outcome, startPlaceId: ends.start?.id, endPlaceId: ends.end?.id)
+        }
+        // note 18: a ride that stays inside one outline is an "Around <place>" ride (kept, never a route or an estimate)
+        if let place = ends.start, place.id == ends.end?.id, let poly = place.outline,
+           PlaceOutline.insideShare(ride.shape.path, poly) >= PlaceOutline.aroundInsideShare {
+            return plain(.around)
         }
         guard let s = ride.shape.start, let e = ride.shape.end else { return plain(.noGps) }
         guard ride.distanceM >= Self.minTripM else { return plain(.tooShort) }
@@ -195,7 +202,7 @@ public struct RouteBook: Equatable, Sendable {
             let length = route.usualDistanceM > 0 ? route.usualDistanceM : distanceM       // M11: saved routes use their usual distance (S4)
             let dS = Geo.distanceM(start, from.point)
             let dE = Geo.distanceM(end, to.point)
-            if dS <= PlaceMatcher.radiusM(of: from, tripLengthM: length), dE <= PlaceMatcher.radiusM(of: to, tripLengthM: length) {
+            if PlaceMatcher.reaches(from, start, tripLengthM: length), PlaceMatcher.reaches(to, end, tripLengthM: length) {
                 let d = dS + dE
                 if best == nil || d < best!.d { best = (route, d) }
             }

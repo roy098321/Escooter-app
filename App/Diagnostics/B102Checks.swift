@@ -7,7 +7,8 @@ import GRDB
 /// u166 the Battery layer marks each first drop below 10 % steps (R2),
 /// u169 Home's last reading with its time and the labelled charge target (R3 / B64),
 /// u170 one full time on the charging screen, the estimate starts at the last reading (R5 / B65),
-/// u172 the export holds every ride of this phone's Rides list (B67; read only).
+/// u172 the export holds every ride of this phone's Rides list (B67; read only),
+/// u173 place outlines: inside / outside, the editor, the outline replaces the circle, "Around" rides (note 18).
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -18,6 +19,36 @@ enum B102Checks {
         runLastReading()
         runChargeAgree()
         runExportHoldsList()
+        runPlaceOutline()
+    }
+
+    // MARK: u173
+
+    /// Note 18 on a made-up 400 × 200 m campus: the outline holds its far end (a 100 m circle does not), the editor adds / inserts /
+    /// undoes, "you're here" follows the outline, a ride that stays inside is an Around ride
+    private static func runPlaceOutline() {
+        let expect = Expect()
+        let o = GeoPoint(lat: 10, lon: 20)
+        func at(_ x: Double, _ y: Double) -> GeoPoint {
+            GeoPoint(lat: o.lat + y / 111_320, lon: o.lon + x / (111_320 * cos(o.lat * .pi / 180)))
+        }
+        var editor = OutlineEditor()
+        editor.add(at(0, 0)); editor.add(at(400, 0)); editor.add(at(400, 200))
+        editor.insertMidpoint(after: 2)
+        editor.move(3, to: at(0, 200))
+        expect(editor.points.count == 4 && editor.areaLine == "Area 8.0 ha", "draw 3 corners, insert one, drag it: " + (editor.areaLine ?? "no area"))
+        editor.undo()
+        expect(editor.points[3] != at(0, 200), "undo takes back the drag")
+        let campus = [at(0, 0), at(400, 0), at(400, 200), at(0, 200)]
+        let centre = PlaceOutline.centre(campus) ?? o
+        expect(PlaceHere.isHere(phone: at(390, 100), place: centre, radiusM: 100, outline: campus)
+               && !PlaceHere.isHere(phone: at(390, 100), place: centre, radiusM: 100), "you're here at the far end only with the outline")
+        expect(!PlaceHere.isHere(phone: at(200, 220), place: centre, radiusM: 100, outline: campus), "20 m outside the line is not here")
+        var book = RouteBook(places: [PlaceInfo(id: "uni", name: "Uni", point: centre, outline: campus)])
+        let inside = (0...30).map { at(20 + Double($0) * 12, 50 + Double($0 % 5) * 20) }
+        let u = book.ingest(RoutedRide(id: "a", startAt: 0, distanceM: 1_200, shape: TripShape(start: inside.first, end: inside.last, path: inside)), pool: [])
+        expect(u.assignments.first?.outcome == .around && AroundRide.title("Uni") == "Around Uni", "a ride that stays inside is Around Uni")
+        expect.report("u173")
     }
 
     // MARK: u172

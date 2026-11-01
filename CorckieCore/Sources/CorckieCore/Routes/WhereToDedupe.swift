@@ -12,13 +12,18 @@ public enum WhereToDedupe {
         public var center: GeoPoint
         /// nil = automatic (`PlaceHere.automaticRadiusM`)
         public var radiusM: Double?
+        /// Note 18: the outline that replaces the circle (nil = circle)
+        public var outline: [GeoPoint]?
 
-        public init(id: String, name: String, center: GeoPoint, radiusM: Double?) {
+        public init(id: String, name: String, center: GeoPoint, radiusM: Double?, outline: [GeoPoint]? = nil) {
             self.id = id
             self.name = name
             self.center = center
             self.radiusM = radiusM
+            self.outline = PlaceOutline.isValid(outline) ? outline : nil
         }
+
+        public var shape: PlaceShape { PlaceShape(center: center, radiusM: radiusM, outline: outline) }
     }
 
     /// The same name for the eye: case and spaces do not count ("home ", "Home", "HOME")
@@ -34,8 +39,7 @@ public enum WhereToDedupe {
     /// Layer 1: the named place whose circle the point falls inside; the nearest centre wins when circles overlap
     public static func placeContaining(_ point: GeoPoint?, places: [NamedPlace]) -> String? {
         guard let point else { return nil }
-        let inside = places.map { (id: $0.id, d: Geo.distanceM(point, $0.center), r: $0.radiusM ?? PlaceHere.automaticRadiusM) }
-            .filter { $0.d <= $0.r }
+        let inside = places.filter { $0.shape.contains(point) }.map { (id: $0.id, d: Geo.distanceM(point, $0.center)) }
         return inside.min { ($0.d, $0.id) < ($1.d, $1.id) }?.id
     }
 

@@ -20,6 +20,8 @@ struct RidesListView: View {
     @State private var gaps: [UntrackedGap] = []
     @State private var placeColours: [String: String] = [:]
     @State private var placeNames: [String: String] = [:]
+    /// Note 18: rides that stayed inside a place's outline: ride id -> place id ("Around Uni")
+    @State private var around: [String: String] = [:]
     @State private var filter: RideDateFilter = .allTime
     @State private var query = ""
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -210,7 +212,7 @@ struct RidesListView: View {
 
     /// F-08: a thin strip on the left of the row in the colour of the place the ride ended at (grey without a saved destination)
     private func placeStrip(_ ride: RideListItem) -> some View {
-        let colour = ride.endPlaceId.flatMap { placeColours[$0] }
+        let colour = (ride.endPlaceId ?? around[ride.id]).flatMap { placeColours[$0] }
         return Capsule()
             .fill(colour.map { PlaceColourStore.color($0) } ?? Color(hex: PlaceColours.greyHex).opacity(0.5))
             .frame(width: 4)
@@ -220,6 +222,7 @@ struct RidesListView: View {
 
     /// "Home → Work"; one side alone when only one place is saved; nil when neither
     private func routeText(_ ride: RideListItem) -> String? {
+        if let p = around[ride.id], let name = placeNames[p], !name.isEmpty { return AroundRide.title(name) }   // note 18
         let a = ride.startPlaceId.flatMap { placeNames[$0] }.flatMap { $0.isEmpty ? nil : $0 }
         let b = ride.endPlaceId.flatMap { placeNames[$0] }.flatMap { $0.isEmpty ? nil : $0 }
         switch (a, b) {
@@ -298,6 +301,7 @@ struct RidesListView: View {
         guard let db = AppModel.shared.displayDatabase else { items = []; return }
         gaps = ScreenSimulator.shared.active ? [] : GapStore.all(db)
         discarded = ScreenSimulator.shared.active ? [] : RideToolsService.restoreCandidates(db)     // B57
+        around = PlaceOutlineStore.around(db)
         let routes = RouteQueries(db)
         let ends = (try? routes.endPlaceIds()) ?? [:]
         let starts = (try? routes.startPlaceIds()) ?? [:]

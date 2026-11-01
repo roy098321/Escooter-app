@@ -153,8 +153,10 @@ enum InsightRunner {
         var routeId = selected
         // Q1-live: no route picked, a confident destination guess from the start place
         if routeId == nil, let lat, let lon {
+            let outlines = PlaceOutlineStore.all(database)   // note 18
             let places = ((try? routes.places()) ?? []).map {
-                PlaceInfo(id: $0.id, name: $0.name, point: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM, canCharge: $0.canCharge)
+                PlaceInfo(id: $0.id, name: $0.name, point: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM, canCharge: $0.canCharge,
+                          outline: outlines[$0.id])
             }
             if let place = PlaceMatcher.nearest(to: GeoPoint(lat: lat, lon: lon), in: places, tripLengthM: 5_000) {
                 var rides: [DestinationRide] = []

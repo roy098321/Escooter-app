@@ -51,8 +51,10 @@ enum RouteRelink {
     static func linkRouteEnds(database: AppDatabase) throws -> Int {
         guard !database.isReadOnly else { return 0 }
         let store = RouteQueries(database)
+        let outlines = PlaceOutlineStore.all(database)   // note 18
         let named = try store.places().filter { !($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
-            .map { WhereToDedupe.NamedPlace(id: $0.id, name: $0.name ?? "", center: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM) }
+            .map { WhereToDedupe.NamedPlace(id: $0.id, name: $0.name ?? "", center: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM,
+                                            outline: outlines[$0.id]) }
         guard !named.isEmpty else { return 0 }
         var changed = 0
         for var route in try store.routes() where route.state == "saved" {
