@@ -104,8 +104,26 @@ struct InsightCardView: View {
 struct InsightsSection: View {
     let board: InsightBoard
 
+    /// Batch 102: whole-ride insights and the older engines' progress cards in one list, in the plan's order
+    private enum Item: Identifiable {
+        case ride(RideLevelInsight)
+        case progress(InsightProgress)
+
+        var id: String {
+            switch self {
+            case .ride(let r): return r.id
+            case .progress(let p): return p.id
+            }
+        }
+    }
+
+    private var items: [Item] {
+        let all = board.rideLevel.map(Item.ride) + board.progress.map(Item.progress)
+        return all.sorted { RideLevelInsights.rank($0.id) < RideLevelInsights.rank($1.id) }
+    }
+
     var body: some View {
-        if !board.progress.isEmpty || !board.pages.isEmpty {
+        if !board.progress.isEmpty || !board.pages.isEmpty || !board.rideLevel.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 SectionHeader("Insights")
                 VStack(alignment: .leading, spacing: DS.Space.row) {
@@ -114,12 +132,17 @@ struct InsightsSection: View {
                         NavigationLink { InsightDetailView(card: entry.card).navigationTitle(entry.page.rawValue) } label: { InsightPageRow(entry: entry) }
                             .buttonStyle(.plain)
                     }
-                    ForEach(board.progress) { p in
-                        if let c = p.card {
-                            NavigationLink { InsightDetailView(card: c) } label: { InsightProgressCard(progress: p, tappable: true) }
-                                .buttonStyle(.plain)
-                        } else {
-                            InsightProgressCard(progress: p, tappable: false)
+                    ForEach(items) { item in
+                        switch item {
+                        case .ride(let r):
+                            RideLevelCard(insight: r)
+                        case .progress(let p):
+                            if let c = p.card {
+                                NavigationLink { InsightDetailView(card: c) } label: { InsightProgressCard(progress: p, tappable: true) }
+                                    .buttonStyle(.plain)
+                            } else {
+                                InsightProgressCard(progress: p, tappable: false)
+                            }
                         }
                     }
                 }
@@ -487,12 +510,24 @@ struct InsightChartCard: View {
 /// Made-up insights for the CI ui-shots and previews (the engines run on `InsightSamplesF21`, synthetic only).
 enum InsightsPreview {
     static func board() -> InsightBoard {
-        let all = InsightSamplesF21.outcomes()
+        let all = InsightSamplesF21.outcomes().filter { $0.topic != .sweetSpot }   // batch 102: the sweet spot is retired
         var b = InsightBoard.make(all)
         let made = InsightProgressBuilder.make(all)
         b.progress = made.progress
         b.pages = made.pages
+        b.rideLevel = RideLevelInsights.all(rideLevelSample())
         return b
+    }
+
+    /// Made-up rides for the whole-ride insights (synthetic only): fast rides cost a little more, nothing below 30 km/h yet
+    static func rideLevelSample() -> [RideLevelRide] {
+        (0..<12).map { i in
+            let v: Double = 31.0 + Double(i % 6) * 2
+            let wobble: Double = i % 2 == 0 ? 0.05 : -0.05
+            let y: Double = 2.0 + 0.04 * (v - 25) + wobble
+            return RideLevelRide(id: "s\(i)", startAt: Int64(i) * 86_400_000, distanceKm: 8, pctPerKm: y, avgKmh: v,
+                                 climbMPerKm: 4 + Double(i % 4) * 2, airTempC: 27 + Double(i % 3), headwindKmh: Double(i % 5) - 2)
+        }
     }
 
     static func learning() -> InsightBoard {

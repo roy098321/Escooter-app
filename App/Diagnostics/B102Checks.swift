@@ -11,7 +11,8 @@ import GRDB
 /// u172 the export holds every ride of this phone's Rides list (B67; read only),
 /// u173 place outlines: inside / outside, the editor, the outline replaces the circle, "Around" rides (note 18),
 /// u175 a trip time only at the trip's start place (B66),
-/// u176 ride graph chips: a tap adds / removes, ⇄ flips (note 15), u177 graph gestures: pinch = time, swipe up / down = scale (note 16).
+/// u176 ride graph chips: a tap adds / removes, ⇄ flips (note 15), u177 graph gestures: pinch = time, swipe up / down = scale (note 16),
+/// u179 insights from whole rides: About N more rides, partial graph with a band, one-line hints, the plan's order.
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -26,6 +27,27 @@ enum B102Checks {
         runTripFromHere()
         runChipFlip()
         runGraphGestures()
+        runRideLevel()
+    }
+
+    // MARK: u179
+
+    /// Insights plan: made-up rides between 31 and 41 km/h; a read with a range, a band below 30 km/h and a hint for it; few rides say how many more
+    private static func runRideLevel() {
+        let expect = Expect()
+        let sample = InsightsPreview.rideLevelSample()
+        let speed = RideLevelInsights.make(.speedCost, rides: sample)
+        expect(speed.range != nil, "a read from 12 made-up rides: \(speed.range ?? "none") \(speed.rangeContext ?? "")")
+        let thin = speed.curve.first { $0.x < 25 }
+        expect(thin?.covered == false && (thin?.hi ?? 0) > (thin?.lo ?? 0), "no rides under 30 km/h: a dashed band there, not a line")
+        expect(speed.hint?.hasPrefix("Ride steady at 15") == true, "hint: " + (speed.hint ?? "none"))
+        let few = RideLevelInsights.make(.hills, rides: Array(sample.prefix(2)))
+        expect(few.progressLine == "About 2 more rides for a first read", "two rides: " + few.progressLine)
+        let temp = RideLevelInsights.make(.temperature, rides: sample)
+        expect(temp.progressLine == "Waiting for colder days", "warm days only: " + temp.progressLine)
+        expect(RideLevelInsights.rank("hills") < RideLevelInsights.rank("speedCost") && RideLevelInsights.rank("wind") < RideLevelInsights.rank("departure"),
+               "order: Hills, Speed, Battery over time, Temperature, Wind, Best time to leave")
+        expect.report("u179")
     }
 
     // MARK: u176

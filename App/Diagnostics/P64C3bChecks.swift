@@ -100,7 +100,8 @@ enum P64C3bChecks {
             let left = try InsightQueries(temp).all().map(\.type)
             expect(removed == 2 && left == [.q4After], "old Peak and hint rows are cleared, the rest stays (\(removed) removed)")
             let empty = InsightBoardLoader.board(temp)
-            expect(empty.cards.isEmpty && empty.learning.count == 3, "no rides: no cards, three topics still learning")
+            expect(empty.cards.isEmpty && empty.learning.count == 2 && empty.rideLevel.count == 4,
+                   "no rides: no cards, two topics still learning, four whole-ride insights waiting")
         } catch {
             expect(false, "the temporary database failed: \(error.localizedDescription)")
         }

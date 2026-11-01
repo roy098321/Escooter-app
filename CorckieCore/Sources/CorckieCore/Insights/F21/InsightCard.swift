@@ -278,6 +278,8 @@ public struct InsightBoard: Equatable, Sendable {
     public var progress: [InsightProgress] = []
     /// Note 9: the confident insights, each its own page opened from Stats
     public var pages: [InsightPageEntry] = []
+    /// Batch 102 insights plan: the whole-ride insights (hills, speed, temperature, wind), shown in `RideLevelInsights.order`
+    public var rideLevel: [RideLevelInsight] = []
 
     public init(cards: [InsightCard], learning: [InsightCard.Topic], progress: [InsightProgress] = [], pages: [InsightPageEntry] = []) {
         self.cards = cards

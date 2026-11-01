@@ -18,6 +18,9 @@ enum InsightBoardLoader {
         var headwindKmh: Double?
         var windLevel: String?
         var excluded: Bool
+        /// batch 102 insights: climb and the air temperature of the ride
+        var elevGainM: Double? = nil
+        var airTempC: Double? = nil
     }
 
     /// The rides the engines look at (newest first, at most 200, real ended rides of 1 km or more)
@@ -25,13 +28,14 @@ enum InsightBoardLoader {
         (try? db.writer.read { d in
             try Row.fetchAll(d, sql: """
                 SELECT id, routeId, startAt, utcOffsetMin, distanceM, totalS, movingS, COALESCE(usedPctShown, usedPct) AS used, headwindKmh,
-                       windLevel, excludedFromUsual
+                       windLevel, excludedFromUsual, elevGainM, airTempC
                 FROM ride WHERE endAt IS NOT NULL AND kind = 'ride' AND isSimulated = 0 AND distanceM >= 1000
                 ORDER BY startAt DESC LIMIT 200
                 """).map { r in
                 RideRow(id: r["id"], routeId: r["routeId"], startAt: r["startAt"], utcOffsetMin: r["utcOffsetMin"] ?? 0,
                         distanceM: r["distanceM"] ?? 0, totalS: r["totalS"], movingS: r["movingS"], usedPct: r["used"],
-                        headwindKmh: r["headwindKmh"], windLevel: r["windLevel"], excluded: (r["excludedFromUsual"] as Int?) == 1)
+                        headwindKmh: r["headwindKmh"], windLevel: r["windLevel"], excluded: (r["excludedFromUsual"] as Int?) == 1,
+                        elevGainM: r["elevGainM"], airTempC: r["airTempC"])
             }
         }) ?? []
     }
@@ -106,18 +110,9 @@ enum InsightBoardLoader {
         let reserve = reservePct(db)
         let calibration = CalibrationUpdater.current(db)
 
-        // speed sweet spot: the last 40 rides of 2 km or more within 120 days
-        let since = nowMs - 120 * OutsideTime.dayMs
-        let sweetRides = rows.filter { $0.startAt >= since && $0.distanceM >= 2000 }.prefix(40).map { r in
-            SweetSpotRide(id: r.id, startAt: r.startAt, distanceKm: r.distanceM / 1000,
-                          strongWind: r.windLevel == "strong" || abs(r.headwindKmh ?? 0) >= T.t70WindStrongKmh,
-                          samples: speedSamples(db, rideId: r.id))
-        }
-        let perKm = rows.prefix(T.t85RealRangeRides).compactMap(pctPerKm)
-        let ctx = SweetSpotContext(whPerPct: calibration.whPerPct, usualPctPerKm: InsightMath.median(perKm), reservePct: reserve,
-                                   destination: destination, routeKm: route?.usualDistanceM.map { $0 / 1000 },
-                                   routeTimeS: InsightMath.median(routeRows.compactMap(\.totalS)), utcOffsetMin: offset)
-        let sweet = SweetSpotInsight.make(rides: Array(sweetRides), context: ctx)
+        // batch 102 insights plan: the speed sweet spot (steady stretches from second-by-second power) is retired; "What speed costs
+        // you" is a whole-ride insight now (`rideLevel`)
+        _ = calibration
 
         // departure time on the usual route
         let departs = routeRows.compactMap { r -> DepartureRide? in
@@ -134,9 +129,21 @@ enum InsightBoardLoader {
         }
         let creep = CreepInsight.make(rides: creepRides, reservePct: reserve, utcOffsetMin: offset)
 
-        let out = [sweet, depart, creep]
+        let out = [depart, creep]
         cache = (key, out)
         return out
+    }
+
+    /// Batch 102: the rides as the whole-ride insights see them (real rides of 3 km or more: whole-ride %/km is steady from there)
+    static func rideLevelRides(_ rows: [RideRow]) -> [RideLevelRide] {
+        rows.compactMap { r -> RideLevelRide? in
+            guard r.distanceM >= 3_000, !r.excluded, let y = pctPerKm(r) else { return nil }
+            let km = r.distanceM / 1000
+            let moving = r.movingS ?? r.totalS
+            return RideLevelRide(id: r.id, startAt: r.startAt, distanceKm: km, pctPerKm: y,
+                                 avgKmh: moving.flatMap { $0 > 0 ? km / ($0 / 3600) : nil },
+                                 climbMPerKm: r.elevGainM.map { $0 / km }, airTempC: r.airTempC, headwindKmh: r.headwindKmh)
+        }
     }
 
     static func board(_ db: AppDatabase, nowMs: Int64 = FactorUpdater.nowMs()) -> InsightBoard {
@@ -148,6 +155,7 @@ enum InsightBoardLoader {
         let made = InsightProgressBuilder.make(all, previousWidths: before)
         board.progress = made.progress
         board.pages = made.pages
+        board.rideLevel = RideLevelInsights.all(rideLevelRides(rides(db)))
         if made.widths != before { UserDefaults.standard.set(made.widths, forKey: key) }
         return board
     }
