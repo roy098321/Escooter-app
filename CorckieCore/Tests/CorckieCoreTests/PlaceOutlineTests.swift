@@ -51,13 +51,20 @@ final class PlaceOutlineTests: XCTestCase {
     func testARideThatStaysInsideIsAroundTheOutlinePlace() {
         let centre = PlaceOutline.centre(campus)!
         var book = RouteBook(places: [PlaceInfo(id: "uni", name: "Uni", point: centre, outline: campus)])
-        let inside = (0...30).map { at(20 + Double($0) * 12, 50 + Double($0 % 5) * 20) }
+        let inside: [GeoPoint] = (0...30).map { (k: Int) -> GeoPoint in
+            let x: Double = 20 + Double(k) * 12
+            let y: Double = 50 + Double(k % 5) * 20
+            return at(x, y)
+        }
         let around = RoutedRide(id: "a", startAt: 0, distanceM: 1_200, shape: TripShape(start: inside.first, end: inside.last, path: inside))
         let u = book.ingest(around, pool: [])
         XCTAssertEqual(u.assignments.first?.outcome, .around)
         XCTAssertNil(u.assignments.first?.routeId)
         // out and back again (a loop that leaves the outline) is not "around"
-        let loop = [at(200, 100)] + (1...20).map { at(200, 200 + Double($0) * 100) } + (1...20).reversed().map { at(210, 200 + Double($0) * 100) } + [at(200, 100)]
+        var loop: [GeoPoint] = [at(200, 100)]
+        for k in 1...20 { loop.append(at(200, 200 + Double(k) * 100)) }
+        for k in (1...20).reversed() { loop.append(at(210, 200 + Double(k) * 100)) }
+        loop.append(at(200, 100))
         let ride = RoutedRide(id: "b", startAt: 0, distanceM: 4_000, shape: TripShape(start: loop.first, end: loop.last, path: loop))
         XCTAssertNotEqual(book.ingest(ride, pool: []).assignments.first?.outcome, .around)
         // a circle place never makes "around" rides

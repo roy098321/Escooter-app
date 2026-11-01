@@ -113,7 +113,11 @@ enum B102Checks {
                && !PlaceHere.isHere(phone: at(390, 100), place: centre, radiusM: 100), "you're here at the far end only with the outline")
         expect(!PlaceHere.isHere(phone: at(200, 220), place: centre, radiusM: 100, outline: campus), "20 m outside the line is not here")
         var book = RouteBook(places: [PlaceInfo(id: "uni", name: "Uni", point: centre, outline: campus)])
-        let inside = (0...30).map { at(20 + Double($0) * 12, 50 + Double($0 % 5) * 20) }
+        let inside: [GeoPoint] = (0...30).map { (k: Int) -> GeoPoint in
+            let x: Double = 20 + Double(k) * 12
+            let y: Double = 50 + Double(k % 5) * 20
+            return at(x, y)
+        }
         let u = book.ingest(RoutedRide(id: "a", startAt: 0, distanceM: 1_200, shape: TripShape(start: inside.first, end: inside.last, path: inside)), pool: [])
         expect(u.assignments.first?.outcome == .around && AroundRide.title("Uni") == "Around Uni", "a ride that stays inside is Around Uni")
         expect.report("u173")
