@@ -4,9 +4,11 @@ import SwiftUI
 
 /// Batch 102 insights plan: one whole-ride insight. Title, "early read" tag, the range of the effect, the bar with its marks, the real
 /// progress ("About 7 more rides" / "Waiting for colder days"), the partial graph (solid where rides cover it, a dashed top and bottom
-/// where data is thin) and one short hint. Never "can't learn this". (The riding asks will sit under the hint once the owner picks.)
+/// where data is thin) and one short hint. Never "can't learn this". The speed card adds the riding ask (option b) under the hint.
 struct RideLevelCard: View {
     let insight: RideLevelInsight
+    /// riding asks: how many stretches the rider skipped with "Not here" while the card is open
+    @State private var skipped = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -31,11 +33,37 @@ struct RideLevelCard: View {
             }
             Text(insight.progressLine).font(.footnote).foregroundStyle(.secondary)
             if let hint = insight.hint { Text(hint).font(.footnote.weight(.semibold)) }
+            if insight.askDone { Label(RidingAsks.gotIt, systemImage: "checkmark.circle.fill").font(.footnote.weight(.semibold)).foregroundStyle(Theme.ok) }
+            if let ask = insight.ask { askLines(ask) }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard(radius: DS.Radius.hero, padding: 0)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Riding asks (option b): "800 m steady at 35 km/h fills your speed graph." and where it fits, with "Not here"
+    @ViewBuilder private func askLines(_ ask: RidingAsk) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(ask.line).font(.subheadline.weight(.semibold))
+            if skipped < insight.askStretches.count {
+                let spot = insight.askStretches[skipped]
+                HStack(alignment: .firstTextBaseline) {
+                    Text(spot.line).font(.footnote).foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Button("Not here") {
+                        RidingAskState.addNotHere(spot.key)
+                        skipped += 1
+                        Haptics.tick()
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
+        .padding(12)
+        .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

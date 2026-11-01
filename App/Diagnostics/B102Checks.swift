@@ -13,7 +13,7 @@ import GRDB
 /// u175 a trip time only at the trip's start place (B66),
 /// u176 ride graph chips: a tap adds / removes, ⇄ flips (note 15), u177 graph gestures: pinch = time, swipe up / down = scale (note 16),
 /// u179 insights from whole rides: About N more rides, partial graph with a band, one-line hints, the plan's order,
-/// u180 the charging speed learned from Plug in, u181 the low-battery power limit (LBP).
+/// u180 the charging speed learned from Plug in, u181 the low-battery power limit (LBP), u182 riding asks (option b).
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -31,6 +31,42 @@ enum B102Checks {
         runRideLevel()
         runChargeRate()
         runLBP()
+        runRidingAsks()
+    }
+
+    // MARK: u182
+
+    /// Riding asks on a made-up route: bends, then 1.5 km straight and flat, then a climb; the graph misses 27–45 km/h
+    private static func runRidingAsks() {
+        let expect = Expect()
+        let o = GeoPoint(lat: 10, lon: 20)
+        func at(_ x: Double, _ y: Double) -> GeoPoint {
+            GeoPoint(lat: o.lat + y / 111_320, lon: o.lon + x / (111_320 * cos(o.lat * .pi / 180)))
+        }
+        var pts: [(point: GeoPoint, altM: Double?)] = []
+        for k in 0..<50 {
+            let y: Double = k % 2 == 0 ? 0 : 40
+            pts.append((point: at(Double(k) * 20, y), altM: 10))
+        }
+        for k in 1...75 {
+            let x: Double = 1_000 + Double(k) * 20
+            pts.append((point: at(x, 0), altM: 10))
+        }
+        for k in 1...50 {
+            let x: Double = 2_500 + Double(k) * 20
+            let alt: Double = 10 + Double(k) * 1.6
+            pts.append((point: at(x, 0), altM: alt))
+        }
+        let route = AskRoutePath(routeId: "made-up", name: "Uni", points: pts)
+        let covered: [(x: Double, covered: Bool)] = stride(from: 15.0, through: 45, by: 2.5).map { (x: $0, covered: $0 <= 25) }
+        let ask = RidingAsks.ask(covered: covered, wanted: 15...45, routes: [route], notHere: [])
+        expect(ask?.line == "800 m steady at 35 km/h fills your speed graph.", "ask: " + (ask?.line ?? "none"))
+        expect(ask?.stretch?.line.hasPrefix("Try it on the straight part of your Uni route") == true, "where: " + (ask?.stretch?.line ?? "none"))
+        let key = ask?.stretch?.key ?? ""
+        expect(!RidingAsks.stretches([route], metres: 800, notHere: [key]).contains { $0.key == key }, "Not here is remembered")
+        let got = StretchPoint(speedKmh: 35.5, pctPerKm: 2.7, km: 0.9, atMs: 5)
+        expect(ask.map { RidingAsks.done($0, since: 1, stretches: [got]) } == true, "a steady 900 m at 35 km/h: " + RidingAsks.gotIt)
+        expect.report("u182")
     }
 
     // MARK: u181

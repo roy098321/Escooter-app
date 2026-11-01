@@ -134,6 +134,49 @@ enum InsightBoardLoader {
         return out
     }
 
+    // MARK: riding asks (option b): steady stretches measured by power, for the speed graph only
+
+    private static var askCache: (key: String, stretches: [StretchPoint], routes: [AskRoutePath])?
+
+    /// The steady stretches of the last 40 rides of 2 km or more within 120 days (power ÷ the calibration's Wh per %), and the paths
+    /// (with heights) of the newest ride on each of the 3 most ridden saved routes. Cached per ride count and day.
+    static func askInputs(_ db: AppDatabase, rows: [RideRow], nowMs: Int64) -> (stretches: [StretchPoint], routes: [AskRoutePath]) {
+        let key = "\(ObjectIdentifier(db).hashValue)-\(rows.count)-\(rows.first?.id ?? "")-\(nowMs / OutsideTime.dayMs)"
+        if let c = askCache, c.key == key { return (c.stretches, c.routes) }
+        let whPerPct = CalibrationUpdater.current(db).whPerPct
+        let since = nowMs - 120 * OutsideTime.dayMs
+        var points: [StretchPoint] = []
+        for r in rows.filter({ $0.startAt >= since && $0.distanceM >= 2000 }).prefix(40) {
+            var cuts = SweetSpotInsight.Cuts()
+            for s in SweetSpotInsight.stretches(rideId: r.id, samples: speedSamples(db, rideId: r.id), cuts: &cuts) {
+                if let p = StretchPoint.from(s, whPerPct: whPerPct, atMs: r.startAt) { points.append(p) }
+            }
+        }
+        var counts: [String: (n: Int, newest: String)] = [:]
+        for r in rows {
+            guard let id = r.routeId else { continue }
+            let c = counts[id]
+            counts[id] = ((c?.n ?? 0) + 1, c?.newest ?? r.id)
+        }
+        var paths: [AskRoutePath] = []
+        let store = RouteQueries(db)
+        for (id, c) in counts.sorted(by: { $0.value.n > $1.value.n }).prefix(3) {
+            guard let route = try? store.route(id: id), route.state == "saved" else { continue }
+            let name = placeName(route.toPlaceId, db: db) ?? RouteService.title(routeId: id, database: db)
+            let pts: [(point: GeoPoint, altM: Double?)] = (try? db.writer.read { d in
+                try Row.fetchAll(d, sql: "SELECT lat, lon, altBaroM, altFixedM FROM ride_sample WHERE rideId = ? AND lat IS NOT NULL ORDER BY t",
+                                 arguments: [c.newest]).compactMap { row -> (point: GeoPoint, altM: Double?)? in
+                    guard let lat: Double = row["lat"], let lon: Double = row["lon"] else { return nil }
+                    let baro: Double? = row["altBaroM"], gps: Double? = row["altFixedM"]
+                    return (point: GeoPoint(lat: lat, lon: lon), altM: baro ?? gps)
+                }
+            }) ?? []
+            paths.append(AskRoutePath(routeId: id, name: name, points: pts))
+        }
+        askCache = (key, points, paths)
+        return (points, paths)
+    }
+
     /// Batch 102: the rides as the whole-ride insights see them (real rides of 3 km or more: whole-ride %/km is steady from there)
     static func rideLevelRides(_ rows: [RideRow]) -> [RideLevelRide] {
         rows.compactMap { r -> RideLevelRide? in
@@ -155,7 +198,13 @@ enum InsightBoardLoader {
         let made = InsightProgressBuilder.make(all, previousWidths: before)
         board.progress = made.progress
         board.pages = made.pages
-        board.rideLevel = RideLevelInsights.all(rideLevelRides(rides(db)))
+        let rows = rides(db)
+        let asks = askInputs(db, rows: rows, nowMs: nowMs)
+        let levelRides = rideLevelRides(rows)
+        let levels = RideLevelInsight.Topic.allCases.map { topic in
+            RideLevelInsights.make(topic, rides: levelRides, stretches: topic == .speedCost ? asks.stretches : [])
+        }
+        board.rideLevel = RidingAskState.apply(levels, rides: levelRides, stretches: asks.stretches, routes: asks.routes, nowMs: nowMs)
         if made.widths != before { UserDefaults.standard.set(made.widths, forKey: key) }
         return board
     }

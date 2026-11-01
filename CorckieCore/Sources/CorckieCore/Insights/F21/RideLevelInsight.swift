@@ -195,6 +195,11 @@ public struct RideLevelInsight: Equatable, Sendable, Identifiable {
     public var curve: [CurvePiece]
     /// One short line for filling the gap, nil when the graph is filled
     public var hint: String?
+    /// Riding asks (speed graph only): the ask now, and whether the last one was just done ("Got it ✓")
+    public var ask: RidingAsk? = nil
+    public var askDone = false
+    /// The fitting stretches for the ask, in order ("Not here" moves to the next one)
+    public var askStretches: [AskStretch] = []
 
     public var id: String { topic.rawValue }
     public var title: String { topic.title }
@@ -223,12 +228,16 @@ public enum RideLevelInsights {
 
     public static func rank(_ id: String) -> Int { order.firstIndex(of: id) ?? order.count }
 
-    public static func make(_ topic: RideLevelInsight.Topic, rides: [RideLevelRide]) -> RideLevelInsight {
+    /// `stretches`: power-measured steady stretches (riding asks, option b): they fill the SPEED graph only
+    public static func make(_ topic: RideLevelInsight.Topic, rides: [RideLevelRide], stretches: [StretchPoint] = []) -> RideLevelInsight {
         var pts: [(x: Double, y: Double)] = []
         for r in rides {
             if let x = topic.x(r) { pts.append((x: x, y: r.pctPerKm)) }
         }
         let n = pts.count
+        if topic == .speedCost {
+            for st in stretches { pts.append((x: st.speedKmh, y: st.pctPerKm)) }
+        }
         let xs = pts.map(\.x)
         let fit = LinearFit.make(pts)
         let needed = fit.flatMap { RidesNeeded.forCorrelation($0.r) }
