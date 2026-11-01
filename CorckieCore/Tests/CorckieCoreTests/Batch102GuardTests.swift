@@ -38,6 +38,18 @@ final class Batch102GuardTests: XCTestCase {
         XCTAssertTrue(detail.contains("ReplayDotMark()"), "the dot moves on the ride map")
     }
 
+    /// V09: the Developer button plays every message; the ride screen preview runs the real director and speaks
+    func test_v09LabTools() throws {
+        let dev = try source("App/UI/Developer/DeveloperView.swift")
+        XCTAssertTrue(dev.contains("V09PlayAllView()"))
+        let all = try source("App/UI/Developer/V09PlayAllView.swift")
+        XCTAssertTrue(all.contains("playAllV09()") && all.contains("V09Message.samples"))
+        let preview = try source("App/UI/Developer/RideScreenPreview.swift")
+        XCTAssertTrue(preview.contains("V09Director()") && preview.contains("v09.update(") && preview.contains("Stop at a light"))
+        let voice = try source("App/Audio/RideVoice.swift")
+        XCTAssertTrue(voice.contains("v09.update(") && voice.contains("V09Settings.isOn"), "the ride runs V09 behind its switch")
+    }
+
     /// Note 15: hold-to-hide is gone from the ride graph chips
     func test_graphChipsHaveNoHoldToHide() throws {
         let graph = try source("App/UI/Rides/RideGraphView.swift")
