@@ -12,7 +12,8 @@ import GRDB
 /// u173 place outlines: inside / outside, the editor, the outline replaces the circle, "Around" rides (note 18),
 /// u175 a trip time only at the trip's start place (B66),
 /// u176 ride graph chips: a tap adds / removes, ⇄ flips (note 15), u177 graph gestures: pinch = time, swipe up / down = scale (note 16),
-/// u179 insights from whole rides: About N more rides, partial graph with a band, one-line hints, the plan's order.
+/// u179 insights from whole rides: About N more rides, partial graph with a band, one-line hints, the plan's order,
+/// u180 the charging speed learned from Plug in.
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -28,6 +29,27 @@ enum B102Checks {
         runChipFlip()
         runGraphGestures()
         runRideLevel()
+        runChargeRate()
+    }
+
+    // MARK: u180
+
+    /// Insights plan 3a: three made-up Plug in charges teach the speed; a full one and an unmeasured one are left out
+    private static func runChargeRate() {
+        let expect = Expect()
+        let h: Double = 3_600_000
+        func e(_ from: Double, _ to: Double, _ hours: Double, _ measured: Bool = true) -> ChargeLogEntry {
+            ChargeLogEntry(id: UUID().uuidString, startMs: 0, endMs: Int64(hours * h), startPct: from, endPct: to, measured: measured)
+        }
+        let log = [e(30, 70, 2.5), e(40, 80, 2.5), e(20, 60, 4), e(50, 100, 3), e(50, 80, 2, false)]
+        let l = ChargeRateLearner.learn(log)
+        expect(l?.charges == 3 && abs((l?.ratePctPerHour ?? 0) - 16) < 0.05, "learned \(l?.ratePctPerHour ?? 0) %/h from \(l?.charges ?? 0) charges")
+        expect(ChargeRateLearner.learn(Array(log.prefix(2))) == nil, "two charges: the measured 13.6 %/h stays")
+        let s = ChargeSession(startPct: 60, startMs: 0, ratePctPerHour: l?.ratePctPerHour, rateFromCharges: l?.charges)
+        expect(PlugIn.why(s, .battery(100), utcOffsetMin: 0).contains("learned from your last 3 charges"), "estimated says where the speed comes from")
+        let mine = ChargeTimer.shared.learnedRate
+        expect(true, "this phone: " + (mine.map { "\($0.ratePctPerHour) %/h from \($0.charges) charges" } ?? "not learned yet (13.6 %/h)"))
+        expect.report("u180")
     }
 
     // MARK: u179

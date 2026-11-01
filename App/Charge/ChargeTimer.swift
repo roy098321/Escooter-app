@@ -121,9 +121,16 @@ final class ChargeTimer {
 
     /// The scooter connected and read a settled battery %: the real % replaces the estimate and ends the timer (logged as measured)
     func realReading(pct: Int) {
+        // batch 102: after "Unplugged" the real % completes that charge's entry (exact window: plug in → unplug), for the learned speed
+        if session == nil, unplugged != nil, let first = log.first, !first.measured {
+            log[0] = first.withRealEnd(Double(pct))
+        }
         unplugged = nil
         if let s = session { finish(ChargeLogEntry.finish(s, atMs: now, realPct: Double(pct))) } else { persist() }
     }
+
+    /// Batch 102 (insights plan 3a): the charging speed learned from the Plug in log (nil until 3 good charges)
+    var learnedRate: ChargeRateLearner.Learned? { ChargeRateLearner.learn(log) }
 
     private func finish(_ entry: ChargeLogEntry) {
         log.insert(entry, at: 0)
@@ -196,7 +203,7 @@ final class LiveActivityController {
         guard let s else { end(); return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let full = Date(timeIntervalSince1970: Double(ChargeModel.fullMs(s)) / 1000)
-        let zero = Date(timeIntervalSince1970: Double(s.startMs) / 1000 - s.startPct / ChargeModel.ratePctPerHour * 3600)
+        let zero = Date(timeIntervalSince1970: Double(s.startMs) / 1000 - s.startPct / ChargeModel.rate(s) * 3600)
         // R4 / B68: the countdown goes to the target % (or full); a changed estimate moves these dates on the next sync
         let targetPct = ChargeModel.targetPct(s).flatMap { $0 < 100 ? $0 : nil }
         let targetAt = targetPct.map { Date(timeIntervalSince1970: Double(ChargeModel.timeMs(toPct: Double($0), s)) / 1000) }

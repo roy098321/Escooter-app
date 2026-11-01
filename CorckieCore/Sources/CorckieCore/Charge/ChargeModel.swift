@@ -29,9 +29,16 @@ public struct ChargeSession: Codable, Equatable, Sendable, Identifiable {
     public var usualName: String?
     /// The scooter's name for the texts
     public var scooterName: String
+    /// Batch 102 (insights plan 3a): the charging speed learned from this rider's Plug ins, %/h; nil = the measured 13.6
+    public var ratePctPerHour: Double?
+    /// How many charges the learned speed comes from (0 = not learned)
+    public var rateFromCharges: Int?
 
     public init(id: String = UUID().uuidString, startPct: Double, startMs: Int64, target: ChargeTarget = .none, pctPerKm: Double? = nil,
-                reservePct: Double = T.t80ReserveDefaultPct, usualNeedPct: Double? = nil, usualName: String? = nil, scooterName: String = "Scooter") {
+                reservePct: Double = T.t80ReserveDefaultPct, usualNeedPct: Double? = nil, usualName: String? = nil, scooterName: String = "Scooter",
+                ratePctPerHour: Double? = nil, rateFromCharges: Int? = nil) {
+        self.ratePctPerHour = ratePctPerHour
+        self.rateFromCharges = rateFromCharges
         self.id = id
         self.startPct = startPct
         self.startMs = startMs
@@ -54,16 +61,19 @@ public enum ChargeModel {
 
     public static let msPerHour = 3_600_000.0
 
+    /// The session's charging speed: learned from Plug ins when known, else the measured 13.6 %/h
+    public static func rate(_ s: ChargeSession) -> Double { s.ratePctPerHour ?? ratePctPerHour }
+
     /// ≈ % at a moment (never above 100, never below the start)
     public static func pct(_ s: ChargeSession, atMs: Int64) -> Double {
         let hours = max(0, Double(atMs - s.startMs) / msPerHour)
-        return min(100, max(s.startPct, s.startPct + hours * ratePctPerHour))
+        return min(100, max(s.startPct, s.startPct + hours * rate(s)))
     }
 
     /// When the line reaches `target` %, epoch ms (the start itself if already there)
     public static func timeMs(toPct target: Double, _ s: ChargeSession) -> Int64 {
         let need = max(0, target - s.startPct)
-        return s.startMs + Int64((need / ratePctPerHour * msPerHour).rounded())
+        return s.startMs + Int64((need / rate(s) * msPerHour).rounded())
     }
 
     /// The honest 100 % estimate ("Full ≈")
@@ -237,9 +247,48 @@ public struct ChargeLogEntry: Codable, Equatable, Sendable, Identifiable {
 
     public var gainedPct: Double { max(0, endPct - startPct) }
 
+    /// Batch 102: an "Unplugged" entry gets the real % read at the next connect (the end time stays the unplug moment)
+    public func withRealEnd(_ pct: Double) -> ChargeLogEntry {
+        ChargeLogEntry(id: id, startMs: startMs, endMs: endMs, startPct: startPct, endPct: max(startPct, pct), measured: true)
+    }
+
     /// Ends a session: at `atMs` with a real reading (measured) or on the line (≈).
     public static func finish(_ s: ChargeSession, atMs: Int64, realPct: Double?) -> ChargeLogEntry {
         let end = realPct ?? ChargeModel.pct(s, atMs: atMs)
         return ChargeLogEntry(id: s.id, startMs: s.startMs, endMs: max(s.startMs, atMs), startPct: s.startPct, endPct: end, measured: realPct != nil)
+    }
+}
+
+/// Batch 102 (insights plan 3a, owner 26 Oct): the charging speed learned from Plug in: the % and time at Plug in, and the real % the
+/// next connection reads (after "Unplugged" the window ends at the unplug moment, exact). A window that ended at a connection may hold
+/// idle time after the charger stopped, so it only shows a LOWER bound: the learned speed is the median of the faster half. Windows that
+/// reached ~100 % are left out (when it got full is unknown). Needs 3 good charges; until then the measured 13.6 %/h stays.
+public enum ChargeRateLearner {
+    public struct Learned: Equatable, Sendable {
+        public var ratePctPerHour: Double
+        public var charges: Int
+    }
+
+    public static let minCharges = 3
+    public static let minGainedPct = 10.0
+    public static let minHours = 0.5
+    public static let plausible = 3.0...40.0
+
+    public static func rates(_ log: [ChargeLogEntry]) -> [Double] {
+        log.compactMap { e in
+            guard e.measured, e.endPct <= 98, e.gainedPct >= minGainedPct else { return nil }
+            let hours = Double(e.endMs - e.startMs) / ChargeModel.msPerHour
+            guard hours >= minHours else { return nil }
+            let r = e.gainedPct / hours
+            return plausible.contains(r) ? r : nil
+        }
+    }
+
+    public static func learn(_ log: [ChargeLogEntry]) -> Learned? {
+        let r = rates(log).sorted(by: >)
+        guard r.count >= minCharges else { return nil }
+        let top = Array(r.prefix(max(minCharges, (r.count + 1) / 2)))
+        let med = top.count % 2 == 1 ? top[top.count / 2] : (top[top.count / 2 - 1] + top[top.count / 2]) / 2
+        return Learned(ratePctPerHour: (med * 10).rounded() / 10, charges: r.count)
     }
 }

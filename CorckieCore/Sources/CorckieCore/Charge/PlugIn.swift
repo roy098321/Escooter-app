@@ -107,7 +107,9 @@ public enum PlugIn {
 
     /// Tap "estimated": how the time is worked out, in plain words
     public static func why(_ s: ChargeSession, _ a: PlugAlert, utcOffsetMin: Int) -> String {
-        var parts = ["It charges about \(fmt(ChargeModel.ratePctPerHour)) % an hour (measured on this charger).",
+        let learned = (s.rateFromCharges ?? 0) > 0 && s.ratePctPerHour != nil
+        var parts = ["It charges about \(fmt((ChargeModel.rate(s) * 10).rounded() / 10)) % an hour "
+                     + (learned ? "(learned from your last \(s.rateFromCharges ?? 0) charges)." : "(measured on this charger)."),
                      "Started at \(Int(s.startPct.rounded()))% at \(ChargeText.clock(s.startMs, utcOffsetMin: utcOffsetMin)), the last reading."]
         switch a {
         case .battery(let p) where p >= 100:

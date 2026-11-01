@@ -47,8 +47,10 @@ enum PlugInStore {
         guard let last = t.lastReading() else { return nil }
         let name = scooterName()
         let ctx = t.context(scooterName: name)
+        let learned = t.learnedRate   // batch 102: the charging speed learned from earlier Plug ins
         return ChargeSession(startPct: Double(last.pct), startMs: t.now, target: PlugIn.target(alert), pctPerKm: ctx.pctPerKm,
-                             reservePct: ctx.reserve, usualNeedPct: ctx.usualNeed, usualName: ctx.usualName, scooterName: name)
+                             reservePct: ctx.reserve, usualNeedPct: ctx.usualNeed, usualName: ctx.usualName, scooterName: name,
+                             ratePctPerHour: learned?.ratePctPerHour, rateFromCharges: learned?.charges)
     }
 
     /// One tap: the timer starts from the last reading with the remembered alert, no form
