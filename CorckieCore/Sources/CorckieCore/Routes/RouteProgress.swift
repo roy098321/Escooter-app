@@ -209,6 +209,28 @@ public struct WhereToChip: Equatable, Sendable {
     }
 }
 
+/// B66 (owner 26 Oct): a learned trip time and battery need belong to the trip's start place: "Uni • 29 mins" (from Home) is shown only at
+/// Home. Away from that place, or inside the destination itself, the chip is just the place name (Q1 = A: no time, no guess).
+public enum TripFromHere {
+    public static func applies(tripStartPlaceId: String?, herePlaceId: String?) -> Bool {
+        guard let start = tripStartPlaceId, let here = herePlaceId else { return false }
+        return start == here
+    }
+}
+
+extension WhereToChip {
+    /// B66: just the place name: no time, arrival, battery or note
+    public mutating func nameOnly() {
+        timeText = nil
+        arriveText = nil
+        timeS = nil
+        usedText = nil
+        usualNeedPct = nil
+        note = nil
+        detail = label
+    }
+}
+
 public enum WhereTo {
     /// B58 (owner screenshot 21 Oct: "31 min, arrive 16:25" at 21:16): the arrival clock is always leaving NOW plus the ride time,
     /// computed when it is shown (the sheet ticks every minute), never the clock of the moment the list was loaded.

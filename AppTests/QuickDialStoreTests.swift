@@ -63,6 +63,28 @@ final class QuickDialStoreTests: XCTestCase {
         XCTAssertEqual(two.rows.first?.timeText, two.chips.first?.timeText)
     }
 
+    /// B66: "Uni • 29 mins" only at the trip's start place (Home); at Uni or anywhere else just "Uni"
+    func test_B66_tripTimeOnlyAtTheTripsStartPlace() throws {
+        let db = try open()
+        try addPlace(db, "home", "Home", lat: 10.0)
+        try addPlace(db, "uni", "Uni", lat: 10.05)
+        for (i, id) in ["r1", "r2"].enumerated() {
+            _ = try RouteFixtures.insertRide(db, id: id, path: SyntheticRoutes.main, startAt: base - Int64(i + 1) * 86_400_000, simulated: false)
+            try RouteQueries(db).setPlaces(rideId: id, startPlaceId: "home", endPlaceId: "uni")
+        }
+        func uni(_ at: GeoPoint?) -> WhereToChip? {
+            QuickDialLoader.load(database: db, routeChips: [], slots: 3, from: at, nowMs: base, utcOffsetMin: 0).chips.first { $0.routeId == "place:uni" }
+        }
+        XCTAssertNotNil(uni(GeoPoint(lat: 10.0, lon: 20))?.timeText, "at Home: the Home -> Uni time")
+        let atUni = uni(GeoPoint(lat: 10.05, lon: 20))
+        XCTAssertNil(atUni?.timeText, "at Uni: no trip time")
+        XCTAssertNil(atUni?.note, "and no note either: just the name")
+        XCTAssertEqual(atUni?.here, true)
+        XCTAssertNil(uni(GeoPoint(lat: 10.02, lon: 20))?.timeText, "somewhere else: just the name")
+        XCTAssertNil(uni(GeoPoint(lat: 10.02, lon: 20))?.usualNeedPct, "no battery need either")
+        XCTAssertNotNil(uni(nil)?.timeText, "position unknown: as before")
+    }
+
     func test_pinsAreWrittenAndReadBackInOrder() throws {
         let db = try open()
         try addPlace(db, "a", "A", lat: 10.01)

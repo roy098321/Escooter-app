@@ -123,9 +123,22 @@ enum QuickDialLoader {
 
         var chips = routeChips
         var keyForPlace: [String: String] = [:]
+        // B66 (owner 26 Oct, Q1 = A): a learned trip time (and battery need) only when the phone is at that trip's START place; elsewhere
+        // just the place name. Position unknown: as before (nothing to judge by).
+        let outlinesAll = PlaceOutlineStore.all(database)
+        let herePlace = from.flatMap { f in
+            WhereToDedupe.placeContaining(f, places: allPlaces.map {
+                WhereToDedupe.NamedPlace(id: $0.id, name: $0.name ?? "", center: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM, outline: outlinesAll[$0.id])
+            })
+        }
+        let rideStarts = from == nil ? [:] : ((try? store.startPlaceIds()) ?? [:])
+        func fromHere(_ startPlaceId: String?) -> Bool { from == nil || TripFromHere.applies(tripStartPlaceId: startPlaceId, herePlaceId: herePlace) }
+        for i in chips.indices {
+            if let route = savedRoutes.first(where: { $0.id == chips[i].routeId }), !fromHere(route.fromPlaceId) { chips[i].nameOnly() }
+        }
         // B61: the named place each saved route ends at (the circle its end falls inside, else its link, else the same name); the route and
         // the place are then one row, and a second route to the same place is not a second row
-        let outlines = PlaceOutlineStore.all(database)   // note 18
+        let outlines = outlinesAll   // note 18
         let named = places.map { WhereToDedupe.NamedPlace(id: $0.id, name: $0.name ?? "", center: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM,
                                                           outline: outlines[$0.id]) }
         var endOf: [String: String] = [:]
@@ -145,7 +158,9 @@ enum QuickDialLoader {
                 for r in (try? store.routeRides(routeId: route.id)) ?? [] where seen.insert(r.id).inserted { rows.append(r) }
             }
             for r in (try? store.placeRides(placeId: p.id)) ?? [] where seen.insert(r.id).inserted { rows.append(r) }
-            let verdict = PlaceRides.verdict(rides: RouteCardLoader.stats(rows), nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+            let tripRows = rows.filter { fromHere(rideStarts[$0.id]) }   // B66: only the trips that start where the phone is
+            let verdict = PlaceRides.verdict(rides: RouteCardLoader.stats(tripRows), nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+            let nameOnly = !rows.isEmpty && tripRows.isEmpty   // there are rides there, none from here: just the name
             let here = PlaceHere.isHere(phone: from, place: GeoPoint(lat: p.lat, lon: p.lon), radiusM: p.radiusM, outline: outlines[p.id])
 
             // a saved route that ends here (and has a chip) is used as it is; without a usual estimate it takes the place's rides (B45).
@@ -158,11 +173,13 @@ enum QuickDialLoader {
                 chips[i].label = name
                 chips[i].here = here
                 if chips[i].timeText == nil { apply(verdict, to: &chips[i], name: name, nowMs: nowMs, utcOffsetMin: utcOffsetMin) }
+                if nameOnly { chips[i].nameOnly() }
                 continue
             }
             var chip = WhereToChip(routeId: placePrefix + p.id, label: name, detail: name)
             chip.here = here
             apply(verdict, to: &chip, name: name, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+            if nameOnly { chip.nameOnly() }
             chips.append(chip)
             keyForPlace[p.id] = chip.routeId
         }

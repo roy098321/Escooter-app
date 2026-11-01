@@ -8,7 +8,8 @@ import GRDB
 /// u169 Home's last reading with its time and the labelled charge target (R3 / B64),
 /// u170 one full time on the charging screen, the estimate starts at the last reading (R5 / B65),
 /// u172 the export holds every ride of this phone's Rides list (B67; read only),
-/// u173 place outlines: inside / outside, the editor, the outline replaces the circle, "Around" rides (note 18).
+/// u173 place outlines: inside / outside, the editor, the outline replaces the circle, "Around" rides (note 18),
+/// u175 a trip time only at the trip's start place (B66).
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -20,6 +21,38 @@ enum B102Checks {
         runChargeAgree()
         runExportHoldsList()
         runPlaceOutline()
+        runTripFromHere()
+    }
+
+    // MARK: u175
+
+    /// B66 on a temporary database: two made-up Home → Uni rides; Uni's chip has a time at Home only
+    private static func runTripFromHere() {
+        let expect = Expect()
+        let base: Int64 = 1_790_000_000_000
+        do {
+            let temp = try AppDatabase.openTemporary(build: AppInfo.build)
+            defer { temp.discardTemporary() }
+            try temp.writer.write { d in
+                try PlaceRecord(id: "home", name: "Home", lat: 10.0, lon: 20.0, createdAt: 1).insert(d)
+                try PlaceRecord(id: "uni", name: "Uni", lat: 10.05, lon: 20.0, createdAt: 2).insert(d)
+            }
+            for (i, id) in ["r1", "r2"].enumerated() {
+                _ = try RouteFixtures.insertRide(temp, id: id, path: SyntheticRoutes.main, startAt: base - Int64(i + 1) * 86_400_000, simulated: false)
+                try RouteQueries(temp).setPlaces(rideId: id, startPlaceId: "home", endPlaceId: "uni")
+            }
+            func uni(_ at: GeoPoint) -> WhereToChip? {
+                QuickDialLoader.load(database: temp, routeChips: [], slots: 3, from: at, nowMs: base, utcOffsetMin: 0).chips.first { $0.routeId == "place:uni" }
+            }
+            let home = uni(GeoPoint(lat: 10.0, lon: 20.0))
+            expect(home?.timeText != nil, "at Home: Uni \u{2022} \(home?.timeText ?? "no time")")
+            let there = uni(GeoPoint(lat: 10.05, lon: 20.0))
+            expect(there?.timeText == nil && there?.note == nil && QuickDialLoader.summary(chip: there) == "Uni", "at Uni: just Uni")
+            expect(uni(GeoPoint(lat: 10.02, lon: 20.0))?.timeText == nil, "somewhere else: just the name")
+        } catch {
+            expect(false, "the temporary database failed: \(error.localizedDescription)")
+        }
+        expect.report("u175")
     }
 
     // MARK: u173
