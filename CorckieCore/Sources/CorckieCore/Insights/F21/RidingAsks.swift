@@ -70,6 +70,12 @@ public struct RidingAsk: Equatable, Sendable {
     /// nil = no fitting stretch on the usual routes (the ask still stands)
     public var stretch: AskStretch?
 
+    public init(speedKmh: Int, metres: Int, stretch: AskStretch?) {
+        self.speedKmh = speedKmh
+        self.metres = metres
+        self.stretch = stretch
+    }
+
     /// "800 m steady at 35 km/h fills your speed graph."
     public var line: String { "\(metres) m steady at \(speedKmh) km/h fills your speed graph." }
 }
