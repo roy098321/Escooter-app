@@ -895,7 +895,7 @@ struct CheckGuide {
         "u157": CheckGuide(proves: "Every build brings its What's new card, shown once.",
                            steps: ["Developer \u{2192} Checks \u{2192} Run all automatic.", "Result: the entry, its items and the show-once rule each say ok. The real thing is check ui157."], place: .noScooter),
         "ui157": CheckGuide(proves: "After an update you see in one card what changed.",
-                            steps: ["Open the app right after installing the update.", "The card says What's new \u{00B7} 251026; close it; reopen the app: it stays closed. Settings \u{2192} What's new has the full list. Tap Pass or Fail with a note."], place: .noScooter),
+                            steps: ["Open the app right after installing the update.", "The card says What's new \u{00B7} 011126; close it; reopen the app: it stays closed. Settings \u{2192} What's new has the full list. Tap Pass or Fail with a note."], place: .noScooter),
         "ui159": CheckGuide(proves: "You can look at the ride screen without riding, and nothing is recorded.",
                             steps: ["Settings \u{2192} Developer \u{2192} Ride screen preview.", "Watch it play; try the \u{22EF} events and scenarios; close.", "Rides has no new ride. Tap Pass or Fail with a note."], place: .noScooter),
         "ui160": CheckGuide(proves: "We know which way of drawing the route really shows its colours on this phone.",

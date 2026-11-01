@@ -1,5 +1,33 @@
 [
   {
+    "version": "102.011126.00",
+    "headline": "Places with real shapes, honest insights, and a voice that helps you plan",
+    "items": [
+      { "symbol": "speaker.wave.2", "title": "Voice energy updates", "line": "Every 10 %, using more than usual, running late, engine heat and “Arrived at Uni, battery at 58%”. Urgent ones at once, the rest at a stop." },
+      { "symbol": "pentagon", "title": "Draw your places", "line": "Give a place its real outline. Arriving counts the moment you cross in; rides that stay inside show as “Around Uni”." },
+      { "symbol": "chart.line.uptrend.xyaxis", "title": "Insights that say how far they are", "line": "“About 7 more rides”, graphs that are solid where you rode and dashed where data is thin, and small riding asks." },
+      { "symbol": "bolt.fill", "title": "Charging you can read", "line": "Your last reading and its time on Home, one full time, and a battery on the Lock Screen that fills and counts down by itself." }
+    ],
+    "smallerFixes": 11,
+    "full": [
+      "Every ride map draws the route as a thin, even line whose colour changes along the ride.",
+      "The Battery layer marks 90%, 80% … where the battery first dropped below each 10 %.",
+      "Scooter off: Home shows your last reading and its time (66% · 07:49); the small pill reads Charge to 100%.",
+      "Charging: the estimate starts from your last real reading and the screen shows one full time.",
+      "Lock Screen and Dynamic Island count down to your target and fill a battery shape on their own; no frozen % number.",
+      "Rides brought back with Restore are saved to the backup folder like any ride, so they travel with your data.",
+      "Places: Circle or an Outline you draw (tap corners, drag, add a corner between two, Undo, Reset). Rides that stay inside are listed as Around <place> and do not change estimates.",
+      "A trip's usual time shows only where that trip starts; elsewhere just the place name.",
+      "Ride graph: a tap adds or removes a line; ⇄ switches a line to its deeper view (Speed ⇄ Accel). Pinch zooms time, a one-finger swipe up or down changes the scale.",
+      "Ride detail plays back like Replay: the speed strip, play, 1× / 5× / 20× and a dot moving on the map.",
+      "Insights learn from whole rides (Hills, Speed, Battery over time, Cold, Wind, Best time to leave) and say how many more rides they need; the old speed sweet spot is gone.",
+      "The speed card asks for one small steady stretch on a straight, flat part of your routes; Not here picks another place; Got it ✓ when it is done.",
+      "The charging speed is learned from your own Plug ins.",
+      "The app learns where your scooter starts holding back power at low battery (after a ride below 15 %); until then nothing changes.",
+      "Voice energy updates while riding, with an on/off switch in Settings → Sounds."
+    ]
+  },
+  {
     "version": "101.251026.01",
     "headline": "Hotfix: route colours, sweet spot and clearer charts",
     "items": [

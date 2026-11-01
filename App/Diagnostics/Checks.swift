@@ -791,7 +791,7 @@ enum CheckList {
         m("u157", p6M, "What's new card (F-32)", "Nothing to do \u{00B7} Run all automatic marks it",
           "The bundled list has an entry for this build with 3 or 4 items and its full list; the card shows once for a new build, never during a ride, not again after it was seen"),
         m("ui157", p6M, "What's new after the update (F-32)", "Open the app for the first time after installing this build",
-          "A card over the dimmed Home: What's new \u{00B7} 251026, four items and the smaller-changes line; \u{2715} or a tap outside closes it; it does not come back; Settings \u{2192} What's new lists everything", manual: true),
+          "A card over the dimmed Home: What's new \u{00B7} 011126, four items and the smaller-changes line; \u{2715} or a tap outside closes it; it does not come back; Settings \u{2192} What's new lists everything", manual: true),
         m("ui159", p6M, "Ride screen preview (F-37)", "Settings \u{2192} Developer \u{2192} Ride screen preview",
           "The real ride screen full screen with a Preview badge plays a made-up ride (speed, battery, arrival line, moving map); \u{22EF} pauses, triggers battery 20 / 15 / 10 %, Motor hot, Phone took over, switches destination and day / night; no ride appears in Rides afterwards", manual: true),
         m("ui160", p6M, "Route line lab (hotfix 01)", "Settings \u{2192} Developer \u{2192} Route line lab: tap A, B and C (A also with At most 16 colour stops)",
