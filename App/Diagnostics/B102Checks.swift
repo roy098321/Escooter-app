@@ -1,11 +1,13 @@
 import CorckieCore
 import Foundation
+import GRDB
 
 /// Batch 102.011126.00 checks, on made-up input only (nothing real is read or written).
 /// u168 the route line is short solid pieces of the lab's B width (R1 / note 17),
 /// u166 the Battery layer marks each first drop below 10 % steps (R2),
 /// u169 Home's last reading with its time and the labelled charge target (R3 / B64),
-/// u170 one full time on the charging screen, the estimate starts at the last reading (R5 / B65).
+/// u170 one full time on the charging screen, the estimate starts at the last reading (R5 / B65),
+/// u172 the export holds every ride of this phone's Rides list (B67; read only).
 @MainActor
 enum B102Checks {
     typealias Expect = B101LateChecks.Expect
@@ -15,6 +17,24 @@ enum B102Checks {
         runBatteryMarks()
         runLastReading()
         runChargeAgree()
+        runExportHoldsList()
+    }
+
+    // MARK: u172
+
+    /// B67: the export's rides = the Rides list (real rides), read only on this phone's database
+    private static func runExportHoldsList() {
+        let expect = Expect()
+        guard let db = AppModel.shared.database else {
+            CheckResults.shared.set("u172", .info, "No database open")
+            return
+        }
+        let listed = ((try? RideQueries(db).rides()) ?? []).filter { !$0.isSimulated }
+        let exported = Set((try? db.writer.read { try ExportAll.rideIds($0) }) ?? [])
+        let missing = listed.filter { !exported.contains($0.id) }
+        expect(missing.isEmpty, "\(listed.count) rides in the list, \(exported.count) in the export"
+               + (missing.isEmpty ? "" : "; missing: " + missing.prefix(3).map { "\($0.kind) \($0.id.prefix(6))" }.joined(separator: ", ")))
+        expect.report("u172")
     }
 
     // MARK: u170

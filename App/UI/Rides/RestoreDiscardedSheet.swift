@@ -65,6 +65,7 @@ struct RestoreDiscardedSheet: View {
         guard let db = AppModel.shared.database else { return }
         do {
             try RideToolsService.restoreDiscarded(db, rideId: r.id)
+            BackupWriter.shared.rideEnded(rideId: r.id)   // B67: the restored ride also goes to the backup folder like any ride
             restored.insert(r.id)
             Haptics.success()
         } catch {

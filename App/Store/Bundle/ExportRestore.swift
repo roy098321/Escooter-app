@@ -37,10 +37,15 @@ struct ExportFile: Codable {
 }
 
 enum ExportAll {
+    /// The rides an export holds: every ride the Rides list shows, except simulated ones (B67: restored phone rides included)
+    static func rideIds(_ d: Database) throws -> [String] {
+        try String.fetchAll(d, sql: "SELECT id FROM ride WHERE kind != 'discarded' AND isSimulated = 0 ORDER BY startAt")
+    }
+
     static func make(_ db: AppDatabase, build: String, nowMs: Int64) throws -> ExportFile {
         let schema = try db.appliedMigrations().count
         return try db.writer.read { d in
-            let ids = try String.fetchAll(d, sql: "SELECT id FROM ride WHERE kind != 'discarded' AND isSimulated = 0 ORDER BY startAt")
+            let ids = try rideIds(d)
             var rides: [RideBundle] = []
             for id in ids {
                 if let bundle = try RideBundle.read(d, rideId: id) { rides.append(bundle) }

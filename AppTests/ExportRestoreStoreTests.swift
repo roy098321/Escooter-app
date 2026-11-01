@@ -129,6 +129,18 @@ final class ExportRestoreStoreTests: XCTestCase {
         XCTAssertFalse(file.rides.contains { $0.rideId == "SIM" })
     }
 
+    /// B67: a ride brought back with Restore discarded ride (B57) is in the export, and the export holds every ride the Rides list shows
+    func testRestoredPhoneRideIsExported() throws {
+        try RideToolsSeed.ride(a, id: "LOST", startAt: t0 + 2 * 86_400_000)
+        try a.writer.write { d in try d.execute(sql: "UPDATE ride SET kind = 'discarded' WHERE id = 'LOST'") }
+        XCTAssertFalse(try ExportAll.make(a, build: "test", nowMs: t0).rides.contains { $0.rideId == "LOST" })
+        try RideToolsService.restoreDiscarded(a, rideId: "LOST", nowMs: t0 + 3 * 86_400_000)
+        let file = try ExportAll.make(a, build: "test", nowMs: t0)
+        XCTAssertTrue(file.rides.contains { $0.rideId == "LOST" }, "the restored ride is exported")
+        let listed = Set(try RideQueries(a).rides().filter { !$0.isSimulated }.map(\.id))
+        XCTAssertEqual(Set(file.rides.map(\.rideId)), listed, "every ride of the Rides list is in the export")
+    }
+
     func testMergeUndoNoteIsNotExported() throws {
         try RideQueries(a).setSetting(key: "merge.undo", json: "{}")
         let file = try ExportAll.make(a, build: "test", nowMs: t0)
