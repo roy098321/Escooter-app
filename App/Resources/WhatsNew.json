@@ -1,5 +1,24 @@
 [
   {
+    "version": "102.011126.01",
+    "headline": "Hotfix: a voice you can trust",
+    "items": [
+      { "symbol": "battery.75", "title": "Arrival battery that holds", "line": "Hills no longer set it off. It speaks only when sure, compares with your own rides, and never says a higher number after a lower one." },
+      { "symbol": "clock", "title": "Late means late", "line": "Late is against today's estimate, from a third of the way on: “Running 6 minutes late, arriving at 9:02.” An early red light is not late." },
+      { "symbol": "speaker.wave.2", "title": "One line to start", "line": "A few seconds after you set off: “Riding to Uni, arriving at 8:56, battery at 98 percent.”" }
+    ],
+    "smallerFixes": 2,
+    "full": [
+      "The arrival battery is worked out from the energy you use, so a hill at full throttle no longer makes it jump.",
+      "It is compared point by point with your past rides on the route, said only after it holds steady for a minute, never in the first 2 km, rounded to 5, and only when 5 points worse than the last; better stays quiet, with one “Back on track” at 10 better.",
+      "Running late is measured against the time the Where-to chip promised today, only from a third of the route, held a minute, and only when slower than most of your rides there.",
+      "The ride screen's arrival time no longer jumps later after an early red light.",
+      "Start line: where you are riding, when you arrive and your battery, once.",
+      "After a ride, the summary (More) shows what the voice said next to what really happened.",
+      "Developer: Voice replay tries the new voice on your newest rides."
+    ]
+  },
+  {
     "version": "102.011126.00",
     "headline": "Places with real shapes, honest insights, and a voice that helps you plan",
     "items": [

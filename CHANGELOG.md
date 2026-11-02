@@ -2,6 +2,13 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 102.011126.01 — hotfix 1 of batch 2, Mon 2 Nov 2026 (voice you can trust)
+
+- H1 / B69: the arrival battery the voice says comes from the energy you use (not the scooter's % that dips on a hill), compared point by point with your past rides on the route. It speaks only after the estimate held for a minute, never in the first 2 km, rounded to 5 ("about 40 percent"), only when 5 points worse than the last number, and never says a higher number after a lower one; better stays quiet, with one "Back on track" at 10 points better. Arriving under 20 %, the point of no return and the every-10 % lines use the same level.
+- H2 / B70: late means later than TODAY's estimate (the time the Where-to chip promised), measured at the point you are, from setting off. Only after 3 km and a third of the route, held a minute, 5 minutes or more and slower than most of your rides there; again only 5 minutes later; "Back on time" once. Line: "Running 6 minutes late, arriving at 9:02." The ride screen's arrival time uses the same point-by-point time, so an early red light no longer pushes it later twice.
+- H3: a few seconds after setting off on a known route: "Riding to Uni, arriving at 8:56, battery at 98 percent." once (Voice energy updates switch).
+- Proof: every spoken line is kept with the numbers behind it; the ride summary (More) shows what was said next to what really happened; Developer → Voice replay runs the new voice over your newest rides and says Pass or what went wrong. Lab checks u186–u189, phone checks ui186–ui190.
+
 ## 102.011126.00 — batch 2, due Sun 1 Nov 2026 (the last feature build before the finish)
 
 ### Hotfix 02 and bugs
