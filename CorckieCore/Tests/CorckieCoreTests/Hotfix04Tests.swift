@@ -114,3 +114,48 @@ final class Hotfix04Tests: XCTestCase {
         XCTAssertTrue(fine.passed, fine.problems.joined(separator: ", "))
     }
 }
+
+/// Hotfix 04 (B72): the unplugged estimate ends on the next real reading, timer or not; the Scooter tab and Home show one reading.
+final class Hotfix04UnpluggedTests: XCTestCase {
+    private let unplugMs: Int64 = 1_000_000 + 36 * 60_000          // "10:36" on a made-up day
+    private let connectMs: Int64 = 1_000_000 + 38 * 60_000         // "10:38"
+    private let rideEndMs: Int64 = 1_000_000 + 74 * 60_000         // "11:14"
+
+    private func unpluggedLog() -> [ChargeLogEntry] {
+        [ChargeLogEntry(id: "c", startMs: unplugMs - 3 * 3_600_000, endMs: unplugMs, startPct: 44, endPct: 84, measured: false)]
+    }
+
+    func testConnectingWithEightyFiveEndsTheEstimateAndMeasuresTheCharge() {
+        let a = UnpluggedEstimate.settle(unpluggedMs: unplugMs, connectedPct: 85, riding: false, rideSince: nil)
+        XCTAssertEqual(a, .clearAndComplete(85))
+        let log = UnpluggedEstimate.complete(unpluggedLog(), realPct: 85)
+        XCTAssertEqual(log.first?.measured, true)
+        XCTAssertEqual(log.first?.endPct, 85)
+        XCTAssertEqual(log.first?.endMs, unplugMs, "the window still ends at the unplug moment")
+        XCTAssertEqual(UnpluggedEstimate.complete(log, realPct: 47), log, "a measured entry is never changed again")
+    }
+
+    func testNoReadingKeepsTheEstimateAndARideReadingWaits() {
+        XCTAssertEqual(UnpluggedEstimate.settle(unpluggedMs: unplugMs, connectedPct: nil, riding: false, rideSince: nil), .keep)
+        XCTAssertEqual(UnpluggedEstimate.settle(unpluggedMs: unplugMs, connectedPct: 80, riding: true, rideSince: nil), .keep,
+                       "a % under load does not measure the charge")
+        // the ride after the unplug: its rested start (85) measures the charge, the estimate goes
+        XCTAssertEqual(UnpluggedEstimate.settle(unpluggedMs: unplugMs, connectedPct: 47, riding: false,
+                                                rideSince: (startMs: connectMs, startRestPct: 85)), .clearAndComplete(85))
+        XCTAssertEqual(UnpluggedEstimate.settle(unpluggedMs: unplugMs, connectedPct: nil, riding: false,
+                                                rideSince: (startMs: connectMs, startRestPct: nil)), .clear)
+        // a ride from before the unplug says nothing
+        XCTAssertEqual(UnpluggedEstimate.settle(unpluggedMs: unplugMs, connectedPct: nil, riding: false,
+                                                rideSince: (startMs: unplugMs - 60_000, startRestPct: 70)), .keep)
+    }
+
+    func testAfterARideToFortySevenBothScreensSayFortySeven() {
+        // Home: LastReading.pick; the Scooter tab: the same reading, the 10:36 estimate is older so it is not shown
+        let home = LastReading.pick(seen: BatteryReading(pct: 46, ms: rideEndMs + 60_000), rideEnd: BatteryReading(pct: 47, ms: rideEndMs))
+        XCTAssertEqual(home?.pct, 47)
+        XCTAssertFalse(UnpluggedEstimate.shows(unpluggedMs: unplugMs, lastReadingMs: home?.ms))
+        // before any newer reading the estimate is what the card shows
+        XCTAssertTrue(UnpluggedEstimate.shows(unpluggedMs: unplugMs, lastReadingMs: unplugMs - 3 * 3_600_000))
+        XCTAssertTrue(UnpluggedEstimate.shows(unpluggedMs: unplugMs, lastReadingMs: nil))
+    }
+}

@@ -129,6 +129,34 @@ final class ChargeTimer {
         if let s = session { finish(ChargeLogEntry.finish(s, atMs: now, realPct: Double(pct))) } else { persist() }
     }
 
+    /// B72 (hotfix 04): with no timer running, a real reading after "Unplugged" ends the estimate: the scooter connected (not riding),
+    /// or a ride since the unplug moment (its rested start % completes the charge's entry; a connection mid-ride waits for its end)
+    func settleUnplugged() {
+        guard session == nil, let u = unplugged else { return }
+        let link = AppModel.shared.scooter
+        let action = UnpluggedEstimate.settle(unpluggedMs: u.ms, connectedPct: link.connected ? AppModel.shared.settledBatteryPct : nil,
+                                              riding: RecorderService.shared.rideActive, rideSince: rideAfter(u.ms))
+        switch action {
+        case .keep:
+            return
+        case .clear:
+            Log.info(source: "charge", "unplugged estimate ended by a ride (no rested start reading)")
+        case let .clearAndComplete(p):
+            log = UnpluggedEstimate.complete(log, realPct: p)
+            Log.info(source: "charge", "unplugged estimate ended by a real reading of \(Int(p.rounded())) %")
+        }
+        unplugged = nil
+        persist()
+    }
+
+    /// B72: the newest finished real ride that started after `ms` (its start time and rested start %)
+    private func rideAfter(_ ms: Int64) -> (startMs: Int64, startRestPct: Double?)? {
+        guard let db = AppModel.shared.database,
+              let r = (try? RideQueries(db).rides(limit: 5))?.first(where: { !$0.isSimulated && $0.kind == "ride" && $0.endAt != nil }),
+              r.startAt > ms else { return nil }
+        return (r.startAt, r.startRestPct)
+    }
+
     /// Batch 102 (insights plan 3a): the charging speed learned from the Plug in log (nil until 3 good charges)
     var learnedRate: ChargeRateLearner.Learned? { ChargeRateLearner.learn(log) }
 
@@ -145,6 +173,7 @@ final class ChargeTimer {
         nowMs = now
         let link = AppModel.shared.scooter
         if sideEffects, session != nil, link.connected, let p = AppModel.shared.settledBatteryPct { realReading(pct: p); return }
+        if sideEffects, session == nil, unplugged != nil { settleUnplugged() }   // B72
         if let s = session { LiveActivityController.shared.sync(s, nowMs: nowMs) }
     }
 

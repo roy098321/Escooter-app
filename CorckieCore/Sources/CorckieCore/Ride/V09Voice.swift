@@ -471,8 +471,11 @@ public struct V09Director: Sendable {
         estWindow.append((i.t, arrive))
         estWindow.removeAll { i.t - $0.t > Self.stableS }
         let hasHistory = i.history?.isUsable == true
+        // B71: the window spans 60 s less one reading step (live readings ~1 s apart: 58 s as before; stored rows ~5 s apart: ~55 s;
+        // with the old fixed 58 s a replay over stored rows was never steady and said no battery line at all)
+        let stepS = estWindow.count >= 2 ? estWindow[estWindow.count - 1].t - estWindow[estWindow.count - 2].t : 0
         guard !Self.arrived(i), i.rideKm >= (hasHistory ? Self.quietKm : Self.quietKmNoHistory), let first = estWindow.first,
-              i.t - first.t >= Self.stableS - 2, let lo = estWindow.map(\.v).min(), let hi = estWindow.map(\.v).max(),
+              i.t - first.t >= Self.stableS - max(2, stepS), let lo = estWindow.map(\.v).min(), let hi = estWindow.map(\.v).max(),
               hi - lo <= Self.stableSpreadPts else { return }
         let stable = estWindow.map(\.v).reduce(0, +) / Double(estWindow.count)
         numbers.stable = true

@@ -3,7 +3,8 @@ import Foundation
 
 /// Hotfix 102.011126.02 checks (B71), on made-up rides of a made-up route only (`V09Lab`; nothing real is read or written).
 /// u191 stored rows ~5 s apart count: the route history, the live battery and the sanity guard,
-/// u192 the voice: arrival below the battery now halfway, no line with under 5 points left, the replay fails the old behaviour.
+/// u192 the voice: arrival below the battery now halfway, no line with under 5 points left, the replay fails the old behaviour,
+/// u193 (B72) the unplugged estimate ends on the next real reading and the Scooter tab shows Home's reading (made-up numbers only).
 @MainActor
 enum HF04Checks {
     typealias Expect = B101LateChecks.Expect
@@ -11,6 +12,7 @@ enum HF04Checks {
     static func run() {
         runHistory()
         runVoice()
+        runUnplugged()
     }
 
     private static let wh = V09Lab.storedWhPerPct
@@ -67,5 +69,26 @@ enum HF04Checks {
             }
         }
         expect.report("u192")
+    }
+
+    // MARK: u193 (B72)
+
+    private static func runUnplugged() {
+        let expect = Expect()
+        let unplug: Int64 = 1_000_000, ride: Int64 = unplug + 2 * 60_000, end: Int64 = unplug + 38 * 60_000
+        let a = UnpluggedEstimate.settle(unpluggedMs: unplug, connectedPct: 85, riding: false, rideSince: nil)
+        expect(a == .clearAndComplete(85), "unplugged at \u{2248} 84 %, connected with 85 %: the estimate ends, the charge is measured")
+        let log = UnpluggedEstimate.complete([ChargeLogEntry(id: "x", startMs: unplug - 3_600_000, endMs: unplug, startPct: 70, endPct: 84,
+                                                             measured: false)], realPct: 85)
+        expect(log.first?.measured == true && log.first?.endPct == 85, "the charge log entry: 70 \u{2192} 85 %, measured")
+        let riding = UnpluggedEstimate.settle(unpluggedMs: unplug, connectedPct: 80, riding: true, rideSince: nil)
+        let after = UnpluggedEstimate.settle(unpluggedMs: unplug, connectedPct: nil, riding: false, rideSince: (startMs: ride, startRestPct: 85))
+        expect(riding == .keep && after == .clearAndComplete(85), "connected only while riding: ended after the ride with its rested start 85 %")
+        let home = LastReading.pick(seen: nil, rideEnd: BatteryReading(pct: 47, ms: end))
+        expect(home?.pct == 47 && !UnpluggedEstimate.shows(unpluggedMs: unplug, lastReadingMs: home?.ms),
+               "after a ride to 47 %: Home and the Scooter tab both 47 %, no old estimate")
+        let waiting = ChargeTimer.shared.unplugged.map { "an unplugged estimate of \(Int($0.pct.rounded())) % is waiting for a reading" }
+        expect(true, "this phone: " + (waiting ?? "no unplugged estimate waiting"))
+        expect.report("u193")
     }
 }

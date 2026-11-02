@@ -104,7 +104,7 @@ final class AutoRunner {
         B101LateChecks.run()                     // batch 101 chunks C-E: u147 shared energy track (F-34), u148 map layer row (F-33), u149 one gradient route line (B59), u150 ride summary layout (B52), u151 smooth route draw (B53), u152 ride review card (note 11), u153 Plug in after every ride (F-31b), u154 one Stats chart (note 8), u155 insight progress (note 9), u156 ride graph (note 13), u158 release name (F-30b), u157 What's new (F-32), u144 place order (place drag)
         B102Checks.run()                         // batch 102.011126.00: the list is at the top of B102Checks.swift
         HF03Checks.run()                         // hotfix 102.011126.01: voice you can trust (u186–u189)
-        HF04Checks.run()                         // hotfix 102.011126.02 (B71): stored rows ~5 s apart count (u191, u192)
+        HF04Checks.run()                         // hotfix 102.011126.02 (B71): stored rows ~5 s apart count (u191, u192), B72 unplugged estimate (u193)
         ChargeEtaChecks.run()                    // P6-6 (F-31 / F-27): u120 charge timer maths, u121 targets + notification times, u122 charge log data
         P61UiChecks.run(real: model.database)   // chunk 2: u55 bounce, u56 live tiles + camera, u57 saved way back
         await P61PlaceChecks.run()               // chunk 3: u58 place colours, u59 places by hand + labels, u60 street lookup
@@ -173,5 +173,5 @@ enum AutomaticChecks {
                       "u137", "u138", "u139", "u140", "u141", "u142", "u143",
                       "u147", "u148", "u149", "u150", "u151", "u152", "u153", "u154", "u155", "u156", "u158", "u157", "u144",
                       "u168", "u166", "u169", "u170", "u172", "u173", "u175", "u176", "u177", "u179", "u180", "u181", "u182", "u183",
-                      "u186", "u187", "u188", "u189", "u191", "u192"]
+                      "u186", "u187", "u188", "u189", "u191", "u192", "u193"]
 }

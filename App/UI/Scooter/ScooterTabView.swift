@@ -142,14 +142,18 @@ struct ScooterTabView: View {
         let seenPct: Int? = preview != nil ? preview?.batteryPct : LastSeen.load().pct
         let odo = preview != nil ? preview?.odometerKm : odometerKm
         let livePct: Int? = preview != nil ? preview?.batteryPct : AppModel.shared.settledBatteryPct
-        let pct = connected ? (livePct ?? seenPct) : seenPct
+        // B72: offline, the same last reading as Home (LastReading.pick: the ride's rested end wins over a last-seen value of that stop)
+        let last = preview == nil && !connected ? ChargeTimer.shared.lastReading() : nil
+        let pct = connected ? (livePct ?? seenPct) : (last?.pct ?? seenPct)
         // F-26: the hero card (the line-art scooter enters from the left; name, battery %, caption, odometer and Connect on the right)
         let nowMs = preview?.nowMs ?? Int64(Date().timeIntervalSince1970 * 1000)
         // F-31: a running charge timer (or the estimate it left when unplugged) replaces the last reading on the card
         let timer = ChargeTimer.shared
         let charge: ChargeSession? = preview != nil ? preview?.charge : timer.session
-        let shown = Self.chargeAdjusted(pct: pct, caption: seenMs.map { Self.lastConnectedCaption($0, nowMs: nowMs) },
-                                        unplugged: preview == nil && !connected && charge == nil ? timer.unplugged : nil, utcOffsetMin: timer.utcOffsetMin)
+        // B72: the unplugged estimate only while it is newer than that last reading
+        let estimate = timer.unplugged.flatMap { u in UnpluggedEstimate.shows(unpluggedMs: u.ms, lastReadingMs: last?.ms) ? u : nil }
+        let shown = Self.chargeAdjusted(pct: pct, caption: (last?.ms ?? seenMs).map { Self.lastConnectedCaption($0, nowMs: nowMs) },
+                                        unplugged: preview == nil && !connected && charge == nil ? estimate : nil, utcOffsetMin: timer.utcOffsetMin)
         ScooterHeroCard(name: customName ?? rec?.name ?? "Scooter", connected: connected, pct: shown.pct,
                         caption: shown.caption, odometerKm: odo,
                         colour: colour, photo: photo,
