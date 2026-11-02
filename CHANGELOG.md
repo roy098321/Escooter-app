@@ -2,6 +2,16 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 102.011126.02 — hotfix 2 of batch 2, Mon 2 Nov 2026 (arrival battery = battery now; Scooter tab vs Home battery)
+
+- B71: the voice's arrival battery said your battery now ("Arrival battery now about 60" right after "Battery at 60"). Past rides are stored a row about every 5 seconds, and the arrival maths skipped any gap over 5 seconds, so every past ride seemed to use nothing. One gap limit (6 seconds) now for the live battery, the route's past rides and the voice replay.
+- A past ride that seems to use under 1 % while its battery fell 3 % or more is left out of the route's history (the reason goes in the log).
+- No arrival battery line while under 5 points are left to use on the route; never the battery now; never the same number as the line just before.
+- Voice replay: a ride fails when, halfway, the arrival equals the battery now, or a line repeats a number. Tests now use rides stored like real ones (a row every 5.1–5.3 s, 85 → 48 %, about 340 Wh). Lab checks u191–u192, phone checks ui191–ui192.
+- The voice replay over stored rides was never "steady" (it waited for 58 s of readings that come ~5 s apart), so it never said a battery line; it now allows one reading step.
+- B72: after "Unplugged" the Scooter tab kept "≈ 84 % estimate when unplugged" while Home said "Last reading 47 %". The next real reading now ends the estimate even with no charge timer running: a scooter connection (not while riding), or the ride after it (its rested start %). That charge then counts as measured for the learned charging speed. With the scooter off, the Scooter tab shows the same last reading and time as Home. Lab check u193, phone check ui193.
+- Smaller: check ui184 lists all 15 voice lines.
+
 ## 102.011126.01 — hotfix 1 of batch 2, Mon 2 Nov 2026 (voice you can trust)
 
 - H1 / B69: the arrival battery the voice says comes from the energy you use (not the scooter's % that dips on a hill), compared point by point with your past rides on the route. It speaks only after the estimate held for a minute, never in the first 2 km, rounded to 5 ("about 40 percent"), only when 5 points worse than the last number, and never says a higher number after a lower one; better stays quiet, with one "Back on track" at 10 points better. Arriving under 20 %, the point of no return and the every-10 % lines use the same level.

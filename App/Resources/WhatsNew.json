@@ -1,5 +1,24 @@
 [
   {
+    "version": "102.011126.02",
+    "headline": "Hotfix: the arrival battery is right again, one battery everywhere",
+    "items": [
+      { "symbol": "battery.75", "title": "Arrival battery fixed", "line": "It was saying your battery now. Your past rides on the route count again, so it says what you will arrive with." },
+      { "symbol": "speaker.wave.1", "title": "No repeats", "line": "No arrival line when little is left to use, and never the same number as the line just before." },
+      { "symbol": "checkmark.seal", "title": "Checked on your rides", "line": "Developer → Voice replay now fails a ride where the arrival equals the battery now." },
+      { "symbol": "battery.100.bolt", "title": "Scooter tab matches Home", "line": "After Unplugged, the next real reading replaces the estimate. The Scooter tab shows the same last reading as Home." }
+    ],
+    "smallerFixes": 1,
+    "full": [
+      "Past rides are stored a row about every 5 seconds; the arrival maths skipped every row, so each past ride seemed to use nothing. Every row counts now, live and stored.",
+      "A past ride that seems to use almost nothing while its battery fell is left out.",
+      "No arrival battery line with under 5 points left to use; never the battery now; never the same number as the line just before.",
+      "Voice replay checks that halfway the arrival is below the battery now.",
+      "After Unplugged, connecting the scooter (or the next ride) ends the \u2248 estimate and counts that charge as measured for your charging speed.",
+      "With the scooter off, the Scooter tab and Home show the same last reading and time."
+    ]
+  },
+  {
     "version": "102.011126.01",
     "headline": "Hotfix: a voice you can trust",
     "items": [
