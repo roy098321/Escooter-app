@@ -159,7 +159,7 @@ extension RideScreenPreview {
                          courseDeg: (t / 600 * 360).truncatingRemainder(dividingBy: 360), usualPctPerKm: usualPctPerKm,
                          routeKm: screen.routeProgress?.routeKm, alongKm: screen.routeProgress?.alongKm,
                          elapsedS: t + lateS, remainingS: screen.remainingS, powerLimitPct: powerLimit, recordingProblem: phone,
-                         history: history, todayS: withDestination ? 600 : nil, utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
+                         history: history, todayS: withDestination ? 600 : nil, placeName: withDestination ? "Uni" : nil, utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
         var lines = v09.update(v)
         if screen.arrived, let m = arrivalLine.arrived(place: withDestination ? "Uni" : nil, pct: input.scooterBatteryPct) { lines.append(m) }
         for m in lines {

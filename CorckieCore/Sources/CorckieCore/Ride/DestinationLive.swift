@@ -50,6 +50,8 @@ public struct DestinationAnnouncer: Equatable, Sendable {
     private var ridingSince: Double?
     private var spokenKey: String?
     private var startDone = false
+    /// The last `true` was the start line (not a change during the ride)
+    public private(set) var lastWasStart = false
 
     public init() {}
 
@@ -67,10 +69,12 @@ public struct DestinationAnnouncer: Equatable, Sendable {
             guard t - (ridingSince ?? t) >= DestinationLive.announceAfterS else { return false }
             startDone = true
             spokenKey = key
+            lastWasStart = true
             return key != nil
         }
         guard key != spokenKey else { return false }
         spokenKey = key
+        lastWasStart = false
         return key != nil
     }
 }

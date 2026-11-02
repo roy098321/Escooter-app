@@ -186,6 +186,7 @@ final class RecorderService {
                     if let f = follower { follower?.history = RouteFollowLoader.history(routeId: id, follower: f, database: db) }
                     RideVoice.shared.routeHistory = follower?.history      // Hotfix 03: battery and late lines point by point
                     RideVoice.shared.todayS = follower?.todayS             // H2: late = later than TODAY's estimate
+                    RideVoice.shared.routeName = follower?.destinationName // H3: "Riding to Uni, arriving at 8:56, …"
                     driver.follow(follower, utcOffsetMin: RouteCardLoader.currentOffsetMin())
                 }
             }

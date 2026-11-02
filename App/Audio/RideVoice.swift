@@ -21,6 +21,8 @@ final class RideVoice {
     /// Hotfix 03: the followed route's past rides point by point and TODAY's estimate (the time the Where-to chip promised), s
     var routeHistory: RouteHistory?
     var todayS: Double?
+    /// H3: the followed route's destination name (the place's own name when it has one)
+    var routeName: String?
     /// V09: the learned power limit, and the destination's own place name (arrival line)
     var powerLimitPct: Int?
     var arrivalPlace: String?
@@ -78,6 +80,7 @@ final class RideVoice {
             usualRoutePctPerKm = nil
             routeHistory = nil
             todayS = nil
+            routeName = nil
             usualStops = []
             return
         }
@@ -153,8 +156,8 @@ final class RideVoice {
         Log.info(source: "voice", "V09: said \"\(m.line)\"" + (m.urgent ? " (urgent)" : " (at a good moment)") + why)
     }
 
-    /// H3: the start line names the destination (set with the known route; nil = no start line)
-    private var startPlace: String? { nil }
+    /// H3: the start line names the destination of the known route (nil = no route: no start line)
+    private var startPlace: String? { todayS == nil ? nil : (arrivalPlace ?? routeName) }
 
     /// Compass bearing a → b, degrees
     static func bearing(_ a: GeoPoint, _ b: GeoPoint) -> Double {
@@ -175,6 +178,8 @@ final class RideVoice {
     /// F-35: once a second after `update`: the destination as it stands (key, name, distance left); speaks the line when the announcer says so
     func destination(key: String?, name: String?, distanceM: Double?, riding: Bool, at t: Double) {
         guard announcer.update(riding: on && riding, key: key, at: t), let name else { return }
+        // H3: on a known route with voice energy updates on, V09 says the full start line instead
+        if announcer.lastWasStart, V09Settings.isOn, todayS != nil { return }
         let line = DestinationLive.ridingLine(name: name, distanceM: distanceM)
         SoundPlayer.shared.say(line)
         Log.info(source: "voice", "F-35: said \"\(line)\"")

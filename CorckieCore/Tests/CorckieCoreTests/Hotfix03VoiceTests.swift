@@ -100,4 +100,25 @@ final class Hotfix03VoiceTests: XCTestCase {
         let said = run(H3Fix.ride(speedKmh: 20), todayS: 1_800)
         XCTAssertFalse(said.contains { $0.m.kind == "late" })
     }
+
+    // MARK: H3
+
+    func testStartLineOnceOnAKnownRoute() {
+        let said = run(H3Fix.ride(), placeName: "Uni")
+        let starts = said.filter { $0.m.kind == "start" }
+        XCTAssertEqual(starts.count, 1)
+        // set off at 1 000 010 s (UTC), 24 min estimate: arriving 14:10; rested start 90 %
+        XCTAssertEqual(starts.first?.m.line, "Riding to Uni, arriving at 14:10, battery at ninety percent.")
+        XCTAssertEqual(said.first?.m.kind, "start", "the first thing said")
+        XCTAssertFalse(run(H3Fix.ride()).contains { $0.m.kind == "start" }, "no destination name: no start line")
+    }
+
+    func testTheShortDestinationLineKnowsItIsTheStart() {
+        var a = DestinationAnnouncer()
+        XCTAssertFalse(a.update(riding: true, key: "r", at: 0))
+        XCTAssertTrue(a.update(riding: true, key: "r", at: 5))
+        XCTAssertTrue(a.lastWasStart)
+        XCTAssertTrue(a.update(riding: true, key: "q", at: 60))
+        XCTAssertFalse(a.lastWasStart, "a change during the ride is not the start")
+    }
 }
