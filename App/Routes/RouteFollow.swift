@@ -55,6 +55,9 @@ final class RouteFollowSelection {
 
 /// Reads the route tables into the Core builders of M2-06 (`WhereTo`, `RouteFollower`). Compiled into AppTests too.
 enum RouteFollowLoader {
+    /// B71 (hotfix 04): where a left-out past ride is reported (the app sets it to the log at launch; this file is in AppTests too)
+    static var leftOutLog: ((String) -> Void)?
+
     /// - log: F-35: false when read during a ride (the live screen's picker), so the prediction log only gets what Home showed
     static func chips(database: AppDatabase, nowMs: Int64 = RouteCardLoader.currentMs(),
                       utcOffsetMin: Int = RouteCardLoader.currentOffsetMin(), log: Bool = true) -> [WhereToChip] {
@@ -141,7 +144,7 @@ extension RouteFollowLoader {
             // B71 (hotfix 04): a ride whose profile uses ~0 % while its battery fell is left out, with the reason in the log
             let c = RouteRideProfile.makeChecked(samples: historySamples(rideId: r.id, database: database), route: follower, whPerPct: wh)
             if let p = c.profile { out.append(p) }
-            if let why = c.leftOut { Log.info(source: "voice", "route history: ride \(r.id.prefix(8)) \(why)") }
+            if let why = c.leftOut { leftOutLog?("route history: ride \(r.id.prefix(8)) \(why)") }
         }
         return out.isEmpty ? nil : RouteHistory(rides: out, routeKm: follower.totalM / 1000)
     }

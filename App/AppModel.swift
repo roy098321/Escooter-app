@@ -42,6 +42,7 @@ final class AppModel {
         launched = true
         FieldChecks.shared.appLaunched()
         wireScooter()
+        RouteFollowLoader.leftOutLog = { Log.info(source: "voice", $0) }   // hotfix 04 (B71): a past ride left out of a route history
         RecorderService.shared.start()      // M1-09: the 1-s tick runs from launch (also a background relaunch)
         // After a phone restart iOS can relaunch the app for the scooter BEFORE the first
         // unlock, when files and settings can't be read yet (c5). The Bluetooth part starts
