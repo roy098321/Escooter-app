@@ -16,8 +16,10 @@ public struct SagProofBattery: Equatable, Sendable {
     public static let restHoldS = 10.0
     /// share of the gap to the rested % closed per second while rested
     public static let nudgePerS = 0.02
-    /// a longer step between readings adds no energy (a gap is never a guess)
-    public static let maxStepS = 5.0
+    /// a longer step between readings adds no energy (a gap is never a guess). B71 (hotfix 04): ONE limit for the live readings
+    /// (about 1 s apart), the stored ride rows (5.1–5.3 s apart, RideRecorderCore.sampleIntervalS 5) and the voice replay; it was 5 s,
+    /// which dropped every stored step, so past rides used 0 % and the arrival battery said the battery now.
+    public static let maxStepS = RideMetrics.defaultMaxStepS
     /// faster than this = the ride has set off (the start % is fixed from then on)
     public static let movingKmh = 3.0
 
@@ -124,7 +126,39 @@ public struct RouteRideProfile: Equatable, Sendable {
     /// The point-by-point profile of one stored ride on `route` (nil: it did not ride the route from its start to its end).
     /// Battery used = energy ÷ Wh per 1 % when the ride has power readings, else the battery % with the sag taken out
     /// (the highest reading of the next minute: the % after the hill).
-    public static func make(samples: [RouteHistorySample], route: RouteFollower, whPerPct: Double) -> RouteRideProfile? {
+    public static func make(samples: [RouteHistorySample], route: RouteFollower, whPerPct: Double,
+                            maxStepS: Double = SagProofBattery.maxStepS) -> RouteRideProfile? {
+        makeChecked(samples: samples, route: route, whPerPct: whPerPct, maxStepS: maxStepS).profile
+    }
+
+    /// B71 sanity guard: a past ride whose profile uses under this over the route while its battery reading fell by this or more is
+    /// left out of the history (a broken profile would make the arrival battery say the battery now)
+    public static let implausibleUsedPct = 1.0
+    public static let implausibleFallPct = 3.0
+
+    /// `make`, and why a ride was left out (nil = kept, or simply not a ride of this route)
+    public static func makeChecked(samples: [RouteHistorySample], route: RouteFollower, whPerPct: Double,
+                                   maxStepS: Double = SagProofBattery.maxStepS) -> (profile: RouteRideProfile?, leftOut: String?) {
+        guard let p = build(samples: samples, route: route, whPerPct: whPerPct, maxStepS: maxStepS) else { return (nil, nil) }
+        let used = p.usedPct.max() ?? 0
+        if used < implausibleUsedPct, let fall = batteryFall(samples), fall >= implausibleFallPct {
+            return (nil, "left out: uses \(String(format: "%.1f", used)) % over the route while its battery fell \(Int(fall.rounded())) %")
+        }
+        return (p, nil)
+    }
+
+    /// The battery reading's fall over a stored ride: the rested start (median before setting off, else the first reading) minus the
+    /// highest reading of its last minute (rested again)
+    static func batteryFall(_ samples: [RouteHistorySample]) -> Double? {
+        let s = samples.sorted { $0.t < $1.t }
+        guard let lastT = s.last?.t else { return nil }
+        let t0 = s.first(where: { ($0.speedKmh ?? 0) > SagProofBattery.movingKmh })?.t ?? s[0].t
+        guard let start = Geo.median(s.filter { $0.t <= t0 }.compactMap(\.batteryPct)) ?? s.compactMap(\.batteryPct).first,
+              let end = s.filter({ $0.t >= lastT - 60 }).compactMap(\.batteryPct).max() else { return nil }
+        return start - end
+    }
+
+    static func build(samples: [RouteHistorySample], route: RouteFollower, whPerPct: Double, maxStepS: Double) -> RouteRideProfile? {
         let s = samples.sorted { $0.t < $1.t }
         guard let t0 = s.first(where: { ($0.speedKmh ?? 0) > SagProofBattery.movingKmh })?.t else { return nil }
         var used = [Double](repeating: 0, count: s.count)
@@ -134,7 +168,7 @@ public struct RouteRideProfile: Equatable, Sendable {
             for i in s.indices {
                 if i > 0, let p = s[i].powerW ?? s[i - 1].powerW {
                     let dt = s[i].t - s[i - 1].t
-                    if dt > 0, dt <= SagProofBattery.maxStepS { wh += p * dt / 3600 }
+                    if dt > 0, dt <= maxStepS { wh += p * dt / 3600 }
                 }
                 used[i] = max(0, wh / whPerPct)
             }

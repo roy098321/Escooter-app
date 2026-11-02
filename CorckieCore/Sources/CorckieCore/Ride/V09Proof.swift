@@ -65,25 +65,32 @@ public enum V09SaidCompare {
 
 /// Developer → Voice replay: the new director over a stored ride, every second, with the route's OTHER rides as history.
 /// Pass = no contradictions, at most 2 battery lines, the last battery line within 5 points of the real arrival %, no late line before
-/// the gate.
+/// the gate. B71 (hotfix 04): halfway along the route the arrival estimate is below the battery now (on a ride that used 5 % or more);
+/// no battery line says the battery now or the same number as the line before. Stored rows are ~5 s apart: one gap limit
+/// (SagProofBattery.maxStepS) everywhere.
 public enum V09Replay {
     public struct Result: Equatable, Sendable {
         public var said: [V09SaidLine]
         public var realArrivalPct: Double?
         public var realArrivalS: Double?
         public var problems: [String]
+        /// B71: the numbers halfway along the route (nil: never there on the route)
+        public var midRoute: V09Numbers?
         public var passed: Bool { problems.isEmpty }
 
-        public init(said: [V09SaidLine], realArrivalPct: Double?, realArrivalS: Double?, problems: [String]) {
+        public init(said: [V09SaidLine], realArrivalPct: Double?, realArrivalS: Double?, problems: [String], midRoute: V09Numbers? = nil) {
             self.said = said
             self.realArrivalPct = realArrivalPct
             self.realArrivalS = realArrivalS
             self.problems = problems
+            self.midRoute = midRoute
         }
     }
 
     public static let maxBatteryLines = 2
     public static let arrivalWithinPts = 5.0
+    /// B71: a ride that used at least this much must show an arrival estimate below the battery now halfway
+    public static let midRouteCheckUsedPts = 5.0
 
     public static func run(samples: [RouteHistorySample], route: RouteFollower, whPerPct: Double, usualPctPerKm: Double? = nil,
                            placeName: String? = nil, utcOffsetMin: Int = 0) -> Result {
@@ -97,8 +104,9 @@ public enum V09Replay {
         var arrivedAt: Double?
         var course: Double?
         var lastPos: GeoPoint?
+        var mid: V09Numbers?
         for p in s {
-            if let l = lastT, let v = p.speedKmh { let dt = p.t - l; if dt > 0, dt <= 5 { rideM += v / 3.6 * dt } }
+            if let l = lastT, let v = p.speedKmh { let dt = p.t - l; if dt > 0, dt <= SagProofBattery.maxStepS { rideM += v / 3.6 * dt } }
             lastT = p.t
             if t0 == nil, (p.speedKmh ?? 0) > SagProofBattery.movingKmh { t0 = p.t }
             let elapsed = t0.map { max(0, p.t - $0) } ?? 0
@@ -119,13 +127,14 @@ public enum V09Replay {
                                  remainingS: remaining, powerW: p.powerW, currentA: p.currentA, whPerPct: whPerPct,
                                  history: route.history, todayS: route.todayS, placeName: placeName, utcOffsetMin: utcOffsetMin)
             for m in d.update(input) { said.append(V09SaidLine(m, numbers: d.numbers)) }
+            if mid == nil, let a = along, a >= f.totalM / 2000 { mid = d.numbers }
             if arrivedAt != nil { break }
         }
         // the real arrival %: the battery after the sag, in the minute after arriving (else the last minute of the ride)
         let end = arrivedAt ?? s.last?.t
         var real: Double?
         if let e = end { real = s.filter { $0.t >= e - 5 && $0.t <= e + 60 }.compactMap(\.batteryPct).max() }
-        let result = Result(said: said, realArrivalPct: real, realArrivalS: end, problems: [])
+        let result = Result(said: said, realArrivalPct: real, realArrivalS: end, problems: [], midRoute: mid)
         return verdict(result, routeKm: route.totalM / 1000)
     }
 
@@ -143,6 +152,21 @@ public enum V09Replay {
         if r.said.filter({ $0.kind == "back" }).count > 1 { problems.append("Back on track more than once") }
         if let lastLine = battery.last, let v = lastLine.value, let real = r.realArrivalPct, abs(Double(v) - real) > arrivalWithinPts {
             problems.append("said about \(v)%, arrived with \(Int(real.rounded()))%")
+        }
+        // B71: an arrival line that is the battery now, or the same number as the line just before
+        for b in battery where b.kind != "back" {
+            if let v = b.value, let level = b.numbers.levelPct, v >= V09Message.round5(level) {
+                problems.append("said arrival about \(v)% with the battery at \(Int(level.rounded()))%")
+            }
+        }
+        for (a, b) in zip(r.said, r.said.dropFirst()) where ["drop", "low", "back"].contains(b.kind) {
+            if let va = a.value, va == b.value, ["ten", "start", "drop", "low", "back"].contains(a.kind) {
+                problems.append("said \(va)% twice in a row")
+            }
+        }
+        if let m = r.midRoute, let level = m.levelPct, let arrive = m.arrivalPct, let start = m.startPct, let real = r.realArrivalPct,
+           start - real >= midRouteCheckUsedPts, level - arrive < 1 {
+            problems.append("halfway the arrival estimate (\(Int(arrive.rounded()))%) = the battery now (\(Int(level.rounded()))%)")
         }
         var lateLast = 0
         for l in r.said where l.kind == "late" {
@@ -212,6 +236,50 @@ public enum V09Lab {
     /// Three past rides at 2 %/km in 24 min
     public static func history() -> RouteHistory? {
         guard let f = follower(), let one = RouteRideProfile.make(samples: ride(), route: f, whPerPct: 8.1) else { return nil }
+        return RouteHistory(rides: [one, one, one], routeKm: km)
+    }
+
+    // MARK: B71 (hotfix 04): stored-ride spacing
+
+    /// Wh per 1 % of the stored-spacing ride: ~340 Wh for 85 → 48 %
+    public static let storedWhPerPct = 340.0 / 37.0
+
+    /// A made-up ride stored like the app stores rides: a row every 5.1–5.3 s (RideRecorderCore.sampleIntervalS 5), 85 → 48 %,
+    /// ~340 Wh in ~35 min on the made-up 10 km route (18 km/h, a 60 s stop at km 4, the scooter's % 2 low under load).
+    /// - extra(km): times the usual use at that km (1 = like the past rides)
+    public static func storedRide(extra: @escaping (Double) -> Double = { _ in 1 }, startPct: Double = 85) -> [RouteHistorySample] {
+        let pctPerKm = 37.0 / km
+        var out: [RouteHistorySample] = []
+        var t = 0.0, d = 0.0, used = 0.0, stopLeft = 0.0, i = 0
+        var stopDone = false
+        func add(_ v: Double, _ w: Double) {
+            let sag = w > 0 ? 2.0 : 0
+            out.append(RouteHistorySample(t: t0 + t, lat: point(d).lat, lon: -30, speedKmh: v, batteryPct: (startPct - used - sag).rounded(),
+                                          powerW: w, currentA: w / 50))
+        }
+        func step() -> Double { i += 1; return [5.1, 5.2, 5.3][i % 3] }
+        add(0, 0)
+        while t < 30 { t += step(); add(0, 0) }
+        while d < km * 1000 {
+            let dt = step()
+            t += dt
+            if stopLeft > 0 { stopLeft -= dt; add(0, 0); continue }
+            if !stopDone, d >= 4_000 { stopDone = true; stopLeft = 60; add(0, 0); continue }
+            let move = min(18 / 3.6 * dt, km * 1000 - d)
+            let p = pctPerKm * extra(d / 1000) * move / 1000
+            used += p
+            d += move
+            add(18, p * storedWhPerPct * 3600 / dt)
+        }
+        let end = t
+        while t < end + 60 { t += step(); add(0, 0) }
+        return out
+    }
+
+    /// Three past rides like `storedRide()`, built from their stored ~5 s rows
+    public static func storedHistory() -> RouteHistory? {
+        guard let f = follower(),
+              let one = RouteRideProfile.make(samples: storedRide(), route: f, whPerPct: storedWhPerPct) else { return nil }
         return RouteHistory(rides: [one, one, one], routeKm: km)
     }
 }

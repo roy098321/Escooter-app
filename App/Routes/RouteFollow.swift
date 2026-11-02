@@ -138,9 +138,10 @@ extension RouteFollowLoader {
         let wh = CalibrationUpdater.current(database).whPerPct
         var out: [RouteRideProfile] = []
         for r in rides.prefix(limit) {
-            if let p = RouteRideProfile.make(samples: historySamples(rideId: r.id, database: database), route: follower, whPerPct: wh) {
-                out.append(p)
-            }
+            // B71 (hotfix 04): a ride whose profile uses ~0 % while its battery fell is left out, with the reason in the log
+            let c = RouteRideProfile.makeChecked(samples: historySamples(rideId: r.id, database: database), route: follower, whPerPct: wh)
+            if let p = c.profile { out.append(p) }
+            if let why = c.leftOut { Log.info(source: "voice", "route history: ride \(r.id.prefix(8)) \(why)") }
         }
         return out.isEmpty ? nil : RouteHistory(rides: out, routeKm: follower.totalM / 1000)
     }

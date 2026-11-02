@@ -292,6 +292,8 @@ public struct V09Director: Sendable {
     /// H1: a battery line only for a number ≥ 5 points worse than the last one; "Back on track" once at ≥ 10 points better
     public static let sharpDropPts = 5.0
     public static let backOnTrackPts = 10.0
+    /// B71: no arrival battery line while less than this is left to use on the route (the arrival would sound like the battery now)
+    public static let minLeftToUsePts = 5.0
     /// H2: late = behind today's estimate at this point by 5 min, held 60 s, slower than most past rides here, not before 3 km or a
     /// third of the route; again only 5 minutes later; "Back on time" once within a minute
     public static let lateMin = 5
@@ -317,6 +319,8 @@ public struct V09Director: Sendable {
     /// H1: the arrival % last said (unrounded) or the usual arrival; the last number said (rounded to 5)
     private var batteryRef: Double?
     private var batterySaid: Int?
+    /// B71: the last % the voice said (start line, every 10 %, battery lines): never said again by the next battery line
+    private var lastPctSaid: Int?
     private var dropSaid = false
     private var backOnTrackSaid = false
     private var along0: Double?
@@ -394,6 +398,7 @@ public struct V09Director: Sendable {
                 startLineDone = true
             } else if let place = i.placeName, !place.isEmpty, i.todayS != nil, i.alongKm != nil, let r = remaining, let s = battery.startPct {
                 startLineDone = true
+                lastPctSaid = Int(s.rounded())
                 urgent.append(.startLine(place: place, arriveAt: V09Message.clock(epochS: i.t + r, utcOffsetMin: i.utcOffsetMin),
                                          pct: Int(s.rounded())))
             }
@@ -408,7 +413,7 @@ public struct V09Director: Sendable {
             if let n = nextTen, pct <= Double(n) {
                 let reached = Int((pct / 10).rounded(.up)) * 10
                 nextTen = reached - 10
-                if reached >= 30 { urgent.append(.everyTen(pct: reached)) }
+                if reached >= 30 { urgent.append(.everyTen(pct: reached)); lastPctSaid = reached }
             }
             // using more than usual
             if i.rideKm >= Self.usingMoreAfterKm, let usual = i.usualPctPerKm, usual > 0, start > pct {
@@ -422,7 +427,7 @@ public struct V09Director: Sendable {
             if let arrive = Self.arrivalPct(level: pct, startPct: start, rideKm: i.rideKm, routeKm: i.routeKm, alongKm: i.alongKm,
                                             history: i.history) {
                 numbers.arrivalPct = arrive
-                batteryLines(arrive, start: start, i, &urgent)
+                batteryLines(arrive, level: pct, start: start, i, &urgent)
                 // point of no return (tight trips only), just before it
                 if !pnrSaid, arrive < Self.arrivingLowPct, let along = i.alongKm, i.rideKm >= 1, start > pct,
                    let pnr = Self.pointOfNoReturnKm(pct: pct, alongKm: along, ratePctPerKm: (start - pct) / i.rideKm, reservePct: i.reservePct) {
@@ -461,7 +466,8 @@ public struct V09Director: Sendable {
 
     /// H1: said only when the estimate held steady for a minute; only a number ≥ 5 points worse than the last one (rounded to 5,
     /// always lower than the last number said); better = silent, except one "Back on track" at ≥ 10 points better.
-    private mutating func batteryLines(_ arrive: Double, start: Double, _ i: V09Input, _ urgent: inout [V09Message]) {
+    /// B71: silent while less than 5 points are left to use; never the battery now (rounded) or the same number as the % said just before.
+    private mutating func batteryLines(_ arrive: Double, level: Double, start: Double, _ i: V09Input, _ urgent: inout [V09Message]) {
         estWindow.append((i.t, arrive))
         estWindow.removeAll { i.t - $0.t > Self.stableS }
         let hasHistory = i.history?.isUsable == true
@@ -476,10 +482,12 @@ public struct V09Director: Sendable {
         }
         guard let ref = batteryRef else { return }
         let r5 = V09Message.round5(stable)
+        guard level - arrive >= Self.minLeftToUsePts, r5 < V09Message.round5(level), r5 != lastPctSaid else { return }
         let below = batterySaid.map { r5 < $0 } ?? true
         if stable <= ref - Self.sharpDropPts, below {
             batteryRef = stable
             batterySaid = r5
+            lastPctSaid = r5
             dropSaid = true
             if stable < Self.arrivingLowPct, !arrivingLowSaid {
                 arrivingLowSaid = true
@@ -491,11 +499,13 @@ public struct V09Director: Sendable {
             arrivingLowSaid = true
             batteryRef = stable
             batterySaid = r5
+            lastPctSaid = r5
             enqueue(.arrivingLow(pct: r5), i)
         } else if dropSaid, !backOnTrackSaid, stable >= ref + Self.backOnTrackPts {
             backOnTrackSaid = true
             batteryRef = stable
             batterySaid = r5
+            lastPctSaid = r5
             enqueue(.backOnTrack(pct: r5), i)
         }
     }
