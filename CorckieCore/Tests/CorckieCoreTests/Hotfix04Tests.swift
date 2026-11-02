@@ -13,7 +13,7 @@ final class Hotfix04Tests: XCTestCase {
     }
 
     func testOneGapLimitAboveTheStoredSpacing() {
-        XCTAssertEqual(SagProofBattery.maxStepS, RideMetrics.defaultMaxStepS)
+        XCTAssertEqual(SagProofBattery.maxStepS, RideMetricsCalculator.defaultMaxStepS)
         XCTAssertGreaterThan(SagProofBattery.maxStepS, RideRecorderCore.sampleIntervalS + 0.5)
         let ride = V09Lab.storedRide()
         let gaps = zip(ride, ride.dropFirst()).map { $0.1.t - $0.0.t }

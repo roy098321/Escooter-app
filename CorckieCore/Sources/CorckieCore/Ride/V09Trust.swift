@@ -19,7 +19,7 @@ public struct SagProofBattery: Equatable, Sendable {
     /// a longer step between readings adds no energy (a gap is never a guess). B71 (hotfix 04): ONE limit for the live readings
     /// (about 1 s apart), the stored ride rows (5.1–5.3 s apart, RideRecorderCore.sampleIntervalS 5) and the voice replay; it was 5 s,
     /// which dropped every stored step, so past rides used 0 % and the arrival battery said the battery now.
-    public static let maxStepS = RideMetrics.defaultMaxStepS
+    public static let maxStepS = RideMetricsCalculator.defaultMaxStepS
     /// faster than this = the ride has set off (the start % is fixed from then on)
     public static let movingKmh = 3.0
 
