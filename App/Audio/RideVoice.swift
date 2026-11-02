@@ -18,8 +18,10 @@ final class RideVoice {
     private var announcer = DestinationAnnouncer()
     /// F-22: the followed route's usual %/km (set when the route is picked up at ride start)
     var usualRoutePctPerKm: Double?
-    /// V09: the followed route's usual ride time, the learned power limit, and the destination's own place name (arrival line)
-    var usualTripS: Double?
+    /// Hotfix 03: the followed route's past rides point by point and TODAY's estimate (the time the Where-to chip promised), s
+    var routeHistory: RouteHistory?
+    var todayS: Double?
+    /// V09: the learned power limit, and the destination's own place name (arrival line)
     var powerLimitPct: Int?
     var arrivalPlace: String?
     /// V09 timing: the followed route's usual stops; the distance to each one at the last second (to tell ahead from behind)
@@ -30,6 +32,8 @@ final class RideVoice {
     private var lastPos: (lat: Double, lon: Double)?
     private var course: Double?
     private var lastPct: Double?
+    /// Hotfix 03: Wh per 1 % for the sag-proof level (nil = the prior)
+    private var whPerPct: Double?
     /// The Start button already played the start sound (and the A3 transition) this moment
     private(set) var startTappedAt: Date?
 
@@ -55,6 +59,7 @@ final class RideVoice {
             arrivalLine.reset()
             lastPos = nil
             course = nil
+            whPerPct = database.map { CalibrationUpdater.current($0).whPerPct }
             if let db = database {
                 let overview = BatteryOverview.load(db, currentPct: input.scooterBatteryPct, connected: true)
                 recentPctPerKm = overview.range?.pctPerKm
@@ -71,7 +76,8 @@ final class RideVoice {
             SoundPlayer.shared.endRideSession(after: riding ? 3.0 : 0)
             riding = false
             usualRoutePctPerKm = nil
-            usualTripS = nil
+            routeHistory = nil
+            todayS = nil
             usualStops = []
             return
         }
@@ -113,10 +119,13 @@ final class RideVoice {
         let v = V09Input(t: t, pct: input.scooterBatteryPct, tempC: input.scooterTempC, rideKm: (input.rideDistanceM ?? 0) / 1000,
                          speedKmh: Double(screen.tiles.speedKmh ?? 0), courseDeg: course,
                          usualPctPerKm: usualRoutePctPerKm ?? recentPctPerKm, reservePct: reservePct,
-                         routeKm: screen.routeProgress?.routeKm, alongKm: screen.routeProgress?.alongKm, usualTripS: usualTripS,
+                         routeKm: screen.routeProgress?.routeKm, alongKm: screen.routeProgress?.alongKm,
                          elapsedS: input.rideElapsedS ?? 0, remainingS: screen.remainingS, powerLimitPct: powerLimitPct,
-                         recordingProblem: input.phoneMode || input.formatChanged, usualStopAheadM: stopAhead(input.lat, input.lon))
-        for m in v09.update(v) { say(m) }
+                         recordingProblem: input.phoneMode || input.formatChanged, usualStopAheadM: stopAhead(input.lat, input.lon),
+                         powerW: input.scooterPowerW, currentA: input.scooterCurrentA, whPerPct: whPerPct,
+                         history: routeHistory, todayS: todayS, placeName: startPlace,
+                         utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
+        for m in v09.update(v) { say(m, numbers: v09.numbers) }
     }
 
     /// V09 timing: the nearest usual stop that is getting closer (ahead), m; nil = none known
@@ -132,11 +141,20 @@ final class RideVoice {
         return best
     }
 
-    /// V09: one line on the warnings' channel (no ping), logged
-    private func say(_ m: V09Message) {
+    /// V09: one line on the warnings' channel (no ping), logged with the numbers behind it (Hotfix 03)
+    private func say(_ m: V09Message, numbers: V09Numbers? = nil) {
         SoundPlayer.shared.say(m.line)
-        Log.info(source: "voice", "V09: said \"\(m.line)\"" + (m.urgent ? " (urgent)" : " (at a good moment)"))
+        var why = ""
+        if let n = numbers {
+            func f(_ x: Double?) -> String { x.map { String(format: "%.1f", $0) } ?? "-" }
+            why = " [km \(f(n.rideKm)) along \(f(n.alongKm)) live \(f(n.livePct)) level \(f(n.levelPct)) start \(f(n.startPct))"
+                + " arrival \(f(n.arrivalPct))\(n.stable ? " steady" : "") late \(f(n.lateS)) s]"
+        }
+        Log.info(source: "voice", "V09: said \"\(m.line)\"" + (m.urgent ? " (urgent)" : " (at a good moment)") + why)
     }
+
+    /// H3: the start line names the destination (set with the known route; nil = no start line)
+    private var startPlace: String? { nil }
 
     /// Compass bearing a → b, degrees
     static func bearing(_ a: GeoPoint, _ b: GeoPoint) -> Double {

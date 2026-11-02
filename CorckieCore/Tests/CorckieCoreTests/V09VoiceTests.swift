@@ -7,12 +7,16 @@ final class V09VoiceTests: XCTestCase {
         XCTAssertEqual(V09Message.arrived(place: "Uni", pct: 58).line, "Arrived at Uni, battery at fifty eight percent.")
         XCTAssertEqual(V09Message.arrived(place: nil, pct: 41).line, "Arrived, battery at forty one percent.")
         XCTAssertEqual(V09Message.engineHot(c: 86).line, "Engine hot, eighty six degrees.")
-        XCTAssertEqual(V09Message.runningLate(minutes: 8).line, "Arriving eight minutes later than usual.")
+        XCTAssertEqual(V09Message.runningLate(minutes: 6, arriveAt: "9:02").line, "Running six minutes late, arriving at 9:02.")
+        XCTAssertEqual(V09Message.sharpDrop(pct: 40).line, "Arrival battery now about forty percent.")
+        XCTAssertEqual(V09Message.backOnTrack(pct: 50).line, "Back on track, about fifty percent.")
+        XCTAssertEqual(V09Message.round5(42.4), 40)
+        XCTAssertEqual(V09Message.round5(42.6), 45)
         XCTAssertEqual(V09Message.pointOfNoReturn(metres: 300).line, "Point of no return in three hundred metres.")
         XCTAssertEqual(V09Message.usingMore(pctPerKm: 2.6, aboveUsualPct: 15).line, "Using two point six percent per kilometre, fifteen percent above usual.")
         XCTAssertTrue(V09Message.engineOverheating(c: 94).urgent)
-        XCTAssertFalse(V09Message.runningLate(minutes: 8).urgent)
-        XCTAssertEqual(V09Message.samples.count, 12)
+        XCTAssertFalse(V09Message.runningLate(minutes: 8, arriveAt: "9:02").urgent)
+        XCTAssertEqual(V09Message.samples.count, 15)
     }
 
     func testEngineTemperatureHoldsOnceAndReArms() {
@@ -66,7 +70,9 @@ final class V09VoiceTests: XCTestCase {
     func testPointOfNoReturnAndArrival() {
         // 40 %, 2 km along, 3 %/km, reserve 5: (40 + 6 − 5) / 6 ≈ 6.83 km
         XCTAssertEqual(V09Director.pointOfNoReturnKm(pct: 40, alongKm: 2, ratePctPerKm: 3, reservePct: 5) ?? 0, 6.833, accuracy: 0.01)
-        XCTAssertEqual(V09Director.arrivalPct(pct: 40, rideKm: 2, startPct: 46, routeKm: 12, alongKm: 2, usualPctPerKm: 2) ?? 0, 10, accuracy: 1e-9)
+        // no route history: this ride's rate, only from 3 km (40 % after 3 km from 46 = 2 %/km, 9 km left)
+        XCTAssertEqual(V09Director.arrivalPct(level: 40, startPct: 46, rideKm: 3, routeKm: 12, alongKm: 3, history: nil) ?? 0, 22, accuracy: 1e-9)
+        XCTAssertNil(V09Director.arrivalPct(level: 42, startPct: 46, rideKm: 2, routeKm: 12, alongKm: 2, history: nil))
         var a = ArrivalLineTracker()
         XCTAssertEqual(a.arrived(place: "Uni", pct: 57.6), .arrived(place: "Uni", pct: 58))
         XCTAssertNil(a.arrived(place: "Uni", pct: 57), "once per arrival")

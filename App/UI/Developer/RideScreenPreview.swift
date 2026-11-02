@@ -22,7 +22,10 @@ struct RideScreenPreview: View {
     @State private var arrivalLine = ArrivalLineTracker()
     @State private var tempC = 45.0
     @State private var usualPctPerKm = 2.0
-    @State private var usualTripS: Double?
+    /// Hotfix 03: "Running late" puts the made-up ride this many seconds behind today's estimate; the clock base for arrival times
+    @State private var lateS = 0.0
+    @State private var epoch0 = Date().timeIntervalSince1970
+    @State private var history: RouteHistory?
     @State private var stopUntil = -1.0
     @State private var powerLimit: Int?
     @State private var said: String?
@@ -86,7 +89,7 @@ struct RideScreenPreview: View {
             Button("Engine overheating 94 \u{00B0}C") { tempC = 94 }
             Button("Engine cool") { tempC = 45 }
             Button("Sharp drop") { battery = max(5, battery - 9) }
-            Button("Running late") { usualTripS = 60 }
+            Button("Running late") { lateS = 420 }
             Button("Power limit coming") { powerLimit = max(1, Int(battery) - 2) }
             Button("Play every message once") { RideVoice.shared.playAllV09() }
         }
@@ -110,14 +113,22 @@ struct RideScreenPreview: View {
         arrivalLine = ArrivalLineTracker()
         tempC = 45
         usualPctPerKm = 2
-        usualTripS = nil
+        lateS = 0
+        epoch0 = Date().timeIntervalSince1970
+        history = nil
         stopUntil = -1
         powerLimit = nil
         said = nil
         path = LivePath()
         if withDestination {
             let route = (0..<61).map { i -> GeoPoint in let p = point(at: Double(i) * 10); return GeoPoint(lat: p.lat, lon: p.lon) }
-            driver.follow(RouteFollower(destinationName: "Uni", path: route, todayS: 900), utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
+            // Hotfix 03: made-up past rides, evenly: 600 s and 12 % for the whole loop
+            var f = RouteFollower(destinationName: "Uni", path: route, todayS: 600)
+            if let km = f.map({ $0.totalM / 1000 }) {
+                history = RouteHistory(rides: [RouteRideProfile(alongKm: [0, km], elapsedS: [0, 600], usedPct: [0, 12])], routeKm: km)
+                f?.history = history
+            }
+            driver.follow(f, utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
         }
         step(0)
     }
@@ -144,10 +155,11 @@ struct RideScreenPreview: View {
 extension RideScreenPreview {
     /// V09 on the made-up ride, at preview time (4×): urgent lines at once, the rest at the stop or a straight stretch
     fileprivate func voice(_ input: LiveInput, _ screen: LiveScreenState, speed: Double) {
-        let v = V09Input(t: t, pct: input.scooterBatteryPct, tempC: input.scooterTempC, rideKm: (input.rideDistanceM ?? 0) / 1000, speedKmh: speed,
+        let v = V09Input(t: epoch0 + t, pct: input.scooterBatteryPct, tempC: input.scooterTempC, rideKm: (input.rideDistanceM ?? 0) / 1000, speedKmh: speed,
                          courseDeg: (t / 600 * 360).truncatingRemainder(dividingBy: 360), usualPctPerKm: usualPctPerKm,
-                         routeKm: screen.routeProgress?.routeKm, alongKm: screen.routeProgress?.alongKm, usualTripS: usualTripS,
-                         elapsedS: t, remainingS: screen.remainingS, powerLimitPct: powerLimit, recordingProblem: phone)
+                         routeKm: screen.routeProgress?.routeKm, alongKm: screen.routeProgress?.alongKm,
+                         elapsedS: t + lateS, remainingS: screen.remainingS, powerLimitPct: powerLimit, recordingProblem: phone,
+                         history: history, todayS: withDestination ? 600 : nil, utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
         var lines = v09.update(v)
         if screen.arrived, let m = arrivalLine.arrived(place: withDestination ? "Uni" : nil, pct: input.scooterBatteryPct) { lines.append(m) }
         for m in lines {

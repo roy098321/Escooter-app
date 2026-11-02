@@ -180,11 +180,12 @@ final class RecorderService {
                 RideVoice.shared.powerLimitPct = driver.lowBatteryPower?.belowPct   // V09 "power limit coming"
                 if let id = RouteFollowSelection.shared.routeId {
                     RideVoice.shared.usualRoutePctPerKm = RouteFollowLoader.usualPctPerKm(routeId: id, database: db)      // F-22
-                    RideVoice.shared.usualTripS = RouteFollowLoader.usualTripS(routeId: id, database: db)                // V09 running late
                     RideVoice.shared.usualStops = RouteFollowLoader.usualStops(routeId: id, database: db)                // V09 timing
                     var follower = RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination)
                     // Hotfix 03: the arrival time and the voice go point by point along the route's past rides
                     if let f = follower { follower?.history = RouteFollowLoader.history(routeId: id, follower: f, database: db) }
+                    RideVoice.shared.routeHistory = follower?.history      // Hotfix 03: battery and late lines point by point
+                    RideVoice.shared.todayS = follower?.todayS             // H2: late = later than TODAY's estimate
                     driver.follow(follower, utcOffsetMin: RouteCardLoader.currentOffsetMin())
                 }
             }
