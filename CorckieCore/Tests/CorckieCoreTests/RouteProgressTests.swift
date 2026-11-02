@@ -34,28 +34,26 @@ final class RouteProgressTests: XCTestCase {
         XCTAssertEqual(s.remainingS, 270, accuracy: 12)
     }
 
-    func test_runningLate_remainingGrowsButIsBlended() throws {
+    func test_runningLate_remainingIsStillTheRestOfToday_noPaceBlend() throws {
+        // Hotfix 03 (H2, B70): an early slow stretch is already in the clock; it no longer stretches the rest as well
         var f = try follower()
         _ = f.update(position: at(0), gpsFresh: true, rideDistanceM: 0, elapsedS: 0)
         let d = 2_000.0
-        // 2 km done in 1.5x the expected time: weight 2 / (2 + 2) = 0.5
         let expected = d / f.totalM * 540
         let s = f.update(position: at(d), gpsFresh: true, rideDistanceM: d, elapsedS: expected * 1.5)
         let base = (f.totalM - d) / f.totalM * 540
-        XCTAssertGreaterThan(s.remainingS, base * 1.15)
-        XCTAssertLessThan(s.remainingS, base * 1.5)
-        XCTAssertEqual(s.remainingS, base * 1.25, accuracy: base * 0.04)
+        XCTAssertEqual(s.remainingS, base, accuracy: base * 0.01)
     }
 
-    func test_firstKm_paceBarelyMoves() throws {
+    func test_withHistory_restOfTodayFollowsThePastRidesShape() throws {
+        // past rides: the first half took 2/3 of the time (a slow stretch with lights), the second half 1/3
         var f = try follower()
+        let km = f.totalM / 1000
+        let profile = RouteRideProfile(alongKm: [0, km / 2, km], elapsedS: [0, 400, 600], usedPct: [0, 5, 10])
+        f.history = RouteHistory(rides: [profile, profile], routeKm: km)
         _ = f.update(position: at(0), gpsFresh: true, rideDistanceM: 0, elapsedS: 0)
-        let d = 300.0
-        let expected = d / f.totalM * 540
-        let s = f.update(position: at(d), gpsFresh: true, rideDistanceM: d, elapsedS: expected * 2)
-        let base = (f.totalM - d) / f.totalM * 540
-        // km done 0.3 -> weight 0.13: at most 13% more than the base
-        XCTAssertLessThan(s.remainingS, base * 1.14)
+        let s = f.update(position: at(f.totalM / 2), gpsFresh: true, rideDistanceM: f.totalM / 2, elapsedS: 400)
+        XCTAssertEqual(s.remainingS, 540.0 / 3, accuracy: 6, "a third of today's 540 s is left at half way")
     }
 
     func test_offRoute_usesStraightDistanceOverTypicalSpeed() throws {

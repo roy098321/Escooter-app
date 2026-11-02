@@ -52,6 +52,9 @@ public struct LiveInput: Equatable, Sendable {
     public var phoneGpsOff: Bool = false
     /// M6-06: the rider turned location off for the app (during the ride): "No GPS \u{00B7} location is off for CorckieApp"
     public var locationDenied: Bool = false
+    /// Hotfix 03 (H1): the scooter's power (V × I, W) and current (A) right now, for the sag-proof battery level; nil = no reading
+    public var scooterPowerW: Double? = nil
+    public var scooterCurrentA: Double? = nil
 
     public init(scooterSpeedKmh: Double? = nil, gpsSpeedKmh: Double? = nil, scooterLinked: Bool = true,
                 scooterBatteryPct: Double? = nil, estimatedBatteryPct: Double? = nil, starting: Bool = false,

@@ -129,6 +129,47 @@ extension RouteFollowLoader {
         return out
     }
 
+    /// Hotfix 03: the route's past rides point by point (its 8 newest rides that rode it from start to end): the arrival time on the
+    /// ride screen and the voice's battery and late lines. Where on the route, never when in the day. nil = none usable.
+    static func history(routeId: String, follower: RouteFollower, database: AppDatabase, excludingRideId: String? = nil,
+                        limit: Int = 8) -> RouteHistory? {
+        let rides = ((try? RouteQueries(database).routeRides(routeId: routeId)) ?? [])
+            .filter { $0.kind == "ride" && !$0.excludedFromUsual && $0.id != excludingRideId }.sorted { $0.startAt > $1.startAt }
+        let wh = CalibrationUpdater.current(database).whPerPct
+        var out: [RouteRideProfile] = []
+        for r in rides.prefix(limit) {
+            if let p = RouteRideProfile.make(samples: historySamples(rideId: r.id, database: database), route: follower, whPerPct: wh) {
+                out.append(p)
+            }
+        }
+        return out.isEmpty ? nil : RouteHistory(rides: out, routeKm: follower.totalM / 1000)
+    }
+
+    /// One stored ride's readings for the history and the voice replay
+    static func historySamples(rideId: String, database: AppDatabase) -> [RouteHistorySample] {
+        let rows = (try? database.writer.read { d in
+            try Row.fetchAll(d, sql: """
+                SELECT t, lat, lon, speedMps, gpsSpeedMps, batteryPct, voltage, currentA, powerW, tempC FROM ride_sample WHERE rideId = ? ORDER BY t
+                """, arguments: [rideId])
+        }) ?? []
+        return rows.map { row -> RouteHistorySample in
+            let t: Int64 = row["t"] ?? 0
+            let scooter: Double? = row["speedMps"]
+            let gps: Double? = row["gpsSpeedMps"]
+            let volts: Double? = row["voltage"]
+            let amps: Double? = row["currentA"]
+            let stored: Double? = row["powerW"]
+            let pct: Int? = row["batteryPct"]
+            let lat: Double? = row["lat"]
+            let lon: Double? = row["lon"]
+            let temp: Double? = row["tempC"]
+            var power = stored
+            if power == nil, let v = volts, let a = amps { power = v * a }
+            return RouteHistorySample(t: Double(t) / 1000, lat: lat, lon: lon, speedKmh: (scooter ?? gps).map { $0 * 3.6 },
+                                      batteryPct: pct.map { Double($0) }, powerW: power, currentA: amps, tempC: temp)
+        }
+    }
+
     /// V09 running late: the route's usual ride time (median of its rides), s
     static func usualTripS(routeId: String, database: AppDatabase) -> Double? {
         let times = ((try? RouteQueries(database).routeRides(routeId: routeId)) ?? []).filter { !$0.excludedFromUsual && $0.kind == "ride" }

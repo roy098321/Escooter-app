@@ -4,8 +4,8 @@ import Foundation
 ///
 /// - On a fix inside the 50 m corridor (T61) the position along the route is the nearest point, searched forward from where
 ///   I was (a route that doubles back is not confused with its other half).
-/// - Remaining = the rest of today's estimate (uniform along the path: the stored rides keep totals, not per-100 m times)
-///   x a pace factor 1 + w x (pace - 1), w = km done / (km done + 2) (S1).
+/// - Remaining = the rest of today's estimate from this point (Hotfix 03 H2: spread in the shape of the route's past rides when
+///   `history` is set, else evenly). The old pace factor (S1) is gone: it counted an early red light twice (B70).
 /// - Off the route: straight distance to the end / the route's typical speed (S2).
 /// - GPS lost on the route (M2-08): the position moves along the route by the wheel distance since the last fix. Off the
 ///   route, or with no route, nothing moves (M1 behaviour: the dot freezes, greyed).
@@ -17,6 +17,8 @@ public struct RouteFollower: Equatable, Sendable {
     public let totalM: Double
     /// Today's estimate for the whole route (honest, no margin)
     public let todayS: Double
+    /// Hotfix 03 (H2): the route's past rides point by point; today's estimate is spread along the route in their shape (nil = evenly)
+    public var history: RouteHistory?
     private let cum: [Double]
 
     public private(set) var alongM: Double = 0
@@ -38,6 +40,15 @@ public struct RouteFollower: Equatable, Sendable {
     }
 
     public var typicalSpeedMps: Double { totalM / todayS }
+
+    /// H2: today's estimate for reaching `alongM` (the past rides' shape, else evenly)
+    public func todayElapsedS(alongM a: Double) -> Double {
+        if let h = history, h.isUsable { return h.todayElapsedS(atKm: a / 1000, todayS: todayS) }
+        return min(max(0, a), totalM) / totalM * todayS
+    }
+
+    /// H2: the rest of today's estimate from `alongM`
+    public func todayRemainingS(alongM a: Double) -> Double { max(0, todayS - todayElapsedS(alongM: a)) }
 
     /// The point `along` metres from the start of the route
     public func point(at along: Double) -> GeoPoint {
@@ -112,14 +123,9 @@ public struct RouteFollower: Equatable, Sendable {
             let end = path[path.count - 1]
             remainingS = Geo.distanceM(p, end) / typicalSpeedMps
         } else {
-            let base = (totalM - alongM) / totalM * todayS
-            let done = max(0, alongM - (startAlongM ?? alongM))
-            let expected = done / totalM * todayS
-            var pace = 1.0
-            if expected > 20, elapsedS > 0 { pace = min(2, max(0.5, elapsedS / expected)) }
-            let kmDone = done / 1000
-            let w = kmDone / (kmDone + 2)
-            remainingS = base * (1 + w * (pace - 1))
+            // Hotfix 03 (H2, B70): point by point, no pace blend: the rest of TODAY's estimate from this point. Time lost so far (a red
+            // light) is already in the clock, so it is not counted a second time as slow pace stretching the rest.
+            remainingS = todayRemainingS(alongM: alongM)
         }
         return Step(alongM: alongM, remainingS: remainingS, offPath: offPath, deadReckoned: dead,
                     dot: dead ? point(at: alongM) : nil)

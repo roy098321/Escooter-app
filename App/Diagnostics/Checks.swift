@@ -306,7 +306,7 @@ enum CheckList {
         m("u21", routesM, "Greying with the safety margin (M2-05)", "Nothing to do · Run all automatic marks it",
           "Exactly at the limit fits; 0.1% under is greyed; One way only, Tight and fits at the 10% spare edge; no data = no chip; last seen shows its age; I can charge here lifts the way back"),
         m("u22", routesM, "Where to? and arrival time (M2-06)", "Nothing to do · Run all automatic marks it",
-          "The chip appears only once a route is saved; arrival time on pace, running late (blended by km done), off the route (distance / typical speed); the display changes at most every 30 s or at a 1 min jump"),
+          "The chip appears only once a route is saved; arrival time on pace, running late (the rest of today from this point, an early slow stretch not counted twice: hotfix 03), off the route (distance / typical speed); the display changes at most every 30 s or at a 1 min jump"),
         m("u23", routesM, "Arrive by and the leave reminder (M2-07)", "Nothing to do · Run all automatic marks it",
           "Leave = target - today - margin (upper edge minus median), settled in at most 3 steps across the rush-hour boundary; under 3 rides says so; the reminder is held to 07:00 or dropped in quiet hours and replaced only when 2 min or more earlier"),
         m("u24", routesM, "Dot follows the route without GPS (M2-08)", "Nothing to do · Run all automatic marks it",

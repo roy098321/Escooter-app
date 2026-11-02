@@ -340,7 +340,7 @@ extension RouteCheck {
             var late = f
             let slow = late.update(position: at(2_000), gpsFresh: true, rideDistanceM: 2_000, elapsedS: 2_000 / total * today * 1.5)
             let base = (total - 2_000) / total * today
-            let lateOk = slow.remainingS > base * 1.1 && slow.remainingS < base * 1.5
+            let lateOk = abs(slow.remainingS - base) <= base * 0.02   // Hotfix 03: the rest of today, an early slow stretch is not counted twice
             var off = f
             let away = off.update(position: geo((x: 5_000, y: 1_000)), gpsFresh: true, rideDistanceM: 3_000, elapsedS: today)
             let offOk = away.offPath && away.remainingS > 0

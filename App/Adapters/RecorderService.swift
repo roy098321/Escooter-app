@@ -182,8 +182,10 @@ final class RecorderService {
                     RideVoice.shared.usualRoutePctPerKm = RouteFollowLoader.usualPctPerKm(routeId: id, database: db)      // F-22
                     RideVoice.shared.usualTripS = RouteFollowLoader.usualTripS(routeId: id, database: db)                // V09 running late
                     RideVoice.shared.usualStops = RouteFollowLoader.usualStops(routeId: id, database: db)                // V09 timing
-                    driver.follow(RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination),
-                                  utcOffsetMin: RouteCardLoader.currentOffsetMin())
+                    var follower = RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination)
+                    // Hotfix 03: the arrival time and the voice go point by point along the route's past rides
+                    if let f = follower { follower?.history = RouteFollowLoader.history(routeId: id, follower: f, database: db) }
+                    driver.follow(follower, utcOffsetMin: RouteCardLoader.currentOffsetMin())
                 }
             }
         } else if !rideOn, followChecked {

@@ -334,6 +334,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
     public private(set) var lastAnyFrameT: Double?
     public private(set) var speedKmh: Double?
     public private(set) var currentA: Double?
+    /// Hotfix 03 (H1): the newest frame's power (V × I), W
+    public private(set) var powerW: Double?
     public private(set) var batteryPct: Int?
     public private(set) var odometerKm: Double?
     /// Newest scooter temperature (M1-12: motor heat banners)
@@ -412,6 +414,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
             connected = false
             speedKmh = nil
             currentA = nil
+            powerW = nil
             currentAboveSince = nil
             if phase == .ready { phase = .idle }
         case .frame(let f):
@@ -497,6 +500,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         if let s = f.speedKmh { speedKmh = s }      // a dropped reading (G1b) keeps the last one
         if let tc = f.temperatureC { temperatureC = tc }
         currentA = f.currentA
+        powerW = f.powerW
         if let b = f.batteryPct { batteryPct = b }
         if let o = f.odometerKm { odometerKm = o }
         if f.shuttingDown { shuttingDownSeen = true }
@@ -992,6 +996,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         lastAnyFrameT = nil
         speedKmh = nil
         currentA = nil
+        powerW = nil
         currentAboveSince = nil
         gpsFastSince = nil
         stopCandidateSince = nil
@@ -1082,7 +1087,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
             blip = (speedKmh ?? heldSpeedKmh) != nil
         }
         let noGps = lastFix.map { max(0, t - $0.t) } ?? (ride.map { t - $0.startT } ?? 0)
-        return LiveInput(scooterSpeedKmh: linked ? speedKmh : (blip ? (speedKmh ?? heldSpeedKmh) : nil),
+        var input = LiveInput(scooterSpeedKmh: linked ? speedKmh : (blip ? (speedKmh ?? heldSpeedKmh) : nil),
                          gpsSpeedKmh: gpsMedianKmh(at: t),
                          scooterLinked: linked || blip,
                          scooterBatteryPct: batteryPct.map(Double.init),
@@ -1096,5 +1101,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
                          lat: lastFix?.lat, lon: lastFix?.lon,
                          rideElapsedS: ride.map { r in max(0, t - (r.ridingStartT ?? (r.manual ? r.startT : t))) },
                          rideDistanceM: ride.map { $0.wheelM })
+        input.scooterPowerW = linked ? powerW : nil
+        input.scooterCurrentA = linked ? currentA : nil
+        return input
     }
 }
