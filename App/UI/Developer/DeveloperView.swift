@@ -39,6 +39,7 @@ struct DeveloperView: View {
                 tool("Accuracy (estimate errors)", "scope", ["u47", "u48", "u49"]) { AccuracyView() }
                 tool("Ride screen preview", "play.rectangle", ["ui159", "ui185"]) { RideScreenPreview() }   // F-37: never records
                 tool("Voice messages (V09)", "waveform", ["ui184"]) { V09PlayAllView() }   // batch 102: every V09 line once, no ride needed
+                tool("Voice replay", "waveform.badge.magnifyingglass", ["ui189"]) { V09ReplayView() }   // hotfix 03: the new voice over your newest rides
                 tool("Route line lab", "scribble.variable", ["ui160"]) { RouteLineLab() }   // hotfix 01: A / B / C on a made-up ride
             }
                 .glassRows()

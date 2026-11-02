@@ -699,6 +699,11 @@ enum RideDetailLoader {
         var model = RideSummaryBuilder.build(input, gaps: gaps, points: points)
         // M4-02 (check mf1): the ride's factor columns as one line under More
         if let line = FactorEffects.developerLine(db, rideId: id) { model.infoLines.append(line) }
+        // Hotfix 03 proof: what the voice said in this ride against what really happened (under More)
+        let endS = Double(r.endAt ?? (r.startAt + Int64((r.totalS ?? 0) * 1000))) / 1000
+        let said = V09LineLog.lines(db, fromS: Double(r.startAt) / 1000 - 60, toS: endS + 60)
+        model.infoLines += V09SaidCompare.lines(said, realArrivalPct: r.endRestPct ?? points.compactMap(\.batteryPct).last.map { Double($0) },
+                                                realArrivalS: endS, utcOffsetMin: r.utcOffsetMin ?? 0)
         return model
     }
 }

@@ -154,6 +154,10 @@ final class RideVoice {
                 + " arrival \(f(n.arrivalPct))\(n.stable ? " steady" : "") late \(f(n.lateS)) s]"
         }
         Log.info(source: "voice", "V09: said \"\(m.line)\"" + (m.urgent ? " (urgent)" : " (at a good moment)") + why)
+        // the ride summary compares it with what really happened
+        var n = numbers ?? V09Numbers()
+        if n.t == 0 { n.t = Date().timeIntervalSince1970 }
+        V09LineLog.add(V09SaidLine(m, numbers: n), db: AppModel.shared.database)
     }
 
     /// H3: the start line names the destination of the known route (nil = no route: no start line)
