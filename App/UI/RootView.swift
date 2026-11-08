@@ -102,6 +102,12 @@ struct RootView: View {
                 .tag(4)
         }
         .floatingTabBar(selection: $tab, onReselect: { rootTokens[$0] += 1 })
+        .sheet(isPresented: Binding(get: { model.showBatteryReport && !coverShown }, set: { model.showBatteryReport = $0 })) {
+            NavigationStack {
+                BatteryReportView()
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { model.showBatteryReport = false } } }
+            }
+        }
         .onChange(of: model.requestedTab) { _, v in
             if let v { tab = v; model.requestedTab = nil }
         }

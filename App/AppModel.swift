@@ -19,6 +19,8 @@ final class AppModel {
     var displayDatabase: AppDatabase? { ScreenSimulator.shared.database ?? database }
     /// A tab another part of the app asks for (the weekly notification opens Stats = 3); RootView takes it and clears it
     var requestedTab: Int?
+    /// V-U2 (batch 3): the battery decay notice was tapped; RootView shows the report and clears it
+    var showBatteryReport = false
     /// V4: "Data update failed · Send report" instead of running on half-migrated data
     private(set) var databaseError: String?
 
@@ -248,6 +250,7 @@ enum InstallChecks {
         }
         FuelPriceSetting.ensureDefault(database: database)
         CalibrationUpdater.refreshAtOpen(database)
+        BatteryDecayService.check(database)          // V-U2: a level reached since the last look (never during a ride)
 
         // u2 (M1-01, F-30b): the version is a release name (101.251026.00) and the decided thresholds (T101 margin; the SLOW limit T99 went with the SLOW warning, P-4)
         let thresholdsOk = T.t101SafetyMarginShare == 0.10

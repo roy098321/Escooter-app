@@ -2,6 +2,18 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 103.081126.00 — batch 3, Sun 8 Nov 2026 (battery report, smarter battery warnings, fresh readings)
+
+- B73 (every metric): a new scooter connection starts with every value empty (speed, battery, odometer, temperature, current, power); the scooter's 0xFFFF "no temperature yet" clears the value; engine lines only once the motor has pushed on this ride. Fixes "Engine hot, 87 degrees" at the start of a ride (yesterday's last reading).
+- B74: place circles of 25 m and 50 m (plus 100–1000 m); the "widen it?" offer steps up from them.
+- B75: fuel price typed as 3 digits, the point goes in by itself (8 2 7 → 8.27); electricity keeps the decimal point.
+- B76: the ride screen opens at the real ride start (B62: motor power or riding speed for a few seconds) or when Start is pressed; scooter on and wheeled out records quietly in the background.
+- V-U1 Level 1: "above usual" starts at the rider's own 9-in-10 line for the route (owner ≈ +12 %; under 10 rides +15 %).
+- V-U1 Level 2: urgent "Unusual drag, check brakes and tyres." (high use in two opposite directions), "Battery draining abnormally fast." (% falls 1.5× faster than the energy drawn), "Battery use far above usual, check the scooter." (≈ 2× the worst-ever deviation held over 2 km). Once per ride, again only 20 points worse; Level 1 stays quiet after it; a note on the ride page with thumbs.
+- V-U2: battery report (Health tile on the Battery page, or the notice): range on a full battery in km next to health %, graph with km left and % right that you can press, losing km a year, next level, charge cycles, similar-weather note, replacement tip at High, "I replaced the battery".
+- V-U2 notices at 90 / 85 (Battery decay detected), 80 / 75 (Battery wearing), 70 and every 5 below (Battery worn); 3-month comparisons in similar weather, the level must hold 2 weeks, baseline after the first 20 cycles; never during a ride; each once.
+- Cleanup (D1–D8, D10, D12–D14): 13 unused pieces removed. readyByLine and nextOccurrence stay (the ready-by notification uses them).
+
 ## 102.011126.02 — hotfix 2 of batch 2, Mon 2 Nov 2026 (arrival battery = battery now; Scooter tab vs Home battery)
 
 - B71: the voice's arrival battery said your battery now ("Arrival battery now about 60" right after "Battery at 60"). Past rides are stored a row about every 5 seconds, and the arrival maths skipped any gap over 5 seconds, so every past ride seemed to use nothing. One gap limit (6 seconds) now for the live battery, the route's past rides and the voice replay.

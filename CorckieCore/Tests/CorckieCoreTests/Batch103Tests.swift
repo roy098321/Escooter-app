@@ -209,6 +209,98 @@ final class Batch103Tests: XCTestCase {
         XCTAssertTrue(V09Message.unusualDrag.urgent)
     }
 
+    // MARK: V-U2 · battery decay report and notices
+
+    private let day: Int64 = 86_400_000
+
+    /// A made-up rider: a 15 km ride every 2 days for `years`; new range 38 km; `wearPerYear` health points lost a year;
+    /// winter (10 °C) shortens the range by 15 % for a while and summer is 25 °C.
+    private func decayRides(years: Double, wearPerYear: Double) -> [DecayRide] {
+        var out: [DecayRide] = []
+        var t: Int64 = 0
+        while Double(t) < years * 365 * Double(day) {
+            let dayOfYear = Double(t / day % 365)
+            let temp = 17.5 + 7.5 * cos(dayOfYear / 365 * 2 * .pi)          // 25 °C at day 0, 10 °C half a year later
+            let cold = temp < 20 ? 1 - 0.02 * (20 - temp) * 0.75 : 1.0      // down to −15 % at 10 °C
+            let health = 1 - wearPerYear / 100 * Double(t) / (365 * Double(day))
+            let km = 38 * health * cold
+            out.append(DecayRide(startAt: t, distanceM: 15_000, usedPct: 15 / km * 100, airTempC: temp))
+            t += 2 * day
+        }
+        return out
+    }
+
+    func testDecayLevelsAndSeverity() {
+        XCTAssertNil(BatteryDecay.level(health: 92))
+        XCTAssertEqual(BatteryDecay.level(health: 88), 90)
+        XCTAssertEqual(BatteryDecay.level(health: 85), 85)
+        XCTAssertEqual(BatteryDecay.level(health: 69), 70)
+        XCTAssertEqual(BatteryDecay.severity(level: 85), .low)
+        XCTAssertEqual(BatteryDecay.severity(level: 75), .medium)
+        XCTAssertEqual(BatteryDecay.severity(level: 60), .high)
+        XCTAssertEqual(DecaySeverity.high.title, "Battery worn")
+    }
+
+    func testStillLearningAtFirst() {
+        let r = BatteryDecay.report(rides: decayRides(years: 0.1, wearPerYear: 0), nowMs: Int64(0.1 * 365) * day)
+        guard case let .learning(weeks, km) = r.state else { return XCTFail("\(r.state)") }
+        XCTAssertGreaterThan(weeks, 0)
+        XCTAssertNotNil(km)
+        XCTAssertNil(r.level)
+    }
+
+    func testWinterIsNotWear() {
+        let rides = decayRides(years: 2.5, wearPerYear: 0)
+        var levels: [Int] = []
+        var at = 120 * day
+        while at < Int64(2.5 * 365) * day {
+            let r = BatteryDecay.report(rides: rides.filter { $0.startAt <= at }, nowMs: at)
+            if let l = r.level { levels.append(l) }
+            at += 15 * day
+        }
+        XCTAssertTrue(levels.isEmpty, "no wear, cold winters: no notice (\(levels))")
+    }
+
+    func testEachLevelOnceAsTheBatteryWears() {
+        let rides = decayRides(years: 7, wearPerYear: 5)
+        var sent: Set<Int> = []
+        var said: [Int] = []
+        var at = 120 * day
+        while at < Int64(7 * 365) * day {
+            let r = BatteryDecay.report(rides: rides.filter { $0.startAt <= at }, nowMs: at)
+            if let l = BatteryDecay.noticeLevel(report: r, sent: sent) {
+                said.append(l)
+                sent.formUnion(stride(from: 90, through: l, by: -5))
+            }
+            at += 15 * day
+        }
+        XCTAssertEqual(said, [90, 85, 80, 75, 70], "every 5 % from 90, once each")
+    }
+
+    func testReportLeadsWithKilometres() throws {
+        let rides = decayRides(years: 5, wearPerYear: 5)
+        let now = Int64(5 * 365) * day
+        let r = BatteryDecay.report(rides: rides, nowMs: now)
+        XCTAssertEqual(r.state, .ready)
+        let health = try XCTUnwrap(r.healthPct)
+        XCTAssertEqual(health, 79, accuracy: 4, "about 5 points a year after the first year")
+        XCTAssertEqual(r.nowKm ?? 0, (r.newKm ?? 0) * health / 100, accuracy: 0.01)
+        XCTAssertGreaterThan(r.losingKmPerYear ?? 0, 1)
+        XCTAssertNotNil(r.nextLevelKm)
+        XCTAssertGreaterThan(r.points.count, 10)
+        let words = BatteryDecay.notice(level: 80, report: r)
+        XCTAssertEqual(words.title, "Battery wearing")
+        XCTAssertTrue(words.body.hasPrefix("A full battery now takes you about"), words.body)
+    }
+
+    func testReplacedBatteryStartsOver() {
+        let rides = decayRides(years: 5, wearPerYear: 5)
+        let now = Int64(5 * 365) * day
+        let r = BatteryDecay.report(rides: rides, nowMs: now, resetAtMs: now - 10 * day)
+        guard case .learning = r.state else { return XCTFail("a new battery learns again") }
+        XCTAssertNil(r.level)
+    }
+
     /// The owner's 3 Nov case: 87 °C from yesterday, scooter on, waiting > 20 s before setting off → no engine line.
     func testNoEngineLineBeforeTheMotorRan() {
         var d = V09Director()

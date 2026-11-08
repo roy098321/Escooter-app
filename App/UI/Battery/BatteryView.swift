@@ -85,7 +85,10 @@ struct BatteryView: View {
     /// B4: a tile that has nothing to show yet is not drawn
     private func tiles(_ o: BatteryOverview) -> some View {
         StatTileGrid {
-            if let h = Self.healthTile(o.health) { StatTile(value: h, label: "Health") }
+            NavigationLink { BatteryReportView() } label: {     // V-U2 / D9: the report, also while it is still learning
+                StatTile(value: Self.healthTile(o.health) ?? "Learning", label: "Health")
+            }
+            .buttonStyle(.plain)
             StatTile(value: BatteryText.cyclesText(o.cycles), label: "Charge cycles")
             if let h = o.chargeHours {
                 StatTile(value: ChargeTime.text(hours: h), label: "To full")

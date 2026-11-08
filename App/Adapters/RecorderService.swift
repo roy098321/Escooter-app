@@ -80,6 +80,7 @@ final class RecorderService {
                     RouteNaming.start(rideId: id, database: AppModel.shared.database)
                     MaintenanceService.checkAtRideEnd(AppModel.shared.database)
                     UsageAlarmService.rideClosed(rideId: id, database: AppModel.shared.database)   // V-U1 Level 2 note on the ride page
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) { BatteryDecayService.check(AppModel.shared.database) }   // V-U2
                     OutsideDataService.shared.refresh(database: AppModel.shared.database, reason: "ride closed")
                     EdgeWatch.shared.refresh(database: AppModel.shared.database)
                     Log.info(source: "recorder", "Ride closed (\(status))")

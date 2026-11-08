@@ -25,7 +25,8 @@ final class LiveViewGuardTests: XCTestCase {
         // M1-13: the same cover turns into the ride summary once the ride is over (it has a Done button)
         XCTAssertTrue(root.contains(".fullScreenCover(isPresented: Binding(get: { coverShown }, set: { _ in }))") && root.contains("coverShown = shown"),
                       "the live view is a full-screen cover that nothing but the ride state can close (A3: the binding ignores sets, onChange of the ride state drives it)")
-        XCTAssertTrue(root.contains("service.rideActive || service.readyRequested"), "the live view shows while a ride or Ready is on")
+        XCTAssertTrue(root.contains("(service.rideActive && service.ridingEngaged) || service.readyRequested"),
+                      "the live view shows while a ride is really ridden (B76) or Ready is on")
         XCTAssertTrue(root.contains("LiveRideView()"))
     }
 

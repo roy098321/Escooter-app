@@ -16,7 +16,7 @@ final class V09VoiceTests: XCTestCase {
         XCTAssertEqual(V09Message.usingMore(pctPerKm: 2.6, aboveUsualPct: 15).line, "Using two point six percent per kilometre, fifteen percent above usual.")
         XCTAssertTrue(V09Message.engineOverheating(c: 94).urgent)
         XCTAssertFalse(V09Message.runningLate(minutes: 8, arriveAt: "9:02").urgent)
-        XCTAssertEqual(V09Message.samples.count, 15)
+        XCTAssertEqual(V09Message.samples.count, 18)   // + V-U1 Level 2 (batch 3)
     }
 
     func testEngineTemperatureHoldsOnceAndReArms() {

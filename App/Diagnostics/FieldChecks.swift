@@ -218,6 +218,12 @@ extension FieldChecks: UNUserNotificationCenterDelegate {
             }
         }
         // M4-09: the weekly summary opens Stats (the week card is on top there)
+        // V-U2: the battery decay notice opens the report
+        if response.notification.request.content.userInfo["open"] as? String == "batteryReport" {
+            DispatchQueue.main.async { AppModel.shared.showBatteryReport = true }
+            completionHandler()
+            return
+        }
         if response.notification.request.content.userInfo["open"] as? String == "stats" {
             DispatchQueue.main.async { AppModel.shared.requestedTab = 3 }
             completionHandler()

@@ -1,5 +1,27 @@
 [
   {
+    "version": "103.081126.00",
+    "headline": "Battery report, smarter battery warnings, fresh readings",
+    "items": [
+      { "symbol": "battery.75", "title": "Battery report", "line": "See your real-world range over time, with alerts as the battery ages. Tap Health on the Battery page." },
+      { "symbol": "exclamationmark.triangle", "title": "Smarter battery warnings", "line": "“Above usual” now starts at your own normal. A new warning speaks up when something looks mechanical: drag, or a battery draining too fast." },
+      { "symbol": "scooter", "title": "Ride screen waits for the ride", "line": "Turning the scooter on and wheeling it out records quietly. The ride screen opens when you ride off." },
+      { "symbol": "arrow.clockwise", "title": "Fresh readings every time", "line": "Nothing from your last ride shows as now: no more “Engine hot” at the start." }
+    ],
+    "smallerFixes": 3,
+    "full": [
+      "Battery report: range on a full battery in km next to health %, a graph you can press for date, km and %, how fast it drops and when the next level comes.",
+      "Battery notices at every 5 % of health lost from 90 %: Battery decay detected, Battery wearing, Battery worn. Never during a ride; each once.",
+      "Battery health compares rides in similar weather, so winter is not counted as wear. “I replaced the battery” starts a new baseline.",
+      "Above usual battery use starts at your own 9-in-10 line for the route. Extreme use (likely mechanical) speaks at once and leaves a note on the ride page.",
+      "Every scooter reading starts empty on a new connection; engine lines only after the motor has run on this ride.",
+      "The ride screen opens at the real ride start or when you press Start.",
+      "Places can be 25 m or 50 m.",
+      "Fuel price: type 3 digits, the point goes in by itself.",
+      "Unused code removed."
+    ]
+  },
+  {
     "version": "102.011126.02",
     "headline": "Hotfix: the arrival battery is right again, one battery everywhere",
     "items": [
