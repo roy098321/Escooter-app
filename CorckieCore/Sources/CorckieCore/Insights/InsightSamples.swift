@@ -84,6 +84,10 @@ public enum InsightSamples {
         let usual = (0..<6).map { HeatRide(riseC: 30 + Double($0), distanceKm: 6, airTempC: 22) }
         out += InsightCatalogue.heatAfter(rideId: "r1", routeId: "A", peakC: 92, ride: HeatRide(riseC: 68, distanceKm: 6, airTempC: 33), routeRides: usual, nowMs: now)
         out += InsightCatalogue.heatAfter(rideId: "r2", routeId: "A", peakC: nil, ride: HeatRide(riseC: 48, distanceKm: 6, airTempC: 22), routeRides: usual, nowMs: now)
+        // V-U1 (batch 3): the ride page note after a Level 2 warning
+        var n = V09Numbers()
+        n.rideKm = 6
+        out += UsageAlarmNote.insights(rideId: "r1", routeId: "A", said: [V09SaidLine(.unusualDrag, numbers: n)], nowMs: now)
         return out
     }
 }

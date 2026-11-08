@@ -76,8 +76,8 @@ final class Batch103Tests: XCTestCase {
     func testSmallPlaceCircles() {
         XCTAssertEqual(Array(PlaceListBuilder.radiusChoices.prefix(2)), [25, 50])
         let p = PlaceInfo(id: "p", point: GeoPoint(lat: 0, lon: 0), radiusM: 25)
-        XCTAssertTrue(PlaceMatching.reaches(p, GeoPoint(lat: 0.00018, lon: 0), tripLengthM: 5_000), "20 m: inside")
-        XCTAssertFalse(PlaceMatching.reaches(p, GeoPoint(lat: 0.00036, lon: 0), tripLengthM: 5_000), "40 m: outside")
+        XCTAssertTrue(PlaceMatcher.reaches(p, GeoPoint(lat: 0.00018, lon: 0), tripLengthM: 5_000), "20 m: inside")
+        XCTAssertFalse(PlaceMatcher.reaches(p, GeoPoint(lat: 0.00036, lon: 0), tripLengthM: 5_000), "40 m: outside")
         XCTAssertEqual(TripRules.widenRadius(endDistancesM: [30, 45], radiusM: 25, choices: PlaceListBuilder.radiusChoices), 50)
         XCTAssertEqual(TripRules.widenRadius(endDistancesM: [60, 90], radiusM: 50, choices: PlaceListBuilder.radiusChoices), 100)
     }
@@ -120,6 +120,93 @@ final class Batch103Tests: XCTestCase {
         e.handle(.frame(frame(1, speed: 0)), at: 1)
         e.handle(.startPressed, at: 2)
         XCTAssertTrue(e.liveInput(at: 2).ridingEngaged)
+    }
+
+    // MARK: V-U1 · above usual (Level 1) and extreme (Level 2)
+
+    /// Shaped like the owner's 28 rides: median ≈ 2.66 %/km, p90 ≈ +12 %, worst ≈ +16 %
+    private let ownerLike: [Double] = [2.35, 2.41, 2.44, 2.48, 2.50, 2.54, 2.55, 2.58, 2.60, 2.61, 2.63, 2.64, 2.65, 2.66,
+                                       2.66, 2.68, 2.70, 2.72, 2.74, 2.78, 2.82, 2.87, 2.89, 2.91, 2.95, 2.98, 3.02, 3.09]
+
+    func testLinesFromTheRidersOwnSpread() {
+        let l = UsageLines.from(perKm: ownerLike)
+        XCTAssertEqual(l.level1Share, 0.12, accuracy: 0.02, "Level 1 ≈ +12 %")
+        XCTAssertEqual(l.level2Share, 0.32, accuracy: 0.04, "Level 2 ≈ 2 × the worst (+16 %)")
+        let new = UsageLines.from(perKm: [2.6, 2.7, 2.8])
+        XCTAssertEqual(new.level1Share, 0.15)
+        XCTAssertEqual(new.level2Share, 0.40)
+        let tight = UsageLines.from(perKm: Array(repeating: 2.6, count: 12))
+        XCTAssertEqual(tight.level1Share, 0.10, "never under +10 %")
+        XCTAssertEqual(tight.level2Share, 0.20, accuracy: 1e-9, "at least 10 points above Level 1")
+    }
+
+    /// Rides 6 km at a fixed energy use per km (Wh/% = 8), heading changes every km. Returns the causes said and the km.
+    private func ride(pctPerKm: Double, usual: Double = 2.66, km: Double = 6, livePctPerKm: Double? = nil,
+                      headings: [Double] = [0, 180], lines: UsageLines = .newRider) -> [(UsageWatch.Cause, Double)] {
+        var w = UsageWatch()
+        var out: [(UsageWatch.Cause, Double)] = []
+        let speed = 20.0, wh = 8.0
+        let kmPerS = speed / 3600
+        let watts = pctPerKm * wh * speed            // %/km × Wh/% × km/h = W
+        var t = 0.0, d = 0.0
+        while d <= km {
+            let course = headings[Int(d) % headings.count]
+            let live = 90 - d * (livePctPerKm ?? pctPerKm)
+            if let c = w.update(t: t, rideKm: d, livePct: live, powerW: watts, speedKmh: speed, courseDeg: course,
+                                whPerPct: wh, usualPctPerKm: usual, lines: lines) { out.append((c, d)) }
+            t += 1
+            d += kmPerS
+        }
+        return out
+    }
+
+    func testNormalRideIsQuiet() {
+        XCTAssertTrue(ride(pctPerKm: 2.8).isEmpty, "+5 %: nothing")
+        XCTAssertTrue(ride(pctPerKm: 2.66 * 1.25, headings: [90]).isEmpty, "+25 % one way (wind): below the line, no drag pattern")
+    }
+
+    func testDragInBothDirections() {
+        let said = ride(pctPerKm: 2.66 * 1.45)
+        XCTAssertEqual(said.first?.0, .drag, "high both ways = brakes / tyres")
+        XCTAssertEqual(said.count, 1, "once")
+    }
+
+    func testFarAboveWithoutAPattern() {
+        let said = ride(pctPerKm: 2.66 * 1.5, headings: [90])
+        XCTAssertEqual(said.first?.0, .unknown)
+        XCTAssertGreaterThanOrEqual(said.first?.1 ?? 0, UsageWatch.windowKm, "held over 2 km first")
+    }
+
+    func testBatteryDrainingFasterThanTheEnergyDrawn() {
+        let said = ride(pctPerKm: 2.66, livePctPerKm: 2.66 * 2.2, headings: [90])
+        XCTAssertEqual(said.first?.0, .battery)
+    }
+
+    func testLevelTwoReplacesLevelOne() {
+        var d = V09Director()
+        var said: [V09Message] = []
+        let wh = 8.0, speed = 20.0
+        var t = 0.0, km = 0.0
+        while km <= 8 {
+            var i = V09Input(t: t, pct: 95 - km * 2.66 * 1.6, rideKm: km, speedKmh: speed, courseDeg: km.truncatingRemainder(dividingBy: 2) < 1 ? 0 : 180,
+                             usualPctPerKm: 2.66, powerW: 2.66 * 1.6 * wh * speed, currentA: 8, whPerPct: wh)
+            i.usageLines = UsageLines.from(perKm: ownerLike)
+            said += d.update(i)
+            t += 1
+            km += speed / 3600
+        }
+        XCTAssertTrue(said.contains(.unusualDrag), said.map(\.line).joined(separator: " | "))
+        XCTAssertFalse(said.contains { if case .usingMore = $0 { return true } else { return false } }, "never both for one problem")
+    }
+
+    func testRidePageNote() {
+        var n = V09Numbers()
+        n.rideKm = 5.6
+        let notes = UsageAlarmNote.insights(rideId: "r", routeId: nil, said: [V09SaidLine(.everyTen(pct: 60), numbers: n),
+                                                                                V09SaidLine(.unusualDrag, numbers: n)], nowMs: 1)
+        XCTAssertEqual(notes.map(\.text), ["Unusual drag from km 6. Check brakes and tyres."])
+        XCTAssertEqual(notes.first?.type.insightClass, .safety)
+        XCTAssertTrue(V09Message.unusualDrag.urgent)
     }
 
     /// The owner's 3 Nov case: 87 °C from yesterday, scooter on, waiting > 20 s before setting off → no engine line.

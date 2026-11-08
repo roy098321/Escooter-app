@@ -112,6 +112,24 @@ extension RouteFollowLoader {
         DestinationRules.usualPctPerKm(rides: RouteCardLoader.stats((try? RouteQueries(database).routeRides(routeId: routeId)) ?? []))
     }
 
+    /// V-U1 (batch 3): where "above usual" and "extreme" start on this route, from its own rides
+    static func usageLines(routeId: String, database: AppDatabase) -> UsageLines {
+        let stats = RouteCardLoader.stats((try? RouteQueries(database).routeRides(routeId: routeId)) ?? [])
+        return UsageLines.from(perKm: stats.filter { !$0.excluded }.compactMap { r in
+            guard let u = r.usedPct, u > 0, let d = r.distanceM, d >= 500 else { return nil }
+            return u / (d / 1000)
+        })
+    }
+
+    /// V-U1 without a route: the rider's recent rides (40 newest real rides of 1.5 km or more)
+    static func recentUsageLines(database: AppDatabase) -> UsageLines {
+        let rides = ((try? RideQueries(database).rides(limit: 60)) ?? []).filter { $0.kind == "ride" && !$0.isSimulated }
+        return UsageLines.from(perKm: rides.prefix(40).compactMap { r in
+            guard let u = r.usedPct, u > 0, let d = r.distanceM, d >= 1_500 else { return nil }
+            return u / (d / 1000)
+        })
+    }
+
     /// V09 timing: where riders usually stop on this route (stops of ≥ 20 s on its 3 newest rides)
     static func usualStops(routeId: String, database: AppDatabase) -> [GeoPoint] {
         let rides = ((try? RouteQueries(database).routeRides(routeId: routeId)) ?? []).filter { $0.kind == "ride" }.sorted { $0.startAt > $1.startAt }

@@ -18,6 +18,9 @@ final class RideVoice {
     private var announcer = DestinationAnnouncer()
     /// F-22: the followed route's usual %/km (set when the route is picked up at ride start)
     var usualRoutePctPerKm: Double?
+    /// V-U1 (batch 3): Level 1 / Level 2 lines of the followed route (nil = the rider's recent rides)
+    var routeUsageLines: UsageLines?
+    private var recentUsageLines = UsageLines.newRider
     /// Hotfix 03: the followed route's past rides point by point and TODAY's estimate (the time the Where-to chip promised), s
     var routeHistory: RouteHistory?
     var todayS: Double?
@@ -66,6 +69,7 @@ final class RideVoice {
                 let overview = BatteryOverview.load(db, currentPct: input.scooterBatteryPct, connected: true)
                 recentPctPerKm = overview.range?.pctPerKm
                 reservePct = overview.reservePct
+                recentUsageLines = RouteFollowLoader.recentUsageLines(database: db)
             } else {
                 recentPctPerKm = nil
             }
@@ -78,6 +82,7 @@ final class RideVoice {
             SoundPlayer.shared.endRideSession(after: riding ? 3.0 : 0)
             riding = false
             usualRoutePctPerKm = nil
+            routeUsageLines = nil
             routeHistory = nil
             todayS = nil
             routeName = nil
@@ -128,7 +133,9 @@ final class RideVoice {
                          powerW: input.scooterPowerW, currentA: input.scooterCurrentA, whPerPct: whPerPct,
                          history: routeHistory, todayS: todayS, placeName: startPlace,
                          utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
-        for m in v09.update(v) { say(m, numbers: v09.numbers) }
+        var vi = v
+        vi.usageLines = usualRoutePctPerKm != nil ? (routeUsageLines ?? recentUsageLines) : recentUsageLines
+        for m in v09.update(vi) { say(m, numbers: v09.numbers) }
     }
 
     /// V09 timing: the nearest usual stop that is getting closer (ahead), m; nil = none known
@@ -190,8 +197,9 @@ final class RideVoice {
     }
 
     /// F-35: another destination was picked at a stop: the F-22 check starts over for it, and the arrival sound can play for it
-    func destinationChanged(usualPctPerKm: Double?) {
+    func destinationChanged(usualPctPerKm: Double?, usageLines: UsageLines? = nil) {
         usualRoutePctPerKm = usualPctPerKm
+        routeUsageLines = usageLines
         director.destinationChanged()
         arrivalPlayed = false
     }

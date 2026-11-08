@@ -79,6 +79,7 @@ final class RecorderService {
                     RideChecks.run(database: AppModel.shared.database)
                     RouteNaming.start(rideId: id, database: AppModel.shared.database)
                     MaintenanceService.checkAtRideEnd(AppModel.shared.database)
+                    UsageAlarmService.rideClosed(rideId: id, database: AppModel.shared.database)   // V-U1 Level 2 note on the ride page
                     OutsideDataService.shared.refresh(database: AppModel.shared.database, reason: "ride closed")
                     EdgeWatch.shared.refresh(database: AppModel.shared.database)
                     Log.info(source: "recorder", "Ride closed (\(status))")
@@ -184,6 +185,7 @@ final class RecorderService {
                 RideVoice.shared.powerLimitPct = driver.lowBatteryPower?.belowPct   // V09 "power limit coming"
                 if let id = RouteFollowSelection.shared.routeId {
                     RideVoice.shared.usualRoutePctPerKm = RouteFollowLoader.usualPctPerKm(routeId: id, database: db)      // F-22
+                    RideVoice.shared.routeUsageLines = RouteFollowLoader.usageLines(routeId: id, database: db)           // V-U1
                     RideVoice.shared.usualStops = RouteFollowLoader.usualStops(routeId: id, database: db)                // V09 timing
                     var follower = RouteFollowLoader.follower(routeId: id, database: db, combination: RouteFollowSelection.shared.combination)
                     // Hotfix 03: the arrival time and the voice go point by point along the route's past rides
@@ -282,13 +284,15 @@ final class RecorderService {
         selection.choose(key: key)
         TripService.shared.picked(key: selection.chosenKey)       // F-39: another destination closes the open trip
         var usual: Double?
+        var lines: UsageLines?
         if let id = selection.routeId, let db = AppModel.shared.displayDatabase {
             usual = RouteFollowLoader.usualPctPerKm(routeId: id, database: db)
+            lines = RouteFollowLoader.usageLines(routeId: id, database: db)
             driver.follow(RouteFollowLoader.follower(routeId: id, database: db), utcOffsetMin: RouteCardLoader.currentOffsetMin())
         } else {
             driver.follow(nil)
         }
-        RideVoice.shared.destinationChanged(usualPctPerKm: usual)
+        RideVoice.shared.destinationChanged(usualPctPerKm: usual, usageLines: lines)
         destination = selection.chosenKey.flatMap { resolveDestination($0) }
         Log.info(source: "recorder", "F-35: destination changed at a stop (\(destination?.name ?? "none"))")
     }

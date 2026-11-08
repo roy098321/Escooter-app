@@ -53,6 +53,8 @@ public enum InsightType: String, CaseIterable, Sendable {
     case q15Live, q15After, q15Notify, q17New, q18, q19After, q22Weekly
     case firstRide, unlockTime, unlockBattery, unlockCalibration, unlockRange
     case heatPeak, heatHotDay, heatRanHotter
+    /// V-U1 (batch 3): the ride page note after a Level 2 warning
+    case usageAlarm
 
     public var moment: InsightMoment {
         switch self {
@@ -65,7 +67,7 @@ public enum InsightType: String, CaseIterable, Sendable {
 
     public var insightClass: InsightClass {
         switch self {
-        case .q9Live, .heatPeak: return .safety
+        case .q9Live, .heatPeak, .usageAlarm: return .safety
         case .q4After, .q4Weekly, .q19After, .heatHotDay, .heatRanHotter: return .surprise
         case .q1Live, .q1After, .q2After, .q2Live, .q3After, .q3Verdict, .q18, .q15Live, .q15Notify: return .decision
         case .q17New, .firstRide, .unlockTime, .unlockBattery, .unlockCalibration, .unlockRange: return .progress

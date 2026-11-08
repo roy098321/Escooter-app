@@ -28,6 +28,10 @@ public enum V09Message: Equatable, Sendable {
     case arrived(place: String?, pct: Int)
     /// H3: "Riding to Uni, arriving at 8:56, battery at 98 percent."
     case startLine(place: String, arriveAt: String, pct: Int)
+    /// V-U1 Level 2 (batch 3): urgent, likely mechanical
+    case unusualDrag
+    case drainingFast
+    case farAboveUsual
 
     public var urgent: Bool {
         switch self {
@@ -53,6 +57,9 @@ public enum V09Message: Equatable, Sendable {
         case .recordingProblem: return "problem"
         case .arrived: return "arrived"
         case .startLine: return "start"
+        case .unusualDrag: return "drag"
+        case .drainingFast: return "drain"
+        case .farAboveUsual: return "far"
         }
     }
 
@@ -66,7 +73,7 @@ public enum V09Message: Equatable, Sendable {
         case let .engineHot(c), let .engineOverheating(c): return c
         case let .arrived(_, p): return p
         case let .startLine(_, _, p): return p
-        case .backOnTime, .recordingProblem: return nil
+        case .backOnTime, .recordingProblem, .unusualDrag, .drainingFast, .farAboveUsual: return nil
         }
     }
 
@@ -92,6 +99,9 @@ public enum V09Message: Equatable, Sendable {
             if let place, !place.isEmpty { return "Arrived at \(place), battery at \(w(p)) percent." }
             return "Arrived, battery at \(w(p)) percent."
         case let .startLine(place, at, p): return "Riding to \(place), arriving at \(at), battery at \(w(p)) percent."
+        case .unusualDrag: return "Unusual drag, check brakes and tyres."
+        case .drainingFast: return "Battery draining abnormally fast."
+        case .farAboveUsual: return "Battery use far above usual, check the scooter."
         }
     }
 
@@ -101,7 +111,8 @@ public enum V09Message: Equatable, Sendable {
         .usingMore(pctPerKm: 2.6, aboveUsualPct: 15), .everyTen(pct: 60), .arrivingLow(pct: 15), .sharpDrop(pct: 40), .backOnTrack(pct: 50),
         .runningLate(minutes: 6, arriveAt: "9:02"), .backOnTime,
         .pointOfNoReturn(metres: 300), .powerLimitComing(pct: 18), .engineHot(c: 86), .engineOverheating(c: 94), .recordingProblem,
-        .arrived(place: "Uni", pct: 58), .arrived(place: nil, pct: 41)
+        .arrived(place: "Uni", pct: 58), .arrived(place: nil, pct: 41),
+        .unusualDrag, .drainingFast, .farAboveUsual
     ]
 
     /// Battery numbers are said rounded to 5 ("about 40 percent")
@@ -171,6 +182,8 @@ public struct V09Input: Sendable {
     /// The destination's own name (start line); the phone's offset for clock times
     public var placeName: String?
     public var utcOffsetMin: Int
+    /// V-U1 (batch 3): where Level 1 / Level 2 start for this rider (from their own rides)
+    public var usageLines: UsageLines = .newRider
 
     public init(t: Double, pct: Double?, tempC: Double? = nil, rideKm: Double, speedKmh: Double? = nil, courseDeg: Double? = nil,
                 usualPctPerKm: Double? = nil, reservePct: Double = T.t80ReserveDefaultPct, routeKm: Double? = nil, alongKm: Double? = nil,
@@ -316,6 +329,8 @@ public struct V09Director: Sendable {
     private var nextTen: Int?
     private var tenStart: Double?
     private var usingMoreSaid: Int?
+    /// V-U1 Level 2
+    private var usage = UsageWatch()
     private var arrivingLowSaid = false
     private var estWindow: [(t: Double, v: Double)] = []
     /// H1: the arrival % last said (unrounded) or the usual arrival; the last number said (rounded to 5)
@@ -377,6 +392,17 @@ public struct V09Director: Sendable {
         numbers.livePct = i.pct
 
         if (i.currentA ?? 0) >= T.t102PushingCurrentA { motorRan = true }
+        // V-U1 Level 2: urgent, replaces Level 1 (a waiting "above usual" line is dropped)
+        if let cause = usage.update(t: i.t, rideKm: i.rideKm, livePct: i.pct, powerW: i.powerW, speedKmh: i.speedKmh, courseDeg: i.courseDeg,
+                                    whPerPct: i.whPerPct ?? BatteryCalibration.prior().whPerPct, usualPctPerKm: i.usualPctPerKm,
+                                    lines: i.usageLines) {
+            queue.removeAll { if case .usingMore = $0.msg { return true } else { return false } }
+            switch cause {
+            case .drag: urgent.append(.unusualDrag)
+            case .battery: urgent.append(.drainingFast)
+            case .unknown: urgent.append(.farAboveUsual)
+            }
+        }
         if let m = engine.update(tempC: motorRan ? i.tempC : nil, at: i.t) { urgent.append(m) }
         // recording problem: once per problem, again only after 2 min without one
         if i.recordingProblem {
@@ -418,11 +444,11 @@ public struct V09Director: Sendable {
                 nextTen = reached - 10
                 if reached >= 30 { urgent.append(.everyTen(pct: reached)); lastPctSaid = reached }
             }
-            // using more than usual
-            if i.rideKm >= Self.usingMoreAfterKm, let usual = i.usualPctPerKm, usual > 0, start > pct {
+            // using more than usual (V-U1 Level 1: the rider's own 9-in-10 line; quiet once Level 2 spoke)
+            if i.rideKm >= Self.usingMoreAfterKm, let usual = i.usualPctPerKm, usual > 0, start > pct, !usage.anySaid {
                 let rate = (start - pct) / i.rideKm
                 let above = Int(((rate / usual - 1) * 100).rounded())
-                if Double(above) >= Self.usingMoreShare * 100, above >= (usingMoreSaid ?? 0) + 10 {
+                if Double(above) >= max(Self.usingMoreShare, i.usageLines.level1Share) * 100, above >= (usingMoreSaid ?? 0) + 10 {
                     usingMoreSaid = above
                     enqueue(.usingMore(pctPerKm: rate, aboveUsualPct: above), i)
                 }
