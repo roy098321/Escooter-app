@@ -196,7 +196,6 @@ final class LiveWarningsTests: XCTestCase {
                      RouteRideStats(rideId: "c", startAt: 3, distanceM: 4000, usedPct: 12),
                      RouteRideStats(rideId: "d", startAt: 4, distanceM: 4000, usedPct: 40, excluded: true)]
         XCTAssertEqual(DestinationRules.usualPctPerKm(rides: rides)!, 2.5, accuracy: 1e-9)
-        XCTAssertEqual(DestinationRules.usualKm(rides: rides)!, 4, accuracy: 1e-9)
     }
 
     // MARK: director

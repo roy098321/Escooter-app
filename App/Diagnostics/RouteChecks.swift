@@ -460,14 +460,14 @@ extension RouteCheck {
             }
             let edges = status(30) == .fits && status(25) == .tight && status(15) == .oneWayOnly && status(11) == .notEnough
             let noBattery = RouteCardLoader.card(routeId: route.id, database: temp)?.thereAndBack == nil
-            let warnOne = RouteFollowLoader.returnWarning(routeId: route.id, database: temp, battery: BatteryNow(pct: 15))?.contains("not for the way back") == true
-            let warnTight = RouteFollowLoader.returnWarning(routeId: route.id, database: temp, battery: BatteryNow(pct: 25))?.contains("just enough") == true
-            let warnFit = RouteFollowLoader.returnWarning(routeId: route.id, database: temp, battery: BatteryNow(pct: 40)) == nil
+            let warnOne = RouteCardLoader.card(routeId: route.id, database: temp, battery: BatteryNow(pct: 15))?.thereAndBack.flatMap(ThereAndBack.startWarning)?.contains("not for the way back") == true
+            let warnTight = RouteCardLoader.card(routeId: route.id, database: temp, battery: BatteryNow(pct: 25))?.thereAndBack.flatMap(ThereAndBack.startWarning)?.contains("just enough") == true
+            let warnFit = RouteCardLoader.card(routeId: route.id, database: temp, battery: BatteryNow(pct: 40))?.thereAndBack.flatMap(ThereAndBack.startWarning) == nil
             var chargeOk = false
             if let to = route.toPlaceId {
                 try PlaceService.setCanCharge(placeId: to, canCharge: true, database: temp)
                 chargeOk = status(15) == .tight && status(25) == .fits
-                    && RouteFollowLoader.returnWarning(routeId: route.id, database: temp, battery: BatteryNow(pct: 25)) == nil
+                    && RouteCardLoader.card(routeId: route.id, database: temp, battery: BatteryNow(pct: 25))?.thereAndBack.flatMap(ThereAndBack.startWarning) == nil
             }
             // P-4: nothing about the way back is shown on the live screen (the card and the summary keep the warning)
             let pts = (0..<31).map { GeoPoint(lat: 10 + Double($0) * 0.0009, lon: -30) }

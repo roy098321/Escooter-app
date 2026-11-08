@@ -17,6 +17,8 @@ public struct ScooterFrame: Equatable, Sendable {
     public var motorPowered = false
     /// nil = no reading yet, or packet B older than 2 s
     public var temperatureC: Double?
+    /// B73 (batch 3): a fresh packet B says "no temperature yet" (0xFFFF, before the motor first runs): clear, never keep an old value
+    public var temperatureNoReading = false
     public var currentA: Double?
     /// Seconds since the last packet A / B
     public var ageA: Double?
@@ -90,6 +92,7 @@ public struct FrameAssembler {
             f.ageB = t - tb
             if t - tb <= Self.maxAgeBS {
                 f.temperatureC = b.temperatureC
+                f.temperatureNoReading = b.temperatureC == nil
                 f.currentA = b.currentA
             }
         }

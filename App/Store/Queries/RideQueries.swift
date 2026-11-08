@@ -172,18 +172,6 @@ struct RideQueries {
         }
     }
 
-    /// The rides grouped by local calendar day (`yyyy-MM-dd`, using each ride's own UTC offset;
-    /// offset unknown = `fallbackUtcOffsetMin`), newest day first, newest ride first inside a day.
-    func ridesByDay(fallbackUtcOffsetMin: Int = 0) throws -> [(day: String, rides: [RideRecord])] {
-        let all = try rides()
-        var groups: [String: [RideRecord]] = [:]
-        for ride in all {
-            let key = Self.dayKey(startAt: ride.startAt, utcOffsetMin: ride.utcOffsetMin ?? fallbackUtcOffsetMin)
-            groups[key, default: []].append(ride)
-        }
-        return groups.keys.sorted(by: >).map { (day: $0, rides: groups[$0] ?? []) }
-    }
-
     /// `yyyy-MM-dd` of an epoch-ms instant at a UTC offset. Pure (no time zone database).
     static func dayKey(startAt: Int64, utcOffsetMin: Int) -> String {
         let seconds = startAt / 1000 + Int64(utcOffsetMin) * 60

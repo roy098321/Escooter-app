@@ -26,23 +26,6 @@ struct PlaceMarks: MapContent {
     }
 }
 
-/// F-06: the small map in a Places row: the pin and its circle, not interactive.
-struct PlaceThumb: View {
-    let item: PlaceMapItem
-
-    var body: some View {
-        Map(initialPosition: .region(MKCoordinateRegion(center: item.coordinate, latitudinalMeters: item.circleM * 4, longitudinalMeters: item.circleM * 4)),
-            interactionModes: []) {
-            PlaceMarks(coordinate: item.coordinate, radiusM: item.circleM, colourId: item.colourId, outline: item.outlineCoords)
-        }
-        .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
-        .frame(width: 64, height: 64)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-}
-
 /// F-08: the row of colours to pick from
 struct PlaceColourPicker: View {
     let selected: String

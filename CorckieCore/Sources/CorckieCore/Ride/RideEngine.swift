@@ -476,6 +476,15 @@ public struct RideEngine: Codable, Equatable, Sendable {
     private mutating func reconnected(at t: Double) {
         connected = true
         disconnectedAt = nil
+        // B73 (batch 3, every metric): nothing the scooter said in an earlier connection is a reading of this one. Every value
+        // is empty ("—") until this connection reports it; the ride keeps its own record (odometer at start, battery at start).
+        speedKmh = nil
+        currentA = nil
+        powerW = nil
+        batteryPct = nil
+        odometerKm = nil
+        temperatureC = nil
+        lastFrameOdoKm = nil
         untrustedSince = nil
         shuttingDownSeen = false
         armed = true
@@ -498,7 +507,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         goneGpsM = 0
         lastFrameOdoKm = f.odometerKm
         if let s = f.speedKmh { speedKmh = s }      // a dropped reading (G1b) keeps the last one
-        if let tc = f.temperatureC { temperatureC = tc }
+        if let tc = f.temperatureC { temperatureC = tc } else if f.temperatureNoReading { temperatureC = nil }   // B73: 0xFFFF clears
         currentA = f.currentA
         powerW = f.powerW
         if let b = f.batteryPct { batteryPct = b }
@@ -512,12 +521,12 @@ public struct RideEngine: Codable, Equatable, Sendable {
             currentAboveSince = nil
         }
         let motorOn = (currentA ?? 0) >= T.t102PushingCurrentA
-        if motorOn { lastMotorBatteryPct = batteryPct }
+        if motorOn, let b = batteryPct { lastMotorBatteryPct = b }
 
         if var r = ride {
             if r.odoStartKm == nil { r.odoStartKm = odometerKm }
             if odometerKm != nil { r.odoLastKm = odometerKm }
-            r.lastBatteryPct = batteryPct
+            if let b = batteryPct { r.lastBatteryPct = b }      // B73: an empty reading after a reconnect never wipes the ride's last %
             if r.firstBatteryPct == nil { r.firstBatteryPct = batteryPct }
             // M5: the first odometer reading after a gap fills the distance
             if let o = f.odometerKm, var gaps = r.gaps, let i = gaps.indices.last, !gaps[i].isOpen, gaps[i].odoAfterKm == nil {
@@ -1103,6 +1112,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
                          rideDistanceM: ride.map { $0.wheelM })
         input.scooterPowerW = linked ? powerW : nil
         input.scooterCurrentA = linked ? currentA : nil
+        input.ridingEngaged = ride.map { $0.ridingStartT != nil || $0.manual } ?? false   // B76
         return input
     }
 }

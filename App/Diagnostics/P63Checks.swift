@@ -75,7 +75,6 @@ enum P63Checks {
         let expect = Expect()
         expect(HomeView.discBase == 250, "the Start / Connect disc is 250 pt")
         expect(HomeView.discCap >= HomeView.discBase && HomeView.discCap + 24 <= 375 - 2 * DS.Space.gutter, "with big text it stops at \(Int(HomeView.discCap)) pt, so it and its halo fit the narrowest iPhone")
-        expect(HomeCopy.whereToLine(label: "Work") == "Where to? \u{00B7} Work" && HomeCopy.whereToLine(label: nil) == "Where to? \u{00B7} No destination", "the Where to? row reads \"Where to? \u{00B7} Work\"")
         CheckResults.shared.set("u69", expect.ok ? .pass : .fail, expect.line)
     }
 

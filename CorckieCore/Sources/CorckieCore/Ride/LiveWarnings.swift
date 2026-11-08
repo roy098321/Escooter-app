@@ -202,10 +202,6 @@ public enum DestinationRules {
             return u / (d / 1000)
         })
     }
-
-    public static func usualKm(rides: [RouteRideStats]) -> Double? {
-        Geo.median(rides.filter { !$0.excluded }.compactMap { r in r.distanceM.map { $0 / 1000 } })
-    }
 }
 
 /// F-22 in the ride: speaks once when in real doubt for ~60 s; again only if clearly worse (arrive -> short, or 2 km further short).

@@ -122,7 +122,7 @@ final class RideStoreTests: XCTestCase {
         XCTAssertEqual(RideQueries.dayKey(startAt: try ms("1999-12-31T23:59:59Z"), utcOffsetMin: 0), "1999-12-31")
     }
 
-    func test_ridesByDay_groupsNewestFirst_andHidesDiscarded() throws {
+    func test_rides_newestFirst_andHidesDiscarded() throws {   // D14: ridesByDay removed; the list order stays tested
         let db = try AppDatabase(url: dbURL, build: "t1")
         let store = RideQueries(db)
         var a = RideRecord(id: "a", startAt: try ms("2026-10-04T05:00:00Z"))
@@ -135,10 +135,7 @@ final class RideStoreTests: XCTestCase {
         d.kind = "discarded"
         for r in [a, b, c, d] { try store.save(r) }
 
-        let days = try store.ridesByDay()
-        XCTAssertEqual(days.map(\.day), ["2026-10-04", "2026-10-03"])
-        XCTAssertEqual(days[0].rides.map(\.id), ["b", "a"])
-        XCTAssertEqual(days[1].rides.map(\.id), ["c"])
+        XCTAssertEqual(try store.rides().map(\.id), ["b", "a", "c"])
         XCTAssertEqual(try store.rides(includeDiscarded: true).count, 4)
         XCTAssertEqual(try store.rides(limit: 1).map(\.id), ["b"])
     }

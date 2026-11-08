@@ -149,26 +149,12 @@ public enum ChargeText {
         return String(format: "%d h %02d min", m / 60, m % 60)
     }
 
-    public static func pctText(_ p: Double) -> String { "\u{2248} \(Int(p.rounded())) %" }
-
     public static func fullLine(_ s: ChargeSession, utcOffsetMin: Int) -> String { "Full \u{2248} \(clock(ChargeModel.fullMs(s), utcOffsetMin: utcOffsetMin))" }
-
-    /// "Full ≈ 01:02 · we'll notify you at ≈ 01:24"
-    public static func sheetFullLine(_ s: ChargeSession, utcOffsetMin: Int) -> String {
-        "\(fullLine(s, utcOffsetMin: utcOffsetMin)) \u{00B7} \u{201C}\(s.scooterName) is full\u{201D} at \u{2248} \(clock(ChargeModel.notifyFullMs(s), utcOffsetMin: utcOffsetMin)) (+5 % margin)"
-    }
 
     /// "80 % ≈ 23:34 · 100 % ≈ 01:02"
     public static func ticksLine(_ s: ChargeSession, utcOffsetMin: Int) -> String {
         let t = ChargeModel.tickPct
         return "\(t) % \u{2248} \(clock(ChargeModel.timeMs(toPct: Double(t), s), utcOffsetMin: utcOffsetMin)) \u{00B7} 100 % \u{2248} \(clock(ChargeModel.fullMs(s), utcOffsetMin: utcOffsetMin))"
-    }
-
-    /// "10 km ≈ 31 % · ≈ 19:57" (nil without a %/km)
-    public static func kmLine(_ s: ChargeSession, km: Double, utcOffsetMin: Int) -> String? {
-        guard let p = ChargeModel.pctForKm(km, pctPerKm: s.pctPerKm, reservePct: s.reservePct) else { return nil }
-        let at = ChargeModel.timeMs(toPct: Double(p), s)
-        return "\(kmText(km)) \u{2248} \(p) % \u{00B7} \u{2248} \(clock(at, utcOffsetMin: utcOffsetMin))"
     }
 
     public static func kmText(_ km: Double) -> String { km == km.rounded() ? "\(Int(km)) km" : String(format: "%.1f km", km) }

@@ -107,6 +107,8 @@ final class ScooterLink: NSObject {
 
     private func didBecomeConnected(_ p: CBPeripheral) {
         connected = true
+        frame = nil              // B73 (batch 3): no reading from an earlier connection is shown as now
+        assembler.reset()
         state = "Connected · waiting for data"
         p.discoverServices([CBUUID(string: ScooterGatt.dataService), CBUUID(string: ScooterGatt.deviceInformation)])
     }
@@ -179,6 +181,7 @@ extension ScooterLink: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral lost: CBPeripheral, error: Error?) {
         connected = false
         assembler.reset()
+        frame = nil              // B73 (batch 3)
         // B04: log iOS's reason (CBError code) and how long the link lasted
         let held = connectedAt.map { String(format: " after %.0f s", Date().timeIntervalSince($0)) } ?? ""
         connectedAt = nil

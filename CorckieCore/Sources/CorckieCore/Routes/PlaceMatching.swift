@@ -118,9 +118,4 @@ public enum PlaceMatcher {
         }
         return best?.place
     }
-
-    /// Two points are "the same place" for a trip of this length.
-    public static func samePlace(_ a: GeoPoint, _ b: GeoPoint, tripLengthM: Double) -> Bool {
-        Geo.distanceM(a, b) <= toleranceM(tripLengthM: tripLengthM)
-    }
 }

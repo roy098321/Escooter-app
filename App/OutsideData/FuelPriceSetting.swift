@@ -1,3 +1,4 @@
+import CorckieCore
 import Foundation
 import GRDB
 import SwiftUI
@@ -86,14 +87,18 @@ struct FuelPriceView: View {
         Form {
             Section {
                 TextField("₪ per litre", text: $price)
-                    .keyboardType(.decimalPad)
+                    .keyboardType(.numberPad)          // B75: 3 digits, the point goes in by itself
+                    .onChange(of: price) { _, new in
+                        let shown = FuelPriceEntry.format(new)
+                        if shown != new { price = shown }
+                    }
                 Picker("Price from", selection: $month) {
                     ForEach(months, id: \.self) { m in
                         Text(FuelPriceSetting.monthLabel(m)).tag(m)
                     }
                 }
                 Button("Save") { save() }
-                    .disabled(Double(price.replacingOccurrences(of: ",", with: ".")) == nil)
+                    .disabled(FuelPriceEntry.value(price) == nil)
                 if let saved {
                     Text(saved).font(.footnote).foregroundStyle(.secondary)
                 }
@@ -119,7 +124,7 @@ struct FuelPriceView: View {
     }
 
     private func save() {
-        guard let p = Double(price.replacingOccurrences(of: ",", with: ".")), p > 0, p < 50 else { return }
+        guard let p = FuelPriceEntry.value(price) else { return }
         let value = FuelPriceSetting.Value(priceIls: p, month: month, source: "manual")
         FuelPriceSetting.save(value, database: AppModel.shared.database)
         saved = "Saved: \(FuelPriceSetting.text(value))"

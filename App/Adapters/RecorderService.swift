@@ -17,6 +17,8 @@ final class RecorderService {
     /// What the live view shows (M1-12 reads it); nil before the first tick
     private(set) var live: LiveState?
     private(set) var rideActive = false
+    /// B76 (batch 3): the ride on now is really being ridden (or was started by hand); the ride screen opens only then
+    private(set) var ridingEngaged = false
     private(set) var lastClosedRideId: String?
     /// M1-13: the ride whose summary is waiting to be shown once the live view is done (nil = none)
     private(set) var summaryRideId: String?
@@ -154,6 +156,8 @@ final class RecorderService {
         if simActive != fromSimulator { return }     // while simulating only the simulator's output counts
         live = state
         var input = rawInput
+        let engaged = (rawInput.phase == .starting || rawInput.phase == .riding) && rawInput.ridingEngaged
+        if engaged != ridingEngaged { ridingEngaged = engaged }   // B76
         input.mapOffline = NetworkStatus.shared.offline
         input.phoneGpsOff = PhoneSensors.shared.gpsMode == .off          // M6-06: phone battery < 10%
         input.locationDenied = PhoneSensors.shared.locationDenied        // M6-06: location turned off for the app
@@ -323,6 +327,7 @@ final class RecorderService {
         livePosition = nil
         livePath.reset()
         rideActive = false
+        ridingEngaged = false
         summaryRideId = nil
         readyRequested = false
         driver = LiveScreenDriver()

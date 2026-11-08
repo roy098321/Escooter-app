@@ -173,19 +173,4 @@ extension RouteFollowLoader {
                                       batteryPct: pct.map { Double($0) }, powerW: power, currentA: amps, tempC: temp)
         }
     }
-
-    /// V09 running late: the route's usual ride time (median of its rides), s
-    static func usualTripS(routeId: String, database: AppDatabase) -> Double? {
-        let times = ((try? RouteQueries(database).routeRides(routeId: routeId)) ?? []).filter { !$0.excludedFromUsual && $0.kind == "ride" }
-            .compactMap(\.totalS).filter { $0 > 0 }
-        return Geo.median(times)
-    }
-
-    /// M2-09 (Q9): the one line shown at ride start when the way back will not fit, from `neededPct` (with the margin) of both legs.
-    /// nil = it fits, or not enough data, or no battery reading.
-    static func returnWarning(routeId: String, database: AppDatabase, battery: BatteryNow) -> String? {
-        guard let input = RouteCardLoader.cardInput(routeId: routeId, database: database, battery: battery),
-              let m = RouteCardBuilder.build(input).thereAndBack else { return nil }
-        return ThereAndBack.startWarning(m)
-    }
 }

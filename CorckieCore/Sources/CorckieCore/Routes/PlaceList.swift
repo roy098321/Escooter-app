@@ -17,7 +17,7 @@ public struct PlaceRowModel: Equatable, Sendable {
 
 public enum PlaceListBuilder {
     /// Circle sizes the owner can pick (metres); nil = automatic
-    public static let radiusChoices: [Double] = [100, 200, 300, 500, 1_000]
+    public static let radiusChoices: [Double] = [25, 50, 100, 200, 300, 500, 1_000]   // B74 (batch 3): 25 and 50 m
 
     public static func radiusText(_ radiusM: Double?) -> String {
         guard let r = radiusM else { return "Circle: automatic" }

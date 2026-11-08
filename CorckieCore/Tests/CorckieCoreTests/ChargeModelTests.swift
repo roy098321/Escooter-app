@@ -16,7 +16,6 @@ final class ChargeModelTests: XCTestCase {
         XCTAssertEqual(clock(ChargeModel.timeMs(toPct: 80, s)), "23:34")
         XCTAssertEqual(clock(ChargeModel.fullMs(s)), "01:02")
         XCTAssertEqual(clock(ChargeModel.notifyFullMs(s)), "01:24")
-        XCTAssertEqual(ChargeText.sheetFullLine(s, utcOffsetMin: 0), "Full \u{2248} 01:02 \u{00B7} \u{201C}G2 is full\u{201D} at \u{2248} 01:24 (+5 % margin)")
         XCTAssertEqual(ChargeText.ticksLine(s, utcOffsetMin: 0), "80 % \u{2248} 23:34 \u{00B7} 100 % \u{2248} 01:02")
     }
 
@@ -44,7 +43,6 @@ final class ChargeModelTests: XCTestCase {
         XCTAssertEqual(ChargeModel.pctForKm(10, pctPerKm: 2.3), 31)
         XCTAssertEqual(ChargeModel.targetPct(s), 31)
         XCTAssertEqual(clock(ChargeModel.targetMs(s)!), "19:57")
-        XCTAssertEqual(ChargeText.kmLine(s, km: 10, utcOffsetMin: 0), "10 km \u{2248} 31 % \u{00B7} \u{2248} 19:57")
         XCTAssertNil(ChargeModel.pctForKm(10, pctPerKm: nil))
         XCTAssertEqual(ChargeModel.pctForKm(500, pctPerKm: 2.3), 100)
     }

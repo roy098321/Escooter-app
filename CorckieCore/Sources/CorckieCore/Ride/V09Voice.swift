@@ -310,6 +310,8 @@ public struct V09Director: Sendable {
     public static let powerLimitAheadPct = 3
 
     private var engine = EngineTempTracker()
+    /// B73: engine lines only once the motor has pushed on this ride (a temperature from before the ride says nothing about now)
+    private var motorRan = false
     private var battery = SagProofBattery()
     private var nextTen: Int?
     private var tenStart: Double?
@@ -374,7 +376,8 @@ public struct V09Director: Sendable {
         numbers.routeKm = i.routeKm
         numbers.livePct = i.pct
 
-        if let m = engine.update(tempC: i.tempC, at: i.t) { urgent.append(m) }
+        if (i.currentA ?? 0) >= T.t102PushingCurrentA { motorRan = true }
+        if let m = engine.update(tempC: motorRan ? i.tempC : nil, at: i.t) { urgent.append(m) }
         // recording problem: once per problem, again only after 2 min without one
         if i.recordingProblem {
             problemClearSince = nil

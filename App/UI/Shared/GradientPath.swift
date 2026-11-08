@@ -46,40 +46,6 @@ enum GradientPath {
     }
 }
 
-/// A small gradient bar with its end values, for the map layers.
-struct GradientLegend: View {
-    let layer: MapLayer
-    @Environment(\.sunlight) private var sunlight
-
-    var body: some View {
-        let ramp = LayerRamps.ramp(layer, colourBlind: DisplaySettings.colourBlind)
-        let text = LayerRamps.legend(layer)
-        let steps = 12
-        let colours = (0...steps).map { i in
-            GradientPath.color(ramp, ramp.lo + (ramp.hi - ramp.lo) * Double(i) / Double(steps))
-        }
-        VStack(spacing: 3) {
-            LinearGradient(colors: colours, startPoint: .leading, endPoint: .trailing)
-                .frame(height: 8)
-                .clipShape(Capsule())
-            HStack {
-                Text(text.low)
-                Spacer(minLength: 4)
-                Text(text.high)
-            }
-            .font(.caption2.weight(sunlight ? .bold : .regular))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-        }
-        .frame(width: 150)
-        .padding(8)
-        .glassCard(radius: 12, padding: 0, thin: true)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Colour scale, \(text.low) to \(text.high)")
-    }
-}
-
 /// The live path as gradient stretches. The live path only knows 5 speed classes per run, so each run counts as the middle of its class
 /// (5 / 15 / 25 / 35 / 45 km/h) and the values are blended over ~10 s of riding; stretches are at least 30 m long to keep the map light.
 /// Cached by the number of points, so a redraw without a new point costs nothing.

@@ -15,7 +15,7 @@ struct PriceHistoryView: View {
 
     var body: some View {
         Form {
-            section(title: "Fuel price (\u{20AA} per litre)", rows: fuel, value: $fuelValue, date: $fuelDate, kind: PriceHistoryQueries.fuel,
+            section(title: "Fuel price (\u{20AA} per litre)", rows: fuel, value: $fuelValue, date: $fuelDate, kind: PriceHistoryQueries.fuel, fuel: true,
                     info: InfoContent(lead: "A new price counts from its date on.", basedOn: [InfoBasedOn("Fuel", "95 octane, self-service")]))
             section(title: "Electricity rate (\u{20AA} per kWh)", rows: electricity, value: $electricityValue, date: $electricityDate,
                     kind: PriceHistoryQueries.electricity, info: InfoContent(lead: "A new rate counts from its date on."))
@@ -27,7 +27,9 @@ struct PriceHistoryView: View {
         .onAppear(perform: load)
     }
 
-    private func section(title: String, rows: [PriceRow], value: Binding<String>, date: Binding<Date>, kind: String, info: InfoContent) -> some View {
+    /// B75: `fuel` = the price is typed as 3 digits and the point goes in by itself (electricity keeps the decimal pad: 0.64)
+    private func section(title: String, rows: [PriceRow], value: Binding<String>, date: Binding<Date>, kind: String, fuel: Bool = false,
+                         info: InfoContent) -> some View {
         Section {
             ForEach(rows.reversed(), id: \.validFrom) { row in
                 HStack {
@@ -43,10 +45,17 @@ struct PriceHistoryView: View {
                 }
             }
             HStack {
-                TextField("New price", text: value).keyboardType(.decimalPad)
+                TextField("New price", text: value)
+                    .keyboardType(fuel ? .numberPad : .decimalPad)
+                    .onChange(of: value.wrappedValue) { _, new in
+                        guard fuel else { return }
+                        let shown = FuelPriceEntry.format(new)
+                        if shown != new { value.wrappedValue = shown }
+                    }
                 DatePicker("From", selection: date, displayedComponents: .date).labelsHidden()
                 Button("Add") { add(kind: kind, value: value, date: date) }
-                    .disabled(Double(value.wrappedValue.replacingOccurrences(of: ",", with: ".")) == nil)
+                    .disabled(fuel ? FuelPriceEntry.value(value.wrappedValue) == nil
+                                   : Double(value.wrappedValue.replacingOccurrences(of: ",", with: ".")) == nil)
             }
         } header: {
             HStack(spacing: 4) {

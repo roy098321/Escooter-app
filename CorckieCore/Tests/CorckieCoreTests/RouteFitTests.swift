@@ -134,7 +134,7 @@ final class RouteFitTests: XCTestCase {
         XCTAssertEqual(b.title, "Work")
         XCTAssertTrue(b.hasName)
         XCTAssertEqual(b.subtitle, "Circle: 300 m \u{00B7} you can charge here \u{00B7} 2 routes")
-        XCTAssertEqual(PlaceListBuilder.radiusChoices.first, 100)
+        XCTAssertEqual(PlaceListBuilder.radiusChoices.first, 25)   // B74
         XCTAssertEqual(PlaceListBuilder.radiusChoices.last, 1_000)
     }
 }

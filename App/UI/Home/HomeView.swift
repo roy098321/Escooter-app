@@ -946,11 +946,6 @@ enum HomePreview {
 
 /// The short Home words (H2, H3), kept apart so the automatic checks u64 / u69 can test them.
 enum HomeCopy {
-    /// B29: the closed Where to? row: "Where to? · Work", or "Where to? · No destination"
-    static func whereToLine(label: String?) -> String {
-        "Where to? \u{00B7} \(label ?? "No destination")"
-    }
-
     /// H2: one word on the big button
     static func buttonWord(_ p: HomePrimary, connecting: Bool) -> String {
         if connecting { return "Connecting\u{2026}" }

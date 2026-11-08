@@ -891,12 +891,6 @@ extension RideDetailView {
         if !db.isReadOnly { try? InsightQueries(db).markShown(rideId: id, at: now) }
     }
 
-    fileprivate func dismissInsight(_ i: Insight) {
-        guard let id = activeId, let db = AppModel.shared.database else { return }
-        try? InsightQueries(db).dismiss(id: i.id, at: InsightRunner.nowMs())
-        refreshInsights(id, db)
-    }
-
     /// D5: one short line with an icon and the thumbs; no "more", no progress lines
     @ViewBuilder fileprivate func insightCards(_ r: RankedInsights) -> some View {
         if let top = r.top {

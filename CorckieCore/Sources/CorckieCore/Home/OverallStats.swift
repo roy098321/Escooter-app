@@ -232,6 +232,5 @@ public enum OverallCalc {
     // MARK: text
 
     public static func km(_ v: Double) -> String { String(format: v >= 100 ? "%.0f km" : "%.1f km", v) }
-    public static func co2(_ kg: Double) -> String { String(format: "~%.0f kg", max(0, kg)) }
     public static func litres(_ l: Double) -> String { String(format: "%.0f L", l) }
 }

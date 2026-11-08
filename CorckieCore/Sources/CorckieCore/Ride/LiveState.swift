@@ -55,6 +55,9 @@ public struct LiveInput: Equatable, Sendable {
     /// Hotfix 03 (H1): the scooter's power (V × I, W) and current (A) right now, for the sag-proof battery level; nil = no reading
     public var scooterPowerW: Double? = nil
     public var scooterCurrentA: Double? = nil
+    /// B76 (batch 3): the rider is really riding (B62's first real riding movement) or started by hand. Before that the ride records
+    /// quietly in the background and the ride screen stays closed.
+    public var ridingEngaged = false
 
     public init(scooterSpeedKmh: Double? = nil, gpsSpeedKmh: Double? = nil, scooterLinked: Bool = true,
                 scooterBatteryPct: Double? = nil, estimatedBatteryPct: Double? = nil, starting: Bool = false,
