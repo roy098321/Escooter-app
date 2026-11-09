@@ -83,4 +83,11 @@ final class DeclutterStatsGuardTests: XCTestCase {
         let rides = try text("UI/Rides/RidesListView.swift")
         XCTAssertTrue(rides.contains("elsewhere"))
     }
+
+    /// B82: the dashed lines' values sit in their own column left of the bars, never inside the plot where bars cover them
+    func test_B82_referenceValuesOutsideTheBars() throws {
+        let stats = try text("UI/Stats/StatsView.swift")
+        XCTAssertTrue(stats.contains("AxisMarks(position: .leading, values: chart.references)"))
+        XCTAssertFalse(stats.contains(".annotation(position: .top, alignment: .leading, spacing: 1)"))
+    }
 }

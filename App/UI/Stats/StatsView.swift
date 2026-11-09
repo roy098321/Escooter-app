@@ -214,9 +214,6 @@ struct StatsView: View {
                     RuleMark(y: .value("Reference", r))
                         .foregroundStyle(Color.secondary.opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                        .annotation(position: .top, alignment: .leading, spacing: 1) {
-                            Text(StatsChart.valueText(r, metric)).font(.caption2).foregroundStyle(.secondary)
-                        }
                 }
                 // hotfix 01 (H5): one category per bar, so each bar is centred on its label; wider with a clear gap; the tallest red
                 ForEach(Array(values.enumerated()), id: \.offset) { item in
@@ -230,7 +227,14 @@ struct StatsView: View {
             .chartYScale(domain: 0...chart.scaleTop)   // hotfix 01 (H4): bars and dashed lines share one value scale
             .onAppear { replayBars(values.count) }
             .chartXAxis { barAxis(chart.bars.map(\.axisLabel)) }
-            .chartYAxis(.hidden)
+            // B82: the dashed lines' values in their own column left of the bars, so a bar never covers "10 km"
+            .chartYAxis {
+                AxisMarks(position: .leading, values: chart.references) { v in
+                    AxisValueLabel {
+                        if let r = v.as(Double.self) { Text(StatsChart.valueText(r, metric)).font(.caption2).foregroundStyle(.secondary) }
+                    }
+                }
+            }
             .chartOverlay { proxy in
                 GeometryReader { geo in
                     Rectangle().fill(Color.clear).contentShape(Rectangle())
