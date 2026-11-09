@@ -2,6 +2,11 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 103.081126.01 — hotfix 1 of batch 3, Mon 9 Nov 2026 (Home during a background ride; two battery % on Home)
+
+- B77: Home followed the background ride (stage 1) and showed "Riding" with a dead "Live view" button, hiding Where to, places, load and cards. Home now changes only for a ride the rider sees (confirmed riding or Start pressed), the same rule as the ride screen (B76). Start during a quiet ride confirms it.
+- B78: the trip line read "Uni • 28 mins • 36% battery" next to the 99% pill. It is what the trip uses: now "uses 36%" (quick dial and Where to?).
+
 ## 103.081126.00 — batch 3, Sun 8 Nov 2026 (battery report, smarter battery warnings, fresh readings)
 
 - B73 (every metric): a new scooter connection starts with every value empty (speed, battery, odometer, temperature, current, power); the scooter's 0xFFFF "no temperature yet" clears the value; engine lines only once the motor has pushed on this ride. Fixes "Engine hot, 87 degrees" at the start of a ride (yesterday's last reading).

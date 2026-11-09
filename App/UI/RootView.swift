@@ -24,7 +24,7 @@ struct RootView: View {
     /// M1-12: read in the body, so the cover follows the recorder (observation)
     /// B76 (batch 3): a ride recording in the background (wheel rolled, not ridden yet) keeps the screen closed until the real ride starts
     private var liveCoverShown: Bool {
-        (RecorderService.shared.rideActive && RecorderService.shared.ridingEngaged) || RecorderService.shared.readyRequested
+        RecorderService.shared.rideShown || RecorderService.shared.readyRequested
     }
 
     private var summaryShown: Bool { RecorderService.shared.summaryRideId != nil }
@@ -350,7 +350,7 @@ struct RideCover: View {
 
     @ViewBuilder private var cover: some View {
         let service = RecorderService.shared
-        if (service.rideActive && service.ridingEngaged) || service.readyRequested {
+        if service.rideShown || service.readyRequested {
             LiveRideView().liveDark().startReveal()   // A3
         } else if let id = service.summaryRideId {
             NavigationStack {

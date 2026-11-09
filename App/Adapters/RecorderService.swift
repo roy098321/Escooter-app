@@ -19,6 +19,8 @@ final class RecorderService {
     private(set) var rideActive = false
     /// B76 (batch 3): the ride on now is really being ridden (or was started by hand); the ride screen opens only then
     private(set) var ridingEngaged = false
+    /// B77 (hotfix): a ride the rider sees (confirmed riding or started by hand). A background ride before that leaves Home as it is.
+    var rideShown: Bool { rideActive && ridingEngaged }
     private(set) var lastClosedRideId: String?
     /// M1-13: the ride whose summary is waiting to be shown once the live view is done (nil = none)
     private(set) var summaryRideId: String?

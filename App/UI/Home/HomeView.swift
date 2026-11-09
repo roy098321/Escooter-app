@@ -84,7 +84,7 @@ struct HomeView: View {
                          batteryPct: AppModel.shared.settledBatteryPct ?? (simulated ? RecorderService.shared.live?.batteryPct : nil),
                          lastSeenMs: seen.ms, lastSeenPct: ChargeTimer.shared.lastReading()?.pct ?? seen.pct,   // R3: the same reading everywhere
                          utcOffsetMin: TimeZone.current.secondsFromGMT() / 60,
-                         rideActive: RecorderService.shared.rideActive,
+                         rideActive: RecorderService.shared.rideShown,   // B77
                          locationAlways: PermissionsCheck.shared.locationStatus == .authorizedAlways,
                          lastRunCrashed: CrashCatcher.shared.lastRunCrashed && !crashDismissed,
                          lastRide: lastRide)
@@ -121,14 +121,14 @@ struct HomeView: View {
             }
         }
         .onAppear {
-            if preview == nil, whatsNew == nil, WhatsNewStore.shouldShow(riding: RecorderService.shared.rideActive) { whatsNew = WhatsNewStore.current }
+            if preview == nil, whatsNew == nil, WhatsNewStore.shouldShow(riding: RecorderService.shared.rideShown) { whatsNew = WhatsNewStore.current }
             loadSelectorFromStore()
             reloadLastRide()
             if previewSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showWhereTo = true } }
         }
         .onChange(of: ScreenSimulator.shared.active) { _, _ in lastRide = nil; reloadLastRide() }
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reloadLastRide() }
-        .onChange(of: RecorderService.shared.rideActive) { _, active in
+        .onChange(of: RecorderService.shared.rideShown) { _, active in
             if !active { loadReady = false; loadSelectorFromStore(); RouteFollowSelection.shared.placeId = nil }
         }
         .onChange(of: ConnectionWatch.shared.token) { _, _ in reloadLastRide() }
@@ -834,7 +834,7 @@ private struct WhereToSheet: View {
         .accessibilityLabel("\(r.name), \(trailing(r))")
     }
 
-    /// "17 mins \u{2022} 9% battery \u{2022} arrive 17:11" (note 14: time and battery, the battery only with a usual need), the reason there is
+    /// "17 mins \u{2022} uses 9% \u{2022} arrive 17:11" (note 14: time and battery, the battery only with a usual need), the reason there is
     /// no time, or "You are here". B58: the arrival is leaving now (`at`), not the clock of the moment the list was loaded.
     private func trailing(_ r: WhereToRow, at now: Date = Date()) -> String {
         if r.here { return PlaceHere.hereWord }
