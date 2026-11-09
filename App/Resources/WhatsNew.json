@@ -5,12 +5,14 @@
     "items": [
       { "symbol": "house", "title": "Home stays Home", "line": "Turning the scooter on records quietly. Home keeps Start, Where to and your places until you ride off." },
       { "symbol": "play.circle", "title": "Start takes it over", "line": "Press Start while it records quietly: the ride screen opens and the ride goes on as yours." },
+      { "symbol": "figure.walk", "title": "Less noise on foot", "line": "A few metres of pushing no longer gets a note on the ride page. Pushes over 40 m, or 200 m in all, still do." },
       { "symbol": "battery.50", "title": "Clearer trip line", "line": "“Uni • 28 mins • uses 36%”: what the trip uses, so it is never read as a second battery level." }
     ],
     "smallerFixes": 0,
     "full": [
       "B77: a ride recorded quietly in the background no longer turns Home into “Riding” with a Live view button that did nothing. Home changes only once you ride off or press Start.",
-      "B78: the trip line and Where to? say “uses 36%” instead of “36% battery”."
+      "B78: the trip line and Where to? say “uses 36%” instead of “36% battery”.",
+      "B79: the “on foot” note on the ride page only for a push longer than 40 m, or 200 m of pushes in all."
     ]
   },
   {

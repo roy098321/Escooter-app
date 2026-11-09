@@ -138,6 +138,20 @@ public struct RidePathModel: Equatable, Sendable {
 }
 
 public enum RidePathBuilder {
+    /// B79 (owner, 9 Nov): the "on foot" note only for a push longer than 40 m, or 200 m of pushes in all.
+    /// Shorter pushes stay grey on the map and out of the average speed, without the note.
+    public static let walkNoteSingleM = 40.0
+    public static let walkNoteTotalM = 200.0
+
+    public static func walkLengthM(_ run: [LivePath.Coord]) -> Double {
+        zip(run, run.dropFirst()).reduce(0) { $0 + Geo.distanceM(GeoPoint(lat: $1.0.lat, lon: $1.0.lon), GeoPoint(lat: $1.1.lat, lon: $1.1.lon)) }
+    }
+
+    public static func walkNoteShown(_ walks: [[LivePath.Coord]]) -> Bool {
+        let lengths = walks.map(walkLengthM)
+        return lengths.contains { $0 > walkNoteSingleM } || lengths.reduce(0, +) >= walkNoteTotalM
+    }
+
     public static func build(_ points: [RidePoint]) -> RidePathModel {
         var path = LivePath()
         var walks: [[LivePath.Coord]] = []
@@ -263,7 +277,7 @@ public enum RideSummaryBuilder {
         if gpsGapS > 0 {
             notes.append(SummaryNote(kind: .gap, text: "No GPS for \(duration(gpsGapS)); the path has a break there."))
         }
-        if !path.walks.isEmpty {
+        if RidePathBuilder.walkNoteShown(path.walks) {   // B79: a few metres of pushing get no note
             notes.append(SummaryNote(kind: .walk, text: "Part of this ride was on foot (pushing); it is marked on the map and not counted in the average speed."))
         }
         if let peak = input.tempPeakC {

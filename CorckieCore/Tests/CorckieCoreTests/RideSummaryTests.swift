@@ -96,6 +96,16 @@ final class RideSummaryTests: XCTestCase {
         XCTAssertTrue(m.notes.contains { $0.kind == .walk })
     }
 
+    /// B79: the note only for a push over 40 m, or 200 m in all
+    func testWalkNote_onlyForLongerPushes() {
+        func run(_ m: Double) -> [LivePath.Coord] { [LivePath.Coord(lat: 32, lon: 34), LivePath.Coord(lat: 32 + m / 111_195, lon: 34)] }
+        XCTAssertFalse(RidePathBuilder.walkNoteShown([]))
+        XCTAssertFalse(RidePathBuilder.walkNoteShown([run(30), run(35)]), "a few short pushes: no note")
+        XCTAssertTrue(RidePathBuilder.walkNoteShown([run(45)]), "one push over 40 m")
+        XCTAssertTrue(RidePathBuilder.walkNoteShown(Array(repeating: run(39), count: 6)), "6 x 39 m = 234 m in all")
+        XCTAssertFalse(RidePathBuilder.walkNoteShown(Array(repeating: run(39), count: 5)), "5 x 39 m = 195 m")
+    }
+
     func testGapsRecoveredHeatAndIgnoredNotes() {
         var r = golden()
         r.status = "recovered"

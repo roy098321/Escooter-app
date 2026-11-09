@@ -2,10 +2,11 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
-## 103.081126.01 — hotfix 1 of batch 3, Mon 9 Nov 2026 (Home during a background ride; two battery % on Home)
+## 103.081126.01 — hotfix 1 of batch 3, Mon 9 Nov 2026 (Home during a background ride; two battery % on Home; walk note noise)
 
 - B77: Home followed the background ride (stage 1) and showed "Riding" with a dead "Live view" button, hiding Where to, places, load and cards. Home now changes only for a ride the rider sees (confirmed riding or Start pressed), the same rule as the ride screen (B76). Start during a quiet ride confirms it.
 - B78: the trip line read "Uni • 28 mins • 36% battery" next to the 99% pill. It is what the trip uses: now "uses 36%" (quick dial and Where to?).
+- B79: the "Part of this ride was on foot" note only when one push was over 40 m or the pushes add up to 200 m; shorter pushes stay grey on the map and out of the average speed.
 
 ## 103.081126.00 — batch 3, Sun 8 Nov 2026 (battery report, smarter battery warnings, fresh readings)
 
