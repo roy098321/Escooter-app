@@ -159,6 +159,9 @@ public struct RideRecorderCore {
     }
 
     /// B57: the log line for a format change: the watch's reason, what the newest frame dropped, the newest raw packet
+    /// B81: why the last ride was dropped (nil = none yet)
+    public private(set) var lastCancelReason: RideCancelReason?
+
     public var formatChangeLine: String {
         PhoneRide.formatChangeLine(reason: feed.pipeline.plausibility.formatChangeReason,
                                    dropped: feed.pipeline.lastDropped.map(\.rawValue), packet: lastRawPacket)
@@ -271,7 +274,8 @@ public struct RideRecorderCore {
                 out.append(.rideConfirmed(seq: s, at: at, by: by))
             case let .ridingStarted(s, at):
                 out.append(.ridingStarted(seq: s, at: at))
-            case let .rideCancelled(s, _, _):
+            case let .rideCancelled(s, _, reason):
+                lastCancelReason = reason   // B81: why the ride was dropped (the diary says it)
                 clearRide()
                 out.append(.rideCancelled(seq: s))
                 out.append(.snapshot(snapshot()))

@@ -72,6 +72,7 @@ final class ConnectionWatch {
         guard let db = AppModel.shared.database,
               let gap = GapStore.detect(db, connectOdoKm: odo, nowMs: Int64(Date().timeIntervalSince1970 * 1000)) else { return }
         Log.warning(source: "gap", "\(OdometerGap.homeLine(km: gap.km)) (odometer \(String(format: "%.1f", gap.fromKm)) to \(String(format: "%.1f", gap.toKm))). \(Self.lastRunInfo())")
+        MissedRideReports.savedForGap(km: gap.km)   // B81: the same report as "Ride not recorded", by itself
         token += 1
     }
 

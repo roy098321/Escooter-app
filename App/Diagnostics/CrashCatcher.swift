@@ -68,9 +68,24 @@ final class CrashCatcher: NSObject, MXMetricManagerSubscriber {
         payloads.forEach(record)
     }
 
+    /// B81: iOS's daily counts of why the app was closed in the background (memory, watchdog, locked file, …) go to the diary
+    func didReceive(_ payloads: [MXMetricPayload]) {
+        for p in payloads {
+            guard let b = p.applicationExitMetrics?.backgroundExitData else { continue }
+            let counts: [(String, Int)] = [("normal", b.cumulativeNormalAppExitCount), ("memory pressure", b.cumulativeMemoryPressureExitCount),
+                                           ("memory limit", b.cumulativeMemoryResourceLimitExitCount), ("CPU limit", b.cumulativeCPUResourceLimitExitCount),
+                                           ("watchdog", b.cumulativeAppWatchdogExitCount), ("locked file", b.cumulativeSuspendedWithLockedFileExitCount),
+                                           ("background task timeout", b.cumulativeBackgroundTaskAssertionTimeoutExitCount),
+                                           ("crash", b.cumulativeBadAccessExitCount + b.cumulativeIllegalInstructionExitCount + b.cumulativeAbnormalExitCount)]
+            let line = counts.filter { $0.1 > 0 }.map { "\($0.0) \($0.1)" }.joined(separator: ", ")
+            Diary.shared.note("app", "iOS background exits \(p.timeStampBegin.formatted()) to \(p.timeStampEnd.formatted()): \(line.isEmpty ? "none" : line)")
+        }
+    }
+
     private func record(_ payload: MXDiagnosticPayload) {
         let crashes = payload.crashDiagnostics?.count ?? 0
         let line = "\(payload.timeStampEnd.formatted()) · \(crashes) crash report(s)"
+        Diary.shared.note("app", "iOS report: \(line)")   // B81
         DispatchQueue.main.async {
             if crashes > 0 {
                 CheckResults.shared.set("d5", .pass, "iOS delivered \(crashes) crash report(s)")

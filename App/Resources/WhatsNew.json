@@ -1,5 +1,21 @@
 [
   {
+    "version": "103.081126.02",
+    "headline": "Hotfix: Ride not recorded and Export log",
+    "items": [
+      { "symbol": "exclamationmark.bubble", "title": "Ride not recorded", "line": "Settings, first row. Say when you rode and save a report; the app tells you the cause when it can." },
+      { "symbol": "doc.zipper", "title": "Export log", "line": "Everything the app logs in one file of 5 MB at most, ready to share." },
+      { "symbol": "book.closed", "title": "A 30-day diary", "line": "The app now notes its own starts, stops and connections, so a missed ride can be traced. Old logs clean themselves up." }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "B81: Settings → Ride not recorded (When did you ride? Just now / Earlier today / Yesterday → Save report) and Export log, the first two rows.",
+      "A report is also saved by itself when the odometer shows riding that was not recorded.",
+      "The diary keeps app, Bluetooth, ride detection, phone settings, logs and voice lines for 30 days; error log 30 days, messages 90 days, reports 30 days.",
+      "Export log holds every table, the diary and the reports; above 5 MB the oldest ride detail is left out first."
+    ]
+  },
+  {
     "version": "103.081126.01",
     "headline": "Hotfix: Home stays Home until you ride, clearer trip line",
     "items": [

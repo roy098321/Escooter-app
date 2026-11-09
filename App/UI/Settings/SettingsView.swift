@@ -18,6 +18,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollViewReader { proxy in
             List {
+                missedRideSection   // B81: the first rows
                 scooterSection
                 riderSection
                 costsSection
@@ -52,6 +53,23 @@ struct SettingsView: View {
     }
 
     // MARK: Groups
+
+    /// B81 (owner, 9 Nov): "Ride not recorded" first, "Export log" under it, two separate rows
+    private var missedRideSection: some View {
+        Section {
+            NavigationLink {
+                MissedRideView()
+            } label: {
+                Label("Ride not recorded", systemImage: "exclamationmark.bubble").squircle(Theme.accent)
+            }
+            NavigationLink {
+                ExportLogView()
+            } label: {
+                Label("Export log", systemImage: "doc.zipper").squircle(.gray)
+            }
+        }
+        .glassRows()
+    }
 
     private var scooterSection: some View {
         group("Scooter & battery") {

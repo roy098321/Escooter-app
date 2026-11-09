@@ -32,6 +32,12 @@ final class ErrorLog {
 
     func add(level: String, source: String, _ message: String) {
         let entry = Entry(at: Date(), level: level, source: source, message: message)
+        // B81: every log line also goes to the 30-day diary
+        switch source {
+        case "recorder": Diary.shared.note("ride", message)
+        case "notify": Diary.shared.note("notification", message)
+        default: Diary.shared.note("log", "[\(level)] \(source): \(message)")
+        }
         queue.sync {
             recent.append(entry)
             if recent.count > 500 { recent.removeFirst(recent.count - 500) }

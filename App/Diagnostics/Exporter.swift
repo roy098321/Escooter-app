@@ -13,6 +13,18 @@ enum Exporter {
         try? fm.removeItem(at: folder)
         try fm.createDirectory(at: folder, withIntermediateDirectories: true)
 
+        try writeReportFiles(into: folder)
+        // c8: the whole recorded ride (every packet, fix and barometer reading)
+        for file in C8Recorder.shared.exportFiles() {
+            try? fm.copyItem(at: file, to: folder.appendingPathComponent(file.lastPathComponent))
+        }
+        let zip = try zipFolder(folder)
+        CheckResults.shared.set("g1", .pass, "Export made: \(zip.lastPathComponent)")
+        return zip
+    }
+
+    /// The Report a problem files (also the "report" part of B81's Export log)
+    static func writeReportFiles(into folder: URL) throws {
         let model = AppModel.shared
         RideChecks.run(database: model.database)
         try CheckResults.shared.p4HistoryReport().write(to: folder.appendingPathComponent("p4-history.txt"), atomically: true, encoding: .utf8)
@@ -38,14 +50,6 @@ enum Exporter {
         try deviceText().write(to: folder.appendingPathComponent("device.txt"), atomically: true, encoding: .utf8)
         try OutsideProbes.shared.report().write(to: folder.appendingPathComponent("outside-data.txt"), atomically: true, encoding: .utf8)
         try PhoneSensors.shared.report().write(to: folder.appendingPathComponent("sensors.txt"), atomically: true, encoding: .utf8)
-
-        // c8: the whole recorded ride (every packet, fix and barometer reading)
-        for file in C8Recorder.shared.exportFiles() {
-            try? fm.copyItem(at: file, to: folder.appendingPathComponent(file.lastPathComponent))
-        }
-        let zip = try zipFolder(folder)
-        CheckResults.shared.set("g1", .pass, "Export made: \(zip.lastPathComponent)")
-        return zip
     }
 
     private static func deviceText() -> String {
@@ -78,7 +82,7 @@ enum Exporter {
     }
 
     /// The system zips a folder when it is read "for uploading" (no zip library needed).
-    private static func zipFolder(_ folder: URL) throws -> URL {
+    static func zipFolder(_ folder: URL) throws -> URL {
         var coordinatorError: NSError?
         var result: Result<URL, Error> = .failure(CocoaError(.fileWriteUnknown))
         NSFileCoordinator().coordinate(readingItemAt: folder, options: [.forUploading], error: &coordinatorError) { zipped in

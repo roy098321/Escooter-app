@@ -178,6 +178,7 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
         u.rate = RideAudio.voiceRate
         u.volume = 1
         lastSpoken = text
+        Diary.shared.note("voice", text)   // B81
         synth.speak(u)
     }
 

@@ -90,6 +90,7 @@ final class ScooterLink: NSObject {
         let where_ = inBackground ? "app in background" : "app open · \(Screen.current)"
         let line = "\(Date().formatted(date: .abbreviated, time: .standard)) \(text) · \(where_)"
         events.append(line)
+        Diary.shared.note("bluetooth", "\(text) · \(where_)")   // B81: kept 30 days, also after iOS closes the app
         timedEvents.append((Date(), line))
         if timedEvents.count > 300 { timedEvents.removeFirst(timedEvents.count - 300) }
         if events.count > 300 { events.removeFirst(events.count - 300) }

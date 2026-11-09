@@ -2,6 +2,12 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 103.081126.02 — hotfix 2 of batch 3, Mon 9 Nov 2026 (rides sometimes not recorded: gather the data)
+
+- B81: Settings → "Ride not recorded" (first row): When did you ride? → Save report; a one-line cause when the app can tell (recorded after all, dropped and why, location not Always, app not running, never connected, connected but no ride). Also saved by itself on an odometer gap.
+- B81: Settings → "Export log" (second row): one zip with every table, rides' samples and raw packets, the Report a problem files, the diary and the reports; at most 5 MB, the oldest detail left out first (per ride raw packets, then samples); README lists what was left out.
+- B81: a 30-day diary on the phone (app launch / foreground / background / close / memory warning / lock, iOS background exit reasons, Bluetooth events, ride started / really riding / dropped with reason, phone state, all log lines, voice lines). Cleaned daily: diary, error log and reports 30 days, messages 90 days.
+
 ## 103.081126.01 — hotfix 1 of batch 3, Mon 9 Nov 2026 (Home during a background ride; two battery % on Home; walk note noise; recording-problem voice)
 
 - B77: Home followed the background ride (stage 1) and showed "Riding" with a dead "Live view" button, hiding Where to, places, load and cards. Home now changes only for a ride the rider sees (confirmed riding or Start pressed), the same rule as the ride screen (B76). Start during a quiet ride confirms it.

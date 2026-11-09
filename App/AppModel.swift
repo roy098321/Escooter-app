@@ -58,6 +58,7 @@ final class AppModel {
             }
         }
         let relaunchedForBluetooth = options?[.bluetoothCentrals] != nil
+        Diary.shared.start(relaunchedForBluetooth: relaunchedForBluetooth)   // B81
         if relaunchedForBluetooth { Log.info(source: "launch", "Relaunched by iOS for the scooter") }
         if scooter.hasKnownScooter || relaunchedForBluetooth {
             scooter.start()
@@ -298,6 +299,7 @@ enum InstallChecks {
         UpdateCheck.recordUpdate(database: database, reinstalled: reinstalled)
         defaults.set(path, forKey: "corckie.lastBundlePath")
         defaults.set(AppInfo.build, forKey: "corckie.lastBuild")
+        Diary.shared.cleanIfDue(database)   // B81: old logs go once a day
         if let meta = database?.meta {
             defaults.set(meta.installId, forKey: "corckie.lastInstallId")
             defaults.set(meta.launchCount, forKey: "corckie.lastLaunchCount")

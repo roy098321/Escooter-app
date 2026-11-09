@@ -182,11 +182,14 @@ actor Recorder {
 
     private func apply(_ a: RecorderAction) {
         switch a {
-        case .rideStarted:
+        case let .rideStarted(seq, _, manual):
+            hooks.log("B81: ride \(seq) started \(manual ? "by Start" : "(wheel rolling, recording quietly)")")
             hooks.location(true)          // B62: recording in the background from the first roll; quiet until the ride really starts
-        case .ridingStarted:
+        case let .ridingStarted(seq, _):
+            hooks.log("B81: ride \(seq) is really riding")
             hooks.rideStarted()           // B62: the first real riding movement
-        case .rideCancelled:
+        case let .rideCancelled(seq):
+            hooks.log("B81: ride \(seq) dropped (\(core.lastCancelReason?.rawValue ?? "?")), nothing saved")
             hooks.location(false)
         case let .live(input, state):
             lastLive = state
