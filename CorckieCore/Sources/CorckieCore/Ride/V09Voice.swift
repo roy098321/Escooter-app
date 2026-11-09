@@ -350,6 +350,10 @@ public struct V09Director: Sendable {
     private var powerLimitSaid = false
     private var problemSaid = false
     private var problemClearSince: Double?
+    /// B80: when the current recording problem began (nil = none now)
+    private var problemSince: Double?
+    /// B80 (owner, 9 Nov): "Recording problem" only after 2 min of it; short link drops stay silent (the ride page notes them)
+    public static let recordingProblemAfterS = 120.0
     private var queue: [(msg: V09Message, t: Double, km: Double)] = []
     private var speeds: [Double] = []
     private var courses: [Double] = []
@@ -407,8 +411,12 @@ public struct V09Director: Sendable {
         // recording problem: once per problem, again only after 2 min without one
         if i.recordingProblem {
             problemClearSince = nil
-            if !problemSaid { problemSaid = true; urgent.append(.recordingProblem) }
-        } else if problemSaid {
+            if problemSince == nil { problemSince = i.t }
+            if !problemSaid, let s = problemSince, i.t - s >= Self.recordingProblemAfterS { problemSaid = true; urgent.append(.recordingProblem) }
+        } else {
+            problemSince = nil
+        }
+        if !i.recordingProblem, problemSaid {
             if problemClearSince == nil { problemClearSince = i.t }
             if let s = problemClearSince, i.t - s >= 120 { problemSaid = false }
         }

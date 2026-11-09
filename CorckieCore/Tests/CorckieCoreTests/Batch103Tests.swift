@@ -315,4 +315,19 @@ final class Batch103Tests: XCTestCase {
         }
         XCTAssertEqual(said.filter { $0 == .engineHot(c: 87) }.count, 1)
     }
+
+    /// B80: "Recording problem" only after 2 min of a dropped link; a 70 s drop stays silent
+    func test_B80_recordingProblem_onlyAfterTwoMinutes() {
+        func run(dropS: Double) -> Bool {
+            var d = V09Director()
+            var said: [V09Message] = []
+            for t in stride(from: 0.0, through: 400, by: 1) {
+                let drop = t >= 100 && t < 100 + dropS
+                said += d.update(V09Input(t: t, pct: 80, tempC: 40, rideKm: t / 180, speedKmh: 20, recordingProblem: drop, currentA: 6))
+            }
+            return said.contains(.recordingProblem)
+        }
+        XCTAssertFalse(run(dropS: 75), "a 75 s drop: no line")
+        XCTAssertTrue(run(dropS: 150), "2.5 min: the line")
+    }
 }
