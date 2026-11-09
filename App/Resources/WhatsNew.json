@@ -1,5 +1,19 @@
 [
   {
+    "version": "103.081126.03",
+    "headline": "Hotfix: clearer Stats chart, Checks no longer crash",
+    "items": [
+      { "symbol": "chart.bar", "title": "Chart labels stay readable", "line": "In Stats the 10 / 20 / 30 km labels sit next to the bars, so no bar covers them." },
+      { "symbol": "checkmark.shield", "title": "Run all automatic fixed", "line": "Developer → Checks → Run all automatic no longer closes the app." },
+      { "symbol": "text.magnifyingglass", "title": "Clearer crash trail", "line": "The diary now notes each screen the checks draw, so a crash names its screen." }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "B82: Stats chart values in their own column left of the bars.",
+      "B83: the screen check (u44) draws each screen in its own hidden window, not inside the app's screens; a screen that opened a sheet late closed the app."
+    ]
+  },
+  {
     "version": "103.081126.02",
     "headline": "Hotfix: Ride not recorded and Export log",
     "items": [

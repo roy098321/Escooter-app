@@ -2,6 +2,11 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 103.081126.03 — hotfix 3 of batch 3, Mon 9 Nov 2026 (Stats chart labels; Run all automatic crash)
+
+- B82: the Stats chart's 10 / 20 / 30 km (rides, time, ₪) values sit in their own column left of the bars; bars no longer cover them.
+- B83: "Run all automatic" closed the app inside u44 (UIViewControllerHierarchyInconsistency). Each screen is now drawn in its own hidden window instead of as a child of the app's root screen, and the diary notes each screen drawn.
+
 ## 103.081126.02 — hotfix 2 of batch 3, Mon 9 Nov 2026 (rides sometimes not recorded: gather the data)
 
 - B81: Settings → "Ride not recorded" (first row): When did you ride? → Save report; a one-line cause when the app can tell (recorded after all, dropped and why, location not Always, app not running, never connected, connected but no ride). Also saved by itself on an odometer gap.

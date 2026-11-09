@@ -86,36 +86,42 @@ enum StatesCheck {
         return seen.count < 2
     }
 
-    static func render(_ name: String, big: Bool, window: UIWindow, root: UIViewController) async -> UIImage {
+    /// B83 (hotfix 103.081126.03): each screen is drawn in its OWN hidden offscreen window, never as a child of the app's root
+    /// controller. A screen that presents something by itself a moment later (a sheet, a dialog) did that from a controller already
+    /// taken off the app's root → UIKit's hierarchy check closed the app ("Run all automatic" crashed). The window is kept a moment
+    /// after drawing, then emptied and released, so a late presentation dies with it.
+    static func render(_ name: String, big: Bool, scene: UIWindowScene) async -> UIImage {
+        Diary.shared.note("log", "[info] developer: u44 drawing \(name)\(big ? " (large text)" : "")")   // a crash names the screen
         let view = UIShot.screen(name).dynamicTypeSize(big ? DynamicTypeSize.accessibility5 : DynamicTypeSize.large)
         let host = UIHostingController(rootView: view)
         let frame = CGRect(x: 3_000, y: 0, width: 390, height: 844)
-        root.addChild(host)
-        host.view.frame = frame
-        window.addSubview(host.view)
-        host.didMove(toParent: root)
+        let window = UIWindow(windowScene: scene)
+        window.frame = frame
+        window.windowLevel = .normal - 1
+        window.rootViewController = host
+        window.isHidden = false
         host.view.layoutIfNeeded()
         try? await Task.sleep(nanoseconds: 120_000_000)
         let image = UIGraphicsImageRenderer(size: frame.size).image { _ in
             host.view.drawHierarchy(in: CGRect(origin: .zero, size: frame.size), afterScreenUpdates: true)
         }
-        host.willMove(toParent: nil)
-        host.view.removeFromSuperview()
-        host.removeFromParent()
+        host.dismiss(animated: false)
+        window.isHidden = true
+        window.rootViewController = nil
         return image
     }
 
     static func run() async {
         let results = CheckResults.shared
         guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
-              let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first, let root = window.rootViewController else {
+              scene.windows.first != nil else {
             results.set("u44", .fail, "No window to draw in")
             return
         }
         var blank: [String] = []
         for name in UIShot.allNames {
-            if looksBlank(await render(name, big: false, window: window, root: root)) { blank.append(name) }
-            if looksBlank(await render(name, big: true, window: window, root: root)) { blank.append(name + " (large text)") }
+            if looksBlank(await render(name, big: false, scene: scene)) { blank.append(name) }
+            if looksBlank(await render(name, big: true, scene: scene)) { blank.append(name + " (large text)") }
         }
         let n = UIShot.allNames.count
         results.set("u44", blank.isEmpty ? .pass : .fail,
