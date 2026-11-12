@@ -37,6 +37,10 @@ final class RideVoice {
     private var lastPos: (lat: Double, lon: Double)?
     private var course: Double?
     private var lastPct: Double?
+    /// Batch 4: the ride km at the last second (N4-14: no arrival line under 2 km) and the destination name as it stands (the arrival
+    /// line names it when it was announced)
+    private var lastRideKm = 0.0
+    private var destinationName: String?
     /// Hotfix 03: Wh per 1 % for the sag-proof level (nil = the prior)
     private var whPerPct: Double?
     /// The Start button already played the start sound (and the A3 transition) this moment
@@ -62,6 +66,19 @@ final class RideVoice {
             director.beginRide()
             v09 = V09Director()
             arrivalLine.reset()
+            lastRideKm = 0
+            destinationName = nil
+            // Batch 4: picked up after a relaunch: nothing already said is said again (B87, B89)
+            let battery = RideBatteryService.shared
+            if battery.resumed {
+                v09.resumedAfterRelaunch()
+                announcer.reset()
+                announcer.resume(saidKey: battery.announcedKey)
+            }
+            if battery.arrivedSaid {
+                arrivalLine.markSaid()
+                v09.muteAfterArrival()
+            }
             lastPos = nil
             course = nil
             whPerPct = database.map { CalibrationUpdater.current($0).whPerPct }
@@ -77,7 +94,11 @@ final class RideVoice {
         } else if !active, on {
             on = false
             // V09 arrival line without a saved place: at the ride end, "Arrived, battery at X percent"
-            if riding, V09Settings.isOn, let m = arrivalLine.rideEnded(pct: lastPct) { say(m) }
+            // N4-12 / N4-14: the one smoothed level; not for a ride that will be discarded or a short hop; names the announced destination
+            if riding, V09Settings.isOn,
+               let m = arrivalLine.rideEnded(pct: lastPct, rideKm: lastRideKm, announced: announcer.wasAnnounced ? destinationName : nil) {
+                say(m)
+            }
             if riding { SoundPlayer.shared.play(.rideEnd) }
             SoundPlayer.shared.endRideSession(after: riding ? 3.0 : 0)
             riding = false
@@ -112,9 +133,16 @@ final class RideVoice {
         if screen.arrived, !arrivalPlayed {
             arrivalPlayed = true
             SoundPlayer.shared.play(.arrival)
-            if V09Settings.isOn, arrivalPlace != nil, let m = arrivalLine.arrived(place: arrivalPlace, pct: input.scooterBatteryPct) { say(m) }
+            let level = input.smoothedBatteryPct ?? input.scooterBatteryPct
+            if V09Settings.isOn, arrivalPlace != nil,
+               let m = arrivalLine.arrived(place: arrivalPlace, pct: level, rideKm: (input.rideDistanceM ?? 0) / 1000) {
+                say(m)
+                arrivedNow()
+            }
         }
-        if input.scooterBatteryPct != nil { lastPct = input.scooterBatteryPct }
+        // B89 / B91: every spoken battery number from the one smoothed level
+        if let l = input.smoothedBatteryPct ?? input.scooterBatteryPct { lastPct = l }
+        lastRideKm = (input.rideDistanceM ?? 0) / 1000
         guard V09Settings.isOn else { return }
         if let lat = input.lat, let lon = input.lon {
             if let p = lastPos {
@@ -135,6 +163,12 @@ final class RideVoice {
                          utcOffsetMin: TimeZone.current.secondsFromGMT() / 60)
         var vi = v
         vi.usageLines = usualRoutePctPerKm != nil ? (routeUsageLines ?? recentUsageLines) : recentUsageLines
+        // Batch 4 (D-PR-09): the ride's one smoothed level and its 10 % rule (shared with the dashboard and the map)
+        if let level = input.smoothedBatteryPct {
+            vi.levelPct = level
+            vi.levelStartPct = RideBatteryService.shared.startPct
+            vi.tensReached = RideBatteryService.shared.reachedNow
+        }
         for m in v09.update(vi) { say(m, numbers: v09.numbers) }
     }
 
@@ -149,6 +183,12 @@ final class RideVoice {
             stopDist[i] = d
         }
         return best
+    }
+
+    /// N4-10 (B89): "Arrived" was said: no more battery lines for this ride, also after a relaunch
+    private func arrivedNow() {
+        v09.muteAfterArrival()
+        RideBatteryService.shared.noteArrived()
     }
 
     /// V09: one line on the warnings' channel (no ping), logged with the numbers behind it (Hotfix 03)
@@ -188,7 +228,9 @@ final class RideVoice {
 
     /// F-35: once a second after `update`: the destination as it stands (key, name, distance left); speaks the line when the announcer says so
     func destination(key: String?, name: String?, distanceM: Double?, riding: Bool, at t: Double) {
+        if key != nil { destinationName = name }
         guard announcer.update(riding: on && riding, key: key, at: t), let name else { return }
+        RideBatteryService.shared.noteAnnounced(key)   // N4-7 (B87): remembered for this ride across a relaunch
         // H3: on a known route with voice energy updates on, V09 says the full start line instead
         if announcer.lastWasStart, V09Settings.isOn, todayS != nil { return }
         let line = DestinationLive.ridingLine(name: name, distanceM: distanceM)

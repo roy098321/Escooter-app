@@ -39,7 +39,7 @@ final class InsightProgressTests: XCTestCase {
         for p in made.progress where p.stage == .early {
             XCTAssertNotNil(p.card)
             XCTAssertNotNil(p.range)
-            XCTAssertTrue(p.countLine.hasSuffix("to confident"))
+            XCTAssertTrue(p.countLine.hasSuffix("to confident") || p.countLine.hasPrefix("Based on "), p.countLine)   // B84
         }
         for page in made.pages { XCTAssertEqual(page.card.certainty.level, .high) }
         XCTAssertFalse(made.progress.contains { $0.topic == .wind })

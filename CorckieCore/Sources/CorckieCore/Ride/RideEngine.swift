@@ -625,9 +625,14 @@ public struct RideEngine: Codable, Equatable, Sendable {
         case .ready:
             begin(at: t, manual: true, &out)
         case .starting:
+            // B86 (batch 4): a quiet ride is already open: Start = the rider is engaged, the ride screen opens at once
+            if var r = ride { r.manual = true; ride = r }
             confirm(.manual, at: t, &out)
-        case .idle, .riding:
-            break       // no scooter (v1: nothing starts without it), or already riding
+        case .riding:
+            // B86: confirmed but still quiet (no real riding movement yet): Start opens the screen too
+            if var r = ride, r.ridingStartT == nil, !r.manual { r.manual = true; ride = r }
+        case .idle:
+            break       // no scooter (v1: nothing starts without it)
         }
     }
 
@@ -1113,6 +1118,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         input.scooterPowerW = linked ? powerW : nil
         input.scooterCurrentA = linked ? currentA : nil
         input.ridingEngaged = ride.map { $0.ridingStartT != nil || $0.manual } ?? false   // B76
+        input.rideStartT = ride?.startT
         return input
     }
 }

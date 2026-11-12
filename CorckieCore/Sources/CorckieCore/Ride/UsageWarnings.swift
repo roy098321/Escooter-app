@@ -60,9 +60,10 @@ public struct UsageWatch: Equatable, Sendable {
     public static let steadyKmh = 10.0
     /// Drag fires a little below the Level 2 line when the pattern is clear (both directions high)
     public static let dragShareOfLevel2 = 0.75
-    /// Battery: the % fell at least this many points, and at least this many times the energy drawn
-    public static let drainMinPts = 6.0
-    public static let drainRatio = 1.5
+    /// Battery: the % fell at least this many points, and at least this many times the energy drawn. N4-11 (B90, owner 11 Nov:
+    /// "appears almost daily, increase its threshold slightly"): 1.5 → 1.8 and 6 → 8 points, and the % is the smoothed level
+    public static let drainMinPts = 8.0
+    public static let drainRatio = 1.8
     /// Said again only when clearly worse: 20 more points above usual
     public static let worseBy = 0.20
 
@@ -148,16 +149,24 @@ public enum UsageAlarmNote {
         let from = "from km \(max(1, Int(km.rounded())))"
         switch kind {
         case "drag": return "Unusual drag \(from). Check brakes and tyres."
-        case "drain": return "Battery draining abnormally fast \(from). Have the battery checked."
-        case "far": return "Battery use far above usual \(from). Check the scooter."
+        case "drain", "far": return "Energy use higher than normal \(from)."
         default: return nil
         }
+    }
+
+    /// N4-5 (batch 4): the calmer note with the ride's rate ("Energy use higher than normal from km 6, 2.5 % per km.")
+    public static func text(kind: String, km: Double, pctPerKm: Double?) -> String? {
+        guard let base = text(kind: kind, km: km) else { return nil }
+        guard kind == "drain" || kind == "far", let r = pctPerKm else { return base }
+        return String(base.dropLast()) + ", " + String(format: "%.1f", r) + " % per km."
     }
 
     /// One note for the ride from the lines the voice said during it (the first Level 2 line)
     public static func insights(rideId: String, routeId: String?, said: [V09SaidLine], nowMs: Int64) -> [Insight] {
         guard let first = said.first(where: { ["drag", "drain", "far"].contains($0.kind) }),
-              let text = text(kind: first.kind, km: first.numbers.rideKm) else { return [] }
+              let text = text(kind: first.kind, km: first.numbers.rideKm,
+                              pctPerKm: V09Message.rideRate(startPct: first.numbers.startPct, levelPct: first.numbers.levelPct,
+                                                            rideKm: first.numbers.rideKm)) else { return [] }
         return [Insight(type: .usageAlarm, rideId: rideId, routeId: routeId, text: text, basedOnN: 1, createdAt: nowMs)]
     }
 }

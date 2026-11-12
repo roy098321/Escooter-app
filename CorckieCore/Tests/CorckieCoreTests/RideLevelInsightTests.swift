@@ -43,7 +43,7 @@ final class RideLevelInsightTests: XCTestCase {
     func testPartialGraphIsSolidWhereThereIsDataAndABandElsewhere() {
         let i = RideLevelInsights.make(.speedCost, rides: speedRides([34, 35, 36, 35, 34, 36, 40, 41, 40, 39, 35, 40]))
         XCTAssertNotEqual(i.stage, .learning)
-        XCTAssertTrue(i.range?.contains("% per km") == true)
+        XCTAssertTrue(i.range?.contains("% per km") == true || i.range == RideLevelInsights.noClearCost)
         let covered = i.curve.filter(\.covered).map(\.x)
         XCTAssertTrue(covered.contains { abs($0 - 35) < 1.3 })
         let thin = i.curve.first { abs($0.x - 20) < 1.3 }

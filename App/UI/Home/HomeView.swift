@@ -330,7 +330,8 @@ struct HomeView: View {
     /// The big round Start / Connect disc (amber for Connect and Try again, as before). The tap goes through `primaryTapped`, unchanged.
     private func startDisc(_ m: HomeModel) -> some View {
         let amber = m.primary == .connect || m.primary == .tryAgain
-        let tint: Color = amber ? Theme.accentSoft : Theme.accent
+        // N4-8: "Offline" is grey and does nothing (the scooter connects by itself)
+        let tint: Color = m.primary == .offline ? Color.gray : (amber ? Theme.accentSoft : Theme.accent)
         return VStack(spacing: 14) {
             Button {
                 discTap += 1
@@ -386,6 +387,7 @@ struct HomeView: View {
         case .connect: return "dot.radiowaves.left.and.right"
         case .tryAgain: return "arrow.clockwise"
         case .openRide: return "scooter"
+        case .offline: return "moon.zzz"
         }
     }
 
@@ -619,6 +621,8 @@ struct HomeView: View {
             RecorderService.shared.press(.startPressed)
         case .openRide:
             break   // M1-12: the live view opens by itself while a ride is on
+        case .offline:
+            break   // N4-8: no haptic, no connect attempt
         }
     }
 
@@ -954,6 +958,7 @@ enum HomeCopy {
         case .startRide: return "Start"
         case .tryAgain: return "Try again"
         case .openRide: return "Live view"
+        case .offline: return "Offline"
         }
     }
 

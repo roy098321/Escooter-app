@@ -81,10 +81,24 @@ public struct InsightProgress: Equatable, Sendable, Identifiable {
 
     public var id: String { topic.rawValue }
 
+    /// N4-3 (B84): the count has passed the first-read mark but the engine still has no early read (for battery use over time: it
+    /// did NOT rise, which is the answer)
+    public var passedWithoutAnswer: Bool { stage == .learning && (have ?? 0) >= earlyAt && card == nil && note == nil }
+
+    /// The headline when there is no range: "No rise in battery use" (battery use over time) / "No clear pattern yet" past the
+    /// first-read mark; "No answer yet" before it
+    public var headline: String {
+        guard passedWithoutAnswer else { return "No answer yet" }
+        return topic == .creep ? "No rise in battery use" : "No clear pattern yet"
+    }
+
+    /// The bar stops short of the confident mark until the insight is confident
+    public static let barCapBeforeConfident = 0.9
+
     /// 0...1 along the bar (the confident mark at the end)
     public var fraction: Double {
         guard let have, confidentAt > 0 else { return 0 }
-        return min(1, max(0, Double(have) / Double(confidentAt)))
+        return min(Self.barCapBeforeConfident, max(0, Double(have) / Double(confidentAt)))
     }
 
     public var earlyMark: Double { confidentAt > 0 ? min(1, Double(earlyAt) / Double(confidentAt)) : 0 }
@@ -92,6 +106,8 @@ public struct InsightProgress: Equatable, Sendable, Identifiable {
     /// "5 of 12 steady stretches to a first read" / "14 of 30 to confident"
     public var countLine: String {
         if let have {
+            // B84: never "16 of 8"; past a mark the count alone
+            if passedWithoutAnswer || (stage != .learning && have > confidentAt) { return "Based on \(have) \(unit)" }
             return stage == .learning ? "\(have) of \(earlyAt) \(unit) to a first read" : "\(have) of \(confidentAt) to confident"
         }
         return note.map { "Not yet: \($0)" } ?? "No answer yet"

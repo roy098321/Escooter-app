@@ -591,8 +591,19 @@ struct RideDetailView: View {
         if !LayerViews.available(data).contains(layerView.layer) { layerView = .default }
         drawn = LayerViews.stretches(layerView, data)
         drawnScale = LayerViews.scale(layerView, stretches: drawn, energy: s.energy, colourBlind: DisplaySettings.colourBlind)
+        // N4-12 (B91): the Battery legend reads the ride's one start and end (the same as the summary and the arrival line)
+        if layerView == LayerView(.battery), var scale = drawnScale, let ends = model?.batteryEnds,
+           let text = BatteryLegend.text(ends) {
+            scale.high = text.high
+            scale.low = text.low
+            drawnScale = scale
+        }
         if stopDots.isEmpty { stopDots = LayerViews.stops(s.points) }
-        if batteryMarks.isEmpty { batteryMarks = BatteryMarks.marks(s.points) }
+        // N4-9 (B88): the voice's rule on the smoothed level, so a pill sits where the voice spoke
+        if batteryMarks.isEmpty {
+            let wh = AppModel.shared.displayDatabase.map { CalibrationUpdater.current($0).whPerPct } ?? BatteryCalibration.prior().whPerPct
+            batteryMarks = BatteryMarks.marks(s.points, whPerPct: wh)
+        }
     }
 
     /// F-33: "Tap layer for deeper view" the first few times a ride with layers is opened
@@ -702,7 +713,7 @@ enum RideDetailLoader {
         // Hotfix 03 proof: what the voice said in this ride against what really happened (under More)
         let endS = Double(r.endAt ?? (r.startAt + Int64((r.totalS ?? 0) * 1000))) / 1000
         let said = V09LineLog.lines(db, fromS: Double(r.startAt) / 1000 - 60, toS: endS + 60)
-        model.infoLines += V09SaidCompare.lines(said, realArrivalPct: r.endRestPct ?? points.compactMap(\.batteryPct).last.map { Double($0) },
+        model.infoLines += V09SaidCompare.lines(said, realArrivalPct: model.batteryEnds?.endPct ?? r.endRestPct,
                                                 realArrivalS: endS, utcOffsetMin: r.utcOffsetMin ?? 0)
         return model
     }

@@ -58,6 +58,11 @@ public struct LiveInput: Equatable, Sendable {
     /// B76 (batch 3): the rider is really riding (B62's first real riding movement) or started by hand. Before that the ride records
     /// quietly in the background and the ride screen stays closed.
     public var ridingEngaged = false
+    /// Batch 4 (D-PR-09): the ride's one smoothed battery level (RideBatteryLevel), set by the app; the dashboard shows it while the
+    /// scooter is linked, the same number the voice, the map marks and the warnings use. nil = the scooter's reading as it is.
+    public var smoothedBatteryPct: Double? = nil
+    /// Batch 4: the engine ride's start time (stable across relaunches; keys what the ride remembers), nil without a ride
+    public var rideStartT: Double? = nil
 
     public init(scooterSpeedKmh: Double? = nil, gpsSpeedKmh: Double? = nil, scooterLinked: Bool = true,
                 scooterBatteryPct: Double? = nil, estimatedBatteryPct: Double? = nil, starting: Bool = false,
@@ -125,7 +130,7 @@ public struct LiveStateBuilder: Equatable, Sendable {
 
         let battery: Double?
         let estimated: Bool
-        if input.scooterLinked, let b = input.scooterBatteryPct {
+        if input.scooterLinked, let b = input.smoothedBatteryPct ?? input.scooterBatteryPct {
             battery = b
             estimated = false
         } else if let e = input.estimatedBatteryPct {

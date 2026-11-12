@@ -261,13 +261,21 @@ public enum RideLevelInsights {
         }
         // the early read's range of the effect per step
         var range: String?
+        var context: String?
         if stage != .learning, let f = fit {
             let a = (f.slope - f.slopeHalfWidth) * topic.per, b = (f.slope + f.slopeHalfWidth) * topic.per
-            range = "\(signed(min(a, b))) to \(signed(max(a, b))) % per km"
+            if let clear = clearRange(min(a, b), max(a, b)) {
+                range = clear
+                context = "for " + topic.perText
+            } else {
+                // N4-4 (B85): an interval that touches or crosses 0 says nothing yet (and never "speed saves battery")
+                range = noClearCost
+                context = "less than \(bound(max(abs(a), abs(b)))) % per km for \(topic.perText) so far"
+            }
         }
         let curve = fit.map { partialCurve(topic, fit: $0, xs: xs) } ?? []
         return RideLevelInsight(topic: topic, stage: stage, rides: n, needed: needed, progressLine: line, range: range,
-                                rangeContext: range == nil ? nil : "for " + topic.perText, curve: curve, hint: hint(topic, xs: xs))
+                                rangeContext: context, curve: curve, hint: hint(topic, xs: xs))
     }
 
     public static func all(_ rides: [RideLevelRide]) -> [RideLevelInsight] {
@@ -276,8 +284,22 @@ public enum RideLevelInsights {
 
     static func signed(_ v: Double) -> String {
         let t = String(format: "%.2f", abs(v))
+        if t == "0.00" { return "0" }          // N4-4 (B85): never "−0.00"
         return (v < 0 ? "\u{2212}" : "+") + t
     }
+
+    /// N4-4 (B85): the headline when the early read's interval touches or crosses 0 (after rounding)
+    public static let noClearCost = "No clear cost yet"
+
+    /// "+0.02 to +0.08 % per km", nil when the rounded interval touches or crosses 0
+    static func clearRange(_ lo: Double, _ hi: Double) -> String? {
+        let l = (lo * 100).rounded() / 100, h = (hi * 100).rounded() / 100
+        guard (l > 0 && h > 0) || (l < 0 && h < 0) else { return nil }
+        return "\(signed(lo)) to \(signed(hi)) % per km"
+    }
+
+    /// The upper bound of a small effect, rounded up to 0.01 ("0.02")
+    static func bound(_ v: Double) -> String { String(format: "%.2f", max(0.01, (v * 100).rounded(.up) / 100)) }
 
     /// Steps over the wanted range (and the data); covered = at least `coverRides` rides within half a step
     public static func covered(_ topic: RideLevelInsight.Topic, xs: [Double]) -> [(x: Double, covered: Bool)] {

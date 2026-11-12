@@ -193,7 +193,7 @@ struct InsightProgressCard: View {
                     if let ctx = progress.rangeContext { Text(ctx).font(.subheadline).foregroundStyle(.secondary).lineLimit(1) }
                 }
             } else {
-                Text("No answer yet").font(.subheadline).foregroundStyle(.secondary)
+                Text(progress.headline).font(.subheadline).foregroundStyle(.secondary)   // N4-3 (B84)
             }
             ProgressMarks(fraction: progress.fraction, earlyMark: progress.earlyMark)
             Text(progress.countLine).font(.footnote).foregroundStyle(.secondary)

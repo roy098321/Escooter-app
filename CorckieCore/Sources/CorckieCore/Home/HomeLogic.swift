@@ -29,6 +29,8 @@ public enum HomePrimary: String, Equatable, Sendable {
     case tryAgain
     /// "Open live view" while a ride is on
     case openRide
+    /// N4-8 (batch 4): paired, scooter off / out of reach: grey "Offline", no action (the scooter connects by itself)
+    case offline
 }
 
 public struct HomeInput: Equatable, Sendable {
@@ -116,6 +118,9 @@ public enum HomeLogic {
             title = "Scooter not connected"
             detail = lastSeenText(lastSeenMs: i.lastSeenMs, pct: i.lastSeenPct, nowMs: Int64(i.nowS * 1000), utcOffsetMin: i.utcOffsetMin)
             grey = true
+            primary = .offline
+            primaryTitle = "Offline"
+            enabled = false
         case .connecting:
             title = "Scooter not connected"
             detail = "Connecting\u{2026} switch the scooter on."
@@ -126,8 +131,9 @@ public enum HomeLogic {
             title = "Can't find the scooter"
             detail = "Is it switched on?"
             grey = true
-            primary = .tryAgain
-            primaryTitle = "Try again"
+            primary = .offline          // N4-8: "Try again" is no longer reachable from Home
+            primaryTitle = "Offline"
+            enabled = false
         case .ready:
             title = "Scooter connected"
             detail = "Ready to ride"

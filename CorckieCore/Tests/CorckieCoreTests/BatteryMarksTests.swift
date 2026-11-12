@@ -1,7 +1,7 @@
 import XCTest
 @testable import CorckieCore
 
-/// R2: a mark where the battery first dropped below each 10 %.
+/// R2: a mark where the battery first reached each 10 % (batch 4, B88: the voice's rule).
 final class BatteryMarksTests: XCTestCase {
     private func ride(_ battery: [Int]) -> [SeriesPoint] {
         battery.enumerated().map { i, b in
@@ -13,8 +13,8 @@ final class BatteryMarksTests: XCTestCase {
         let marks = BatteryMarks.marks(ride(Array((64...100).reversed())))
         XCTAssertEqual(marks.map(\.level), [90, 80, 70])
         XCTAssertEqual(marks.map(\.text), ["90%", "80%", "70%"])
-        // the 90 mark sits where it first read 89
-        XCTAssertEqual(marks[0].point.lat, 10.0 + 11 * 0.000_1, accuracy: 1e-9)
+        // the 90 mark sits where it first read 90 (B88: "reaches N", the voice's rule)
+        XCTAssertEqual(marks[0].point.lat, 10.0 + 10 * 0.000_1, accuracy: 1e-9)
     }
 
     func testAFlickerGivesOneMark() {

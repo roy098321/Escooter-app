@@ -310,18 +310,17 @@ struct RidesListView: View {
         for p in (try? routes.places()) ?? [] { if let n = p.name, !n.isEmpty { names[p.id] = n } }
         placeNames = names
         let rows = (try? RideQueries(db).rides()) ?? []
+        let shown = CalibrationQueries(db).allShown()     // N4-13 (B92): the same figure as the ride page
         items = rows.map {
             RideListItem(id: $0.id, startAt: $0.startAt, utcOffsetMin: $0.utcOffsetMin, kind: $0.kind,
                          distanceM: $0.distanceM, totalS: $0.totalS, endPlaceId: ends[$0.id],
-                         startPlaceId: starts[$0.id], avgKmh: $0.avgMovingMps.map { $0 * 3.6 }, usedPct: Self.used($0))
+                         startPlaceId: starts[$0.id], avgKmh: $0.avgMovingMps.map { $0 * 3.6 }, usedPct: Self.used($0, shown: shown[$0.id]))
         }
     }
 
-    /// battery used: the stored figure, else rested start minus rested end
-    private static func used(_ r: RideRecord) -> Double? {
-        if let u = r.usedPct { return u }
-        if let a = r.startRestPct, let b = r.endRestPct, a >= b { return a - b }
-        return nil
+    /// N4-13 (B92): battery used = what the ride page shows (CalibrationUpdater.shownUsed), one rule for both (RideBatteryEnds)
+    private static func used(_ r: RideRecord, shown: Double?) -> Double? {
+        RideBatteryEnds.make(shownUsed: shown, usedPct: r.usedPct, startRestPct: r.startRestPct, endRestPct: r.endRestPct).usedPct
     }
 
     private func delete(_ ride: RideListItem) {

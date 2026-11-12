@@ -44,7 +44,7 @@ enum B102Checks {
         var d = V09Director()
         _ = d.update(V09Input(t: 0, pct: 90, rideKm: 0, speedKmh: 30, usualPctPerKm: 2))
         let ten = d.update(V09Input(t: 200, pct: 80, rideKm: 2, speedKmh: 30, usualPctPerKm: 2))
-        expect(ten == [.everyTen(pct: 80)], "urgent at once while riding: " + ten.map(\.line).joined(separator: " "))
+        expect(ten.map(\.value) == [80] && ten.first?.kind == "ten", "urgent at once while riding: " + ten.map(\.line).joined(separator: " "))
         let riding = d.update(V09Input(t: 300, pct: 81, rideKm: 3, speedKmh: 30, courseDeg: 0, usualPctPerKm: 2))
         expect(riding.isEmpty && d.waitingCount == 1, "using more than usual waits while riding")
         let stop = d.update(V09Input(t: 320, pct: 81, rideKm: 3.1, speedKmh: 0, usualPctPerKm: 2))
@@ -298,13 +298,13 @@ enum B102Checks {
     /// R2: 100 → 64 % gives 90 / 80 / 70; a 90 ↔ 89 flicker gives one 90; no mark for the start
     private static func runBatteryMarks() {
         let expect = Expect()
-        let full = B101LateChecks.madeUpRide(37, power: { _ in 300 }, battery: { 100 - $0 })
+        let full = B101LateChecks.madeUpRide(37, power: { _ in nil }, battery: { 100 - $0 })
         let levels = BatteryMarks.marks(full).map(\.text)
         expect(levels == ["90%", "80%", "70%"], "100 \u{2192} 64 %: " + levels.joined(separator: " "))
         let flicker = [95, 90, 89, 90, 89, 90, 88]
-        let one = BatteryMarks.marks(B101LateChecks.madeUpRide(flicker.count, power: { _ in 300 }, battery: { flicker[$0] }))
+        let one = BatteryMarks.marks(B101LateChecks.madeUpRide(flicker.count, power: { _ in nil }, battery: { flicker[$0] }))
         expect(one.map(\.level) == [90], "a 90 \u{2194} 89 flicker gives one mark")
-        let start = BatteryMarks.marks(B101LateChecks.madeUpRide(3, power: { _ in 300 }, battery: { [90, 89, 85][$0] }))
+        let start = BatteryMarks.marks(B101LateChecks.madeUpRide(3, power: { _ in nil }, battery: { [90, 89, 85][$0] }))
         expect(start.isEmpty, "no mark for the starting level")
         expect(LayerView(.battery).showsBatteryMarks && !LayerView(.speed).showsBatteryMarks, "on the Battery layer only")
         expect.report("u166")

@@ -47,7 +47,7 @@ final class HomeLogicTests: XCTestCase {
         XCTAssertEqual(failed.state, .cantFind)
         XCTAssertEqual(failed.title, "Can't find the scooter")
         XCTAssertEqual(failed.detail, "Is it switched on?")
-        XCTAssertEqual(failed.primary, .tryAgain)
+        XCTAssertEqual(failed.primary, .offline, "N4-8: no Try again from Home")
         // connecting later wins
         XCTAssertEqual(HomeLogic.model(input(connected: true, since: now - 60)).state, .ready)
     }

@@ -24,7 +24,8 @@ enum HomeCheck {
         let first = HomeLogic.model(input(paired: false, connected: false))
         expect(first.state == .noScooter && first.primary == .connect, "first use: Connect your scooter")
         let away = HomeLogic.model(input(paired: true, connected: false))
-        expect(away.primary == .connect && away.greyed && away.detail.hasPrefix("last seen"), "not connected: greyed, last seen, no Start ride")
+        expect(away.primary == .offline && !away.primaryEnabled && away.greyed && away.detail.hasPrefix("last seen"),
+               "not connected: grey Offline (no action), last seen, no Start ride")
         expect(HomeLogic.model(input(paired: true, connected: true)).primary == .startRide, "connected: Start ride")
         expect(HomeLogic.model(input(paired: true, connected: false, since: now - 31)).state == .cantFind, "connect fails after 30 s")
         expect(HomeLogic.model(input(paired: true, connected: false, since: now - 20)).state == .connecting, "still connecting at 20 s")

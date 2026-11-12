@@ -108,6 +108,18 @@ struct CalibrationQueries {
         }) ?? nil
     }
 
+    /// N4-13 (B92): every ride's shown battery used in one read (the ride list), id → value
+    func allShown() -> [String: Double] {
+        let rows = (try? database.writer.read { db in
+            try Row.fetchAll(db, sql: "SELECT id, usedPctShown FROM ride WHERE usedPctShown IS NOT NULL")
+        }) ?? []
+        var out: [String: Double] = [:]
+        for r in rows {
+            if let id: String = r["id"], let v: Double = r["usedPctShown"] { out[id] = v }
+        }
+        return out
+    }
+
     /// Writes the shown battery used for the rides whose value changed; returns how many rows changed.
     @discardableResult
     func setShown(_ changes: [(id: String, value: Double?)]) throws -> Int {

@@ -57,6 +57,19 @@ public struct DestinationAnnouncer: Equatable, Sendable {
 
     public mutating func reset() { self = DestinationAnnouncer() }
 
+    /// N4-7 (B87): the app was relaunched mid-ride. `saidKey` = the destination already announced for this ride (remembered by ride);
+    /// nil = not known: the destination as it stands is taken silently. Only a later CHANGE is said.
+    public mutating func resume(saidKey: String?) {
+        startDone = true
+        lastWasStart = false
+        spokenKey = saidKey
+        adoptNext = saidKey == nil
+    }
+    private var adoptNext = false
+
+    /// A destination was announced (or taken over after a relaunch) for this ride
+    public var wasAnnounced: Bool { spokenKey != nil }
+
     /// - riding: the ride is in the riding phase; key: the destination now (nil = none)
     /// - Returns: true when the line for `key` is to be spoken now
     public mutating func update(riding: Bool, key: String?, at t: Double) -> Bool {
@@ -72,6 +85,7 @@ public struct DestinationAnnouncer: Equatable, Sendable {
             lastWasStart = true
             return key != nil
         }
+        if adoptNext { adoptNext = false; spokenKey = key; return false }
         guard key != spokenKey else { return false }
         spokenKey = key
         lastWasStart = false

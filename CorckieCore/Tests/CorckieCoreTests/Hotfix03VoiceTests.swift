@@ -36,7 +36,7 @@ final class Hotfix03VoiceTests: XCTestCase {
         // full throttle up a hill at km 4: the scooter's % reads 8 points low for 40 s, then comes back
         let said = run(H3Fix.ride(sag: { _, km in km >= 4 && km < 4.28 ? 8 : 0 }))
         XCTAssertEqual(batteryLines(said), [], said.map { $0.m.line }.joined(separator: " | "))
-        let tens = said.compactMap { if case let .everyTen(p) = $0.m { return p } else { return nil } }
+        let tens = said.compactMap { if case let .everyTen(p, _) = $0.m { return p } else { return nil } }
         XCTAssertEqual(tens.first, 80)
         XCTAssertEqual(Set(tens).count, tens.count, "each step once")
     }

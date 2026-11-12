@@ -11,7 +11,8 @@ import Foundation
 /// Universal: names come from the rider's own places. Pure, so it is tested on Linux.
 public enum V09Message: Equatable, Sendable {
     case usingMore(pctPerKm: Double, aboveUsualPct: Int)
-    case everyTen(pct: Int)
+    /// N4-5 (batch 4): with the ride's rate so far (%/km, from 1 km; nil = the plain line)
+    case everyTen(pct: Int, pctPerKm: Double? = nil)
     case arrivingLow(pct: Int)
     /// the arrival estimate got worse (rounded to 5)
     case sharpDrop(pct: Int)
@@ -30,8 +31,9 @@ public enum V09Message: Equatable, Sendable {
     case startLine(place: String, arriveAt: String, pct: Int)
     /// V-U1 Level 2 (batch 3): urgent, likely mechanical
     case unusualDrag
-    case drainingFast
-    case farAboveUsual
+    /// N4-5 (batch 4): both say the calmer "Energy use higher than normal, using N percent per kilometre."
+    case drainingFast(pctPerKm: Double? = nil)
+    case farAboveUsual(pctPerKm: Double? = nil)
 
     public var urgent: Bool {
         switch self {
@@ -67,7 +69,8 @@ public enum V09Message: Equatable, Sendable {
     public var value: Int? {
         switch self {
         case let .usingMore(_, a): return a
-        case let .everyTen(p), let .arrivingLow(p), let .sharpDrop(p), let .backOnTrack(p), let .powerLimitComing(p): return p
+        case let .everyTen(p, _): return p
+        case let .arrivingLow(p), let .sharpDrop(p), let .backOnTrack(p), let .powerLimitComing(p): return p
         case let .runningLate(m, _): return m
         case let .pointOfNoReturn(m): return m
         case let .engineHot(c), let .engineOverheating(c): return c
@@ -84,7 +87,9 @@ public enum V09Message: Equatable, Sendable {
         case let .usingMore(rate, above):
             let tenths = Int((rate * 10).rounded())
             return "Using \(w(tenths / 10)) point \(w(tenths % 10)) percent per kilometre, \(w(above)) percent above usual."
-        case let .everyTen(p): return "Battery at \(w(p)) percent."
+        case let .everyTen(p, rate):
+            guard let rate else { return "Battery at \(w(p)) percent." }
+            return "Battery at \(w(p)) percent, using \(Self.rateWords(rate)) percent per kilometre."
         case let .arrivingLow(p): return "Arriving with about \(w(p)) percent."
         case let .sharpDrop(p): return "Arrival battery now about \(w(p)) percent."
         case let .backOnTrack(p): return "Back on track, about \(w(p)) percent."
@@ -100,19 +105,33 @@ public enum V09Message: Equatable, Sendable {
             return "Arrived, battery at \(w(p)) percent."
         case let .startLine(place, at, p): return "Riding to \(place), arriving at \(at), battery at \(w(p)) percent."
         case .unusualDrag: return "Unusual drag, check brakes and tyres."
-        case .drainingFast: return "Battery draining abnormally fast."
-        case .farAboveUsual: return "Battery use far above usual, check the scooter."
+        case let .drainingFast(rate), let .farAboveUsual(rate):
+            guard let rate else { return "Energy use higher than normal." }
+            return "Energy use higher than normal, using \(Self.rateWords(rate)) percent per kilometre."
         }
+    }
+
+    /// "two point five" (one decimal)
+    public static func rateWords(_ rate: Double) -> String {
+        let tenths = max(0, Int((rate * 10).rounded()))
+        return "\(SpokenNumber.words(tenths / 10)) point \(SpokenNumber.words(tenths % 10))"
+    }
+
+    /// N4-5: the ride's rate for a line: (sag-proof start − level) ÷ ride km, only from 1 km (nil before)
+    public static let rateFromKm = 1.0
+    public static func rideRate(startPct: Double?, levelPct: Double?, rideKm: Double) -> Double? {
+        guard rideKm >= rateFromKm, let s = startPct, let l = levelPct, s >= l else { return nil }
+        return (s - l) / rideKm
     }
 
     /// One of each, for the Developer "play every message" button and the ride screen preview (made-up numbers, no real place)
     public static let samples: [V09Message] = [
         .startLine(place: "Uni", arriveAt: "8:56", pct: 98),
-        .usingMore(pctPerKm: 2.6, aboveUsualPct: 15), .everyTen(pct: 60), .arrivingLow(pct: 15), .sharpDrop(pct: 40), .backOnTrack(pct: 50),
+        .usingMore(pctPerKm: 2.6, aboveUsualPct: 15), .everyTen(pct: 60, pctPerKm: 2.5), .arrivingLow(pct: 15), .sharpDrop(pct: 40), .backOnTrack(pct: 50),
         .runningLate(minutes: 6, arriveAt: "9:02"), .backOnTime,
         .pointOfNoReturn(metres: 300), .powerLimitComing(pct: 18), .engineHot(c: 86), .engineOverheating(c: 94), .recordingProblem,
         .arrived(place: "Uni", pct: 58), .arrived(place: nil, pct: 41),
-        .unusualDrag, .drainingFast, .farAboveUsual
+        .unusualDrag, .drainingFast(pctPerKm: 2.5)
     ]
 
     /// Battery numbers are said rounded to 5 ("about 40 percent")
@@ -184,6 +203,11 @@ public struct V09Input: Sendable {
     public var utcOffsetMin: Int
     /// V-U1 (batch 3): where Level 1 / Level 2 start for this rider (from their own rides)
     public var usageLines: UsageLines = .newRider
+    /// Batch 4 (D-PR-09): the ride's ONE smoothed level, its start and the 10 % levels it reached now, from the app's
+    /// RideBatteryLevel (nil = the director keeps its own, as in the tests and the voice replay)
+    public var levelPct: Double?
+    public var levelStartPct: Double?
+    public var tensReached: [Int]?
 
     public init(t: Double, pct: Double?, tempC: Double? = nil, rideKm: Double, speedKmh: Double? = nil, courseDeg: Double? = nil,
                 usualPctPerKm: Double? = nil, reservePct: Double = T.t80ReserveDefaultPct, routeKm: Double? = nil, alongKm: Double? = nil,
@@ -326,8 +350,10 @@ public struct V09Director: Sendable {
     /// B73: engine lines only once the motor has pushed on this ride (a temperature from before the ride says nothing about now)
     private var motorRan = false
     private var battery = SagProofBattery()
-    private var nextTen: Int?
+    private var tens = TenPercentRule()
     private var tenStart: Double?
+    /// N4-10 (B89): "Arrived" was said: no more battery lines this ride
+    private var arrivedMuted = false
     private var usingMoreSaid: Int?
     /// V-U1 Level 2
     private var usage = UsageWatch()
@@ -363,7 +389,14 @@ public struct V09Director: Sendable {
     public init() {}
 
     /// The rested start % (sag-proof), nil before the first reading
-    public var startPct: Double? { battery.startPct }
+    public var startPct: Double? { sharedStart ?? battery.startPct }
+    private var sharedStart: Double?
+
+    /// N4-10 (B89): after "Arrived" no more 10 % or arrival-battery lines for this ride
+    public mutating func muteAfterArrival() { arrivedMuted = true }
+
+    /// N4-7 (B87): the app was relaunched mid-ride: the start line was already said (or its moment has passed)
+    public mutating func resumedAfterRelaunch() { startLineDone = true }
 
     /// H1: the estimated battery % at arrival, point by point: the level now minus what the route's past rides usually used from this
     /// point to the end (= the usual arrival adjusted by how far ahead / behind usual this ride is now). Without history: this ride's
@@ -396,17 +429,6 @@ public struct V09Director: Sendable {
         numbers.livePct = i.pct
 
         if (i.currentA ?? 0) >= T.t102PushingCurrentA { motorRan = true }
-        // V-U1 Level 2: urgent, replaces Level 1 (a waiting "above usual" line is dropped)
-        if let cause = usage.update(t: i.t, rideKm: i.rideKm, livePct: i.pct, powerW: i.powerW, speedKmh: i.speedKmh, courseDeg: i.courseDeg,
-                                    whPerPct: i.whPerPct ?? BatteryCalibration.prior().whPerPct, usualPctPerKm: i.usualPctPerKm,
-                                    lines: i.usageLines) {
-            queue.removeAll { if case .usingMore = $0.msg { return true } else { return false } }
-            switch cause {
-            case .drag: urgent.append(.unusualDrag)
-            case .battery: urgent.append(.drainingFast)
-            case .unknown: urgent.append(.farAboveUsual)
-            }
-        }
         if let m = engine.update(tempC: motorRan ? i.tempC : nil, at: i.t) { urgent.append(m) }
         // recording problem: once per problem, again only after 2 min without one
         if i.recordingProblem {
@@ -422,9 +444,23 @@ public struct V09Director: Sendable {
         }
 
         let whPerPct = i.whPerPct ?? BatteryCalibration.prior().whPerPct
-        let level = battery.update(t: i.t, livePct: i.pct, powerW: i.powerW, currentA: i.currentA, speedKmh: i.speedKmh, whPerPct: whPerPct)
+        let own = battery.update(t: i.t, livePct: i.pct, powerW: i.powerW, currentA: i.currentA, speedKmh: i.speedKmh, whPerPct: whPerPct)
+        let level = i.levelPct ?? own
+        if let s = i.levelStartPct { sharedStart = s }
         numbers.levelPct = level
-        numbers.startPct = battery.startPct
+        numbers.startPct = startPct
+        // V-U1 Level 2: urgent, replaces Level 1 (a waiting "above usual" line is dropped). N4-11 (B90): judged on the smoothed level
+        // (the raw reading sags under load and falls fast just off a full charge)
+        if let cause = usage.update(t: i.t, rideKm: i.rideKm, livePct: level, powerW: i.powerW, speedKmh: i.speedKmh, courseDeg: i.courseDeg,
+                                    whPerPct: whPerPct, usualPctPerKm: i.usualPctPerKm, lines: i.usageLines) {
+            queue.removeAll { if case .usingMore = $0.msg { return true } else { return false } }
+            let rate = V09Message.rideRate(startPct: startPct, levelPct: level, rideKm: i.rideKm)
+            switch cause {
+            case .drag: urgent.append(.unusualDrag)
+            case .battery: urgent.append(.drainingFast(pctPerKm: rate))
+            case .unknown: urgent.append(.farAboveUsual(pctPerKm: rate))
+            }
+        }
         // H2: where today's estimate says we should be now, and the arrival time from this point
         let remaining = i.remainingS ?? lateRemaining(i)
         if let r = remaining { numbers.arriveAtS = i.t + r }
@@ -433,7 +469,7 @@ public struct V09Director: Sendable {
         if !startLineDone, i.elapsedS >= Self.startLineAfterS {
             if i.elapsedS > Self.startLineUntilS {
                 startLineDone = true
-            } else if let place = i.placeName, !place.isEmpty, i.todayS != nil, i.alongKm != nil, let r = remaining, let s = battery.startPct {
+            } else if let place = i.placeName, !place.isEmpty, i.todayS != nil, i.alongKm != nil, let r = remaining, let s = startPct {
                 startLineDone = true
                 lastPctSaid = Int(s.rounded())
                 urgent.append(.startLine(place: place, arriveAt: V09Message.clock(epochS: i.t + r, utcOffsetMin: i.utcOffsetMin),
@@ -441,16 +477,21 @@ public struct V09Director: Sendable {
             }
         }
 
-        if let pct = level, let start = battery.startPct {
-            // every 10 % (30 % and up; 20 / 15 / 10 keep their own range lines), on the sag-proof level
-            if nextTen == nil || (tenStart != start && i.rideKm < 0.05) {
-                tenStart = start
-                nextTen = (Int(start.rounded(.up)) - 1) / 10 * 10
+        if let pct = level, let start = startPct {
+            // every 10 % (30 % and up; 20 / 15 / 10 keep their own range lines): B88, the one rule "the smoothed level first reaches N"
+            let reachedNow: [Int]
+            if let shared = i.tensReached {
+                reachedNow = shared
+            } else {
+                if tens.next == nil || (tenStart != start && i.rideKm < 0.05) {
+                    tenStart = start
+                    tens.start(at: start)
+                }
+                reachedNow = tens.update(level: pct)
             }
-            if let n = nextTen, pct <= Double(n) {
-                let reached = Int((pct / 10).rounded(.up)) * 10
-                nextTen = reached - 10
-                if reached >= 30 { urgent.append(.everyTen(pct: reached)); lastPctSaid = reached }
+            if let reached = reachedNow.last, reached >= 30, !arrivedMuted {
+                urgent.append(.everyTen(pct: reached, pctPerKm: V09Message.rideRate(startPct: start, levelPct: pct, rideKm: i.rideKm)))
+                lastPctSaid = reached
             }
             // using more than usual (V-U1 Level 1: the rider's own 9-in-10 line; quiet once Level 2 spoke)
             if i.rideKm >= Self.usingMoreAfterKm, let usual = i.usualPctPerKm, usual > 0, start > pct, !usage.anySaid {
@@ -464,7 +505,7 @@ public struct V09Director: Sendable {
             if let arrive = Self.arrivalPct(level: pct, startPct: start, rideKm: i.rideKm, routeKm: i.routeKm, alongKm: i.alongKm,
                                             history: i.history) {
                 numbers.arrivalPct = arrive
-                batteryLines(arrive, level: pct, start: start, i, &urgent)
+                if !arrivedMuted { batteryLines(arrive, level: pct, start: start, i, &urgent) }
                 // point of no return (tight trips only), just before it
                 if !pnrSaid, arrive < Self.arrivingLowPct, let along = i.alongKm, i.rideKm >= 1, start > pct,
                    let pnr = Self.pointOfNoReturnKm(pct: pct, alongKm: along, ratePctPerKm: (start - pct) / i.rideKm, reservePct: i.reservePct) {
@@ -619,18 +660,24 @@ public struct ArrivalLineTracker: Equatable, Sendable {
     private var said = false
     public init() {}
     public mutating func reset() { said = false }
+    /// N4-10: already said for this ride (before a relaunch)
+    public mutating func markSaid() { said = true }
+    public var wasSaid: Bool { said }
 
     /// The rider crossed into the destination place (`arrived` turned true)
-    public mutating func arrived(place: String?, pct: Double?) -> V09Message? {
+    public mutating func arrived(place: String?, pct: Double?, rideKm: Double? = nil) -> V09Message? {
         guard !said, let p = pct else { return nil }
+        if let km = rideKm, !ArrivalRule.allowed(rideKm: km) { return nil }   // N4-14: not on a short hop
         said = true
         return .arrived(place: place, pct: Int(p.rounded()))
     }
 
-    /// The ride ended: "Arrived, battery at X percent" only when no place arrival was said
-    public mutating func rideEnded(pct: Double?) -> V09Message? {
+    /// The ride ended: "Arrived, battery at X percent" only when no place arrival was said. N4-14 (B93): never for a ride that is
+    /// discarded or a short hop (under 2 km); it names the destination announced at the start when there was one.
+    public mutating func rideEnded(pct: Double?, rideKm: Double? = nil, announced: String? = nil) -> V09Message? {
         guard !said, let p = pct else { return nil }
+        if let km = rideKm, !ArrivalRule.allowed(rideKm: km) { return nil }
         said = true
-        return .arrived(place: nil, pct: Int(p.rounded()))
+        return .arrived(place: ArrivalRule.name(place: nil, announced: announced), pct: Int(p.rounded()))
     }
 }

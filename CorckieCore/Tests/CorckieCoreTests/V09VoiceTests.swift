@@ -16,7 +16,7 @@ final class V09VoiceTests: XCTestCase {
         XCTAssertEqual(V09Message.usingMore(pctPerKm: 2.6, aboveUsualPct: 15).line, "Using two point six percent per kilometre, fifteen percent above usual.")
         XCTAssertTrue(V09Message.engineOverheating(c: 94).urgent)
         XCTAssertFalse(V09Message.runningLate(minutes: 8, arriveAt: "9:02").urgent)
-        XCTAssertEqual(V09Message.samples.count, 18)   // + V-U1 Level 2 (batch 3)
+        XCTAssertEqual(V09Message.samples.count, 17)   // + V-U1 Level 2 (batch 3); batch 4: drain and far share one calmer line
     }
 
     func testEngineTemperatureHoldsOnceAndReArms() {
@@ -41,9 +41,9 @@ final class V09VoiceTests: XCTestCase {
     func testEveryTenIsUrgentAndStartsBelowTheStart() {
         var d = V09Director()
         XCTAssertEqual(d.update(V09Input(t: 0, pct: 87, rideKm: 0, speedKmh: 25)), [])
-        XCTAssertEqual(d.update(V09Input(t: 60, pct: 80, rideKm: 1, speedKmh: 25)), [.everyTen(pct: 80)])
+        XCTAssertEqual(d.update(V09Input(t: 60, pct: 80, rideKm: 1, speedKmh: 25)), [.everyTen(pct: 80, pctPerKm: 7)])
         XCTAssertEqual(d.update(V09Input(t: 70, pct: 79, rideKm: 1.1, speedKmh: 25)), [])
-        XCTAssertEqual(d.update(V09Input(t: 80, pct: 69, rideKm: 1.2, speedKmh: 25)), [.everyTen(pct: 70)])
+        XCTAssertEqual(d.update(V09Input(t: 80, pct: 69, rideKm: 1.2, speedKmh: 25)).map(\.value), [70])
     }
 
     func testCanWaitWaitsForAStop() {

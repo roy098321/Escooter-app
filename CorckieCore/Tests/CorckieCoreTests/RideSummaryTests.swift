@@ -64,7 +64,11 @@ final class RideSummaryTests: XCTestCase {
         r.endRestPct = nil
         let m = RideSummaryBuilder.build(r, gaps: [], points: points())
         XCTAssertEqual(stat(m.mainStats, "Battery per km"), "\u{2013}")
-        XCTAssertEqual(stat(m.mainStats, "Battery"), "88% \u{2192} 85%")
+        // N4-12 (B91): the end is the start minus the battery used the page shows (24 %)
+        XCTAssertEqual(stat(m.mainStats, "Battery"), "88% \u{2192} 64%")
+        r.usedPct = nil
+        XCTAssertEqual(stat(RideSummaryBuilder.build(r, gaps: [], points: points()).mainStats, "Battery"), "88% \u{2192} 85%",
+                       "no battery used figure: the readings")
     }
 
     func testUnknownNumbersAreDashesNeverZeros() {

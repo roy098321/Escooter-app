@@ -226,6 +226,8 @@ public struct RideSummaryModel: Equatable, Sendable {
     public var infoLines: [String]
     /// D4: the peak temperature in whole degrees, only when the scooter got hot (T47); nil otherwise
     public var hotPeakC: Int? = nil
+    /// N4-12 (B91): the ride's one start / end battery level (the map's Battery legend and the voice proof use it)
+    public var batteryEnds: RideBatteryEnds? = nil
 }
 
 public enum RideSummaryBuilder {
@@ -241,8 +243,11 @@ public enum RideSummaryBuilder {
 
         let firstPct = points.sorted { $0.t < $1.t }.compactMap(\.batteryPct).first
         let lastPct = points.sorted { $0.t < $1.t }.compactMap(\.batteryPct).last
-        let startPct = input.startRestPct ?? firstPct.map(Double.init)
-        let endPct = input.endRestPct ?? lastPct.map(Double.init)
+        // N4-12 (B91): one start and end per ride; the end is the start minus the battery used the page shows
+        let ends = RideBatteryEnds.make(shownUsed: nil, usedPct: input.usedPct, startRestPct: input.startRestPct,
+                                        endRestPct: input.endRestPct, firstPct: firstPct.map(Double.init), lastPct: lastPct.map(Double.init))
+        let startPct = ends.startPct
+        let endPct = ends.endPct
 
         let main: [SummaryStat] = [
             SummaryStat("Time", input.totalS.map(duration) ?? dash),
@@ -305,10 +310,12 @@ public enum RideSummaryBuilder {
         if let f = input.formatReason { info.append("Phone took over: " + f) }
         if let i = input.ignoredInfo { info.append(i) }
 
-        return RideSummaryModel(title: title(startAt: input.startAt, utcOffsetMin: offset), subtitle: subtitle,
-                                mainStats: main, scooterStats: scooter, notes: notes, noGps: noGps, path: path,
-                                infoLines: info,
-                                hotPeakC: input.tempPeakC.flatMap { $0 >= T.t47HotC ? Int($0.rounded()) : nil })
+        var model = RideSummaryModel(title: title(startAt: input.startAt, utcOffsetMin: offset), subtitle: subtitle,
+                                     mainStats: main, scooterStats: scooter, notes: notes, noGps: noGps, path: path,
+                                     infoLines: info,
+                                     hotPeakC: input.tempPeakC.flatMap { $0 >= T.t47HotC ? Int($0.rounded()) : nil })
+        model.batteryEnds = ends
+        return model
     }
 
     // MARK: Formatting

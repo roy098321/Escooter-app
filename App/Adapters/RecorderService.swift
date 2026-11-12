@@ -168,6 +168,12 @@ final class RecorderService {
         // M2-06: the route chosen with Where to? is followed from the start of the ride to its end (once per ride).
         // M2-09 (Q9): at ride start, when the way back will not fit, one warning (needs the battery reading, so it waits for it).
         let rideOn = input.phase == .starting || input.phase == .riding
+        // Batch 4 (D-PR-09): the ride's one smoothed battery level, for the dashboard, the voice and the warnings
+        if rideOn {
+            input.smoothedBatteryPct = RideBatteryService.shared.tick(input, at: time ?? Self.now(), database: AppModel.shared.displayDatabase)
+        } else {
+            RideBatteryService.shared.end()
+        }
         if rideOn, !fromSimulator { TripService.shared.noteDestination(RouteFollowSelection.shared.chosenKey) }   // F-39
         if rideOn, !followChecked, input.scooterBatteryPct != nil || input.phase == .riding {
             followChecked = true
