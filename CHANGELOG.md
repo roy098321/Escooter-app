@@ -2,6 +2,26 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 104.151126.00 — batch 4, due Sun 15 Nov 2026 (one battery number, a calmer voice, Start opens at once)
+
+- N4-16 (D-PR-09): the live dashboard shows the smoothed battery level, the same one the voice, the map's 10 % marks, the arrival line and the 20 / 15 / 10 % warnings use (phone-only rides keep "~ est.").
+- N4-9 / B88: one Core rule for the voice's "Battery at N percent" and the map's N% marks: the smoothed level first reaches N (the map replays it over the stored ride).
+- N4-10 / B89: no battery lines after "Arrived"; every spoken battery number from the smoothed level.
+- N4-15 / B94: the ride's level is saved every few seconds; after a relaunch it is re-seeded from the live reading (its highest in the first 30 s) and no 10 % line at or above it is said again.
+- N4-5: "Battery at ninety percent, using two point five percent per kilometre." (rate from 1 km); drain and far-above say "Energy use higher than normal, using … percent per kilometre."; the ride-page note "Energy use higher than normal from km 6, 2.5 % per km."; "Unusual drag, check brakes and tyres." unchanged.
+- N4-11 / B90: drain warning ratio 1.5 → 1.8, at least 8 points (was 6), on the smoothed level.
+- N4-6 / B86: Start on a quietly recording ride sets it as started by hand: the ride screen opens on the same tick.
+- N4-7 / B87: the announced destination is remembered per ride across relaunches; only a change is said.
+- N4-14 / B93: no arrival line for rides under 2 km; at the ride end it names the destination announced at the start.
+- N4-12 / B91: one start / end / used per ride (RideBatteryEnds): summary, map Battery legend and voice proof agree; end = start − used.
+- N4-13 / B92: the ride list's battery used = the ride page's (shown figure, then the ride's own, then rested start − end).
+- N4-8: Home's big button reads "Offline" (grey, no action) when the paired scooter is off or out of reach; unpaired keeps "Connect"; "Try again" is gone from Home.
+- N4-3 / B84: past the first-read mark without a rise: "No rise in battery use" (others "No clear pattern yet"), "Based on 16 rides", the bar stops at 90 %.
+- N4-4 / B85: an early read whose interval touches or crosses 0 says "No clear cost yet", "less than 0.02 % per km for each +1 km/h so far"; never "−0.00".
+- N4-1: Place → Move centre (drag the pin or tap the map, Undo, Save).
+- N4-2: the riding ask names its street ("Try it on Main St, between First Ave and Second Ave (your Uni route, about 3.5 km in).", rounded points through the cached street helper, offline = the old line), Show where (small map, stretch in orange), "Any 500 m steady at 20 km/h counts."; Settings → Sounds → Riding ask cue (off by default): "Straight ahead: hold twenty for five hundred metres." once on reaching it.
+- Guard tests: Batch104Tests (Core).
+
 ## 103.081126.03 — hotfix 3 of batch 3, Mon 9 Nov 2026 (Stats chart labels; Run all automatic crash)
 
 - B82: the Stats chart's 10 / 20 / 30 km (rides, time, ₪) values sit in their own column left of the bars; bars no longer cover them.

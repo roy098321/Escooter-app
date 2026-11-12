@@ -69,6 +69,8 @@ struct PlaceMapView: View {
     /// Note 18: the outline editor is open / "Use the circle again?" is asked
     @State private var editingOutline = false
     @State private var askCircle = false
+    /// N4-1: the centre editor is open
+    @State private var movingCentre = false
     @Environment(\.dismiss) private var dismiss
 
     private var shown: PlaceMapItem? { preview ?? item }
@@ -104,6 +106,14 @@ struct PlaceMapView: View {
                 PlaceOutlineEditor(title: place.row.title, centre: place.coordinate, circleM: place.circleM, colourId: place.colourId,
                                    points: place.outline ?? []) { points in
                     save { try PlaceOutlineStore.save($1, placeId: $0.id, outline: points) }
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $movingCentre) {
+            if let place = shown {
+                PlaceCentreEditor(title: place.row.title, centre: GeoPoint(lat: place.lat, lon: place.lon), circleM: place.circleM,
+                                  colourId: place.colourId) { c in
+                    save { try PlaceService.setCentre(placeId: $0.id, centre: c, database: $1) }
                 }
             }
         }
@@ -200,6 +210,9 @@ struct PlaceMapView: View {
                 HStack {
                     Text("Circle")
                     Spacer()
+                    Button("Move centre") { movingCentre = true }      // N4-1
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                     Picker("Circle", selection: Binding(get: { place.row.radiusM ?? 0 },
                                                         set: { r in save { try PlaceService.setRadius(placeId: $0.id, radiusM: r > 0 ? r : nil, database: $1) } })) {
                         Text("Automatic").tag(0.0)

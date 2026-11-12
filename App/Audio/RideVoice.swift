@@ -41,6 +41,8 @@ final class RideVoice {
     /// line names it when it was announced)
     private var lastRideKm = 0.0
     private var destinationName: String?
+    /// N4-2 B: the riding ask's stretch (Settings → Riding ask cue, off by default)
+    private var askCue: AskCue?
     /// Hotfix 03: Wh per 1 % for the sag-proof level (nil = the prior)
     private var whPerPct: Double?
     /// The Start button already played the start sound (and the A3 transition) this moment
@@ -68,6 +70,7 @@ final class RideVoice {
             arrivalLine.reset()
             lastRideKm = 0
             destinationName = nil
+            askCue = AskCueSettings.isOn ? RidingAskState.cue : nil
             // Batch 4: picked up after a relaunch: nothing already said is said again (B87, B89)
             let battery = RideBatteryService.shared
             if battery.resumed {
@@ -143,6 +146,14 @@ final class RideVoice {
         // B89 / B91: every spoken battery number from the one smoothed level
         if let l = input.smoothedBatteryPct ?? input.scooterBatteryPct { lastPct = l }
         lastRideKm = (input.rideDistanceM ?? 0) / 1000
+        // N4-2 B: on reaching the ask's stretch, once (the rider switched it on)
+        if var cue = askCue, let lat = input.lat, let lon = input.lon {
+            if cue.update(position: GeoPoint(lat: lat, lon: lon), speedKmh: screen.tiles.speedKmh.map(Double.init)) {
+                SoundPlayer.shared.say(cue.line)
+                Log.info(source: "voice", "N4-2: said \"\(cue.line)\"")
+            }
+            askCue = cue
+        }
         guard V09Settings.isOn else { return }
         if let lat = input.lat, let lon = input.lon {
             if let p = lastPos {
@@ -244,6 +255,15 @@ final class RideVoice {
         routeUsageLines = usageLines
         director.destinationChanged()
         arrivalPlayed = false
+    }
+}
+
+/// N4-2 B: Settings → Sounds → Riding ask cue (off by default, P-4)
+enum AskCueSettings {
+    private static let key = "corckie.asks.cueOn"
+    static var isOn: Bool {
+        get { UserDefaults.standard.object(forKey: key) as? Bool ?? false }
+        set { UserDefaults.standard.set(newValue, forKey: key) }
     }
 }
 

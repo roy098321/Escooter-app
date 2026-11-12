@@ -336,4 +336,59 @@ final class Batch104Tests: XCTestCase {
         XCTAssertEqual(HomeLogic.model(HomeInput(paired: true, connected: true, nowS: now, batteryPct: 80)).primary, .startRide,
                        "turns into Start by itself")
     }
+
+    // MARK: N4-2 · a riding-ask place you can find (made-up streets and points)
+
+    func test_N4_2_theStretchIsNamedByItsStreet() {
+        let s = AskStretch(key: "r|a|b", routeName: "Uni", fromKm: 3.5, path: [GeoPoint(lat: 10, lon: 20), GeoPoint(lat: 10.004, lon: 20)])
+        XCTAssertEqual(s.line(street: "Main St", fromStreet: "First Ave", toStreet: "Second Ave"),
+                       "Try it on Main St, between First Ave and Second Ave (your Uni route, about 3.5 km in).")
+        XCTAssertEqual(s.line(street: "Main St", fromStreet: "Main St", toStreet: "Main St"),
+                       "Try it on Main St (your Uni route, about 3.5 km in).", "the same street at the ends adds nothing")
+        XCTAssertEqual(s.line(street: nil, fromStreet: nil, toStreet: nil), s.line, "offline: the old line, the map still shows where")
+        XCTAssertEqual(RidingAsk(speedKmh: 20, metres: 500, stretch: s).anyLine, "Any 500 m steady at 20 km/h counts.")
+    }
+
+    func test_N4_2_foundStretchesCarryTheirPath() {
+        var pts: [(point: GeoPoint, altM: Double?)] = []
+        for i in 0...40 { pts.append((GeoPoint(lat: 10 + Double(i) * 0.000_2, lon: 20), 30)) }   // a straight, level 900 m
+        let found = RidingAsks.stretches([AskRoutePath(routeId: "r", name: "Uni", points: pts)], metres: 500, notHere: [])
+        XCTAssertFalse(found.isEmpty)
+        XCTAssertGreaterThan(found[0].path.count, 2)
+        XCTAssertEqual(found[0].start, pts[0].point)
+    }
+
+    func test_N4_2_voiceCueOnceOnReachingTheStretch() {
+        let a = GeoPoint(lat: 10, lon: 20), b = GeoPoint(lat: 10.0045, lon: 20)
+        var cue = AskCue(speedKmh: 20, metres: 500, start: a, end: b)
+        XCTAssertEqual(cue.line, "Straight ahead: hold twenty for five hundred metres.")
+        XCTAssertFalse(cue.update(position: GeoPoint(lat: 9.998, lon: 20), speedKmh: 20), "still 220 m away")
+        XCTAssertFalse(cue.update(position: GeoPoint(lat: 9.9997, lon: 20), speedKmh: 0), "standing")
+        XCTAssertTrue(cue.update(position: GeoPoint(lat: 9.9997, lon: 20), speedKmh: 20), "33 m before the start")
+        XCTAssertFalse(cue.update(position: GeoPoint(lat: 10.0001, lon: 20), speedKmh: 20), "once")
+        var back = AskCue(speedKmh: 20, metres: 500, start: a, end: b)
+        XCTAssertFalse(back.update(position: GeoPoint(lat: 10.0046, lon: 20), speedKmh: 20), "near the end: the other way")
+        XCTAssertNil(AskCue(RidingAsk(speedKmh: 20, metres: 500, stretch: nil)), "no stretch, no cue")
+    }
+
+    // MARK: N4-1 · move a place's circle centre (made-up coordinates)
+
+    func test_N4_1_moveUndoAndTheCircleFollows() {
+        let a = GeoPoint(lat: 10, lon: 20), b = GeoPoint(lat: 10.0003, lon: 20)
+        var e = CentreEditor(centre: a)
+        XCTAssertFalse(e.changed)
+        XCTAssertFalse(e.canUndo)
+        e.move(to: b)
+        XCTAssertTrue(e.changed)
+        XCTAssertEqual(e.movedM, 33, accuracy: 1.5)
+        // the circle is drawn around the new centre: a point near b is inside a 25 m circle, a is not
+        let shape = PlaceShape(center: e.centre, radiusM: 25)
+        XCTAssertTrue(shape.contains(GeoPoint(lat: 10.00031, lon: 20)))
+        XCTAssertFalse(shape.contains(a))
+        e.move(to: b)
+        XCTAssertTrue(e.canUndo)
+        e.undo()
+        XCTAssertEqual(e.centre, a, "one undo step per move")
+        XCTAssertFalse(e.changed)
+    }
 }

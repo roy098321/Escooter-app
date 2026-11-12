@@ -345,6 +345,7 @@ struct DisplaySettingsView: View {
 struct SoundsSettingsView: View {
     @State private var on: [SoundToggle: Bool] = [:]
     @State private var v09 = V09Settings.isOn
+    @State private var askCue = AskCueSettings.isOn
 
     var body: some View {
         List {
@@ -360,6 +361,13 @@ struct SoundsSettingsView: View {
                 Toggle("Voice energy updates", isOn: Binding(get: { v09 }, set: { v in v09 = v; V09Settings.isOn = v }))
             } footer: {
                 Text("While riding: every 10 %, using more than usual, arriving low or late, the point of no return, the power limit, engine heat, recording problems and \u{201C}Arrived at \u{2026}\u{201D}. Urgent ones right away, the rest at a stop or a straight stretch.")
+            }
+            .glassRows()
+            Section {
+                // N4-2 B: off by default (P-4)
+                Toggle("Riding ask cue", isOn: Binding(get: { askCue }, set: { v in askCue = v; AskCueSettings.isOn = v }))
+            } footer: {
+                Text("On reaching the stretch your speed graph asks for: \u{201C}Straight ahead: hold 20 for 500 m.\u{201D}")
             }
             .glassRows()
         }

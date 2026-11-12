@@ -193,6 +193,14 @@ struct RouteQueries {
         }
     }
 
+    /// N4-1 (batch 4): the rider moved the place's circle centre (places are never re-detected, so it stays)
+    func setCentre(placeId: String, lat: Double, lon: Double) throws {
+        try requireWritable()
+        try writer.write { db in
+            try db.execute(sql: "UPDATE place SET lat = ?, lon = ? WHERE id = ?", arguments: [lat, lon, placeId])
+        }
+    }
+
     /// M2-05: "I can charge here" (M27: only the way there has to fit).
     func setCanCharge(placeId: String, canCharge: Bool) throws {
         try requireWritable()

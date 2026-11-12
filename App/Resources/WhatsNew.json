@@ -1,5 +1,34 @@
 [
   {
+    "version": "104.151126.00",
+    "headline": "One battery number, a calmer voice, Start opens at once",
+    "items": [
+      { "symbol": "battery.75percent", "title": "One battery number", "line": "The ride screen, the voice and the map marks show the same steady level. No more 99 \u2192 92 \u2192 95 on a hill; the scooter's own screen may differ by a point while riding." },
+      { "symbol": "speaker.wave.2", "title": "A calmer voice", "line": "\u201cBattery at 90 percent, using 2.5 percent per kilometre.\u201d A use warning only when it is really higher, and nothing after \u201cArrived\u201d." },
+      { "symbol": "play.circle", "title": "Start opens at once", "line": "Start always opens the ride screen, also when the app was already recording quietly. Reopening the app no longer repeats \u201cRiding to \u2026\u201d." },
+      { "symbol": "mappin.and.ellipse", "title": "Places you can adjust", "line": "Move a place's circle centre: Place \u2192 Move centre. The speed graph's ask names the street, with Show where." }
+    ],
+    "smallerFixes": 7,
+    "full": [
+      "N4-16 (D-PR-09): during a ride the dashboard shows the smoothed battery level, the same one the voice, the map marks, the arrival line and the 20 / 15 / 10 % warnings use.",
+      "N4-9: the voice's \u201cBattery at N percent\u201d and the map's N% mark use one rule (the smoothed level first reaches N), so the pill sits where the voice spoke.",
+      "N4-10: no battery lines after \u201cArrived\u201d; every spoken battery number comes from the smoothed level.",
+      "N4-15: after the app is reopened mid-ride the level starts again from the scooter's reading, and no 10 % line is repeated.",
+      "N4-5: \u201cBattery at ninety percent, using two point five percent per kilometre.\u201d (from 1 km); the drain and far-above lines now say \u201cEnergy use higher than normal, using \u2026 percent per kilometre.\u201d; the ride page note matches.",
+      "N4-11: the drain warning needs the level to fall 1.8\u00d7 the energy drawn (was 1.5\u00d7) and 8 points (was 6), judged on the smoothed level.",
+      "N4-6: Start on a ride that was recording quietly opens the ride screen at once.",
+      "N4-7: reopening the app mid-ride does not say the destination again; a new destination is still said.",
+      "N4-14: no \u201cArrived\u201d for rides under 2 km (short hops and rides that are discarded); the line names the destination announced at the start.",
+      "N4-12: the ride page, the map's Battery legend and the arrival line share one end level; start \u2212 end = battery used.",
+      "N4-13: the ride list shows the same battery used as the ride page.",
+      "N4-8: Home says \u201cOffline\u201d (grey, no action) when your paired scooter is off; it turns into Start by itself. First use keeps Connect.",
+      "N4-3: Stats \u201cBattery use over time\u201d says \u201cNo rise in battery use\u201d and \u201cBased on 16 rides\u201d instead of \u201c16 of 8\u201d.",
+      "N4-4: \u201cWhat speed costs you\u201d says \u201cNo clear cost yet\u201d instead of a range touching 0; never \u201c\u22120.00\u201d.",
+      "N4-1: Place \u2192 Move centre: drag the pin or tap the map, Undo, Save.",
+      "N4-2: the riding ask names the street of the stretch (online), Show where opens a small map with it in orange, \u201cAny 500 m steady at 20 km/h counts.\u201d; Settings \u2192 Sounds \u2192 Riding ask cue (off by default) says \u201cStraight ahead: hold 20 for 500 m\u201d on reaching it."
+    ]
+  },
+  {
     "version": "103.081126.03",
     "headline": "Hotfix: clearer Stats chart, Checks no longer crash",
     "items": [

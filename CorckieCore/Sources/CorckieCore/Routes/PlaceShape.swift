@@ -188,3 +188,35 @@ public struct OutlineEditor: Equatable, Sendable {
 
     public var changed: Bool { points != original }
 }
+
+/// N4-1 (batch 4, owner 9 Nov): move a detected place's circle centre. Drag the centre pin or tap the map; the circle follows; one undo
+/// step per move; Save keeps it. Places are never re-detected once saved, so the moved centre stays. Pure, tested on Linux.
+public struct CentreEditor: Equatable, Sendable {
+    public private(set) var centre: GeoPoint
+    private var history: [GeoPoint] = []
+    private let original: GeoPoint
+
+    public init(centre: GeoPoint) {
+        self.centre = centre
+        self.original = centre
+    }
+
+    public var canUndo: Bool { !history.isEmpty }
+    public var changed: Bool { centre != original }
+
+    /// A tap on the map, or the end of a drag of the pin
+    public mutating func move(to p: GeoPoint) {
+        guard p != centre else { return }
+        history.append(centre)
+        if history.count > 100 { history.removeFirst() }
+        centre = p
+    }
+
+    public mutating func undo() {
+        guard let last = history.popLast() else { return }
+        centre = last
+    }
+
+    /// How far the centre moved, m ("Moved 35 m")
+    public var movedM: Double { Geo.distanceM(original, centre) }
+}

@@ -229,6 +229,11 @@ enum PlaceService {
         try RouteQueries(database).setRadius(placeId: placeId, radiusM: radiusM)
     }
 
+    /// N4-1: move the circle's centre
+    static func setCentre(placeId: String, centre: GeoPoint, database: AppDatabase) throws {
+        try RouteQueries(database).setCentre(placeId: placeId, lat: centre.lat, lon: centre.lon)
+    }
+
     static func setCanCharge(placeId: String, canCharge: Bool, database: AppDatabase) throws {
         try RouteQueries(database).setCanCharge(placeId: placeId, canCharge: canCharge)
     }

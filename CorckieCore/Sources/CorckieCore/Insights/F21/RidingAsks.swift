@@ -35,15 +35,32 @@ public struct AskStretch: Equatable, Sendable {
     public var routeName: String
     /// Where it starts along the route, km
     public var fromKm: Double
+    /// N4-2 (batch 4): the stretch itself, in riding order (for "Show where", the street names and the voice cue)
+    public var path: [GeoPoint]
 
-    public init(key: String, routeName: String, fromKm: Double) {
+    public init(key: String, routeName: String, fromKm: Double, path: [GeoPoint] = []) {
         self.key = key
         self.routeName = routeName
         self.fromKm = fromKm
+        self.path = path
     }
 
-    /// "Try it on the straight part of your Uni route, about 2.1 km in."
+    public var start: GeoPoint? { path.first }
+    public var end: GeoPoint? { path.last }
+    /// The middle point of the stretch (its street name)
+    public var middle: GeoPoint? { path.isEmpty ? nil : path[path.count / 2] }
+
+    /// "Try it on the straight part of your Uni route, about 2.1 km in." (no street name: offline, or none there)
     public var line: String { String(format: "Try it on the straight part of your %@ route, about %.1f km in.", routeName, fromKm) }
+
+    /// N4-2 A (owner 9 Nov): the stretch named by its street, "Try it on Herzl St, between Ben Yehuda St and Allenby St (your Uni
+    /// route, about 3.5 km in)." The ends' streets are said only when they differ from the stretch's own; no street = `line`.
+    public func line(street: String?, fromStreet: String?, toStreet: String?) -> String {
+        guard let s = street?.trimmingCharacters(in: .whitespaces), !s.isEmpty else { return line }
+        let ends = [fromStreet, toStreet].compactMap { $0?.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty && $0 != s }
+        let between = ends.count == 2 && ends[0] != ends[1] ? ", between \(ends[0]) and \(ends[1])" : ""
+        return "Try it on \(s)\(between) " + String(format: "(your %@ route, about %.1f km in).", routeName, fromKm)
+    }
 }
 
 /// One route's recorded path with heights, for finding stretches
@@ -78,6 +95,52 @@ public struct RidingAsk: Equatable, Sendable {
 
     /// "800 m steady at 35 km/h fills your speed graph."
     public var line: String { "\(metres) m steady at \(speedKmh) km/h fills your speed graph." }
+
+    /// N4-2: "Any 500 m steady at 20 km/h counts."
+    public var anyLine: String { "Any \(metres) m steady at \(speedKmh) km/h counts." }
+}
+
+/// N4-2 B (owner 9 Nov): an optional voice cue on reaching the ask's stretch (Settings, off by default, P-4): "Straight ahead: hold
+/// twenty for five hundred metres." Once per ride, on coming within `nearM` of the stretch's start from its own side (the end is
+/// farther than the start), at riding speed.
+public struct AskCue: Equatable, Sendable {
+    public static let nearM = 60.0
+    public static let minKmh = 8.0
+
+    public let speedKmh: Int
+    public let metres: Int
+    public let start: GeoPoint
+    public let end: GeoPoint
+    public private(set) var said = false
+
+    public init(speedKmh: Int, metres: Int, start: GeoPoint, end: GeoPoint) {
+        self.speedKmh = speedKmh
+        self.metres = metres
+        self.start = start
+        self.end = end
+    }
+
+    public init?(_ ask: RidingAsk) {
+        guard let s = ask.stretch, let a = s.start, let b = s.end else { return nil }
+        self.init(speedKmh: ask.speedKmh, metres: ask.metres, start: a, end: b)
+    }
+
+    /// "Straight ahead: hold twenty for five hundred metres."
+    public var line: String {
+        let w = SpokenNumber.words
+        let m = metres >= 1000 && metres % 1000 == 0 ? "\(w(metres / 1000)) kilometre\(metres == 1000 ? "" : "s")"
+            : (metres % 100 == 0 ? "\(w(metres / 100)) hundred metres" : "\(w(metres)) metres")
+        return "Straight ahead: hold \(w(speedKmh)) for \(m)."
+    }
+
+    /// One position a second; true = say the line now
+    public mutating func update(position p: GeoPoint, speedKmh: Double?) -> Bool {
+        guard !said, (speedKmh ?? 0) >= Self.minKmh else { return false }
+        let toStart = Geo.distanceM(p, start)
+        guard toStart <= Self.nearM, Geo.distanceM(p, end) > toStart else { return false }
+        said = true
+        return true
+    }
 }
 
 public enum RidingAsks {
@@ -131,7 +194,8 @@ public enum RidingAsks {
                 if straight(pts.map(\.point), i, j) && level(pts, i, j, length: along[j] - along[i]) {
                     let key = "\(r.routeId)|\(round3(pts[i].point))|\(round3(pts[j].point))"
                     if !notHere.contains(key) {
-                        out.append(AskStretch(key: key, routeName: r.name, fromKm: (along[i] / 100).rounded() / 10))
+                        out.append(AskStretch(key: key, routeName: r.name, fromKm: (along[i] / 100).rounded() / 10,
+                                              path: pts[i...j].map(\.point)))
                     }
                     // jump past this stretch: the next one does not overlap it
                     i = j
