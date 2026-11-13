@@ -80,9 +80,17 @@ struct ExportLogView: View {
     @State private var result: LogExporter.Result?
     @State private var error: String?
     @State private var making = false
+    @State private var level: PrivacyLevel = .full      // N5-1
 
     var body: some View {
         List {
+            Section {
+                Picker("Include", selection: $level) {
+                    ForEach(PrivacyLevel.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .onChange(of: level) { _, _ in result = nil }
+                Text(level.detail).font(.footnote).foregroundStyle(.secondary)
+            }
             Section {
                 if let r = result {
                     ShareLink(item: r.url) {
@@ -114,7 +122,7 @@ struct ExportLogView: View {
         making = true
         DispatchQueue.main.async {
             do {
-                result = try LogExporter.make()
+                result = try LogExporter.make(level: level)
                 error = nil
             } catch {
                 self.error = "Log failed: \(error.localizedDescription)"

@@ -16,7 +16,8 @@ enum LogExporter {
         var leftOut: String?
     }
 
-    static func make() throws -> Result {
+    /// N5-1: `level` .trimmed / .noGPS make the privacy-safe export (no names, no locations near the rider's places; no diary or report files).
+    static func make(level: PrivacyLevel = .full) throws -> Result {
         let fm = FileManager.default
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -34,9 +35,11 @@ enum LogExporter {
         if let db = AppModel.shared.database {
             let enc = JSONEncoder()
             try db.writer.read { d in
+                let placeZones = level == .full ? [] : PrivacyTrim.zonesFromPlaces(try BundleTable.read(d, table: "place"))
                 let tables = try String.fetchAll(d, sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'grdb_%' ORDER BY name")
                 for t in tables where t != "ride_sample" && t != "raw_chunk" {
-                    let table = try BundleTable.read(d, table: t)
+                    let raw = try BundleTable.read(d, table: t)
+                    let table = level == .full ? raw : PrivacyTrim.blank(raw)
                     try enc.encode(table).write(to: folder.appendingPathComponent("database/\(t).json"))
                 }
                 let rides = try Row.fetchAll(d, sql: "SELECT id, startAt FROM ride ORDER BY startAt")
@@ -44,7 +47,8 @@ enum LogExporter {
                     let id: String = r["id"]
                     let at: Int64 = r["startAt"] ?? 0
                     for (table, kind) in [("raw_chunk", ExportCap.DetailFile.Kind.raw), ("ride_sample", .samples)] {
-                        let rows = try BundleTable.read(d, table: table, where: "rideId = ?", arguments: [id])
+                        var rows = try BundleTable.read(d, table: table, where: "rideId = ?", arguments: [id])
+                        if table == "ride_sample" { rows = PrivacyTrim.trimSamples(rows, level: level, placeZones: placeZones) }
                         guard !rows.rows.isEmpty else { continue }
                         let file = "rides/\(at)-\(id)-\(kind == .raw ? "raw" : "samples").json"
                         let data = try enc.encode(rows)
@@ -56,8 +60,8 @@ enum LogExporter {
         }
 
         // 2. the Report a problem files and the c8 ride files
-        try Exporter.writeReportFiles(into: folder.appendingPathComponent("report"))
-        for file in C8Recorder.shared.exportFiles() {
+        if level == .full { try Exporter.writeReportFiles(into: folder.appendingPathComponent("report")) }
+        for file in (level == .full ? C8Recorder.shared.exportFiles() : []) {
             let target = "report/\(file.lastPathComponent)"
             try? fm.copyItem(at: file, to: folder.appendingPathComponent(target))
             let attrs = try? fm.attributesOfItem(atPath: file.path)
@@ -66,8 +70,8 @@ enum LogExporter {
         }
 
         // 3. the diary and the saved reports
-        for file in Diary.shared.files() { try? fm.copyItem(at: file, to: folder.appendingPathComponent("diary/\(file.lastPathComponent)")) }
-        for file in MissedRideReports.files() { try? fm.copyItem(at: file, to: folder.appendingPathComponent("missed-ride-reports/\(file.lastPathComponent)")) }
+        for file in (level == .full ? Diary.shared.files() : []) { try? fm.copyItem(at: file, to: folder.appendingPathComponent("diary/\(file.lastPathComponent)")) }
+        for file in (level == .full ? MissedRideReports.files() : []) { try? fm.copyItem(at: file, to: folder.appendingPathComponent("missed-ride-reports/\(file.lastPathComponent)")) }
 
         // 4. zip, dropping the oldest detail while over 5 MB
         var dropped: [ExportCap.DetailFile] = []
