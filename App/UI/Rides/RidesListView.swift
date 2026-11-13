@@ -309,7 +309,7 @@ struct RidesListView: View {
         var names: [String: String] = [:]
         for p in (try? routes.places()) ?? [] { if let n = p.name, !n.isEmpty { names[p.id] = n } }
         placeNames = names
-        let rows = (try? RideQueries(db).rides()) ?? []
+        let rows = ((try? RideQueries(db).rides()) ?? []).filter { !$0.isSimulated || ScreenSimulator.shared.database != nil }      // T11: simulated rides stay out of the rider's list
         let shown = CalibrationQueries(db).allShown()     // N4-13 (B92): the same figure as the ride page
         items = rows.map {
             RideListItem(id: $0.id, startAt: $0.startAt, utcOffsetMin: $0.utcOffsetMin, kind: $0.kind,

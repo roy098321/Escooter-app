@@ -675,11 +675,11 @@ struct HomeView: View {
         if let id = RouteFollowSelection.shared.chosenKey, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.choose(key: nil) }
         parked = ParkedResolver.current(database: db, simulated: ScreenSimulator.shared.active)
         gap = ScreenSimulator.shared.active ? nil : ConnectionWatch.visibleGap(db)
-        oldestRideMs = try? RideQueries(db).rides().last?.startAt
+        oldestRideMs = (try? RideQueries(db).rides())?.last(where: { !$0.isSimulated })?.startAt      // T11
         ridesLoaded = true
         BackupWriter.shared.runIfDue()
         EdgeWatch.shared.refresh(database: db)
-        guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
+        guard let r = (try? RideQueries(db).rides(limit: 20))?.first(where: { !$0.isSimulated || ScreenSimulator.shared.database != nil }) else { return }      // T11
         lastRideEndMs = r.isSimulated ? nil : r.endAt   // F-31b
         lastRide = RideListItem(id: r.id, startAt: r.startAt, utcOffsetMin: r.utcOffsetMin, kind: r.kind,
                                 distanceM: r.distanceM, totalS: r.totalS)

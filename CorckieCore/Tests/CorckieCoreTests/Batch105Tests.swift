@@ -57,4 +57,20 @@ final class Batch105Tests: XCTestCase {
         XCTAssertEqual(QuickDial.minutesText(30), "30 min")
         XCTAssertFalse(QuickDial.estimateSeparator.contains("\u{2022}"))
     }
+
+    /// T11: simulated rides stay out of the rider's Rides list and Home
+    func test_T11_simulatedRidesStayOutOfRiderLists() throws {
+        let list = try source("App/UI/Rides/RidesListView.swift")
+        XCTAssertTrue(list.contains("!$0.isSimulated"))
+        let home = try source("App/UI/Home/HomeView.swift")
+        XCTAssertTrue(home.contains("!$0.isSimulated"))
+    }
+
+    /// C2: chart titles say what it means on the road
+    func test_C2_chartTitlesUseRangeWords() throws {
+        for file in ["CreepInsight", "SweetSpotInsight", "WindTodayInsight"] {
+            let text = try source("CorckieCore/Sources/CorckieCore/Insights/F21/\(file).swift")
+            XCTAssertFalse(text.contains("Your rides, battery per km"), file)
+        }
+    }
 }
