@@ -72,8 +72,8 @@ enum B101Checks {
     /// Note 14: a destination shows time AND battery, "Home • 30 mins • uses 27%"; without a usual estimate today's text
     private static func runTimeAndBattery() {
         let expect = Expect()
-        expect(QuickDial.summary(name: "Home", minutes: 30, needPct: 27) == "Home \u{2022} 30 mins \u{2022} uses 27%", "note 14: Home \u{2022} 30 mins \u{2022} uses 27%")
-        expect(QuickDial.summary(name: "Home", minutes: 30, needPct: nil) == "Home \u{2022} 30 mins", "no usual battery need: no battery part")
+        expect(QuickDial.summary(name: "Home", minutes: 30, needPct: 27) == "Home \u{00B7} 30 min \u{00B7} uses 27%", "note 14: Home \u{00B7} 30 min \u{00B7} uses 27%")
+        expect(QuickDial.summary(name: "Home", minutes: 30, needPct: nil) == "Home \u{00B7} 30 min", "no usual battery need: no battery part")
         expect(QuickDial.summary(name: "Grandma", minutes: nil, needPct: nil, note: "no rides there yet") == "Grandma \u{00B7} no rides there yet",
                "no estimate: today's text")
         CheckResults.shared.set("u142", expect.ok ? .pass : .fail, expect.line)

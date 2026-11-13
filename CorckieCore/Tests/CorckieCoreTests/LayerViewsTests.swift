@@ -30,7 +30,7 @@ final class LayerViewsTests: XCTestCase {
         XCTAssertEqual(LayerView(.wind, deep: true).buttonLabel, "Wind cost")
         XCTAssertEqual(LayerView(.battery, deep: true).buttonLabel, "Drain")
         XCTAssertEqual(LayerView(.temp, deep: true).buttonLabel, "Heating")
-        XCTAssertEqual(LayerView(.temp).title, "Controller temp", "labelled honestly as the controller's temperature")
+        XCTAssertEqual(LayerView(.temp).title, "Motor temp", "one name for heat: the motor")
         // another button always opens at its base view
         XCTAssertEqual(LayerView(.speed, deep: true).tapped(.battery), LayerView(.battery))
         XCTAssertTrue(LayerView(.speed, deep: true).showsStops)
@@ -71,7 +71,7 @@ final class LayerViewsTests: XCTestCase {
         // 1 °C every 20 s = 3 °C per minute
         XCTAssertEqual(heating.last?.value ?? 0, 3, accuracy: 0.5)
         XCTAssertEqual(LayerViews.scale(LayerView(.temp), stretches: LayerViews.stretches(LayerView(.temp), d), energy: d.energy,
-                                        colourBlind: false).title, "Controller temp")
+                                        colourBlind: false).title, "Motor temp")
     }
 
     func testWindShareHeadwindCostsTailwindSaves() {

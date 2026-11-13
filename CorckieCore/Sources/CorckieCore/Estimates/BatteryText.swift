@@ -6,7 +6,7 @@ public enum BatteryText {
     /// "Learning, 3 of 5 rides" / "Calibrated on 7 rides" / "Not started: using the 16 Ah pack"
     public static func calibrationStatus(_ cal: BatteryCalibration) -> String {
         switch cal.status {
-        case .prior: return "Not started, using the \(Int(cal.packAh.rounded())) Ah pack until the first good ride"
+        case .prior: return "Learning from your first rides"
         case .learning: return "Learning, \(cal.ridesUsed) of \(T.t41CalibrationRides) rides"
         case .calibrated: return "Calibrated on \(cal.ridesUsed) rides"
         }
@@ -33,7 +33,7 @@ public enum BatteryText {
     public static func healthTitle(_ s: BatteryHealth.State) -> String {
         switch s {
         case .gathering: return "Gathering data"
-        case .baseline: return "Baseline forming"
+        case .baseline: return "Learning"
         case let .health(pct, _, _): return "\(Int(pct.rounded()))%"
         }
     }

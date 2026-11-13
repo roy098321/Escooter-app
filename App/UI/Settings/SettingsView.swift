@@ -363,7 +363,7 @@ struct SoundsSettingsView: View {
             Section {
                 Toggle("Voice energy updates", isOn: Binding(get: { v09 }, set: { v in v09 = v; V09Settings.isOn = v }))
             } footer: {
-                Text("While riding: every 10 %, using more than usual, arriving low or late, the point of no return, the power limit, engine heat, recording problems and \u{201C}Arrived at \u{2026}\u{201D}. Urgent ones right away, the rest at a stop or a straight stretch.")
+                Text("Battery, arrival and warnings while riding. Urgent ones right away, the rest at a stop.")
             }
             .glassRows()
             Section {

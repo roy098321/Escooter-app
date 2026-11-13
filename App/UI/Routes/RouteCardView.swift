@@ -203,7 +203,7 @@ struct RouteCardView: View {
         DisclosureGroup {
             variantRows(rows).padding(.top, 8)
         } label: {
-            Text("Variants \u{00B7} \(rows.count)").font(.headline)
+            Text("Ways \u{00B7} \(rows.count)").font(.headline)
         }
         .tint(Theme.canyon)
         .frame(maxWidth: .infinity, alignment: .leading)

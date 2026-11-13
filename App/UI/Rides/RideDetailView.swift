@@ -339,9 +339,9 @@ struct RideDetailView: View {
         StatTileGrid {
             StatTile(value: stat(m, "Time"), label: "Time").opacity(tilesShown >= 1 ? 1 : 0)
             StatTile(value: stat(m, "Distance"), label: "Distance").opacity(tilesShown >= 2 ? 1 : 0)
-            StatTile(value: stat(m, "Avg. speed"), label: "Avg").opacity(tilesShown >= 3 ? 1 : 0)
+            StatTile(value: stat(m, "Avg. speed"), label: "Avg speed").opacity(tilesShown >= 3 ? 1 : 0)
             StatTile(value: stat(m, "Battery"), label: "Battery").opacity(tilesShown >= 4 ? 1 : 0)
-            StatTile(value: stat(m, "Top speed"), label: "Top").opacity(tilesShown >= 5 ? 1 : 0)
+            StatTile(value: stat(m, "Top speed"), label: "Top speed").opacity(tilesShown >= 5 ? 1 : 0)
             StatTile(value: climbText(m), label: "Climb").opacity(tilesShown >= 6 ? 1 : 0)
         }
     }
@@ -351,7 +351,7 @@ struct RideDetailView: View {
             if onDone != nil, !sameRideAnswered, let info = mergeInfo { sameRideCard(info) }
             keyTiles(m)
             if preview == nil, !m.noGps { RideReplayStrip(rideId: activeId, dot: $replayDot).id(activeId ?? "") }   // batch 102: works like Replay
-            if let hot = m.hotPeakC { HStack { InfoChip("thermometer.high", "\(hot) \u{00B0}C", label: "Temperature"); Spacer(minLength: 0) } }
+            if let hot = m.hotPeakC { HStack { InfoChip("thermometer.high", "\(hot) \u{00B0}C", label: "Motor temp"); Spacer(minLength: 0) } }
             if let r = previewInsights ?? ranked { insightCards(r) }
             ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in
                 if n.kind != .heat { note(n) }
@@ -409,7 +409,7 @@ struct RideDetailView: View {
     private func detailRows(_ m: RideSummaryModel) -> [(String, String)] {
         var rows = [("Moving time", stat(m, "Moving time")), ("Energy", stat(m, "Energy")), ("Stops", stat(m, "Stops")),
                     ("Battery per km", stat(m, "Battery per km"))]
-        if m.hotPeakC == nil, stat(m, "Temperature") != "\u{2013}" { rows.append(("Temperature", stat(m, "Temperature"))) }
+        if m.hotPeakC == nil, stat(m, "Temperature") != "\u{2013}" { rows.append(("Motor temp", stat(m, "Temperature"))) }
         if let full = m.scooterStats.first(where: { $0.label == "To full" }) { rows.append(("To full", full.value)) }
         return rows
     }

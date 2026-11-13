@@ -1,229 +1,33 @@
 [
   {
-    "version": "104.151126.00",
-    "headline": "One battery number, a calmer voice, Start opens at once",
+    "version": "105.221126.00",
+    "headline": "Welcome to CorckieApp",
     "items": [
-      { "symbol": "battery.75percent", "title": "One battery number", "line": "The ride screen, the voice and the map marks show the same steady level. No more 99 \u2192 92 \u2192 95 on a hill; the scooter's own screen may differ by a point while riding." },
-      { "symbol": "speaker.wave.2", "title": "A calmer voice", "line": "\u201cBattery at 90 percent, using 2.5 percent per kilometre.\u201d A use warning only when it is really higher, and nothing after \u201cArrived\u201d." },
-      { "symbol": "play.circle", "title": "Start opens at once", "line": "Start always opens the ride screen, also when the app was already recording quietly. Reopening the app no longer repeats \u201cRiding to \u2026\u201d." },
-      { "symbol": "mappin.and.ellipse", "title": "Places you can adjust", "line": "Move a place's circle centre: Place \u2192 Move centre. The speed graph's ask names the street, with Show where." }
-    ],
-    "smallerFixes": 7,
-    "full": [
-      "N4-16 (D-PR-09): during a ride the dashboard shows the smoothed battery level, the same one the voice, the map marks, the arrival line and the 20 / 15 / 10 % warnings use.",
-      "N4-9: the voice's \u201cBattery at N percent\u201d and the map's N% mark use one rule (the smoothed level first reaches N), so the pill sits where the voice spoke.",
-      "N4-10: no battery lines after \u201cArrived\u201d; every spoken battery number comes from the smoothed level.",
-      "N4-15: after the app is reopened mid-ride the level starts again from the scooter's reading, and no 10 % line is repeated.",
-      "N4-5: \u201cBattery at ninety percent, using two point five percent per kilometre.\u201d (from 1 km); the drain and far-above lines now say \u201cEnergy use higher than normal, using \u2026 percent per kilometre.\u201d; the ride page note matches.",
-      "N4-11: the drain warning needs the level to fall 1.8\u00d7 the energy drawn (was 1.5\u00d7) and 8 points (was 6), judged on the smoothed level.",
-      "N4-6: Start on a ride that was recording quietly opens the ride screen at once.",
-      "N4-7: reopening the app mid-ride does not say the destination again; a new destination is still said.",
-      "N4-14: no \u201cArrived\u201d for rides under 2 km (short hops and rides that are discarded); the line names the destination announced at the start.",
-      "N4-12: the ride page, the map's Battery legend and the arrival line share one end level; start \u2212 end = battery used.",
-      "N4-13: the ride list shows the same battery used as the ride page.",
-      "N4-8: Home says \u201cOffline\u201d (grey, no action) when your paired scooter is off; it turns into Start by itself. First use keeps Connect.",
-      "N4-3: Stats \u201cBattery use over time\u201d says \u201cNo rise in battery use\u201d and \u201cBased on 16 rides\u201d instead of \u201c16 of 8\u201d.",
-      "N4-4: \u201cWhat speed costs you\u201d says \u201cNo clear cost yet\u201d instead of a range touching 0; never \u201c\u22120.00\u201d.",
-      "N4-1: Place \u2192 Move centre: drag the pin or tap the map, Undo, Save.",
-      "N4-2: the riding ask names the street of the stretch (online), Show where opens a small map with it in orange, \u201cAny 500 m steady at 20 km/h counts.\u201d; Settings \u2192 Sounds \u2192 Riding ask cue (off by default) says \u201cStraight ahead: hold 20 for 500 m\u201d on reaching it."
-    ]
-  },
-  {
-    "version": "103.081126.03",
-    "headline": "Hotfix: clearer Stats chart, Checks no longer crash",
-    "items": [
-      { "symbol": "chart.bar", "title": "Chart labels stay readable", "line": "In Stats the 10 / 20 / 30 km labels sit next to the bars, so no bar covers them." },
-      { "symbol": "checkmark.shield", "title": "Run all automatic fixed", "line": "Developer → Checks → Run all automatic no longer closes the app." },
-      { "symbol": "text.magnifyingglass", "title": "Clearer crash trail", "line": "The diary now notes each screen the checks draw, so a crash names its screen." }
+      {
+        "symbol": "scooter",
+        "title": "Ready for a new scooter",
+        "line": "Settings → Data & backup → Start fresh makes a backup, then starts the battery numbers over. Setup now shows which scooter it found (model, km, battery) before you connect."
+      },
+      {
+        "symbol": "antenna.radiowaves.left.and.right.slash",
+        "title": "Bluetooth, explained",
+        "line": "If Bluetooth is off or not allowed for CorckieApp, Home and setup say so and take you to the right place."
+      },
+      {
+        "symbol": "sparkles",
+        "title": "A cleaner app",
+        "line": "Test buttons and notes are gone from your screens, and the build is ready for other riders."
+      }
     ],
     "smallerFixes": 0,
     "full": [
-      "B82: Stats chart values in their own column left of the bars.",
-      "B83: the screen check (u44) draws each screen in its own hidden window, not inside the app's screens; a screen that opened a sheet late closed the app."
-    ]
-  },
-  {
-    "version": "103.081126.02",
-    "headline": "Hotfix: Ride not recorded and Export log",
-    "items": [
-      { "symbol": "exclamationmark.bubble", "title": "Ride not recorded", "line": "Settings, first row. Say when you rode and save a report; the app tells you the cause when it can." },
-      { "symbol": "doc.zipper", "title": "Export log", "line": "Everything the app logs in one file of 5 MB at most, ready to share." },
-      { "symbol": "book.closed", "title": "A 30-day diary", "line": "The app now notes its own starts, stops and connections, so a missed ride can be traced. Old logs clean themselves up." }
-    ],
-    "smallerFixes": 0,
-    "full": [
-      "B81: Settings → Ride not recorded (When did you ride? Just now / Earlier today / Yesterday → Save report) and Export log, the first two rows.",
-      "A report is also saved by itself when the odometer shows riding that was not recorded.",
-      "The diary keeps app, Bluetooth, ride detection, phone settings, logs and voice lines for 30 days; error log 30 days, messages 90 days, reports 30 days.",
-      "Export log holds every table, the diary and the reports; above 5 MB the oldest ride detail is left out first."
-    ]
-  },
-  {
-    "version": "103.081126.01",
-    "headline": "Hotfix: Home stays Home until you ride, clearer trip line",
-    "items": [
-      { "symbol": "house", "title": "Home stays Home", "line": "Turning the scooter on records quietly. Home keeps Start, Where to and your places until you ride off or press Start." },
-      { "symbol": "figure.walk", "title": "Less noise on foot", "line": "A few metres of pushing no longer gets a note on the ride page. Pushes over 40 m, or 200 m in all, still do." },
-      { "symbol": "speaker.slash", "title": "Fewer voice interruptions", "line": "A short scooter disconnect stays quiet. “Recording problem” only after 2 minutes of it." },
-      { "symbol": "battery.50", "title": "Clearer trip line", "line": "“Uni • 28 mins • uses 36%”: what the trip uses, so it is never read as a second battery level." }
-    ],
-    "smallerFixes": 0,
-    "full": [
-      "B80: the voice says “Recording problem” only after 2 minutes of it; short scooter disconnects stay quiet and the ride page notes them.",
-      "B77: a ride recorded quietly in the background no longer turns Home into “Riding” with a Live view button that did nothing. Home changes only once you ride off or press Start.",
-      "B78: the trip line and Where to? say “uses 36%” instead of “36% battery”.",
-      "B79: the “on foot” note on the ride page only for a push longer than 40 m, or 200 m of pushes in all."
-    ]
-  },
-  {
-    "version": "103.081126.00",
-    "headline": "Battery report, smarter battery warnings, fresh readings",
-    "items": [
-      { "symbol": "battery.75", "title": "Battery report", "line": "See your real-world range over time, with alerts as the battery ages. Tap Health on the Battery page." },
-      { "symbol": "exclamationmark.triangle", "title": "Smarter battery warnings", "line": "“Above usual” now starts at your own normal. A new warning speaks up when something looks mechanical: drag, or a battery draining too fast." },
-      { "symbol": "scooter", "title": "Ride screen waits for the ride", "line": "Turning the scooter on and wheeling it out records quietly. The ride screen opens when you ride off." },
-      { "symbol": "arrow.clockwise", "title": "Fresh readings every time", "line": "Nothing from your last ride shows as now: no more “Engine hot” at the start." }
-    ],
-    "smallerFixes": 3,
-    "full": [
-      "Battery report: range on a full battery in km next to health %, a graph you can press for date, km and %, how fast it drops and when the next level comes.",
-      "Battery notices at every 5 % of health lost from 90 %: Battery decay detected, Battery wearing, Battery worn. Never during a ride; each once.",
-      "Battery health compares rides in similar weather, so winter is not counted as wear. “I replaced the battery” starts a new baseline.",
-      "Above usual battery use starts at your own 9-in-10 line for the route. Extreme use (likely mechanical) speaks at once and leaves a note on the ride page.",
-      "Every scooter reading starts empty on a new connection; engine lines only after the motor has run on this ride.",
-      "The ride screen opens at the real ride start or when you press Start.",
-      "Places can be 25 m or 50 m.",
-      "Fuel price: type 3 digits, the point goes in by itself.",
-      "Unused code removed."
-    ]
-  },
-  {
-    "version": "102.011126.02",
-    "headline": "Hotfix: the arrival battery is right again, one battery everywhere",
-    "items": [
-      { "symbol": "battery.75", "title": "Arrival battery fixed", "line": "It was saying your battery now. Your past rides on the route count again, so it says what you will arrive with." },
-      { "symbol": "speaker.wave.1", "title": "No repeats", "line": "No arrival line when little is left to use, and never the same number as the line just before." },
-      { "symbol": "checkmark.seal", "title": "Checked on your rides", "line": "Developer → Voice replay now fails a ride where the arrival equals the battery now." },
-      { "symbol": "battery.100.bolt", "title": "Scooter tab matches Home", "line": "After Unplugged, the next real reading replaces the estimate. The Scooter tab shows the same last reading as Home." }
-    ],
-    "smallerFixes": 1,
-    "full": [
-      "Past rides are stored a row about every 5 seconds; the arrival maths skipped every row, so each past ride seemed to use nothing. Every row counts now, live and stored.",
-      "A past ride that seems to use almost nothing while its battery fell is left out.",
-      "No arrival battery line with under 5 points left to use; never the battery now; never the same number as the line just before.",
-      "Voice replay checks that halfway the arrival is below the battery now.",
-      "After Unplugged, connecting the scooter (or the next ride) ends the \u2248 estimate and counts that charge as measured for your charging speed.",
-      "With the scooter off, the Scooter tab and Home show the same last reading and time."
-    ]
-  },
-  {
-    "version": "102.011126.01",
-    "headline": "Hotfix: a voice you can trust",
-    "items": [
-      { "symbol": "battery.75", "title": "Arrival battery that holds", "line": "Hills no longer set it off. It speaks only when sure, compares with your own rides, and never says a higher number after a lower one." },
-      { "symbol": "clock", "title": "Late means late", "line": "Late is against today's estimate, from a third of the way on: “Running 6 minutes late, arriving at 9:02.” An early red light is not late." },
-      { "symbol": "speaker.wave.2", "title": "One line to start", "line": "A few seconds after you set off: “Riding to Uni, arriving at 8:56, battery at 98 percent.”" }
-    ],
-    "smallerFixes": 2,
-    "full": [
-      "The arrival battery is worked out from the energy you use, so a hill at full throttle no longer makes it jump.",
-      "It is compared point by point with your past rides on the route, said only after it holds steady for a minute, never in the first 2 km, rounded to 5, and only when 5 points worse than the last; better stays quiet, with one “Back on track” at 10 better.",
-      "Running late is measured against the time the Where-to chip promised today, only from a third of the route, held a minute, and only when slower than most of your rides there.",
-      "The ride screen's arrival time no longer jumps later after an early red light.",
-      "Start line: where you are riding, when you arrive and your battery, once.",
-      "After a ride, the summary (More) shows what the voice said next to what really happened.",
-      "Developer: Voice replay tries the new voice on your newest rides."
-    ]
-  },
-  {
-    "version": "102.011126.00",
-    "headline": "Places with real shapes, honest insights, and a voice that helps you plan",
-    "items": [
-      { "symbol": "speaker.wave.2", "title": "Voice energy updates", "line": "Every 10 %, using more than usual, running late, engine heat and “Arrived at Uni, battery at 58%”. Urgent ones at once, the rest at a stop." },
-      { "symbol": "pentagon", "title": "Draw your places", "line": "Give a place its real outline. Arriving counts the moment you cross in; rides that stay inside show as “Around Uni”." },
-      { "symbol": "chart.line.uptrend.xyaxis", "title": "Insights that say how far they are", "line": "“About 7 more rides”, graphs that are solid where you rode and dashed where data is thin, and small riding asks." },
-      { "symbol": "bolt.fill", "title": "Charging you can read", "line": "Your last reading and its time on Home, one full time, and a battery on the Lock Screen that fills and counts down by itself." }
-    ],
-    "smallerFixes": 11,
-    "full": [
-      "Every ride map draws the route as a thin, even line whose colour changes along the ride.",
-      "The Battery layer marks 90%, 80% … where the battery first dropped below each 10 %.",
-      "Scooter off: Home shows your last reading and its time (66% · 07:49); the small pill reads Charge to 100%.",
-      "Charging: the estimate starts from your last real reading and the screen shows one full time.",
-      "Lock Screen and Dynamic Island count down to your target and fill a battery shape on their own; no frozen % number.",
-      "Rides brought back with Restore are saved to the backup folder like any ride, so they travel with your data.",
-      "Places: Circle or an Outline you draw (tap corners, drag, add a corner between two, Undo, Reset). Rides that stay inside are listed as Around <place> and do not change estimates.",
-      "A trip's usual time shows only where that trip starts; elsewhere just the place name.",
-      "Ride graph: a tap adds or removes a line; ⇄ switches a line to its deeper view (Speed ⇄ Accel). Pinch zooms time, a one-finger swipe up or down changes the scale.",
-      "Ride detail plays back like Replay: the speed strip, play, 1× / 5× / 20× and a dot moving on the map.",
-      "Insights learn from whole rides (Hills, Speed, Battery over time, Cold, Wind, Best time to leave) and say how many more rides they need; the old speed sweet spot is gone.",
-      "The speed card asks for one small steady stretch on a straight, flat part of your routes; Not here picks another place; Got it ✓ when it is done.",
-      "The charging speed is learned from your own Plug ins.",
-      "The app learns where your scooter starts holding back power at low battery (after a ride below 15 %); until then nothing changes.",
-      "Voice energy updates while riding, with an on/off switch in Settings → Sounds."
-    ]
-  },
-  {
-    "version": "101.251026.01",
-    "headline": "Hotfix: route colours, sweet spot and clearer charts",
-    "items": [
-      { "symbol": "map", "title": "Route colours along the line", "line": "The ride map shows the colour changing along the route again, not one shade for the whole ride." },
-      { "symbol": "speedometer", "title": "Speed sweet spot works", "line": "It now finds your steady stretches, so it can start learning your best cruising speed." },
-      { "symbol": "chart.bar", "title": "Clearer Stats chart", "line": "Round dashed lines on the bars' own scale, centred wider bars, your best day in red." },
-      { "symbol": "chart.xyaxis.line", "title": "Ride graph", "line": "Pinch sideways for time, up-down for values; tap a chip again for its deeper line; the map shows the part you look at." }
-    ],
-    "smallerFixes": 1,
-    "full": [
-      "The ride map and Replay show the colour changing along the route again.",
-      "Developer: Route line lab compares three ways of drawing the route.",
-      "Speed sweet spot finds steady stretches again (it wanted readings closer together than rides store).",
-      "Stats: dashed lines in round steps, the top one about at the tallest bar, on the bars' own scale.",
-      "Stats: bars centred on their day, wider with a gap; the tallest is red.",
-      "Ride graph: pinch sideways to zoom time, up-down to stretch the values; drag to move along the ride.",
-      "Ride graph: tap Speed, Battery or Height again for acceleration, battery per km or incline.",
-      "Ride graph: the part of the ride on the graph is orange on the map; Hills jumps to a climb; Select and Scatter are gone."
-    ]
-  },
-  {
-    "version": "101.251026.00",
-    "headline": "Rides are never lost, and the map says more",
-    "items": [
-      { "symbol": "checkmark.shield", "title": "No more lost rides", "line": "A ride starts when you really ride, stays on while you ride, and is kept even if the phone took over." },
-      { "symbol": "mappin.and.ellipse", "title": "Where to? from anywhere", "line": "Pick your destination from the Scooter on notification, or change it at a stop." },
-      { "symbol": "map", "title": "Ride map layers", "line": "Speed, Hills, Wind, Battery and Temp on one smooth line; tap a layer again for a deeper view." },
-      { "symbol": "bolt.fill", "title": "Plug in after every ride", "line": "One tap starts the charge timer; the small pill sets when to tell you." }
-    ],
-    "smallerFixes": 26,
-    "full": [
-      "Battery % no longer jumps between 100 and 99.",
-      "A ride with real GPS distance is never thrown away; Restore discarded ride in Rides.",
-      "Ride start and end battery use settled readings: no more 99 % → 100 %.",
-      "A ride ends at your last movement; short stops still count in its time.",
-      "Auto-started rides begin at your first real riding movement.",
-      "Legs to the same destination become one ride, with ↻ Continue to … when you did not arrive.",
-      "Bad scooter readings are trimmed, never the whole ride, and trust comes back by itself.",
-      "A ride is not ended while the scooter is on or you are moving.",
-      "Riding to Uni, 8 km: the destination is said when you set off; change it at a stop.",
-      "Pick your destination from the Scooter on notification.",
-      "Never two rows for the same place in Where to?.",
-      "Arrival times in Where to? are always current.",
-      "Destinations show time and battery: Home • 30 mins • 27% battery.",
-      "The quick dial is always on Home.",
-      "Hold a place to drag it into a new order; let go for its menu.",
-      "The › in the Places list sits inside its card.",
-      "No parked pin on Home's map.",
-      "Shared energy track: battery use spread along the ride by power.",
-      "Map layers Speed · Hills · Wind · Battery · Temp, tap again for a deeper view, stops as dots.",
-      "The route is one smooth gradient line.",
-      "The ride summary map takes about half the screen.",
-      "The route draws itself smoothly after a ride.",
-      "Drag the ride card like Apple Maps, down to a small lip.",
-      "Plug in after every ride: one tap, an alert you choose, an honest time.",
-      "One clear Stats chart with km, rides, time or ₪ saved.",
-      "Insights show how far along they are; sure ones get their own page.",
-      "One ride graph with chips, linked to the map, with a scatter view.",
-      "Version names like 101.251026.00 everywhere.",
-      "This card: what is new after each update."
+      "Start fresh (Settings → Data & backup): a backup first, then the scooter's battery numbers and estimates start over. You choose whether your places, routes and ride times stay.",
+      "Setup names the scooter it found (for example “RND G100 · 3 km · 87 %”), so you can match the km with its dashboard. The scooter is saved only when you press Connect, and the closest one is chosen.",
+      "A clear message when Bluetooth is off or not allowed for CorckieApp, on Home and in setup.",
+      "The iPhone's Bluetooth question is explained on the first setup screen.",
+      "Thumbs and notes on rides are gone.",
+      "A copy of your data is made before an update, and the update-failed screen says how to share the report.",
+      "A clearer message when your data comes from a newer version of the app."
     ]
   }
 ]

@@ -100,10 +100,10 @@ public enum QuickDial {
     }
 
     /// Note 14: the separator of the time-and-battery line
-    public static let estimateSeparator = " \u{2022} "
+    public static let estimateSeparator = " \u{00B7} "
 
     /// Note 14: "30 mins", "1 min"
-    public static func minutesText(_ minutes: Int) -> String { minutes == 1 ? "1 min" : "\(minutes) mins" }
+    public static func minutesText(_ minutes: Int) -> String { minutes == 1 ? "1 min" : "\(minutes) min" }
 
     /// Note 14 / B78: ["30 mins", "uses 27%"]; the battery part only with a usual need
     public static func estimateParts(minutes: Int, needPct: Double?) -> [String] {

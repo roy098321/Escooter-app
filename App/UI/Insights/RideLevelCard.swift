@@ -20,7 +20,7 @@ struct RideLevelCard: View {
                 Text(insight.title).font(.headline)
                 Spacer(minLength: 8)
                 if insight.stage == .early {
-                    Text("early read").font(.caption.weight(.semibold)).foregroundStyle(Theme.accentInk)
+                    Text("Early read").font(.caption.weight(.semibold)).foregroundStyle(Theme.accentInk)
                         .padding(.horizontal, 10).padding(.vertical, 4)
                         .background(Theme.accent.opacity(0.15), in: Capsule())
                 }

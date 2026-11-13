@@ -43,7 +43,7 @@ public struct LayerView: Hashable, Sendable {
         case (.wind, true): return "Wind cost"
         case (.battery, false): return "Battery"
         case (.battery, true): return "Drain"
-        case (.temp, false): return "Controller temp"
+        case (.temp, false): return "Motor temp"
         case (.temp, true): return "Heating"
         }
     }

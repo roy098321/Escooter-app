@@ -365,7 +365,7 @@ struct InfoSheet: View {
 
     private var basedOnBox: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("BASED ON").font(.caption.weight(.semibold)).tracking(0.4).foregroundStyle(Theme.sectionLabel)
+            Text("Based on").font(.caption.weight(.semibold)).tracking(0.4).foregroundStyle(Theme.sectionLabel)
             VStack(spacing: 0) {
                 ForEach(Array(info.basedOn.enumerated()), id: \.offset) { i, row in
                     if i > 0 { Divider() }

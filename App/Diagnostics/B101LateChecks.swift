@@ -245,7 +245,7 @@ enum B101LateChecks {
         expect(labels == ["Speed", "Hills", "Wind", "Battery", "Temp"], "the row: " + labels.joined(separator: " \u{00B7} "))
         let deep = MapLayer.allCases.map { LayerView($0).tapped($0).buttonLabel }
         expect(deep == ["Steady", "Grade", "Wind cost", "Drain", "Heating"], "tap again: " + deep.joined(separator: " \u{00B7} "))
-        expect(LayerView(.temp).title == "Controller temp", "Temp is labelled as the controller's temperature")
+        expect(LayerView(.temp).title == "Motor temp", "Temp is labelled as the controller's temperature")
         let pts = madeUpRide(400, power: { _ in 300 }, battery: { 80 - $0 / 40 }, alt: { 10 + Double($0) / 20 },
                              temp: { 30 + Double($0) / 30 }, speed: { (100..<190).contains($0) ? 0 : 18 })
         let data = RideLayerData(points: pts, energy: EnergyTrack.build(pts), weather: [], rideStartMs: 0)

@@ -2,6 +2,7 @@ import XCTest
 @testable import CorckieCore
 
 /// F-32 (P-5): every build ships a What's new entry; the card shows once per build, never during a ride.
+/// T2 (batch 5): the history is a clean, rider-facing text: no internal codes and no Developer features.
 final class WhatsNewTests: XCTestCase {
     private let root = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
@@ -33,13 +34,16 @@ final class WhatsNewTests: XCTestCase {
         XCTAssertFalse(WhatsNew.shouldShow(current: v, lastSeen: nil, riding: true, entries: list), "waits for the next launch")
         XCTAssertFalse(WhatsNew.shouldShow(current: v, lastSeen: v, riding: false, entries: list), "once per build")
         XCTAssertFalse(WhatsNew.shouldShow(current: "199.010199.00", lastSeen: v, riding: false, entries: list), "no card without an entry")
-        XCTAssertEqual(list.first?.smallerFixesLine, "+ 7 smaller changes", "batch 104.151126.00")
-        XCTAssertNil(list.first(where: { $0.version == "103.081126.03" })?.smallerFixesLine, "hotfix 103.081126.03: no smaller changes")
-        XCTAssertEqual(list.first(where: { $0.version == "103.081126.00" })?.smallerFixesLine, "+ 3 smaller changes")
-        XCTAssertEqual(list.first(where: { $0.version == "102.011126.02" })?.smallerFixesLine, "+ 1 smaller change")
-        XCTAssertEqual(list.first(where: { $0.version == "102.011126.01" })?.smallerFixesLine, "+ 2 smaller changes")
-        XCTAssertEqual(list.first(where: { $0.version == "102.011126.00" })?.smallerFixesLine, "+ 11 smaller changes")
-        XCTAssertEqual(list.first(where: { $0.version == "101.251026.01" })?.smallerFixesLine, "+ 1 smaller change")
-        XCTAssertEqual(list.first(where: { $0.version == "101.251026.00" })?.smallerFixesLine, "+ 26 smaller changes")
+    }
+
+    /// T2: what a rider reads has no internal codes (N4-16, D-PR-09, B88 ...) and no test-phase words
+    func testWhatsNewHasNoInternalCodesOrTestWords() throws {
+        let raw = try String(contentsOf: root.appendingPathComponent("App/Resources/WhatsNew.json"), encoding: .utf8)
+        let codes = try NSRegularExpression(pattern: "\\b[A-Z]{1,4}\\d*-[A-Z]*\\d+\\b|\\b[BNFTDIKC]\\d{2}\\b")
+        let range = NSRange(raw.startIndex..., in: raw)
+        XCTAssertEqual(codes.numberOfMatches(in: raw, range: range), 0, "internal code in WhatsNew.json")
+        for word in ["Developer", "Hotfix", "hotfix", "Checks", "diary", "Run all"] {
+            XCTAssertFalse(raw.contains(word), "test word '\(word)' in WhatsNew.json")
+        }
     }
 }

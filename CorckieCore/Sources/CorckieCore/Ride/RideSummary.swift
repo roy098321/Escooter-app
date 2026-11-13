@@ -289,7 +289,7 @@ public enum RideSummaryBuilder {
             if peak >= T.t47VeryHotC {
                 notes.append(SummaryNote(kind: .heat, text: "The scooter got very hot (peak \(Int(peak.rounded())) \u{00B0}C). Let it cool down before the next ride."))
             } else if peak >= T.t47HotC {
-                notes.append(SummaryNote(kind: .heat, text: "The scooter got hot (peak \(Int(peak.rounded())) \u{00B0}C)."))
+                notes.append(SummaryNote(kind: .heat, text: "The motor got hot (peak \(Int(peak.rounded())) \u{00B0}C)."))
             }
         }
         if let lines = input.ignoredNotes {

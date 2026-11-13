@@ -182,7 +182,7 @@ struct InsightProgressCard: View {
                 Text(progress.title).font(.headline)
                 Spacer(minLength: 8)
                 if progress.stage == .early {
-                    Text("early read").font(.caption.weight(.semibold)).foregroundStyle(Theme.accentInk)
+                    Text("Early read").font(.caption.weight(.semibold)).foregroundStyle(Theme.accentInk)
                         .padding(.horizontal, 10).padding(.vertical, 4)
                         .background(Theme.accent.opacity(0.15), in: Capsule())
                 }
@@ -227,9 +227,9 @@ struct ProgressMarks: View {
             }
             .frame(height: 16)
             GeometryReader { g in
-                Text("early read").font(.caption2).foregroundStyle(.secondary).fixedSize()
+                Text("Early read").font(.caption2).foregroundStyle(.secondary).fixedSize()
                     .position(x: min(g.size.width - 60, max(30, g.size.width * earlyMark)), y: 6)
-                Text("confident").font(.caption2).foregroundStyle(.secondary).fixedSize()
+                Text("Confident").font(.caption2).foregroundStyle(.secondary).fixedSize()
                     .position(x: g.size.width - 26, y: 6)
             }
             .frame(height: 12)

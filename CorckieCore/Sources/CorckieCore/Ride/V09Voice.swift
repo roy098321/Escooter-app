@@ -95,10 +95,10 @@ public enum V09Message: Equatable, Sendable {
         case let .backOnTrack(p): return "Back on track, about \(w(p)) percent."
         case let .runningLate(m, at): return "Running \(w(m)) \(m == 1 ? "minute" : "minutes") late, arriving at \(at)."
         case .backOnTime: return "Back on time."
-        case let .pointOfNoReturn(m): return "Point of no return in \(w(max(1, m / 100))) hundred metres."
+        case let .pointOfNoReturn(m): return "Last chance to turn back in \(w(max(1, m / 100))) hundred metres."
         case let .powerLimitComing(p): return "Power limit coming at \(w(p)) percent."
-        case let .engineHot(c): return "Engine hot, \(w(c)) degrees."
-        case let .engineOverheating(c): return "Engine overheating, \(w(c)) degrees."
+        case let .engineHot(c): return "Motor hot, \(w(c)) degrees."
+        case let .engineOverheating(c): return "Motor overheating, \(w(c)) degrees."
         case .recordingProblem: return "Recording problem. Check the app when you stop."
         case let .arrived(place, p):
             if let place, !place.isEmpty { return "Arrived at \(place), battery at \(w(p)) percent." }

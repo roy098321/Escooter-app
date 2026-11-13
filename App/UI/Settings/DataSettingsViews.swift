@@ -228,13 +228,13 @@ struct DeveloperDataRows: View {
 
     var body: some View {
         Group {
-            SegmentedRow(title: "Keep raw data", options: RawRetention.allCases.map { ($0, $0.rawValue) }, selection: $retention)
+            SegmentedRow(title: "Keep detailed readings", options: RawRetention.allCases.map { ($0, $0.rawValue) }, selection: $retention)
                 .onChange(of: retention) { _, v in
                     guard let db = AppModel.shared.database else { return }
                     RetentionService.set(db, v)
                     refreshUsage()
                 }
-            LabeledContent("Raw data on this phone", value: usage).font(.footnote)
+            LabeledContent("Detailed readings on this phone", value: usage).font(.footnote)
             NavigationLink {
                 ImportRideLogsView()
             } label: {
@@ -251,7 +251,7 @@ struct DeveloperDataRows: View {
     private func refreshUsage() {
         guard let db = AppModel.shared.database else { return }
         let u = RetentionService.usage(db)
-        usage = u.chunks == 0 ? "none" : "\(u.chunks) chunks, " + String(format: "%.1f MB", Double(u.bytes) / 1_000_000)
+        usage = u.chunks == 0 ? "none" : String(format: "%.1f MB", Double(u.bytes) / 1_000_000)
     }
 }
 

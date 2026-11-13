@@ -141,8 +141,8 @@ struct OnboardingView: View {
 
     private var notificationsStep: some View {
         VStack(spacing: 14) {
-            Text("Reminders").font(.title2.bold()).multilineTextAlignment(.center)
-            Text("Allow sound, two a day at most.")
+            Text("Scooter alerts").font(.title2.bold()).multilineTextAlignment(.center)
+            Text("When you switch on, and when it's charged. Tips: two a day at most.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             bigButton("Allow", enabled: !busy) { allowNotifications() }
