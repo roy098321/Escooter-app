@@ -216,7 +216,7 @@ struct PlaceAddView: View {
         guard !preview else { return }
         guard canSave, let p = pin else { return }
         guard let db = AppModel.shared.database, !db.isReadOnly else {
-            errorText = "The data is read-only in this build."
+            errorText = "Update CorckieApp: your data comes from a newer version, so it is read-only for now."
             return
         }
         do {

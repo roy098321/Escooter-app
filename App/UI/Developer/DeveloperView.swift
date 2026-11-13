@@ -27,20 +27,15 @@ struct DeveloperView: View {
             GlassSection("Tools") {
                 DeveloperDataRows()
                 ShowOnboardingRow()
+                // N5-2: moved here from Settings
+                tool("Ride not recorded", "exclamationmark.bubble", []) { MissedRideView() }
+                tool("Export log", "doc.zipper", []) { ExportLogView() }
+                tool("Report a problem", "exclamationmark.bubble", []) { ReportProblemView() }
                 tool("Permissions", "lock.shield", ["h1"]) { PermissionsView() }
                 tool("Scooter", "scooter", ["b1", "b2", "b3", "b4", "b5", "b8", "b9"]) { ScooterCheckView() }
-                tool("Sensors (phone locked)", "location", ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "f1"]) { SensorsView() }
                 tool("Simulated scooter", "play.circle", ["d1", "d7", "d8"]) { SimulatorView() }
                 tool("Backup folder", "folder", ["d2", "d3", "d9"]) { BackupView() }
                 tool("Crash catcher and error log", "ladybug", ["d4", "d5", "d6"]) { CrashView() }
-                tool("Outside data", "cloud.sun", ["e1", "e2", "e3", "e3b", "e4", "e5", "e6", "e6b", "e7", "e8"]) { OutsideDataView() }
-                tool("Readability", "sun.max", ["f2", "f3"]) { ReadabilityView() }
-                tool("Insights (simulated windy week)", "text.bubble", ["u32", "mi1"]) { InsightsView() }
-                tool("Accuracy (estimate errors)", "scope", ["u47", "u48", "u49"]) { AccuracyView() }
-                tool("Ride screen preview", "play.rectangle", ["ui159", "ui185"]) { RideScreenPreview() }   // F-37: never records
-                tool("Voice messages (V09)", "waveform", ["ui184"]) { V09PlayAllView() }   // batch 102: every V09 line once, no ride needed
-                tool("Voice replay", "waveform.badge.magnifyingglass", ["ui189", "ui191"]) { V09ReplayView() }   // hotfix 03: the new voice over your newest rides
-                tool("Route line lab", "scribble.variable", ["ui160"]) { RouteLineLab() }   // hotfix 01: A / B / C on a made-up ride
             }
                 .glassRows()
         }

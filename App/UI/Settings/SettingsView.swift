@@ -18,13 +18,11 @@ struct SettingsView: View {
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                missedRideSection   // B81: the first rows
-                scooterSection
+                scooterSection      // N5-2: "Ride not recorded", Export log and Report a problem moved into Developer
                 riderSection
                 costsSection
                 placesSection
                 dataSection
-                helpSection
                 developerSection
                 aboutSection
             }
@@ -206,7 +204,7 @@ struct SettingsView: View {
     private var developerSection: some View {
         Section {
             NavigationLink {
-                DeveloperView()
+                DeveloperGateView()      // N5-4: password once per launch
             } label: {
                 Label("Developer", systemImage: "hammer").squircle(.gray)
             }

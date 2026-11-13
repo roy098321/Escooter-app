@@ -56,7 +56,7 @@ struct RootView: View {
                             Banner(text: "SIMULATED · fake scooter replay", tint: .purple)
                         }
                         if model.database?.isReadOnly == true {
-                            Banner(text: "Install the newest build · your data is from a newer version (read-only)")
+                            Banner(text: "Update CorckieApp: your data comes from a newer version, so it is read-only for now.")
                         }
                     }
                 }
@@ -132,7 +132,7 @@ struct DataUpdateFailedView: View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(.secondary)
             Text("Data update failed").font(.title2.weight(.bold)).multilineTextAlignment(.center)
-            Text("Your rides are safe: a copy was made before the update. Send the report to Claude.\n\n\(message)")
+            Text("Your rides are safe: a copy was made before the update. Share the report with support.\n\n\(message)")
                 .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
             ShareLink(item: "CorckieApp \(AppInfo.versionLine) · data update failed\n\(message)") {
                 Label("Send report", systemImage: "square.and.arrow.up")

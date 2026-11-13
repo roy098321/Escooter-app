@@ -214,10 +214,7 @@ struct OnboardingView: View {
 
     private func complete() {
         OnboardingState.done = true
-        if !flow.skipped {
-            CheckResults.shared.set("o1", flow.presses <= OnboardingFlow.stepCount ? .pass : .fail,
-                                    "Real run: done in \(flow.presses) presses, ended on Home")
-        }
+        // N5-2 / T8: the lab check "o1" is no longer written from the real onboarding
         onFinish(flow)
     }
 

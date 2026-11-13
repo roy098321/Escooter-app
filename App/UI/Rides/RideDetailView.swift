@@ -432,17 +432,8 @@ struct RideDetailView: View {
 
     private var fieldKitRows: some View {
         VStack(spacing: 12) {
-            if let id = activeId, preview == nil {
-                VStack(spacing: 0) {
-                    ThumbsRow(kind: "start", subjectId: id, label: "Right? Start")
-                    ThumbsRow(kind: "end", subjectId: id, label: "Right? End")
-                    ThumbsRow(kind: "distance", subjectId: id, label: "Right? Distance")
-                }
-                .padding(.horizontal, 16)
-                .glassCard(padding: 0)
-            }
+            // N5-2: no thumbs and no note for Claude on the rider's ride page
             if (activeId != nil && preview == nil) || previewPrompt != nil { loadedRow }
-            if let id = activeId, preview == nil { RideNoteCard(rideId: id) }
         }
     }
 
@@ -709,12 +700,13 @@ enum RideDetailLoader {
         }
         var model = RideSummaryBuilder.build(input, gaps: gaps, points: points)
         // M4-02 (check mf1): the ride's factor columns as one line under More
-        if let line = FactorEffects.developerLine(db, rideId: id) { model.infoLines.append(line) }
+        // N5-2 / T3: only when Developer is unlocked
+        if DeveloperGateView.isUnlocked, let line = FactorEffects.developerLine(db, rideId: id) { model.infoLines.append(line) }
         // Hotfix 03 proof: what the voice said in this ride against what really happened (under More)
         let endS = Double(r.endAt ?? (r.startAt + Int64((r.totalS ?? 0) * 1000))) / 1000
         let said = V09LineLog.lines(db, fromS: Double(r.startAt) / 1000 - 60, toS: endS + 60)
-        model.infoLines += V09SaidCompare.lines(said, realArrivalPct: model.batteryEnds?.endPct ?? r.endRestPct,
-                                                realArrivalS: endS, utcOffsetMin: r.utcOffsetMin ?? 0)
+        if DeveloperGateView.isUnlocked { model.infoLines += V09SaidCompare.lines(said, realArrivalPct: model.batteryEnds?.endPct ?? r.endRestPct,
+                                                realArrivalS: endS, utcOffsetMin: r.utcOffsetMin ?? 0) }
         return model
     }
 }
@@ -909,7 +901,6 @@ extension RideDetailView {
                 Image(systemName: "lightbulb").foregroundStyle(.secondary).frame(width: 24)
                 Text(top.text).font(.subheadline).lineLimit(2)
                 Spacer(minLength: 0)
-                ThumbsRow(kind: "insight", subjectId: top.id, subjectText: top.text).fixedSize()
             }
             .padding(16)
             .glassCard(padding: 0)

@@ -598,7 +598,7 @@ struct HomeView: View {
             Label("The app closed unexpectedly last time", systemImage: "exclamationmark.triangle")
                 .font(.subheadline.weight(.semibold))
             HStack {
-                NavigationLink("Report a problem") { ReportProblemView() }
+                NavigationLink("Share crash report") { ExportLogView() }      // N5-2 / T5
                 Spacer()
                 Button("Dismiss") { crashDismissed = true }
             }
