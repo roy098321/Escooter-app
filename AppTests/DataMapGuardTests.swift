@@ -87,4 +87,23 @@ final class DataMapGuardTests: XCTestCase {
         XCTAssertNil(try db.writer.read { try String.fetchOne($0, sql: "SELECT json FROM setting WHERE key = 'battery.packAh'") })
         XCTAssertEqual(try db.writer.read { try String.fetchOne($0, sql: "SELECT json FROM setting WHERE key = 'rider.loadKg'") }, "80")
     }
+
+    /// The battery door: after "keep rider info" the old scooter's rides stay for times and routes but not for battery math.
+    func test_batteryDoor_skipsRidesOfTheOldScooter() throws {
+        let db = try makeDB()
+        try seed(db)
+        try db.writer.write { d in
+            try d.execute(sql: "INSERT INTO ride (id, scooterId, startAt, usedPct) VALUES ('untagged', NULL, 2000, 8.0)")
+        }
+        let door = "SELECT COUNT(*) FROM ride WHERE \(BatteryDoor.rides())"
+        XCTAssertEqual(try db.writer.read { try Int.fetchOne($0, sql: door) }, 2, "before: both count")
+        try StartFresh.reset(db, keepRider: true, nowMs: 9)
+        XCTAssertEqual(try count(db, "ride"), 2, "rides stay for times and routes")
+        XCTAssertEqual(try db.writer.read { try Int.fetchOne($0, sql: door) }, 0, "old scooter's rides never count for battery")
+        try db.writer.write { d in
+            try d.execute(sql: "INSERT INTO scooter (id, name, firstSeenAt) VALUES ('new', 'G2', 10)")
+            try d.execute(sql: "INSERT INTO ride (id, scooterId, startAt, usedPct) VALUES ('r-new', 'new', 3000, 5.0)")
+        }
+        XCTAssertEqual(try db.writer.read { try Int.fetchOne($0, sql: door) }, 1, "the new scooter's ride counts")
+    }
 }

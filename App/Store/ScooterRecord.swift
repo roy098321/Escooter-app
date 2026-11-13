@@ -23,7 +23,7 @@ struct ScooterRecord: Equatable {
                 INSERT INTO scooter (id, name, peripheralId, firstSeenAt, chip, firmware, software)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET name = excluded.name, chip = excluded.chip,
-                  firmware = excluded.firmware, software = excluded.software
+                  firmware = excluded.firmware, software = excluded.software, forgottenAt = NULL
                 """, arguments: [id, name, id, now, chip, firmware, software])
         }
     }

@@ -128,7 +128,7 @@ struct OnboardingView: View {
     private var locationStep: some View {
         VStack(spacing: 14) {
             Text("Let rides start on their own").font(.title2.bold()).multilineTextAlignment(.center)
-            Text("Choose Always, so rides record with the phone locked.")
+            Text("Tap While Using, then Change to Always, so rides record with the phone locked. Then allow Motion, for climbs.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             bigButton(busy ? "Asking\u{2026}" : "Allow", enabled: !busy) { allowLocation() }

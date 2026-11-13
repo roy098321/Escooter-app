@@ -39,7 +39,7 @@ struct StatsQueries {
         try database.writer.read { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT startAt, utcOffsetMin, distanceM, COALESCE(usedPctShown, usedPct) AS used, odoStartKm, odoEndKm FROM ride
-                WHERE endAt IS NOT NULL AND kind IN ('ride', 'shortHop') AND isSimulated = 0 ORDER BY startAt
+                WHERE endAt IS NOT NULL AND kind IN ('ride', 'shortHop') AND isSimulated = 0 AND \(BatteryDoor.rides()) ORDER BY startAt
                 """)
             var rides: [(startAt: Int64, offsetMin: Int, km: Double, usedPct: Double?)] = []
             var firstOdo: Double?

@@ -120,6 +120,12 @@ final class PermissionsCheck: NSObject {
     }
 
     /// Step 2: "Allow While Using App" (iOS asks for this first).
+    /// D2 2b: location is allowed but "Precise Location" is off (maps, routes and places quietly fail with a 1-3 km guess)
+    var preciseOff: Bool {
+        let allowed = locationStatus == .authorizedAlways || locationStatus == .authorizedWhenInUse
+        return allowed && locationManager.accuracyAuthorization == .reducedAccuracy
+    }
+
     func askLocationWhileUsing() {
         locationManager.requestWhenInUseAuthorization()
     }

@@ -37,6 +37,7 @@ final class SettingsCatalogTests: XCTestCase {
         XCTAssertTrue(SettingsCatalog.chargerChoices.contains(T.t46ChargerA))
         XCTAssertTrue(SettingsCatalog.packChoices.contains(T.t42DefaultPackAh))
         XCTAssertTrue(SettingsCatalog.packChoices.contains(13))
+        XCTAssertTrue(SettingsCatalog.packChoices.contains(15), "7a: the 15 Ah pack (Race Mini 15) is a choice")
     }
 
     func testEveryRowHasAUniqueId() {

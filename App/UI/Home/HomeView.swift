@@ -234,7 +234,7 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .glassCard(tint: .orange)
             }
-            if m.showLocationCard { locationCard }
+            if m.showLocationCard || (preview == nil && PermissionsCheck.shared.preciseOff) { locationCard }
             if m.state != .riding { TodayInsightSlot(preview: previewToday, live: preview == nil) }   // F-21, never during a ride (P-4)
         }
     }
@@ -547,12 +547,31 @@ struct HomeView: View {
 
     private var locationCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Location is not set to Always", systemImage: "location.slash")
-                .font(.subheadline.weight(.semibold))
-            Text("Rides start on their own only while the app is open. Start ride still works.")
-                .font(.footnote).foregroundStyle(.secondary)
-            Button("Open iPhone Settings") { PermissionsCheck.openSettings() }
-                .font(.footnote.weight(.semibold))
+            let perms = PermissionsCheck.shared
+            let status = perms.locationStatus
+            if perms.preciseOff {      // D2 2b
+                Label("Precise location is off", systemImage: "location.slash")
+                    .font(.subheadline.weight(.semibold))
+                Text("Without it, maps and routes can't work. Turn on Precise Location for CorckieApp.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            } else if status == .notDetermined || status == .denied || status == .restricted {      // D2 5a: the card follows the real state
+                Label("Location is off", systemImage: "location.slash")
+                    .font(.subheadline.weight(.semibold))
+                Text("Rides record without a map, routes or arrival times.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            } else {
+                Label("Location is not set to Always", systemImage: "location.slash")
+                    .font(.subheadline.weight(.semibold))
+                Text("Rides start on their own only while the app is open. Start ride still works.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            if status == .notDetermined && !perms.preciseOff {
+                Button("Allow") { perms.askLocationWhileUsing() }      // never asked: iPhone Settings has no row yet
+                    .font(.footnote.weight(.semibold))
+            } else {
+                Button("Open iPhone Settings") { PermissionsCheck.openSettings() }
+                    .font(.footnote.weight(.semibold))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard(tint: .orange)

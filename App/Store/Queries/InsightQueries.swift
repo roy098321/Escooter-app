@@ -244,7 +244,7 @@ struct InsightQueries {
         try database.writer.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT timeAtMaxPct, totalS, usedPct FROM ride WHERE routeId = ? AND kind = 'ride' AND excludedFromUsual = 0
-                AND timeAtMaxPct IS NOT NULL AND totalS IS NOT NULL
+                AND timeAtMaxPct IS NOT NULL AND totalS IS NOT NULL AND \(BatteryDoor.rides())
                 """, arguments: [routeId]).map { r -> CapRide in
                 let share: Double = r["timeAtMaxPct"]
                 let total: Double = r["totalS"]

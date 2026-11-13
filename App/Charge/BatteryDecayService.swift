@@ -14,7 +14,7 @@ enum BatteryDecayService {
         (try? db.writer.read { d in
             try Row.fetchAll(d, sql: """
                 SELECT startAt, distanceM, usedPct, airTempC FROM ride
-                WHERE kind = 'ride' AND isSimulated = 0 AND endAt IS NOT NULL AND distanceM > 0 AND usedPct > 0
+                WHERE kind = 'ride' AND isSimulated = 0 AND endAt IS NOT NULL AND distanceM > 0 AND usedPct > 0 AND \(BatteryDoor.rides())
                 ORDER BY startAt
                 """).map { r in
                 DecayRide(startAt: r["startAt"], distanceM: r["distanceM"], usedPct: r["usedPct"], airTempC: r["airTempC"])

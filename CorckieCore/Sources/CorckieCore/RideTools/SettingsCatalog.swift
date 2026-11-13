@@ -82,5 +82,5 @@ public enum SettingsCatalog {
     /// Charger choices (A) in the picker
     public static let chargerChoices: [Double] = [1.0, 1.5, 2.0, 2.5, 3.0, 4.0]
     /// Battery size choices (Ah) in the picker
-    public static let packChoices: [Double] = [16, 13]
+    public static let packChoices: [Double] = [16, 15, 13]
 }

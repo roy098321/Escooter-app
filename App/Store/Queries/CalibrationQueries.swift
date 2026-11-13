@@ -73,7 +73,7 @@ struct CalibrationQueries {
                        r.gapScooterS, r.usedPct, r.usedPctMethod, r.energyWhCal, r.usedPctShown, r.endReason,
                        (SELECT MAX(COALESCE(g.endT, g.startT) - g.startT) FROM gap g WHERE g.rideId = r.id AND g.kind = 'scooter') AS longestGapMs,
                        (SELECT s.batteryPct FROM ride_sample s WHERE s.rideId = r.id AND s.batteryPct IS NOT NULL ORDER BY s.t DESC LIMIT 1) AS lastLivePct
-                FROM ride r WHERE r.kind != 'discarded' AND r.status != 'recording'
+                FROM ride r WHERE r.kind != 'discarded' AND r.status != 'recording' AND \(BatteryDoor.rides("r"))
                 ORDER BY r.startAt DESC LIMIT ?
                 """, arguments: [limit])
             return rows.map { row in

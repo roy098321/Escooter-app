@@ -29,7 +29,7 @@ enum InsightBoardLoader {
             try Row.fetchAll(d, sql: """
                 SELECT id, routeId, startAt, utcOffsetMin, distanceM, totalS, movingS, COALESCE(usedPctShown, usedPct) AS used, headwindKmh,
                        windLevel, excludedFromUsual, elevGainM, airTempC
-                FROM ride WHERE endAt IS NOT NULL AND kind = 'ride' AND isSimulated = 0 AND distanceM >= 1000
+                FROM ride WHERE endAt IS NOT NULL AND kind = 'ride' AND isSimulated = 0 AND distanceM >= 1000 AND \(BatteryDoor.rides())
                 ORDER BY startAt DESC LIMIT 200
                 """).map { r in
                 RideRow(id: r["id"], routeId: r["routeId"], startAt: r["startAt"], utcOffsetMin: r["utcOffsetMin"] ?? 0,

@@ -37,7 +37,13 @@ enum StartFresh {
         try db.writer.write { d in
             for table in alwaysCleared { try d.execute(sql: "DELETE FROM \"\(table)\"") }
             if keepRider {
-                // the old scooter's rides stay, tagged by its (now forgotten) row
+                // the old scooter's rides stay, tagged by its (now forgotten) row: the battery door skips them from now on
+                var oldId = try String.fetchOne(d, sql: "SELECT id FROM scooter ORDER BY firstSeenAt DESC LIMIT 1")
+                if oldId == nil {
+                    oldId = "previous"
+                    try d.execute(sql: "INSERT INTO scooter (id, name, firstSeenAt) VALUES ('previous', 'Previous scooter', 0)")
+                }
+                try d.execute(sql: "UPDATE ride SET scooterId = ? WHERE scooterId IS NULL", arguments: [oldId])
                 try d.execute(sql: "UPDATE scooter SET forgottenAt = COALESCE(forgottenAt, ?)", arguments: [nowMs])
                 for key in DataMap.scooterSettingKeys { try d.execute(sql: "DELETE FROM setting WHERE key = ?", arguments: [key]) }
             } else {

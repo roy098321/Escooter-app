@@ -191,6 +191,7 @@ struct PredictionQueries {
             let rows = try Row.fetchAll(db, sql: """
                 SELECT totalS, usedPct FROM ride
                 WHERE routeId = ? AND id != ? AND kind = 'ride' AND status != 'recording' AND isSimulated = 0 AND excludedFromUsual = 0
+                AND \(BatteryDoor.rides())
                 """, arguments: [routeId, rideId])
             var times: [Double] = []
             var used: [Double] = []
