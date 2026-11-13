@@ -1,0 +1,60 @@
+import XCTest
+@testable import CorckieCore
+
+/// Batch 5 (105.221126.00): guard tests for the source-level rules. Made-up data only.
+final class Batch105Tests: XCTestCase {
+    private let root = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+
+    private func source(_ path: String) throws -> String {
+        try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
+    }
+
+    /// I1: the SideStore expiry notice and its notification are gone for everyone
+    func test_I1_noExpiryNoticeOrNotification() throws {
+        let edge = try source("App/Adapters/EdgeWatch.swift")
+        XCTAssertFalse(edge.contains("AppExpiry.homeNotice("))
+        XCTAssertFalse(edge.contains("schedule(plan)"))
+        XCTAssertTrue(edge.contains("expiryNotice = nil"))
+    }
+
+    /// N5-2: no rider screen shows the thumbs row or the note card
+    func test_N52_noTestingUIOnRiderScreens() throws {
+        let riderFiles = ["App/UI/Rides/RideDetailView.swift", "App/UI/Home/HomeView.swift", "App/UI/Settings/SettingsView.swift",
+                          "App/UI/Routes/RouteCardView.swift", "App/UI/Insights/InsightViews.swift"]
+        for file in riderFiles {
+            let text = try source(file)
+            XCTAssertFalse(text.contains("ThumbsRow("), file)
+            XCTAssertFalse(text.contains("RideNoteCard("), file)
+            XCTAssertFalse(text.contains("ReportProblemView()"), "\(file): Report a problem lives in Developer")
+        }
+    }
+
+    /// N5-4: Settings opens Developer through the password gate
+    func test_N54_developerIsBehindTheGate() throws {
+        let settings = try source("App/UI/Settings/SettingsView.swift")
+        XCTAssertTrue(settings.contains("DeveloperGateView()"))
+        XCTAssertFalse(settings.contains("DeveloperView()"))
+    }
+
+    /// N5-3: the shrunk Developer tab keeps its short list
+    func test_N53_developerKeepsOnlyTheShortList() throws {
+        let dev = try source("App/UI/Developer/DeveloperView.swift")
+        for gone in ["SensorsView()", "OutsideDataView()", "ReadabilityView()", "InsightsView()", "AccuracyView()",
+                     "RideScreenPreview()", "V09PlayAllView()", "V09ReplayView()", "RouteLineLab()"] {
+            XCTAssertFalse(dev.contains(gone), gone)
+        }
+        for kept in ["ChecksView()", "ResultsView()", "CrashView()", "BackupView()", "ScooterCheckView()", "SimulatorView()",
+                     "ExportLogView()", "ReportProblemView()"] {
+            XCTAssertTrue(dev.contains(kept), kept)
+        }
+    }
+
+    /// C7 / K1 / K4 / K5: the approved wording
+    func test_polishWording() {
+        XCTAssertEqual(V09Message.pointOfNoReturn(metres: 300).line, "Last chance to turn back in three hundred metres.")
+        XCTAssertEqual(V09Message.engineOverheating(c: 94).line, "Motor overheating, ninety four degrees.")
+        XCTAssertEqual(QuickDial.minutesText(30), "30 min")
+        XCTAssertFalse(QuickDial.estimateSeparator.contains("\u{2022}"))
+    }
+}

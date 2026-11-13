@@ -83,9 +83,9 @@ final class EdgeWatch {
             let n = (try? RetentionService.thinEarly(database, cutoffMs: cutoff)) ?? 0
             if n > 0 { Log.info(source: "storage", "Phone storage low: \(n) old raw chunks removed early") }
         }
-        let plan = AppExpiry.plan(expiryMs: expiryMs, nowMs: nowMs)
-        expiryNotice = AppExpiry.homeNotice(plan)
-        schedule(plan)
+        // I1 (batch 5): no SideStore expiry notice and no day-before notification, for every rider.
+        expiryNotice = nil
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.reminderId])
     }
 
     private func schedule(_ plan: AppExpiry.Plan) {
