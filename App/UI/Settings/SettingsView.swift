@@ -21,10 +21,9 @@ struct SettingsView: View {
                 scooterSection      // N5-2: "Ride not recorded", Export log and Report a problem moved into Developer
                 riderSection
                 costsSection
-                placesSection
                 dataSection
-                developerSection
                 aboutSection
+                developerSection      // I5: last, under About
             }
             .glassList()
             .onAppear {
@@ -114,6 +113,11 @@ struct SettingsView: View {
                 DisplaySettingsView()
             } label: {
                 Label("Display", systemImage: "sun.max").squircle(Theme.canyon)
+            }
+            NavigationLink {
+                PlacesView()      // K11: one group, not a lone "Places" group
+            } label: {
+                Label("Places", systemImage: "mappin.and.ellipse").squircle(Theme.danger)
             }
         }
     }

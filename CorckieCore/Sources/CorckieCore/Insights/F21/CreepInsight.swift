@@ -93,7 +93,7 @@ public enum CreepInsight {
         let xl = xt.map { df.string(from: Date(timeIntervalSince1970: (Double(first) + $0 * 86_400_000) / 1000)) }
         let ys = dots.map(\.y) + curve.map(\.lo) + curve.map(\.hi)
         let yt = InsightFormat.ticks(ys.min() ?? 0, ys.max() ?? 1, count: 3)
-        let chart = InsightChart(title: "Your rides, battery per km over time", dots: dots, curve: curve,
+        let chart = InsightChart(title: "Your range over time", dots: dots, curve: curve,
                                  band: recLo...max(recHi, recLo + 0.5), xTicks: xt, xLabels: xl, yTicks: yt, yLabels: yt.map { InsightFormat.one($0) + "%" },
                                  caption: "Dots = your rides, at the same speed and wind \u{00B7} lines = \(month) and now")
 

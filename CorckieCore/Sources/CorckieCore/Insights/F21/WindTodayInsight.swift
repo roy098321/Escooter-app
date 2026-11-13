@@ -112,7 +112,7 @@ public enum WindTodayInsight {
         let xt = InsightFormat.ticks(lo, hi, count: 4)
         let ys = dots.map(\.y) + curve.map(\.lo) + curve.map(\.hi)
         let yt = InsightFormat.ticks(ys.min() ?? 0, ys.max() ?? 1, count: 3)
-        let chart = InsightChart(title: "Your rides, battery per km by headwind", dots: dots, curve: curve, band: max(lo, hw - 1.5)...min(hi + 1.5, hw + 1.5),
+        let chart = InsightChart(title: "How headwind affects your range", dots: dots, curve: curve, band: max(lo, hw - 1.5)...min(hi + 1.5, hw + 1.5),
                                  xTicks: xt, xLabels: xt.enumerated().map { i, v in "\(Int(v.rounded()))" + (i == xt.count - 1 ? " km/h" : "") },
                                  yTicks: yt, yLabels: yt.map { InsightFormat.one($0) + "%" },
                                  caption: "Dots = your rides \u{00B7} band = how sure we are \u{00B7} shaded = today's headwind")

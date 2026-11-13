@@ -297,7 +297,7 @@ public enum SweetSpotInsight {
         let xt = InsightFormat.ticks(lo, hi, count: 5)
         let ys = dots.map(\.y) + curvePts.map(\.lo) + curvePts.map(\.hi)
         let yt = InsightFormat.ticks(ys.min() ?? 0, ys.max() ?? 1, count: 3)
-        let chart = InsightChart(title: "Your rides, battery per km by speed", dots: dots, curve: curvePts,
+        let chart = InsightChart(title: "How speed affects your range", dots: dots, curve: curvePts,
                                  band: max(lo, (best - half).rounded(.down))...min(hi, (best + half).rounded(.up)),
                                  xTicks: xt, xLabels: xt.enumerated().map { i, v in "\(Int(v.rounded()))" + (i == xt.count - 1 ? " km/h" : "") },
                                  yTicks: yt, yLabels: yt.map { InsightFormat.one($0) + "%" },
