@@ -2,6 +2,25 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 105.221126.00 — batch 5, due Sun 22 Nov 2026 (ready for a new scooter, a cleaner app)
+
+- D2 DataMap: one list says which data is the rider's and which is the scooter's (CorckieCore Ownership/DataMap); a guard test reads the real schema and fails the build when a table or column is missing.
+- D2 battery door: calibration, health, usual %/km, route battery need and Stats battery read only rides of the current scooter (BatteryDoor); rides of a forgotten scooter still count for times and routes.
+- D2 A1 Start fresh (Settings → Data & backup): a backup on the phone first (and in the Files backup folder when one is set), then the scooter's data and estimates start over; "Keep my places, routes and ride times" is a switch; the old pairing is forgotten so setup runs again.
+- D2 1a / 1b / 7f: setup shows "RND G100 · 3 km · 87 %" with "Check that your dashboard shows the same km"; the scooter is saved only when Connect is pressed; the closest scooter is chosen (two seconds of listening).
+- D2 3a / 3b: the first setup screen says the iPhone will ask for Bluetooth (the link starts a second later); "Bluetooth is off" / "off for CorckieApp" on setup and Home, with Open iPhone Settings.
+- D2 2a / 2b / 5a: the Always text matches the iPhone's pop-ups; Home's card follows the real location state (never asked → Allow, refused → Open Settings, While Using, Precise location off).
+- D2 4a: "Scooter alerts" on setup. D2 6a: a quiet "Your first ride" card before ride 1. D2 7a: 15 Ah battery size.
+- N5-1: Export log can make a privacy-safe file (about 200 m around ride starts, ends and saved places removed, no names, no diary or report files) or "No GPS at all".
+- N5-2: thumbs, ride notes and "Right?" rows are gone from the rider's screens; Ride not recorded, Export log and Report a problem live in Developer; the ride page's developer lines show only after the Developer password (T3); data-update-failed text (T4); crash card "Share crash report" (T5); onboarding no longer writes a lab check (T8); read-only wording (T9, T10).
+- N5-3: Developer keeps Checks, Results, Crash, Backup, Scooter check, Simulator, Permissions and the moved rows; Sensors, Outside data, Readability, Insights, Accuracy, Ride screen preview, Voice play-all, Voice replay and Route line lab are no longer listed (the files stay).
+- N5-4: Developer asks for a password once per launch; only a SHA-256 hash is in the code.
+- T2: What's new starts clean (one "Welcome to CorckieApp" card); guard test: no internal codes or test words in WhatsNew.json.
+- I1: the SideStore expiry notice and its notification are gone for everyone.
+- K1 / C3: "Motor" everywhere (voice, map layer, ride note, ride tiles). C7: "Last chance to turn back in three hundred metres." K4 / K5: "min" and "·" everywhere on Home. K6: "Avg speed" / "Top speed". K8: "Ways". C4/C5: calmer alert texts. C9 / C10: capital letters. I7 / I8: "Detailed readings", "Learning".
+- Guard tests: Batch105Tests, DataMapTests, DeveloperGateTests, PrivacyExportTests (Core); DataMapGuardTests, PrivacyTrimTests (AppTests).
+
+
 ## 104.151126.00 — batch 4, due Sun 15 Nov 2026 (one battery number, a calmer voice, Start opens at once)
 
 - N4-16 (D-PR-09): the live dashboard shows the smoothed battery level, the same one the voice, the map's 10 % marks, the arrival line and the 20 / 15 / 10 % warnings use (phone-only rides keep "~ est.").

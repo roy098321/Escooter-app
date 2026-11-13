@@ -65,6 +65,7 @@ struct HomeView: View {
     /// F-32: the What's new card, once per build, never during a ride
     @State private var whatsNew: WhatsNewEntry?
     @State private var oldestRideMs: Int64?
+    @State private var ridesLoaded = false      // D2 6a
     /// F-02: the Load for the next ride (None / Light / Heavy / Exact), kept until the next ride starts
     @State private var loadSel = "none"
     @State private var customKg = 0
@@ -235,6 +236,9 @@ struct HomeView: View {
                     .glassCard(tint: .orange)
             }
             if m.showLocationCard || (preview == nil && PermissionsCheck.shared.preciseOff) { locationCard }
+            if preview == nil, ridesLoaded, oldestRideMs == nil, m.state != .noScooter, m.state != .riding {      // D2 6a: before ride 1
+                FirstRideCard(always: PermissionsCheck.shared.locationStatus == .authorizedAlways)
+            }
             if m.state != .riding { TodayInsightSlot(preview: previewToday, live: preview == nil) }   // F-21, never during a ride (P-4)
         }
     }
@@ -672,6 +676,7 @@ struct HomeView: View {
         parked = ParkedResolver.current(database: db, simulated: ScreenSimulator.shared.active)
         gap = ScreenSimulator.shared.active ? nil : ConnectionWatch.visibleGap(db)
         oldestRideMs = try? RideQueries(db).rides().last?.startAt
+        ridesLoaded = true
         BackupWriter.shared.runIfDue()
         EdgeWatch.shared.refresh(database: db)
         guard let r = try? RideQueries(db).rides(limit: 1).first else { return }
@@ -998,5 +1003,32 @@ enum HomeCopy {
         case .ready: return "Connected"
         case .riding: return "Riding"
         }
+    }
+}
+
+/// D2 6a: one quiet card before the first ride. Goes away once a ride is in (the "first ride is in" card takes over).
+private struct FirstRideCard: View {
+    let always: Bool
+    @State private var open = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Your first ride", systemImage: "scooter")
+                .font(.subheadline.weight(.semibold))
+            Text(always ? "Just ride, it records by itself." : "Tap Start ride, then ride.")
+                .font(.footnote).foregroundStyle(.secondary)
+            Text("Estimates sharpen over your first rides.")
+                .font(.footnote).foregroundStyle(.secondary)
+            Button(open ? "Hide" : "How it grows") { open.toggle() }
+                .font(.footnote.weight(.semibold))
+            if open {
+                Text("3 rides on a trip: times and arrival
+5 rides: battery
+About 10 rides: range")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
     }
 }
