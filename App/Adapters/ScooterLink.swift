@@ -180,7 +180,7 @@ extension ScooterLink: CBCentralManagerDelegate {
         default: bluetoothProblem = nil      // resetting / unknown: transient
         }
         guard central.state == .poweredOn else {
-            state =central.state == .unauthorized ? "Bluetooth permission is off" : "Bluetooth isn't available"
+            state = central.state == .unauthorized ? "Bluetooth permission is off" : "Bluetooth isn't available"
             return
         }
         if let known = peripheral, known.state == .connected {
