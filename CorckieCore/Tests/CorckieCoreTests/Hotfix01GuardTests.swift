@@ -40,7 +40,6 @@ final class Hotfix01GuardTests: XCTestCase {
         XCTAssertTrue(lab.contains("MKGradientPolylineRenderer"), "C uses Apple's gradient line")
         XCTAssertTrue(lab.contains("lineCap: .butt"), "B is short pieces with butt caps")
         XCTAssertTrue(lab.contains("GradientPath.gradient("), "A is the app's own default")
-        let dev = try source("UI/Developer/DeveloperView.swift")
-        XCTAssertTrue(dev.contains("RouteLineLab()"), "the lab is in Developer")
+        // N5-3 (batch 5): the lab is no longer listed in the Developer tab; the file stays
     }
 }

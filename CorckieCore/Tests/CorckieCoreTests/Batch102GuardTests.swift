@@ -40,8 +40,7 @@ final class Batch102GuardTests: XCTestCase {
 
     /// V09: the Developer button plays every message; the ride screen preview runs the real director and speaks
     func test_v09LabTools() throws {
-        let dev = try source("App/UI/Developer/DeveloperView.swift")
-        XCTAssertTrue(dev.contains("V09PlayAllView()"))
+        // N5-3 (batch 5): the Developer tab no longer lists the play-all screen; the files stay
         let all = try source("App/UI/Developer/V09PlayAllView.swift")
         XCTAssertTrue(all.contains("playAllV09()") && all.contains("V09Message.samples"))
         let preview = try source("App/UI/Developer/RideScreenPreview.swift")
