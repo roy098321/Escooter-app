@@ -1022,9 +1022,7 @@ private struct FirstRideCard: View {
             Button(open ? "Hide" : "How it grows") { open.toggle() }
                 .font(.footnote.weight(.semibold))
             if open {
-                Text("3 rides on a trip: times and arrival
-5 rides: battery
-About 10 rides: range")
+                Text("3 rides on a trip: times and arrival \u{00B7} 5 rides: battery \u{00B7} about 10 rides: range")
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
