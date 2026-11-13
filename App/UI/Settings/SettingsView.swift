@@ -52,22 +52,6 @@ struct SettingsView: View {
 
     // MARK: Groups
 
-    /// B81 (owner, 9 Nov): "Ride not recorded" first, "Export log" under it, two separate rows
-    private var missedRideSection: some View {
-        Section {
-            NavigationLink {
-                MissedRideView()
-            } label: {
-                Label("Ride not recorded", systemImage: "exclamationmark.bubble").squircle(Theme.accent)
-            }
-            NavigationLink {
-                ExportLogView()
-            } label: {
-                Label("Export log", systemImage: "doc.zipper").squircle(.gray)
-            }
-        }
-        .glassRows()
-    }
 
     private var scooterSection: some View {
         group("Scooter & battery") {
@@ -191,15 +175,6 @@ struct SettingsView: View {
         }
     }
 
-    private var helpSection: some View {
-        group("Help") {
-            NavigationLink {
-                ReportProblemView()
-            } label: {
-                Label("Report a problem", systemImage: "exclamationmark.bubble").squircle(.pink)
-            }
-        }
-    }
 
     private var developerSection: some View {
         Section {
