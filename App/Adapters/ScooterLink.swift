@@ -47,6 +47,18 @@ final class ScooterLink: NSObject {
     /// T-00: this session's events with their time, for the "last 15 minutes" report
     @ObservationIgnored private(set) var timedEvents: [(at: Date, line: String)] = []
 
+    /// D2 3b: why there is no connection when the phone's Bluetooth is the cause (nil = nothing wrong)
+    enum BluetoothProblem: Equatable { case off, denied, unavailable }
+    private(set) var bluetoothProblem: BluetoothProblem?
+    /// D2 1b: connected to a scooter that is not saved yet; it is saved only when Connect is pressed (`confirmPairing`)
+    private(set) var pairingPending = false
+    /// D2 1a / 7f: "RND G100" (from the Bluetooth tag) for the scooter found, saved or not
+    private(set) var foundModel: String?
+    @ObservationIgnored private var candidates: [UUID: (peripheral: CBPeripheral, rssi: Int)] = [:]
+    @ObservationIgnored private var pickScheduled = false
+    @ObservationIgnored private var candidateName: String?
+    @ObservationIgnored private var candidateMakerTagged = false
+
     var hasKnownScooter: Bool { savedID != nil }
     var knownPeripheralID: String? { savedID?.uuidString }
     @ObservationIgnored private var connectedAt: Date?
@@ -76,8 +88,43 @@ final class ScooterLink: NSObject {
         if let p = peripheral { central?.cancelPeripheralConnection(p) }
         peripheral = nil
         savedID = nil
+        pairingPending = false
+        candidates = [:]
+        foundModel = nil
         log("Scooter forgotten")
         if central?.state == .poweredOn { scan() }
+    }
+
+    /// D2 1b: Connect was pressed in onboarding: the scooter being shown is now the paired one.
+    func confirmPairing() {
+        guard pairingPending, let p = peripheral else { return }
+        savedID = p.identifier
+        pairingPending = false
+        log("Scooter paired (Connect pressed)")
+    }
+
+    /// D2 1b: onboarding left without Connect: the scooter that was only being looked at is let go and nothing is saved.
+    func cancelPairing() {
+        guard pairingPending else { return }
+        pairingPending = false
+        if let p = peripheral { central?.cancelPeripheralConnection(p) }
+        peripheral = nil
+        foundModel = nil
+        log("Scooter not paired (setup left without Connect)")
+    }
+
+    /// D2 1b: after a short listen, connect to the strongest signal (the closest scooter), without saving it.
+    private func connectClosest() {
+        pickScheduled = false
+        guard savedID == nil, let best = candidates.values.max(by: { $0.rssi < $1.rssi }) else { return }
+        candidates = [:]
+        central?.stopScan()
+        peripheral = best.peripheral
+        best.peripheral.delegate = self
+        pairingPending = true
+        foundModel = KnownScooters.modelName(advertisedName: candidateName, makerTagged: candidateMakerTagged)
+        state = "Found the scooter \u{00B7} connecting\u{2026}"
+        central?.connect(best.peripheral)
     }
 
     private func scan() {
@@ -125,8 +172,15 @@ extension ScooterLink: CBCentralManagerDelegate {
     }
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        switch central.state {
+        case .poweredOn: bluetoothProblem = nil
+        case .unauthorized: bluetoothProblem = .denied
+        case .poweredOff: bluetoothProblem = .off
+        case .unsupported: bluetoothProblem = .unavailable
+        default: bluetoothProblem = nil      // resetting / unknown: transient
+        }
         guard central.state == .poweredOn else {
-            state = central.state == .unauthorized ? "Bluetooth permission is off" : "Bluetooth isn't available"
+            state =central.state == .unauthorized ? "Bluetooth permission is off" : "Bluetooth isn't available"
             return
         }
         if let known = peripheral, known.state == .connected {
@@ -157,12 +211,15 @@ extension ScooterLink: CBCentralManagerDelegate {
         let name = found.name ?? (advertisementData[CBAdvertisementDataLocalNameKey] as? String)
         let maker = [UInt8](advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data ?? Data())
         guard ScooterGatt.isScooter(name: name, manufacturerData: maker) else { return }
-        central.stopScan()
-        peripheral = found
-        found.delegate = self
-        savedID = found.identifier
-        state = "Found the scooter · connecting…"
-        central.connect(found)
+        // D2 1b: nothing is saved here. Listen for two seconds, then connect to the closest; Connect saves it.
+        candidates[found.identifier] = (found, RSSI.intValue == 127 ? -127 : RSSI.intValue)
+        candidateName = name
+        candidateMakerTagged = !maker.isEmpty
+        if !pickScheduled {
+            pickScheduled = true
+            state = "Found a scooter \u{00B7} choosing the closest\u{2026}"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.connectClosest() }
+        }
     }
 
     func centralManager(_ central: CBCentralManager, didConnect connectedPeripheral: CBPeripheral) {

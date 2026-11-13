@@ -229,6 +229,11 @@ struct HomeView: View {
             } else {
                 statusPill(m)
             }
+            if preview == nil, let problem = AppModel.shared.scooter.bluetoothProblem {      // D2 3b
+                BluetoothProblemView(problem: problem)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .glassCard(tint: .orange)
+            }
             if m.showLocationCard { locationCard }
             if m.state != .riding { TodayInsightSlot(preview: previewToday, live: preview == nil) }   // F-21, never during a ride (P-4)
         }

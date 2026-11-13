@@ -42,7 +42,8 @@ struct OnboardingView: View {
         .background { MapBackdrop().ignoresSafeArea() }
         .onAppear {
             guard !previewFound else { return }
-            AppModel.shared.scooter.start()
+            // D2 3a: the line on screen is read before the iPhone's Bluetooth pop-up covers it
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { AppModel.shared.scooter.start() }
             PermissionsCheck.shared.refresh()
             refreshFound()
         }
@@ -87,17 +88,37 @@ struct OnboardingView: View {
     private var connectStep: some View {
         VStack(spacing: 14) {
             Text("Connect your scooter").font(.title2.bold()).multilineTextAlignment(.center)
-            if flow.scooterFound {
+            if let problem = AppModel.shared.scooter.bluetoothProblem {
+                BluetoothProblemView(problem: problem)      // D2 3b
+            } else if flow.scooterFound {
+                let link = AppModel.shared.scooter
                 Label("Found", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.ok)
+                if link.connected {
+                    // D2 1a: which scooter it is, so the rider can match the km with the dashboard
+                    Text(KnownScooters.foundText(model: link.foundModel ?? "Scooter", odometerKm: link.frame?.odometerKm,
+                                                 batteryPct: link.frame?.batteryPct))
+                        .font(.subheadline.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                    Text("Check that your dashboard shows the same km.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             } else {
                 VStack(spacing: 8) {
                     Text("Switch it on, keep it close.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
+                    Text("Your iPhone will ask for Bluetooth: tap Allow.")      // D2 3a
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
                     ProgressView()
                 }
             }
-            bigButton("Connect", enabled: flow.canConnect) { _ = flow.press(.connect) }
+            bigButton("Connect", enabled: flow.canConnect) {
+                if flow.press(.connect) { AppModel.shared.scooter.confirmPairing() }     // D2 1b: saved only now
+            }
             Button("Set up later") { skip() }
                 .font(.subheadline)
                 .frame(minHeight: DS.hit)
@@ -186,6 +207,7 @@ struct OnboardingView: View {
     }
 
     private func skip() {
+        AppModel.shared.scooter.cancelPairing()     // D2 1b
         flow.skipForNow()
         complete()
     }

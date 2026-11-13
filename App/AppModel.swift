@@ -205,7 +205,7 @@ final class AppModel {
         }
         let info = scooter.deviceInfo
         // B03: keep the fingerprint in the `scooter` table, so exports after a relaunch have it
-        if !fingerprintSaved, let fw = info.firmware, let sw = info.software, let db = database {
+        if !fingerprintSaved, scooter.hasKnownScooter, let fw = info.firmware, let sw = info.software, let db = database {
             do {
                 try ScooterRecord.save(id: scooter.knownPeripheralID ?? "scooter", name: ScooterGatt.advertisedName,
                                        chip: info.model, firmware: fw, software: sw, in: db)

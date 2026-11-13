@@ -174,6 +174,11 @@ struct SettingsView: View {
     private var dataSection: some View {
         group("Data & backup") {
             DataSettingsRows()
+            NavigationLink {
+                StartFreshView()      // D2 A1
+            } label: {
+                Label("Start fresh", systemImage: "arrow.counterclockwise").squircle(.gray)
+            }
             let writer = BackupWriter.shared
             NavigationLink {
                 BackupView()
