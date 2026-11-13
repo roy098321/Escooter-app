@@ -512,6 +512,21 @@ struct RideDetailView: View {
         VStack(spacing: 8) {
             Image(systemName: "location.slash").font(.largeTitle).foregroundStyle(.secondary)
             Text("No GPS").font(.headline)
+            // D2 5b: the reason and the fix
+            let status = PermissionsCheck.shared.locationStatus
+            if status == .notDetermined || status == .denied || status == .restricted {
+                Text("Location is off for CorckieApp, so this ride has no map.")
+                    .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                if status == .notDetermined {
+                    Button("Allow location") { PermissionsCheck.shared.askLocationWhileUsing() }.font(.footnote.weight(.semibold))
+                } else {
+                    Button("Open iPhone Settings") { PermissionsCheck.openSettings() }.font(.footnote.weight(.semibold))
+                }
+            } else if PermissionsCheck.shared.preciseOff {
+                Text("Precise location is off, so maps and routes can't work.")
+                    .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Button("Open iPhone Settings") { PermissionsCheck.openSettings() }.font(.footnote.weight(.semibold))
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(20)
