@@ -94,6 +94,13 @@ final class Batch105Tests: XCTestCase {
         XCTAssertTrue(try source("App/UI/Shared/Components.swift").contains("PricesView()"))
     }
 
+    /// K2: Settings no longer has a second screen called just "Battery"
+    func test_K2_settingsBatteryIsBatterySetup() throws {
+        let s = try source("App/UI/Settings/SettingsView.swift")
+        XCTAssertFalse(s.contains("navigationTitle(\"Battery\")"))
+        XCTAssertTrue(s.contains("navigationTitle(\"Battery setup\")"))
+    }
+
     /// I2: the charge-log info does not show the owner's charging speed
     func test_I2_noHardCodedChargingSpeedInBatteryInfo() throws {
         XCTAssertFalse(try source("App/UI/Battery/BatteryView.swift").contains("13.6 % per hour"))

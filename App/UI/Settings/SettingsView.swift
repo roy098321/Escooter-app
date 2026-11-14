@@ -62,7 +62,7 @@ struct SettingsView: View {
             NavigationLink {
                 BatterySettingsView()
             } label: {
-                Label("Battery", systemImage: "battery.75percent").squircle(Theme.ok)
+                Label("Battery setup", systemImage: "battery.75percent").squircle(Theme.ok)
             }
             NavigationLink {
                 NotifySettingsView()
@@ -263,7 +263,7 @@ struct BatterySettingsView: View {
             .glassRows()
         }
         .glassList()
-        .navigationTitle("Battery")
+        .navigationTitle("Battery setup")      // K2: the Scooter tab's page keeps the name Battery
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loaded = false
