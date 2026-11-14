@@ -14,7 +14,7 @@ final class MaintenanceTests: XCTestCase {
     func test_defaults_haveTyres50PsiAndAllThreeItems() {
         let d = Maintenance.defaults(odoKm: 10, nowMs: t0)
         XCTAssertEqual(d.map(\.id), ["tyres", "brakes", "bolts"])
-        XCTAssertTrue(d[0].hint.contains("50 PSI"))
+        XCTAssertFalse(d[0].hint.contains("PSI"))   // K10: no owner-specific pressure
         XCTAssertEqual(d[0].intervalKm, 300)
         XCTAssertEqual(d[0].intervalDays, 14)
         XCTAssertEqual(d[0].lastDoneOdoKm, 10)
