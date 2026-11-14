@@ -66,6 +66,16 @@ final class Batch105Tests: XCTestCase {
         XCTAssertTrue(home.contains("!$0.isSimulated"))
     }
 
+    /// 4c / 5c: a quiet line when alerts or Motion are refused, with a way to Settings
+    func test_4c_5c_quietPermissionLines() throws {
+        let home = try source("App/UI/Home/HomeView.swift")
+        XCTAssertTrue(home.contains("Switch-on alerts are off."))
+        XCTAssertTrue(home.contains("notificationsDenied"))
+        let ride = try source("App/UI/Rides/RideDetailView.swift")
+        XCTAssertTrue(ride.contains("motionDenied"))
+        XCTAssertTrue(ride.contains("Allow Motion for better climbs."))
+    }
+
     /// K10 / I2 (P-6): no owner-specific tyre pressure shown to every rider
     func test_K10_noHardCodedTyrePressure() {
         let tyres = Maintenance.defaults(odoKm: 0, nowMs: 0).first { $0.id == "tyres" }

@@ -32,6 +32,13 @@ final class PermissionsCheck: NSObject {
     private(set) var locationStatus: CLAuthorizationStatus = .notDetermined
     private(set) var notificationsAllowed = false
     var soundsOn: Bool { sounds == .on }
+    /// D2 4c: iOS notifications refused (the switch-on alerts cannot show)
+    private(set) var notificationsDenied = false
+    /// D2 5c: Motion refused (climbs fall back to GPS height only)
+    var motionDenied: Bool {
+        let s = CMMotionActivityManager.authorizationStatus()
+        return s == .denied || s == .restricted
+    }
 
     @ObservationIgnored private let locationManager = CLLocationManager()
     @ObservationIgnored private let motion = CMMotionActivityManager()
@@ -90,6 +97,7 @@ final class PermissionsCheck: NSObject {
             let notifications = Item(id: "notifications", name: "Notifications", state: state, ok: allowed)
             DispatchQueue.main.async {
                 self.notificationsAllowed = allowed
+                self.notificationsDenied = settings.authorizationStatus == .denied
                 self.sounds = sounds
                 self.items = [location, notifications, motionItem, bluetooth]
                 let missing = self.items.filter { !$0.ok }

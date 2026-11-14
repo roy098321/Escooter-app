@@ -350,6 +350,14 @@ struct RideDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             if onDone != nil, !sameRideAnswered, let info = mergeInfo { sameRideCard(info) }
             keyTiles(m)
+            if preview == nil, PermissionsCheck.shared.motionDenied {      // D2 5c
+                HStack(spacing: 6) {
+                    Text("Climbs use GPS height only. Allow Motion for better climbs.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Button("Open Settings") { PermissionsCheck.openSettings() }
+                        .font(.footnote.weight(.semibold))
+                }
+            }
             if preview == nil, !m.noGps { RideReplayStrip(rideId: activeId, dot: $replayDot).id(activeId ?? "") }   // batch 102: works like Replay
             if let hot = m.hotPeakC { HStack { InfoChip("thermometer.high", "\(hot) \u{00B0}C", label: "Motor temp"); Spacer(minLength: 0) } }
             if let r = previewInsights ?? ranked { insightCards(r) }

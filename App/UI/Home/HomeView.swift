@@ -237,7 +237,8 @@ struct HomeView: View {
             }
             if m.showLocationCard || (preview == nil && PermissionsCheck.shared.preciseOff) { locationCard }
             if preview == nil, ridesLoaded, oldestRideMs == nil, m.state != .noScooter, m.state != .riding {      // D2 6a: before ride 1
-                FirstRideCard(always: PermissionsCheck.shared.locationStatus == .authorizedAlways)
+                FirstRideCard(always: PermissionsCheck.shared.locationStatus == .authorizedAlways,
+                              alertsOff: PermissionsCheck.shared.notificationsDenied)
             }
             if m.state != .riding { TodayInsightSlot(preview: previewToday, live: preview == nil) }   // F-21, never during a ride (P-4)
         }
@@ -1009,6 +1010,7 @@ enum HomeCopy {
 /// D2 6a: one quiet card before the first ride. Goes away once a ride is in (the "first ride is in" card takes over).
 private struct FirstRideCard: View {
     let always: Bool
+    var alertsOff = false      // D2 4c
     @State private var open = false
 
     var body: some View {
@@ -1019,6 +1021,12 @@ private struct FirstRideCard: View {
                 .font(.footnote).foregroundStyle(.secondary)
             Text("Estimates sharpen over your first rides.")
                 .font(.footnote).foregroundStyle(.secondary)
+            if alertsOff {
+                Text("Switch-on alerts are off.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Button("Open Settings") { PermissionsCheck.openSettings() }
+                    .font(.footnote.weight(.semibold))
+            }
             Button(open ? "Hide" : "How it grows") { open.toggle() }
                 .font(.footnote.weight(.semibold))
             if open {
