@@ -131,7 +131,7 @@ final class ThemeGuardTests: XCTestCase {
             XCTAssertFalse(try text(file).contains("symbol: \"gearshape\""), "\(file): settings only on Home (G12)")
         }
         XCTAssertFalse(try text("UI/Stats/StatsView.swift").contains("symbol: \"slider.horizontal.3\""), "Stats has no prices button (G12)")
-        XCTAssertTrue(try text("UI/Settings/SettingsView.swift").contains("CostSettingsView()"), "prices stay in Settings")
+        XCTAssertTrue(try text("UI/Settings/PricesView.swift").contains("CostSettingsView()"), "prices stay in Settings (K3: via the one Prices screen)")
     }
 
     /// the shared components the next chunks build on exist, each with a doc comment
