@@ -61,7 +61,7 @@ final class DeclutterStatsGuardTests: XCTestCase {
         try assertGone("UI/Settings/SettingsView.swift", ["Units", "App ID", "Light and Heavy are what", "Checks, results and the test tools", "Keep raw data",
                                                           "ImportRideLogsView", "footer(", "Optional."])
         let settings = try text("UI/Settings/SettingsView.swift")
-        for group in ["Scooter & battery", "Rider & load", "Costs", "Places", "Data & backup"] {
+        for group in ["Scooter & battery", "Rider & load", "Prices", "Places", "Data & backup"] {
             XCTAssertTrue(settings.contains("group(\"\(group)\")"), "Settings group missing: \(group)")
         }
         let developer = try text("UI/Developer/DeveloperView.swift")

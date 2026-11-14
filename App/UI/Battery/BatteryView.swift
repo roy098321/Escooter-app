@@ -154,7 +154,7 @@ struct BatteryView: View {
     @ViewBuilder private func chargeLogSection(_ o: BatteryOverview) -> some View {
         if let d = chartData ?? preview?.chart {
             ChargeLogChartView(readings: d.readings, rows: d.rows, info: InfoContent(lead: "A charge is found from the timer you start with Plugged in, or when the battery % is higher at the next ride than where the last ride ended.",
-                                                                                  basedOn: [InfoBasedOn("Charging speed", "13.6 % per hour"), InfoBasedOn("Solid bar", "the real % was read afterwards")],
+                                                                                  basedOn: [InfoBasedOn("Charging speed", "learned from your own charges (a typical speed until then)"), InfoBasedOn("Solid bar", "the real % was read afterwards")],
                                                                                   caveat: "Lighter bars and times with \u{2248} are estimates."), nowMs: d.nowMs)
         } else {
         card("Charge log", info: InfoContent(lead: "A charge is found when the battery % is higher at the next ride than where the last ride ended.", basedOn: [InfoBasedOn("Charge cycles", "battery used, added up, in full charges")], caveat: "The scooter switches off while charging, so charges are never seen directly.")) {

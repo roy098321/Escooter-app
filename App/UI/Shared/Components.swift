@@ -372,7 +372,7 @@ struct InfoSheet: View {
                     if let link = row.link {
                         NavigationLink {
                             switch link {
-                            case .costSettings: CostSettingsView()
+                            case .costSettings: PricesView()      // K3: one Prices screen
                             case .priceHistory: PriceHistoryView()
                             }
                         } label: { basedOnRow(row, chevron: true) }

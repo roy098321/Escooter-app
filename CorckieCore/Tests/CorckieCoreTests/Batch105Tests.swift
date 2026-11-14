@@ -86,6 +86,19 @@ final class Batch105Tests: XCTestCase {
         XCTAssertTrue(try source("App/UI/Settings/SettingsView.swift").contains("NotifyKind.alwaysOn"))
     }
 
+    /// K3: one Prices screen, reached from Settings and from Stats
+    func test_K3_onePricesScreen() throws {
+        let prices = try source("App/UI/Settings/PricesView.swift")
+        for part in ["FuelPriceView()", "CostSettingsView()", "PriceHistoryView()"] { XCTAssertTrue(prices.contains(part), part) }
+        XCTAssertTrue(try source("App/UI/Settings/SettingsView.swift").contains("PricesView()"))
+        XCTAssertTrue(try source("App/UI/Shared/Components.swift").contains("PricesView()"))
+    }
+
+    /// I2: the charge-log info does not show the owner's charging speed
+    func test_I2_noHardCodedChargingSpeedInBatteryInfo() throws {
+        XCTAssertFalse(try source("App/UI/Battery/BatteryView.swift").contains("13.6 % per hour"))
+    }
+
     /// K10 / I2 (P-6): no owner-specific tyre pressure shown to every rider
     func test_K10_noHardCodedTyrePressure() {
         let tyres = Maintenance.defaults(odoKm: 0, nowMs: 0).first { $0.id == "tyres" }

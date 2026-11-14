@@ -123,21 +123,11 @@ struct SettingsView: View {
     }
 
     private var costsSection: some View {
-        group("Costs") {
+        group("Prices") {
             NavigationLink {
-                FuelPriceView()
+                PricesView()      // K3: fuel price, electricity and fuel use, price history
             } label: {
-                LabeledContent("Fuel price", value: FuelPriceSetting.load(db).map(FuelPriceSetting.text) ?? "\u{2014}")
-            }
-            NavigationLink {
-                CostSettingsView()
-            } label: {
-                Text("Electricity and fuel use")
-            }
-            NavigationLink {
-                PriceHistoryView()
-            } label: {
-                Text("Price history")
+                LabeledContent("Prices", value: FuelPriceSetting.load(db).map(FuelPriceSetting.text) ?? "\u{2014}")
             }
             NavigationLink {
                 PurchaseSettingsView()

@@ -360,7 +360,7 @@ struct CostSettingsView: View {
             .glassRows()
         }
         .glassList()
-        .navigationTitle("Prices")
+        .navigationTitle("Electricity and fuel use")
         .onAppear {
             guard let db = AppModel.shared.displayDatabase else { return }
             let q = StatsQueries(db)
@@ -370,7 +370,7 @@ struct CostSettingsView: View {
         .onChange(of: electricity) { _, v in save(StatsQueries.electricityKey, v, range: 0.01...10) }
         .onChange(of: fuelUse) { _, v in save(StatsQueries.fuelUseKey, v, range: 1...30) }
         .hidesTabBar()
-        .screen("Prices")
+        .screen("Electricity and fuel use")
     }
 
     private func save(_ key: String, _ text: String, range: ClosedRange<Double>) {
