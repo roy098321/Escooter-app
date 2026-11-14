@@ -66,6 +66,13 @@ final class Batch105Tests: XCTestCase {
         XCTAssertTrue(home.contains("!$0.isSimulated"))
     }
 
+    /// K10 / I2 (P-6): no owner-specific tyre pressure shown to every rider
+    func test_K10_noHardCodedTyrePressure() {
+        let tyres = Maintenance.defaults(odoKm: 0, nowMs: 0).first { $0.id == "tyres" }
+        XCTAssertNotNil(tyres)
+        XCTAssertFalse(tyres?.hint.contains("PSI") ?? true)
+    }
+
     /// C2: chart titles say what it means on the road
     func test_C2_chartTitlesUseRangeWords() throws {
         for file in ["CreepInsight", "SweetSpotInsight", "WindTodayInsight"] {

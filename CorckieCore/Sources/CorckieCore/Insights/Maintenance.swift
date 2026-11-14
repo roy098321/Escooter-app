@@ -62,7 +62,7 @@ public enum Maintenance {
     /// until the RND manual is read.
     public static func defaults(odoKm: Double?, nowMs: Int64) -> [MaintenanceItem] {
         [
-            MaintenanceItem(id: "tyres", name: "Tyre pressure", hint: "Check the pressure: 50 PSI", intervalKm: 300, intervalDays: 14,
+            MaintenanceItem(id: "tyres", name: "Tyre pressure", hint: "Check the pressure against your scooter's manual", intervalKm: 300, intervalDays: 14,
                             lastDoneOdoKm: odoKm, lastDoneAt: nowMs),
             MaintenanceItem(id: "brakes", name: "Brakes", hint: "Check the pads and the brake feel", intervalKm: 500, intervalDays: nil,
                             lastDoneOdoKm: odoKm, lastDoneAt: nowMs),

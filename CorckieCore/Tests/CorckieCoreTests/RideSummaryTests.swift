@@ -47,6 +47,7 @@ final class RideSummaryTests: XCTestCase {
         XCTAssertFalse(m.noGps)
         XCTAssertTrue(m.notes.isEmpty)
         XCTAssertEqual(m.infoLines, ["Odometer 120.4 km to 136.7 km", "Ended by you (held the stop button)"])
+        XCTAssertEqual(m.riderInfoLines, ["Ended by you (held the stop button)"])   // T7: the odometer line is Developer-only
     }
 
     func testDurationAndDistanceFormats() {

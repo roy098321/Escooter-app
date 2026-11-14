@@ -444,7 +444,7 @@ struct RideDetailView: View {
                 rowsCard(detailRows(m))
                 if let s = previewSeries ?? series { RideSeriesPanels(series: s, onExpand: { showCharts = true }) }
                 fieldKitRows
-                ForEach(m.infoLines, id: \.self) { Text($0).font(.footnote).foregroundStyle(.secondary) }
+                ForEach(DeveloperGateView.isUnlocked ? m.infoLines : m.riderInfoLines, id: \.self) { Text($0).font(.footnote).foregroundStyle(.secondary) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 8)

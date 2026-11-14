@@ -228,6 +228,12 @@ public struct RideSummaryModel: Equatable, Sendable {
     public var hotPeakC: Int? = nil
     /// N4-12 (B91): the ride's one start / end battery level (the map's Battery legend and the voice proof use it)
     public var batteryEnds: RideBatteryEnds? = nil
+
+    /// T7: what a rider sees under More. Odometer ranges, "Phone took over" reasons and ignored-reading counts are
+    /// log-style lines; they show only after the Developer unlock. The plain notes above stay for everyone.
+    public var riderInfoLines: [String] {
+        infoLines.filter { !($0.hasPrefix("Odometer ") || $0.hasPrefix("Phone took over") || $0.hasPrefix("Ignored readings")) }
+    }
 }
 
 public enum RideSummaryBuilder {

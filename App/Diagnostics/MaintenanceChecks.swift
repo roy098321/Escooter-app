@@ -18,7 +18,7 @@ enum MaintenanceCheck {
             let t0: Int64 = 1_790_000_000_000
             try q.insertMissing(Maintenance.defaults(odoKm: 100, nowMs: t0).map(MaintenanceService.record))
             let items = try q.all().map(MaintenanceService.item)
-            let defaultsOk = items.map(\.id) == ["tyres", "brakes", "bolts"] && items[0].hint.contains("50 PSI")
+            let defaultsOk = items.map(\.id) == ["tyres", "brakes", "bolts"] && !items[0].hint.contains("PSI")
             // 100 km later nothing is due; 305 km later tyres and bolts are, brakes (500 km) are not
             let early = Maintenance.toRemind(items, odoKm: 200, nowMs: t0 + 3_600_000).map(\.id)
             let due = Maintenance.toRemind(items, odoKm: 405, nowMs: t0 + 3_600_000).map(\.id)
