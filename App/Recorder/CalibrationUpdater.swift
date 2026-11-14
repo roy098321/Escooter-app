@@ -1,5 +1,6 @@
 import CorckieCore
 import Foundation
+import GRDB
 
 // M3-01: battery calibration from rides (CALC_SPEC M8 S1). After every ride close the Recorder calls `update`: the
 // calibration is re-computed from all stored rides, saved in the `calibration` row, and the rides' battery used is
@@ -101,7 +102,21 @@ enum CalibrationUpdater {
             if !same(old.usedPctShown, value) { shown.append((r.id, value)) }
         }
         try q.setShown(shown)
+        saveVoltageClass(database)
         return (cal, verdicts, changed, charges)
+    }
+
+    /// D2 7c: the pack's voltage class from the newest ride that started on a full, rested pack. Stored as the scooter's own setting
+    /// (`scooter.voltageClass`, wiped by Start fresh with the rest of the scooter's data).
+    private static func saveVoltageClass(_ database: AppDatabase) {
+        let volts: Double? = try? database.writer.read { d in
+            try Double.fetchOne(d, sql: """
+                SELECT startRestV FROM ride WHERE startRestPct >= 99 AND startRestV IS NOT NULL AND isSimulated = 0
+                AND \(BatteryDoor.rides()) ORDER BY startAt DESC LIMIT 1
+                """)
+        }
+        guard let volts, let cls = VoltageClass.fromRestedFull(volts: volts) else { return }
+        SettingsValue.set(database, "scooter.voltageClass", String(cls.rawValue))
     }
 
     private static func same(_ a: Double?, _ b: Double?) -> Bool {

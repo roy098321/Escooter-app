@@ -112,6 +112,12 @@ final class Batch105Tests: XCTestCase {
         }
     }
 
+    /// 7c: the voltage class is saved from a rested full reading, as the scooter's own setting
+    func test_7c_voltageClassIsSavedAsAScooterSetting() throws {
+        XCTAssertTrue(try source("App/Recorder/CalibrationUpdater.swift").contains("scooter.voltageClass"))
+        XCTAssertTrue(DataMap.scooterSettingKeys.contains("scooter.voltageClass"))
+    }
+
     /// K3: one Prices screen, reached from Settings and from Stats
     func test_K3_onePricesScreen() throws {
         let prices = try source("App/UI/Settings/PricesView.swift")

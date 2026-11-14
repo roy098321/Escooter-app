@@ -30,7 +30,7 @@ enum NewScooterWeekStore {
             f.bestRouteRides = try Int.fetchOne(d, sql: """
                 SELECT COALESCE(MAX(c), 0) FROM (SELECT COUNT(*) AS c FROM ride WHERE routeId IS NOT NULL AND startAt >= ? AND \(BatteryDoor.rides()) GROUP BY routeId)
                 """, arguments: [started]) ?? 0
-            f.calibrated = (try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM calibration WHERE status = 'calibrated'") ?? 0) > 0
+            f.calibrated = (try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM calibration WHERE status = 'active'") ?? 0) > 0
             f.weeklySummarySeen = (try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM week_summary WHERE COALESCE(notifiedAt, 0) >= ?", arguments: [started]) ?? 0) > 0
         }
         return f
