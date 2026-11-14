@@ -11,6 +11,7 @@ struct OnboardingView: View {
     private let onFinish: (OnboardingFlow) -> Void
     @State private var flow: OnboardingFlow
     @State private var busy = false
+    @State private var showRestore = false      // D2: "Have a backup? Restore" (a new phone or a reinstall)
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(startAt: OnboardingFlow.Step = .connect, previewFound: Bool = false, onFinish: @escaping (OnboardingFlow) -> Void) {
@@ -122,6 +123,10 @@ struct OnboardingView: View {
             Button("Set up later") { skip() }
                 .font(.subheadline)
                 .frame(minHeight: DS.hit)
+            Button("Have a backup? Restore") { showRestore = true }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .sheet(isPresented: $showRestore) { NavigationStack { RestoreView() } }
         }
     }
 

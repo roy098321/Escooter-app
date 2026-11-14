@@ -95,6 +95,13 @@ final class Batch105Tests: XCTestCase {
         XCTAssertFalse(fresh.contains("INSERT OR REPLACE INTO main.calibration"))
     }
 
+    /// The restore link on screen 1 (a new phone or a reinstall)
+    func test_restoreLinkOnFirstScreen() throws {
+        let onboarding = try source("App/UI/Onboarding/OnboardingView.swift")
+        XCTAssertTrue(onboarding.contains("Have a backup? Restore"))
+        XCTAssertTrue(onboarding.contains("RestoreView()"))
+    }
+
     /// K3: one Prices screen, reached from Settings and from Stats
     func test_K3_onePricesScreen() throws {
         let prices = try source("App/UI/Settings/PricesView.swift")
