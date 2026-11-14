@@ -11,6 +11,7 @@ struct OnboardingView: View {
     private let onFinish: (OnboardingFlow) -> Void
     @State private var flow: OnboardingFlow
     @State private var busy = false
+    @State private var alertsOpen = false
     @State private var showRestore = false      // D2: "Have a backup? Restore" (a new phone or a reinstall)
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -150,6 +151,14 @@ struct OnboardingView: View {
             Text("When you switch on, and when it's charged. Tips: two a day at most.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
+            Button(alertsOpen ? "Hide" : "All the alerts") { alertsOpen.toggle() }      // D2 4b: optional, behind a tap
+                .font(.footnote.weight(.semibold))
+            if alertsOpen {
+                Text(NotifyKind.allCases.map(\.title).joined(separator: "\n") + "\n" + NotifyKind.alwaysOn + "\nEach one has its own switch in Settings.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
             bigButton("Allow", enabled: !busy) { allowNotifications() }
             Button("Not now") { finish(.notNow) }
                 .font(.subheadline)

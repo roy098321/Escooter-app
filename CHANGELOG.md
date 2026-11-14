@@ -2,6 +2,16 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 105.221126.01 — hotfix 01 of batch 5 (the rest of the new-scooter work)
+
+- D2 4b: every alert has its own switch (Settings → Notifications, in groups Rides / Charging / Tips, plus the "always on" expiry line); switch-on, charge and battery-wear alerts check their switch; setup has an "All the alerts" list behind a tap.
+- D2 4c: Home's first-ride card says "Switch-on alerts are off" with Open Settings when iPhone notifications are refused. D2 5c: a ride says "Climbs use GPS height only" with Open Settings when Motion is refused. D2 5b: a ride with no GPS says why and how to fix it.
+- D2 A2: Start fresh → "Bring rider info back" returns places, routes and old rides from the backup (old rides stay out of the new scooter's battery math). The first setup screen has "Have a backup? Restore".
+- D2 7e: the battery size is learned from the calibration ("16 Ah · learned from 5 rides", otherwise "Assumed 16 Ah"). D2 7c: the pack's voltage class (48 / 52 / 60 V) is noted from a rested full reading.
+- D2 option C: "New scooter week" in Developer (9 milestones that tick by themselves, an optional note each, a week report to share; no thumbs; it removes itself after the report or 30 days).
+- I2: no owner charging speed shown to every rider; new optional "Measure charging speed" on the Battery page (a reminder every 20 min, the rider types the scooter's %, the speed then replaces the learned one). K10: no fixed tyre pressure. K3: one Prices screen (Settings and Stats). K2: Settings → Battery is "Battery setup". T7: the odometer, "Phone took over" and ignored-reading lines are Developer-only. I9: CONCEPT colours text.
+- Guard tests: Batch105Tests, LearnedPackTests, VoltageClassTests, NewScooterWeekTests, ChargeSpeedMeasureTests (Core); DataMapGuardTests bring-back (AppTests).
+
 ## 105.221126.00 — batch 5, due Sun 22 Nov 2026 (ready for a new scooter, a cleaner app)
 
 - D2 DataMap: one list says which data is the rider's and which is the scooter's (CorckieCore Ownership/DataMap); a guard test reads the real schema and fails the build when a table or column is missing.

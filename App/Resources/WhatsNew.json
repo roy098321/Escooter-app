@@ -1,5 +1,35 @@
 [
   {
+    "version": "105.221126.01",
+    "headline": "More control, fewer surprises",
+    "items": [
+      {
+        "symbol": "bell.badge",
+        "title": "Every alert has its own switch",
+        "line": "Settings → Notifications lists them in groups: rides, charging and tips. Switch-on, charge and battery wear alerts can now be turned off one by one."
+      },
+      {
+        "symbol": "bolt.fill",
+        "title": "Your own charging speed",
+        "line": "Battery → Measure charging speed: type the scooter's % every 20 minutes while it charges, and the charge-time estimates use your speed."
+      },
+      {
+        "symbol": "arrow.counterclockwise",
+        "title": "Bring your rides back",
+        "line": "After Start fresh without keeping your info, Bring rider info back returns your places, routes and old rides. Setup also has a Restore link for a new phone."
+      }
+    ],
+    "smallerFixes": 6,
+    "full": [
+      "Prices are one screen: fuel price, electricity and fuel use, and price history.",
+      "Settings → Battery is now called Battery setup, so it no longer shares a name with the Battery page.",
+      "The battery size is learned from your rides (for example 16 Ah, learned from 5 rides) and the pack voltage class is noted.",
+      "Home says when iPhone notifications are off, and a ride says when Motion is off, each with a way to Settings.",
+      "A ride with no GPS says why and how to fix it.",
+      "Tyre pressure no longer shows a fixed number; check it against your scooter's manual."
+    ]
+  },
+  {
     "version": "105.221126.00",
     "headline": "Welcome to CorckieApp",
     "items": [
