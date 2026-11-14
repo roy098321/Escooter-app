@@ -48,9 +48,11 @@ enum PlugInStore {
         let name = scooterName()
         let ctx = t.context(scooterName: name)
         let learned = t.learnedRate   // batch 102: the charging speed learned from earlier Plug ins
+        let measured = ChargeSpeedStore.measuredRate(AppModel.shared.database)   // I2: the rider's own measurement wins
         return ChargeSession(startPct: Double(last.pct), startMs: t.now, target: PlugIn.target(alert), pctPerKm: ctx.pctPerKm,
                              reservePct: ctx.reserve, usualNeedPct: ctx.usualNeed, usualName: ctx.usualName, scooterName: name,
-                             ratePctPerHour: learned?.ratePctPerHour, rateFromCharges: learned?.charges)
+                             ratePctPerHour: measured ?? learned?.ratePctPerHour,
+                             rateFromCharges: measured != nil ? max(learned?.charges ?? 0, 1) : learned?.charges)
     }
 
     /// One tap: the timer starts from the last reading with the remembered alert, no form

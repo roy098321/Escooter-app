@@ -72,7 +72,8 @@ public enum DataMap {
     /// `setting` rows are keyed: these keys belong to the scooter (pack size, charger, recalibration, its app-only name, what the app learned about it).
     public static let scooterSettingKeys: [String] = [
         "battery.packAh", "battery.chargerA", "battery.recalibrateFromMs", "scooter.customName",
-        "scooter.voltageClass", "scooter.learnedAh", "scooter.modelTag"
+        "scooter.voltageClass", "scooter.learnedAh", "scooter.modelTag",
+        "charge.measure.entries", "charge.measuredRate"
     ]
 
     public static func isScooterSetting(_ key: String) -> Bool { scooterSettingKeys.contains(key) }

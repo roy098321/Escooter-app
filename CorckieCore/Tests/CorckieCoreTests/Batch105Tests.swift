@@ -118,6 +118,14 @@ final class Batch105Tests: XCTestCase {
         XCTAssertTrue(DataMap.scooterSettingKeys.contains("scooter.voltageClass"))
     }
 
+    /// I2: "Measure charging speed" exists on the Battery page, its result wins over the learned speed, and it is the scooter's data
+    func test_I2_measureChargingSpeed() throws {
+        XCTAssertTrue(try source("App/UI/Battery/BatteryView.swift").contains("Measure charging speed"))
+        XCTAssertTrue(try source("App/Charge/PlugInStore.swift").contains("ChargeSpeedStore.measuredRate"))
+        XCTAssertTrue(DataMap.scooterSettingKeys.contains("charge.measuredRate"))
+        XCTAssertFalse(try source("App/Charge/ChargeSpeedView.swift").lowercased().contains("pass or fail"), "a rider feature, not a test (P-10)")
+    }
+
     /// K3: one Prices screen, reached from Settings and from Stats
     func test_K3_onePricesScreen() throws {
         let prices = try source("App/UI/Settings/PricesView.swift")

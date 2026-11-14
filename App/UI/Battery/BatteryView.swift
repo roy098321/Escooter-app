@@ -30,6 +30,21 @@ struct BatteryView: View {
                     calibrationRow(o.calibration)
                     lbpRow
                     chargeLogSection(o)
+                    if preview == nil {      // I2: by choice, never a test
+                        NavigationLink {
+                            ChargeSpeedView()
+                        } label: {
+                            HStack {
+                                Label("Measure charging speed", systemImage: "bolt.fill").font(.subheadline)
+                                Spacer(minLength: 4)
+                                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, DS.Space.cardPad)
+                            .frame(minHeight: DS.hit)
+                            .glassCard(padding: 0)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 } else {
                     emptyState("bolt.slash", "No battery data")
                 }
