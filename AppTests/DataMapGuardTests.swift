@@ -88,6 +88,35 @@ final class DataMapGuardTests: XCTestCase {
         XCTAssertEqual(try db.writer.read { try String.fetchOne($0, sql: "SELECT json FROM setting WHERE key = 'rider.loadKg'") }, "80")
     }
 
+    /// A2: after a blank start, "Bring rider info back" returns places and rides; the rides stay out of battery math; nothing is doubled.
+    func test_bringRiderInfoBack_returnsPlacesAndRidesButNotBatteryNumbers() throws {
+        let db = try makeDB()
+        try seed(db)
+        try db.writer.write { d in
+            try d.execute(sql: "INSERT INTO ride (id, scooterId, startAt, usedPct) VALUES ('untagged', NULL, 2000, 8.0)")
+        }
+        let backup = try StartFresh.localBackup(db, nowMs: 5)
+        try StartFresh.reset(db, keepRider: false, nowMs: 5)
+        XCTAssertEqual(try count(db, "ride"), 0)
+        XCTAssertEqual(StartFresh.latestBackup(db)?.lastPathComponent, backup.lastPathComponent)
+        // a ride on the new scooter, made before bringing back, must survive untouched
+        try db.writer.write { d in
+            try d.execute(sql: "INSERT INTO scooter (id, name, firstSeenAt) VALUES ('new', 'G2', 10)")
+            try d.execute(sql: "INSERT INTO ride (id, scooterId, startAt, usedPct) VALUES ('r-new', 'new', 3000, 5.0)")
+        }
+        let brought = try StartFresh.bringRiderInfoBack(db, from: backup, nowMs: 20)
+        XCTAssertEqual(brought, 2)
+        XCTAssertEqual(try count(db, "ride"), 3)
+        XCTAssertEqual(try count(db, "place"), 1)
+        XCTAssertEqual(try count(db, "calibration"), 0, "battery learning stays new")
+        XCTAssertEqual(try db.writer.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM ride WHERE \(BatteryDoor.rides())") }, 1, "only the new scooter's ride counts")
+        XCTAssertNil(try db.writer.read { try Int64.fetchOne($0, sql: "SELECT forgottenAt FROM scooter WHERE id = 'new'") }, "the new scooter is not forgotten")
+        XCTAssertEqual(try db.writer.read { try String.fetchOne($0, sql: "SELECT json FROM setting WHERE key = 'rider.loadKg'") }, "80")
+        // doing it twice adds nothing
+        XCTAssertEqual(try StartFresh.bringRiderInfoBack(db, from: backup, nowMs: 21), 0)
+        XCTAssertEqual(try count(db, "ride"), 3)
+    }
+
     /// The battery door: after "keep rider info" the old scooter's rides stay for times and routes but not for battery math.
     func test_batteryDoor_skipsRidesOfTheOldScooter() throws {
         let db = try makeDB()

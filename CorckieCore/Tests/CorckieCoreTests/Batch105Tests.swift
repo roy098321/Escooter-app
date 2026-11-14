@@ -86,6 +86,15 @@ final class Batch105Tests: XCTestCase {
         XCTAssertTrue(try source("App/UI/Settings/SettingsView.swift").contains("NotifyKind.alwaysOn"))
     }
 
+    /// A2: Start fresh offers "Bring rider info back" and the copy never touches the scooter's settings
+    func test_A2_bringRiderInfoBackExists() throws {
+        XCTAssertTrue(try source("App/UI/Settings/StartFreshView.swift").contains("Bring rider info back"))
+        let fresh = try source("App/Store/StartFresh.swift")
+        XCTAssertTrue(fresh.contains("bringRiderInfoBack"))
+        XCTAssertTrue(fresh.contains("DataMap.scooterSettingKeys"))
+        XCTAssertFalse(fresh.contains("INSERT OR REPLACE INTO main.calibration"))
+    }
+
     /// K3: one Prices screen, reached from Settings and from Stats
     func test_K3_onePricesScreen() throws {
         let prices = try source("App/UI/Settings/PricesView.swift")

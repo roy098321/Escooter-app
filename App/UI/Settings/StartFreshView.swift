@@ -9,6 +9,39 @@ struct StartFreshView: View {
     @State private var working = false
     @State private var message: String?
     @State private var finished = false
+    @State private var canBringBack = false      // A2
+    @State private var bringing = false
+    @State private var bringMessage: String?
+
+    /// A2: shown after a blank start (rider info not kept), while a backup exists and nothing was brought back yet
+    private func refreshCanBringBack() {
+        guard let db = AppModel.shared.database else { canBringBack = false; return }
+        let kept = SettingsValue.number(db, StartFresh.keptRiderKey)
+        let brought = SettingsValue.number(db, StartFresh.broughtBackKey)
+        canBringBack = kept == 0 && brought == nil && StartFresh.latestBackup(db) != nil
+    }
+
+    private func bringBack() {
+        guard let db = AppModel.shared.database, let backup = StartFresh.latestBackup(db), !bringing else { return }
+        bringing = true
+        bringMessage = nil
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        Task.detached {
+            do {
+                let n = try StartFresh.bringRiderInfoBack(db, from: backup, nowMs: now)
+                await MainActor.run {
+                    bringing = false
+                    canBringBack = false
+                    bringMessage = "Done. \(n) rides are back."
+                }
+            } catch {
+                await MainActor.run {
+                    bringing = false
+                    bringMessage = "Nothing was changed: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
 
     var body: some View {
         List {
@@ -30,7 +63,22 @@ struct StartFreshView: View {
                     Text(message).font(.footnote).foregroundStyle(finished ? Theme.ok : Theme.danger)
                 }
             }
+            if canBringBack || bringMessage != nil {
+                Section {
+                    if canBringBack {
+                        Button(bringing ? "Working\u{2026}" : "Bring rider info back") { bringBack() }
+                            .disabled(bringing)
+                        Text("Your places, routes and old rides return from the backup. The new scooter's battery numbers stay new.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let bringMessage {
+                        Text(bringMessage).font(.footnote).foregroundStyle(Theme.ok)
+                    }
+                }
+            }
         }
+        .onAppear { refreshCanBringBack() }
         .navigationTitle("Start fresh")
         .alert("Start fresh?", isPresented: $confirming) {
             Button("Start fresh", role: .destructive) { run() }
