@@ -102,6 +102,16 @@ final class Batch105Tests: XCTestCase {
         XCTAssertTrue(onboarding.contains("RestoreView()"))
     }
 
+    /// C: New scooter week lives only in Developer, with no thumbs
+    func test_C_newScooterWeekIsDeveloperOnly() throws {
+        let view = try source("App/UI/Developer/NewScooterWeekView.swift")
+        XCTAssertFalse(view.contains("hand.thumbs"))
+        XCTAssertTrue(try source("App/UI/Developer/DeveloperView.swift").contains("NewScooterWeekView()"))
+        for rider in ["App/UI/Home/HomeView.swift", "App/UI/Rides/RideDetailView.swift", "App/UI/Rides/RidesListView.swift"] {
+            XCTAssertFalse(try source(rider).contains("NewScooterWeek"), rider)
+        }
+    }
+
     /// K3: one Prices screen, reached from Settings and from Stats
     func test_K3_onePricesScreen() throws {
         let prices = try source("App/UI/Settings/PricesView.swift")

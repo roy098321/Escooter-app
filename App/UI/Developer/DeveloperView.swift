@@ -25,6 +25,9 @@ struct DeveloperView: View {
             }
                 .glassRows()
             GlassSection("Tools") {
+                if NewScooterWeekStore.isActive(AppModel.shared.database) {      // D2 option C: gone after the report or 30 days
+                    tool("New scooter week", "calendar", []) { NewScooterWeekView() }
+                }
                 DeveloperDataRows()
                 ShowOnboardingRow()
                 // N5-2: moved here from Settings
