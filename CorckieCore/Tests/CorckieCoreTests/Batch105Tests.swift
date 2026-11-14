@@ -76,6 +76,16 @@ final class Batch105Tests: XCTestCase {
         XCTAssertTrue(ride.contains("Allow Motion for better climbs."))
     }
 
+    /// 4b: every alert has its own switch and the code that sends it checks the switch
+    func test_4b_everyAlertHasASwitchThatIsChecked() throws {
+        let store = try source("App/Recorder/SettingsStore.swift")
+        for k in ["switchOn", "arriveBy", "charge", "weekly", "wind", "maintenance", "wear"] { XCTAssertTrue(store.contains(k), k) }
+        XCTAssertTrue(try source("App/Notifier/Notifier.swift").contains(".switchOn"))
+        XCTAssertTrue(try source("App/Charge/ChargeTimer.swift").contains(".charge"))
+        XCTAssertTrue(try source("App/Charge/BatteryDecayService.swift").contains(".wear"))
+        XCTAssertTrue(try source("App/UI/Settings/SettingsView.swift").contains("NotifyKind.alwaysOn"))
+    }
+
     /// K10 / I2 (P-6): no owner-specific tyre pressure shown to every rider
     func test_K10_noHardCodedTyrePressure() {
         let tyres = Maintenance.defaults(odoKm: 0, nowMs: 0).first { $0.id == "tyres" }

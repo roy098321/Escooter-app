@@ -59,20 +59,38 @@ enum BatterySettings {
     }
 }
 
-/// The four notification switches (all on by default)
+/// D2 4b: every alert has its own switch (all on by default), in groups
 enum NotifyKind: String, CaseIterable {
-    case weekly, wind, arriveBy, maintenance
+    case switchOn, arriveBy, charge, weekly, wind, maintenance, wear
 
     var key: String { "notify.\(rawValue)" }
 
     var title: String {
         switch self {
+        case .switchOn: return "Going for a ride? (when you switch on)"
+        case .arriveBy: return "Arrive-by: time to leave"
+        case .charge: return "Charge alerts"
         case .weekly: return "Weekly summary (Sun 7:30)"
         case .wind: return "Wind picking up"
-        case .arriveBy: return "Arrive-by reminders"
         case .maintenance: return "Maintenance due"
+        case .wear: return "Battery wear"
         }
     }
+
+    /// The group heading in Settings
+    var group: String {
+        switch self {
+        case .switchOn, .arriveBy: return "Rides"
+        case .charge: return "Charging"
+        case .weekly, .wind, .maintenance, .wear: return "Tips (2 a day at most)"
+        }
+    }
+
+    static let groups = ["Rides", "Charging", "Tips (2 a day at most)"]
+    static func kinds(in group: String) -> [NotifyKind] { allCases.filter { $0.group == group } }
+
+    /// The one alert that has no switch: the build is about to stop working
+    static let alwaysOn = "Test build about to expire (or the app stops)"
 }
 
 enum NotifyPrefs {

@@ -369,16 +369,22 @@ struct NotifySettingsView: View {
 
     var body: some View {
         List {
-            Section {
-                ForEach(NotifyKind.allCases, id: \.self) { kind in
-                    Toggle(kind.title, isOn: Binding(
-                        get: { notify[kind] ?? true },
-                        set: { on in
-                            notify[kind] = on
-                            NotifyPrefs.set(db, kind, on)
-                            if kind == .weekly { BudgetedNotifier.refreshWeekly(db) }
-                        }))
+            ForEach(NotifyKind.groups, id: \.self) { group in
+                Section(group) {
+                    ForEach(NotifyKind.kinds(in: group), id: \.self) { kind in
+                        Toggle(kind.title, isOn: Binding(
+                            get: { notify[kind] ?? true },
+                            set: { on in
+                                notify[kind] = on
+                                NotifyPrefs.set(db, kind, on)
+                                if kind == .weekly { BudgetedNotifier.refreshWeekly(db) }
+                            }))
+                    }
                 }
+                .glassRows()
+            }
+            Section("Always on") {
+                Text(NotifyKind.alwaysOn).font(.subheadline).foregroundStyle(.secondary)
             }
             .glassRows()
         }

@@ -38,6 +38,7 @@ enum BatteryDecayService {
     /// After a ride closes / at app open: send the deepest new level (not while riding)
     static func check(_ db: AppDatabase?) {
         guard let db, !db.isReadOnly, !RecorderService.shared.rideActive else { return }
+        guard NotifyPrefs.isOn(db, .wear) else { return }      // D2 4b
         let r = report(db)
         guard let level = BatteryDecay.noticeLevel(report: r, sent: sent(db)) else { return }
         // a deeper level also counts the shallower ones as sent (one notice, the newest news)

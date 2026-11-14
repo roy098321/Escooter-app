@@ -72,6 +72,10 @@ final class Notifier: NSObject, NotificationSending, MessageLogging {
         let center = UNUserNotificationCenter.current()
         // F-36: "Scooter on" carries the destination buttons (F-39: "Continue to ..." first), made from the places as they are now
         let scooterOn = id == GoingForARideContent.notificationID
+        if scooterOn, !NotifyPrefs.isOn(AppModel.shared.database, .switchOn) {      // D2 4b
+            Log.info(source: "notify", "skipped (reason: switched off in Settings)")
+            return
+        }
         if scooterOn { center.setNotificationCategories([Self.scooterOnCategory()]) }
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {

@@ -190,6 +190,7 @@ final class ChargeTimer {
         guard sideEffects, let s = session else { return }
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: ChargeNotifications.allIds)
+        guard NotifyPrefs.isOn(AppModel.shared.database, .charge) else { Log.info(source: "charge", "alerts switched off in Settings"); return }   // D2 4b
         let st = await center.notificationSettings().authorizationStatus
         guard st == .authorized || st == .provisional else { Log.info(source: "charge", "notifications not allowed"); return }
         for n in ChargeNotifications.plan(s, nowMs: now, utcOffsetMin: utcOffsetMin) {
