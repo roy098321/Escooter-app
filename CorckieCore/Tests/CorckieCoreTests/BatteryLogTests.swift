@@ -57,4 +57,12 @@ final class BatteryLogTests: XCTestCase {
         XCTAssertEqual(w.first?.ms, h)
         XCTAssertEqual(w.first?.pct ?? 0, 75, accuracy: 0.01)
     }
+
+    func test_N7_7_valueAtForTheScrub() {
+        let h: Int64 = 3_600_000
+        let r = [ChargeReading(ms: 0, pct: 100), ChargeReading(ms: 2 * h, pct: 60), ChargeReading(ms: 50 * h, pct: 90)]
+        XCTAssertEqual(BatteryLog.value(at: h, in: r)!, 80, accuracy: 0.01)
+        XCTAssertNil(BatteryLog.value(at: 10 * h, in: r), "no value inside a gap")
+        XCTAssertNil(BatteryLog.value(at: -5, in: r))
+    }
 }

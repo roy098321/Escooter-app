@@ -118,6 +118,8 @@ struct ChargeLogChartView: View {
     @State private var range: BatteryLog.Range = .week
     /// Day view: the local midnight of the day shown (nil = today)
     @State private var dayStartMs: Int64?
+    /// N7-7: the moment under the finger while scrubbing
+    @State private var scrubMs: Int64?
 
     private static let dayMs: Int64 = 86_400_000
     private func date(_ ms: Int64) -> Date { Date(timeIntervalSince1970: Double(ms) / 1000) }
@@ -192,6 +194,12 @@ struct ChargeLogChartView: View {
         }
     }
 
+    /// "Wed 14:20 · 64%" (or "no reading" in a gap)
+    private func scrubText(_ t: Int64, _ shown: [ChargeReading]) -> String {
+        let when = date(t).formatted(.dateTime.weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)).minute())
+        return BatteryLog.value(at: t, in: shown).map { "\(when) \u{00B7} \(Int($0.rounded()))%" } ?? "\(when) \u{00B7} no reading"
+    }
+
     private func chart(shown: [ChargeReading], segs: [ChargeLineSegment], avg: Double?, sp: (fromMs: Int64, toMs: Int64)) -> some View {
         let midnights = (0..<8).map { todayStartMs - Int64($0) * Self.dayMs }.filter { $0 > sp.fromMs && $0 < sp.toMs }
         // Week: one label per day (at noon, centred); Day: every 6 hours
@@ -229,8 +237,21 @@ struct ChargeLogChartView: View {
                             .background(.thinMaterial, in: Capsule())
                     }
             }
-            if let last = shown.last, isToday {
+            if let last = shown.last, isToday, scrubMs == nil {
                 PointMark(x: .value("Time", date(last.ms)), y: .value("%", last.pct)).foregroundStyle(Theme.accent).symbolSize(60)
+            }
+            // N7-7: the scrub rule, dot and callout
+            if let t = scrubMs {
+                RuleMark(x: .value("Time", date(t))).foregroundStyle(Theme.accent.opacity(0.35))
+                    .annotation(position: .top, spacing: 2, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        Text(scrubText(t, shown))
+                            .font(.caption.weight(.semibold).monospacedDigit())
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+                if let v = BatteryLog.value(at: t, in: shown) {
+                    PointMark(x: .value("Time", date(t)), y: .value("%", v)).foregroundStyle(Theme.accent).symbolSize(50)
+                }
             }
         }
         .chartXScale(domain: date(sp.fromMs)...date(sp.toMs))
@@ -253,6 +274,13 @@ struct ChargeLogChartView: View {
         .chartOverlay { proxy in
             GeometryReader { g in
                 Rectangle().fill(.clear).contentShape(Rectangle())
+                    // N7-7: drag to read the line (a tick per hour passed)
+                    .gesture(DragGesture(minimumDistance: 8).onChanged { v in
+                        guard let plot = proxy.plotFrame, let d: Date = proxy.value(atX: v.location.x - g[plot].origin.x) else { return }
+                        let t = min(sp.toMs, max(sp.fromMs, ms(d)))
+                        if let old = scrubMs, old / 3_600_000 != t / 3_600_000 { Haptics.tick() }
+                        scrubMs = t
+                    }.onEnded { _ in scrubMs = nil })
                     .onTapGesture { loc in
                         guard range == .week, let plot = proxy.plotFrame else { return }
                         let x = loc.x - g[plot].origin.x

@@ -22,6 +22,8 @@ struct StatsView: View {
     @State private var model: StatsModel?
     /// Note 8: the tapped bar (its readout shows above the chart)
     @State private var selectedBar: Int?
+    /// N7-7: the bar selected when the finger came down (a tap on it again clears it)
+    @State private var scrubFrom: Int??
     /// N7-3: Stats cards grow into their detail
     @Namespace private var zoomSpace
 
@@ -206,8 +208,10 @@ struct StatsView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(chart.title).font(.subheadline.weight(.semibold))
                 Spacer(minLength: 8)
-                if let i = selectedBar, let text = chart.readout(i) {
-                    Text(text).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.accentInk)
+                if selectedBar == nil, !values.isEmpty {
+                    // N7-7: the summary line above the chart
+                    Text("\(StatsChart.valueText(values.reduce(0, +), metric)) in total")
+                        .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                 }
             }
             PastWeeksSwitch()
@@ -224,6 +228,21 @@ struct StatsView: View {
                             width: .ratio(chart.barWidthRatio))
                         .foregroundStyle(barColour(item.offset, tallest: tallest))
                         .cornerRadius(4)
+                        .accessibilityLabel(chart.bars[item.offset].dateText)
+                        .accessibilityValue(StatsChart.valueText(item.element, metric))
+                }
+                // N7-7: the rule line and callout over the touched bar
+                if let i = selectedBar, values.indices.contains(i), let text = chart.readout(i) {
+                    RuleMark(x: .value("Day", Self.slot(i)))
+                        .foregroundStyle(Theme.accent.opacity(0.35))
+                        .lineStyle(StrokeStyle(lineWidth: 1))
+                        .annotation(position: .top, spacing: 2, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            Text(text)
+                                .font(.caption.weight(.semibold).monospacedDigit())
+                                .foregroundStyle(Theme.accentInk)
+                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .background(.thinMaterial, in: Capsule())
+                        }
                 }
             }
             .chartYScale(domain: 0...chart.scaleTop)   // hotfix 01 (H4): bars and dashed lines share one value scale
@@ -240,14 +259,20 @@ struct StatsView: View {
             .chartOverlay { proxy in
                 GeometryReader { geo in
                     Rectangle().fill(Color.clear).contentShape(Rectangle())
-                        .gesture(SpatialTapGesture().onEnded { tap in
+                        // N7-7: drag across the bars to scrub (a tick per bar passed); a tap on the selected bar clears it
+                        .gesture(DragGesture(minimumDistance: 0).onChanged { g in
                             guard let plot = proxy.plotFrame else { return }
-                            let x = tap.location.x - geo[plot].origin.x
-                            guard let v: String = proxy.value(atX: x), let n = Int(v) else { return }
-                            let i = n - 1
-                            guard values.indices.contains(i) else { selectedBar = nil; return }
-                            selectedBar = selectedBar == i ? nil : i
-                            Haptics.tick()
+                            if scrubFrom == nil { scrubFrom = .some(selectedBar) }
+                            let x = g.location.x - geo[plot].origin.x
+                            guard let v: String = proxy.value(atX: x), let n = Int(v), values.indices.contains(n - 1) else { return }
+                            if selectedBar != n - 1 {
+                                selectedBar = n - 1
+                                Haptics.tick()
+                            }
+                        }.onEnded { g in
+                            let moved = abs(g.translation.width) > 6
+                            if !moved, case .some(.some(let was)) = scrubFrom, was == selectedBar { selectedBar = nil }
+                            scrubFrom = nil
                         })
                 }
             }

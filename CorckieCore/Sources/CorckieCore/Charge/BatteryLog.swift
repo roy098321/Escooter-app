@@ -51,6 +51,17 @@ public enum BatteryLog {
         return out
     }
 
+    /// N7-7: the line's value at `ms` (between two readings less than a day apart), for the scrub callout; nil in a gap
+    public static func value(at ms: Int64, in readings: [ChargeReading]) -> Double? {
+        let r = readings.sorted { $0.ms < $1.ms }
+        guard let after = r.firstIndex(where: { $0.ms >= ms }) else { return nil }
+        if r[after].ms == ms { return r[after].pct }
+        guard after > 0 else { return nil }
+        let a = r[after - 1], b = r[after]
+        guard b.ms - a.ms <= ChargeLogChart.gapMs else { return nil }
+        return a.pct + (b.pct - a.pct) * Double(ms - a.ms) / Double(b.ms - a.ms)
+    }
+
     // MARK: The average
 
     /// The time-weighted average battery level of the readings (the area under the line / its length). Pieces across a gap of
