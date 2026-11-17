@@ -315,6 +315,11 @@ struct RideDetailView: View {
         return first.replacingOccurrences(of: "~", with: "")
     }
 
+    /// N7-4: before a tile comes up its digits read 0, so the number rolls up as it appears (numericText)
+    static func countUp(_ value: String, shown: Bool) -> String {
+        shown ? value : String(value.map { $0.isNumber ? "0" : $0 })
+    }
+
     /// A4: the path draws itself, then a soft tap and the tiles fade in one by one.
     /// B53: the drawing runs on the display's timeline (RouteRevealView), not 30 steps of re-added map lines.
     /// N7-4: the intro plays after a ride ends and on the FIRST open of each ride, never on a re-open
@@ -354,12 +359,12 @@ struct RideDetailView: View {
     /// D1: six key tiles
     private func keyTiles(_ m: RideSummaryModel) -> some View {
         StatTileGrid {
-            StatTile(value: stat(m, "Time"), label: "Time").opacity(tilesShown >= 1 ? 1 : 0)
-            StatTile(value: stat(m, "Distance"), label: "Distance").opacity(tilesShown >= 2 ? 1 : 0)
-            StatTile(value: stat(m, "Avg. speed"), label: "Avg speed").opacity(tilesShown >= 3 ? 1 : 0)
-            StatTile(value: stat(m, "Battery"), label: "Battery").opacity(tilesShown >= 4 ? 1 : 0)
-            StatTile(value: stat(m, "Top speed"), label: "Top speed").opacity(tilesShown >= 5 ? 1 : 0)
-            StatTile(value: climbText(m), label: "Climb").opacity(tilesShown >= 6 ? 1 : 0)
+            StatTile(value: Self.countUp(stat(m, "Time"), shown: tilesShown >= 1), label: "Time").opacity(tilesShown >= 1 ? 1 : 0)
+            StatTile(value: Self.countUp(stat(m, "Distance"), shown: tilesShown >= 2), label: "Distance").opacity(tilesShown >= 2 ? 1 : 0)
+            StatTile(value: Self.countUp(stat(m, "Avg. speed"), shown: tilesShown >= 3), label: "Avg speed").opacity(tilesShown >= 3 ? 1 : 0)
+            StatTile(value: Self.countUp(stat(m, "Battery"), shown: tilesShown >= 4), label: "Battery").opacity(tilesShown >= 4 ? 1 : 0)
+            StatTile(value: Self.countUp(stat(m, "Top speed"), shown: tilesShown >= 5), label: "Top speed").opacity(tilesShown >= 5 ? 1 : 0)
+            StatTile(value: Self.countUp(climbText(m), shown: tilesShown >= 6), label: "Climb").opacity(tilesShown >= 6 ? 1 : 0)
         }
     }
 
