@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The glass tile of the live ride view (CONCEPT "Look and feel"): a translucent material with a thin edge, so the
 /// map stays visible behind the numbers. On iOS 26 the system "liquid glass" can replace the material later (the
-/// build SDK of CI does not have it yet); until then every iOS version gets the material.
+/// N7-0: CI now builds with the iOS 26 SDK (Xcode 26); N7-2 adds the glass behind #available(iOS 26).
 /// M6-03 (C30): in the sunlight style the glass turns into a solid panel with a black edge (`SunPanel`).
 struct GlassCard<Content: View>: View {
     var tint: Color?

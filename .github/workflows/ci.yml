@@ -64,6 +64,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Use Xcode 26 (N7-0, iOS 26 SDK for Liquid Glass; the app still targets iOS 17)
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XC" ]; then echo "No Xcode 26 on this runner:"; ls -d /Applications/Xcode*.app; exit 1; fi
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
@@ -124,6 +131,13 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - name: Use Xcode 26 (N7-0, iOS 26 SDK for Liquid Glass; the app still targets iOS 17)
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XC" ]; then echo "No Xcode 26 on this runner:"; ls -d /Applications/Xcode*.app; exit 1; fi
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
@@ -142,6 +156,13 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - name: Use Xcode 26 (N7-0, iOS 26 SDK for Liquid Glass; the app still targets iOS 17)
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XC" ]; then echo "No Xcode 26 on this runner:"; ls -d /Applications/Xcode*.app; exit 1; fi
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project

@@ -110,7 +110,7 @@ struct PlaceAddView: View {
                     .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
                     .onEnded { value in
                         if case .second(true, let drag?) = value, let c = proxy.convert(drag.location, from: .local) {
-                            Haptics.warning()
+                            Haptics.light()     // N7-8: a pin dropped
                             pin = c
                         }
                     }

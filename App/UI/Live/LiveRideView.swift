@@ -82,7 +82,7 @@ struct LiveRideView: View {
             // F-35: the picker is for a stop only; moving off closes it
             if picking, !DestinationLive.canChange(speedKmh: v) { withAnimation(.easeInOut(duration: 0.2)) { picking = false } }
         }
-        .sensoryFeedback(.selection, trigger: pickTap)
+        .onChange(of: pickTap) { _, _ in Haptics.tick() }
         .screen("Live ride")
     }
 
@@ -400,7 +400,7 @@ struct LiveRideView: View {
             HStack(spacing: 24) {
                 if s.showNotRiding {
                     Button("Not riding") { answerTap += 1; RecorderService.shared.press(.notRidingPressed) }
-                        .sensoryFeedback(.impact(weight: .medium), trigger: answerTap)
+                        .onChange(of: answerTap) { _, _ in Haptics.tick() }   // N7-8: an answer is a pick
                         .buttonStyle(.bordered)
                         .controlSize(.large)
                 }
@@ -438,7 +438,7 @@ struct LiveRideView: View {
             Text("Hold to end").font(.footnote.weight(.semibold))
         }
         .accessibilityElement(children: .combine)
-        .sensoryFeedback(trigger: holdActive) { _, new in new ? .impact(weight: .light) : nil }
+        .onChange(of: holdActive) { _, new in if new { Haptics.light() } }
         .accessibilityLabel("Hold to end the ride")
         .accessibilityHint("Press and hold for one second")
         .accessibilityAddTraits([.isButton, .allowsDirectInteraction])      // VoiceOver: the hold works by touching it directly
@@ -458,7 +458,7 @@ struct LiveRideView: View {
             holdProgress = 0
             holdActive = false
             holdTicks = 0
-            Haptics.strong()
+            Haptics.success()     // N7-8: ride saved
             RecorderService.shared.press(.endHeld)
         }
     }

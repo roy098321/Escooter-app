@@ -197,7 +197,7 @@ struct PlugAlertSheet: View {
         }
         .padding(20)
         .frame(maxHeight: .infinity, alignment: .top)
-        .sensoryFeedback(.selection, trigger: ticks)
+        .onChange(of: ticks) { _, _ in Haptics.tick() }
         .alert(alert.isRange ? "Range in km" : "Battery %", isPresented: $typing) {
             TextField(alert.isRange ? "km" : "%", text: $typed).keyboardType(.numberPad)
             Button("Cancel", role: .cancel) {}

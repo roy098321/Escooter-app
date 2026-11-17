@@ -325,7 +325,6 @@ struct RideDetailView: View {
             }
             pathReveal = 1
             revealStart = nil
-            Haptics.soft()
             for n in 1...6 {
                 withAnimation(.easeOut(duration: 0.25)) { tilesShown = n }
                 try? await Task.sleep(nanoseconds: 60_000_000)
@@ -393,7 +392,7 @@ struct RideDetailView: View {
         guard preview == nil, let id = activeId, let db = AppModel.shared.database else { return }
         do {
             try RideToolsService.trimStops(db, rideId: id, on: on)
-            Haptics.tick()
+            Haptics.light()     // N7-8: a switch
             load()
         } catch {
             errorText = error.localizedDescription
@@ -491,7 +490,7 @@ struct RideDetailView: View {
             if !o.saved {
                 HStack(spacing: 12) {
                     Button("Save route") { saveTap += 1; routeAction(o.routeId, save: true) }.buttonStyle(.borderedProminent)
-                        .sensoryFeedback(.success, trigger: saveTap)
+                        .onChange(of: saveTap) { _, _ in Haptics.success() }
                     Button("Not a route") { routeAction(o.routeId, save: false) }.buttonStyle(.bordered)
                 }
             }
@@ -688,7 +687,6 @@ struct RideDetailView: View {
         guard preview == nil, let id = activeId, let db = AppModel.shared.database else { return }
         do {
             try RideQueries(db).delete(rideId: id)
-            Haptics.warning()
             if let onDone { onDone() } else { dismiss() }
         } catch {
             errorText = error.localizedDescription

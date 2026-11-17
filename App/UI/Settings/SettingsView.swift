@@ -318,6 +318,7 @@ struct SoundsSettingsView: View {
     @State private var on: [SoundToggle: Bool] = [:]
     @State private var v09 = V09Settings.isOn
     @State private var askCue = AskCueSettings.isOn
+    @State private var vibration = !Haptics.muted
 
     var body: some View {
         List {
@@ -340,6 +341,16 @@ struct SoundsSettingsView: View {
                 Toggle("Riding ask cue", isOn: Binding(get: { askCue }, set: { v in askCue = v; AskCueSettings.isOn = v }))
             } footer: {
                 Text("On reaching the stretch your speed graph asks for: \u{201C}Straight ahead: hold 20 for 500 m.\u{201D}")
+            }
+            .glassRows()
+            Section {
+                // N7-8: one switch mutes every app haptic (on by default)
+                Toggle("Vibration", isOn: Binding(get: { vibration }, set: { v in
+                    vibration = v
+                    UserDefaults.standard.set(!v, forKey: Haptics.offKey)
+                }))
+            } footer: {
+                Text("Small taps you can feel when you pick, switch or finish something. Off turns them all off.")
             }
             .glassRows()
         }

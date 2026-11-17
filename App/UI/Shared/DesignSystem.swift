@@ -254,28 +254,47 @@ extension Label where Title == Text, Icon == Image {
 
 // MARK: Haptics (F-03)
 
-/// Standard iOS feedback for the few significant buttons. Where the view disappears with the action (end of ride, delete)
-/// the UIKit generator is used, which follows the same system "System Haptics" setting.
+/// Standard iOS feedback, all through here (they follow the system "System Haptics" setting).
+/// N7-8 (batch 7) ONE RULE: tick = picking (chip, tab, period, destination, cargo, a snap into place) · light = a switch on / off ·
+/// success = a moment worth marking (ride started / saved, charge full, backup done, saved) · warning taps = ride warnings only
+/// (SoundPlayer.warn, kept as today) · soft = the scooter connecting · none = scrolling, opening screens, ordinary buttons, deletes.
+/// Settings → Sounds → Vibration off mutes every one of them (`muted`).
 enum Haptics {
-    @MainActor static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
-    @MainActor static func warning() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
+    /// N7-8: Settings → Sounds → Vibration (off = true)
+    static let offKey = "corckie.hapticsOff"
+    static var muted: Bool { UserDefaults.standard.bool(forKey: offKey) }
+
+    @MainActor static func success() { guard !muted else { return }; UINotificationFeedbackGenerator().notificationOccurred(.success) }
+    @MainActor static func warning() { guard !muted else { return }; UINotificationFeedbackGenerator().notificationOccurred(.warning) }
 
     // F-19 (P6-3): the "alive" set. A soft tick for connecting, small ticks for selections, a firm tap for Start, a strong one to end.
     // Callable from anywhere (the recorder service is not on the main actor): the generator is used on the main actor.
-    static func soft() { onMain { UIImpactFeedbackGenerator(style: .soft).impactOccurred() } }
-    static func tick() { onMain { UISelectionFeedbackGenerator().selectionChanged() } }
-    static func light() { onMain { UIImpactFeedbackGenerator(style: .light).impactOccurred() } }
-    static func firm() { onMain { UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 0.9) } }
-    static func strong() { onMain { UIImpactFeedbackGenerator(style: .heavy).impactOccurred() } }
+    static func soft() { guard !muted else { return }; onMain { UIImpactFeedbackGenerator(style: .soft).impactOccurred() } }
+    static func tick() { guard !muted else { return }; onMain { UISelectionFeedbackGenerator().selectionChanged() } }
+    static func light() { guard !muted else { return }; onMain { UIImpactFeedbackGenerator(style: .light).impactOccurred() } }
+    static func firm() { guard !muted else { return }; onMain { UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 0.9) } }
+    static func strong() { guard !muted else { return }; onMain { UIImpactFeedbackGenerator(style: .heavy).impactOccurred() } }
 
     /// The warning pattern: medium taps 0.2 s apart (two for battery and motor, three for the destination)
     static func taps(_ n: Int) {
+        guard !muted else { return }
         for i in 0..<max(1, n) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2 * Double(i)) { onMain { UIImpactFeedbackGenerator(style: .medium).impactOccurred() } }
         }
     }
 
     private static func onMain(_ work: @escaping @MainActor () -> Void) { Task { @MainActor in work() } }
+}
+
+/// N7-8: every switch in the app gives the light tap when the rider flips it (not when the screen loads its value).
+struct HapticSwitchStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Toggle(isOn: Binding(get: { configuration.isOn }, set: { v in
+            configuration.$isOn.wrappedValue = v
+            Haptics.light()
+        })) { configuration.label }
+            .toggleStyle(.switch)
+    }
 }
 
 // MARK: Chip flow

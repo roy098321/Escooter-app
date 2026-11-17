@@ -133,7 +133,6 @@ struct ScooterHeroCard: View {
                     .buttonStyle(.plain)
                     .halo(photo != nil)
                     .accessibilityLabel("Connect")
-                    .sensoryFeedback(.impact(weight: .medium), trigger: connectTap)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(20)

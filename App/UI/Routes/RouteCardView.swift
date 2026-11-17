@@ -127,7 +127,7 @@ struct RouteCardView: View {
             Text("Save as route?").font(.headline)
             HStack(spacing: 12) {
                 Button("Save route") { saveTap += 1; setSaved(true) }.buttonStyle(.borderedProminent)
-                    .sensoryFeedback(.success, trigger: saveTap)
+                    .onChange(of: saveTap) { _, _ in Haptics.success() }
                 Button("Not a route") { setSaved(false) }.buttonStyle(.bordered)
             }
         }

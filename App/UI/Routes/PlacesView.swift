@@ -46,7 +46,7 @@ struct PlacesView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .sensoryFeedback(.impact(weight: .light), trigger: dropTick)
+                .onChange(of: dropTick) { _, _ in Haptics.tick() }
             }
         }
         .background { MapBackdrop().ignoresSafeArea() }
@@ -209,7 +209,7 @@ struct PlacesView: View {
     }
 
     private func toggleHome(_ place: PlaceMapItem) {
-        Haptics.tick()
+        Haptics.light()     // N7-8: a switch
         if pins[place.id] != nil { return writePins(QuickDialSlot.unpin(place.id, in: pins)) }
         switch QuickDialSlot.pin(place.id, in: pins) {
         case .pinned(let next): writePins(next)

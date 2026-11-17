@@ -442,7 +442,7 @@ struct HomeView: View {
     /// The sheet: choosing the one already chosen keeps it; nil = no destination. The place the phone is in cannot be chosen (B46).
     private func pickRoute(_ id: String?) {
         if let id, let chip = shownChips.first(where: { $0.routeId == id }), chip.here {
-            Haptics.soft()
+            // N7-8: the place you're at does nothing, so no haptic
             flashHere(chip.label)
             return
         }
@@ -460,7 +460,7 @@ struct HomeView: View {
     /// tick and the line says "You're at Home" (B46).
     private func quickTapped(_ item: QuickDialItem) {
         if item.here {
-            Haptics.soft()
+            // N7-8: the place you're at does nothing, so no haptic
             flashHere(item.name)
             return
         }
@@ -755,7 +755,7 @@ private struct WhereToSheet: View {
                 Text("Where to?").font(.headline).fontDesign(.rounded)
                 Spacer()
                 if canEdit {
-                    Button(editing ? "Done" : "Edit") { Haptics.tick(); withAnimation(.easeInOut(duration: 0.2)) { editing.toggle() } }
+                    Button(editing ? "Done" : "Edit") { withAnimation(.easeInOut(duration: 0.2)) { editing.toggle() } }
                         .font(.body.weight(.semibold))
                         .frame(minHeight: DS.hit)
                 }
@@ -899,7 +899,7 @@ private struct WhereToSheet: View {
 
     private func togglePin(_ r: WhereToRow) {
         guard let id = r.placeId else { return }
-        Haptics.tick()
+        Haptics.light()     // N7-8: a pin is a switch
         if pins[id] != nil {
             onPins(QuickDialSlot.unpin(id, in: pins))
         } else {

@@ -61,7 +61,7 @@ struct MissedRideView: View {
             cause = MissedRideReports.save(when: w, roughStartMs: start, auto: false)
             saving = false
             saved = true
-            Haptics.soft()
+            Haptics.success()
         }
     }
 

@@ -71,7 +71,6 @@ struct RideLevelCard: View {
                     Button("Not here") {
                         RidingAskState.addNotHere(spot.key)
                         skipped += 1
-                        Haptics.tick()
                     }
                     .font(.footnote.weight(.semibold))
                     .buttonStyle(.bordered)
