@@ -95,7 +95,13 @@ struct ScooterHeroCard: View {
                 } else {
                 VStack(alignment: .trailing, spacing: 6) {
                     HStack(spacing: 6) {
-                        Circle().fill(connected ? Theme.ok : Theme.accent).frame(width: 9, height: 9)
+                        // N7-5: connect → the scooter glyph turns green and bounces; disconnect → it fades back to grey
+                        Image(systemName: "scooter")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(connected ? Theme.ok : Color.secondary)
+                            .bounceOnce(connected)
+                            .animation(.easeInOut(duration: 0.4), value: connected)
+                            .accessibilityHidden(true)
                         Text(name).font(.title3.weight(.semibold)).lineLimit(2).multilineTextAlignment(.trailing)
                     }
                     HStack(spacing: 4) {
