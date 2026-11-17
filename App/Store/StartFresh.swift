@@ -64,7 +64,13 @@ enum StartFresh {
                     try d.execute(sql: "UPDATE main.scooter SET forgottenAt = COALESCE(forgottenAt, ?) WHERE id = ?", arguments: [nowMs, id])
                 }
                 for table in bringBackTables {
-                    try d.execute(sql: "INSERT OR IGNORE INTO main.\"\(table)\" SELECT * FROM bk.\"\(table)\"")
+                    // N6-1: name the columns both databases have, so a backup from before a later migration (e.g. v5 place.removedAt)
+                    // still comes back; a column the backup lacks keeps its default
+                    let mainCols = try String.fetchAll(d, sql: "SELECT name FROM pragma_table_info(?, 'main')", arguments: [table])
+                    let bkCols = Set(try String.fetchAll(d, sql: "SELECT name FROM pragma_table_info(?, 'bk')", arguments: [table]))
+                    let cols = mainCols.filter { bkCols.contains($0) }.map { "\"\($0)\"" }.joined(separator: ", ")
+                    guard !cols.isEmpty else { continue }
+                    try d.execute(sql: "INSERT OR IGNORE INTO main.\"\(table)\" (\(cols)) SELECT \(cols) FROM bk.\"\(table)\"")
                 }
                 let untagged = try Int.fetchOne(d, sql: "SELECT COUNT(*) FROM main.ride WHERE scooterId IS NULL AND id IN (SELECT id FROM bring_ids)") ?? 0
                 if untagged > 0 {

@@ -22,6 +22,25 @@ struct RouteQueries {
         try writer.read { db in try PlaceRecord.order(Column("createdAt"), Column("id")).fetchAll(db) }
     }
 
+    /// N6-1: the places in use (not removed): Where to, quick dial, Places, map pins and new-ride matching read these. History
+    /// (past rides, route names, stats) keeps reading `places()` / `place(id:)`, which include removed places.
+    func activePlaces() throws -> [PlaceRecord] {
+        try writer.read { db in try PlaceRecord.filter(Column("removedAt") == nil).order(Column("createdAt"), Column("id")).fetchAll(db) }
+    }
+
+    /// N6-1: removed places, newest removal first (Places → Removed places).
+    func removedPlaces() throws -> [PlaceRecord] {
+        try writer.read { db in try PlaceRecord.filter(Column("removedAt") != nil).order(Column("removedAt").desc).fetchAll(db) }
+    }
+
+    /// N6-1: stamp (remove) or clear (put back) a place. No row is ever dropped.
+    func setRemoved(placeId: String, at: Int64?) throws {
+        try requireWritable()
+        try writer.write { db in
+            try db.execute(sql: "UPDATE place SET removedAt = ? WHERE id = ?", arguments: [at, placeId])
+        }
+    }
+
     func routes() throws -> [RouteRecord] {
         try writer.read { db in try RouteRecord.order(Column("createdAt"), Column("id")).fetchAll(db) }
     }

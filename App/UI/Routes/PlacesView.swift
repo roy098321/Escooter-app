@@ -20,12 +20,15 @@ struct PlacesView: View {
     @State private var replacingFor: String?
     @State private var dropTick = 0
     @State private var errorText: String?
+    /// N6-1: removed places (newest first) and whether their list is open
+    @State private var removed: [PlaceRecord] = []
+    @State private var showRemoved = false
 
     private var shown: [PlaceMapItem] { preview ?? items }
 
     var body: some View {
         Group {
-            if shown.isEmpty {
+            if shown.isEmpty && removed.isEmpty {
                 ContentUnavailableView("No places yet", systemImage: "mappin.slash",
                                        description: Text("Places appear when you ride the same trip twice, or add one with the + above."))
             } else {
@@ -39,6 +42,7 @@ struct PlacesView: View {
                             .listRowSeparator(.hidden)
                     }
                     .onMove { from, to in move(from, to) }
+                    if !removed.isEmpty { removedRow }
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
@@ -78,6 +82,61 @@ struct PlacesView: View {
         }
         .onAppear(perform: reload)
         .screen("Places")
+    }
+
+    /// N6-1 (B95): one quiet row at the bottom (P-7: behind a tap); the sheet lists the removed places with Put back
+    private var removedRow: some View {
+        Button { showRemoved = true } label: {
+            HStack {
+                Text("Removed places").font(.subheadline)
+                Spacer()
+                Text("\(removed.count)").font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary).accessibilityHidden(true)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .moveDisabled(true)
+        .listRowInsets(EdgeInsets(top: 8, leading: DS.Space.gutter + 4, bottom: 8, trailing: DS.Space.gutter + 4))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .sheet(isPresented: $showRemoved) { removedSheet }
+    }
+
+    private var removedSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(removed, id: \.id) { p in
+                        HStack {
+                            Text(PlaceListBuilder.row(id: p.id, name: p.name, radiusM: p.radiusM, canCharge: p.canCharge, routeCount: 0).title)
+                            Spacer()
+                            Button("Put back") { putBack(p.id) }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                        }
+                    }
+                } footer: {
+                    Text("Removed places stay on your past rides. Put one back to use it again.")
+                }
+            }
+            .navigationTitle("Removed places")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { showRemoved = false } }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func putBack(_ placeId: String) {
+        guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
+        do { try PlaceService.putBack(placeId: placeId, database: db) } catch { errorText = error.localizedDescription }
+        Haptics.success()
+        reload()
+        if removed.isEmpty { showRemoved = false }
     }
 
     private func row(_ place: PlaceMapItem) -> some View {
@@ -178,5 +237,6 @@ struct PlacesView: View {
         items = PlaceOrder.apply(all.map(\.id), saved: saved).compactMap { id in all.first { $0.id == id } }
         icons = QuickDialLoader.icons(db)
         pins = QuickDialLoader.pins(db)
+        removed = (try? RouteQueries(db).removedPlaces()) ?? []
     }
 }

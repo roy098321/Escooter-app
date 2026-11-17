@@ -111,7 +111,7 @@ enum QuickDialLoader {
         var failures: [String] = []
         var allPlaces: [PlaceRecord] = []
         var allRoutes: [RouteRecord] = []
-        do { allPlaces = try store.places() } catch { failures.append("places: \(error.localizedDescription)") }
+        do { allPlaces = try store.activePlaces() } catch { failures.append("places: \(error.localizedDescription)") }
         do { allRoutes = try store.routes() } catch { failures.append("routes: \(error.localizedDescription)") }
         lastFailure = failures.isEmpty ? nil : failures.joined(separator: "; ")
         let places = allPlaces.filter { !($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty }

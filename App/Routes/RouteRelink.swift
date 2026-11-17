@@ -52,7 +52,7 @@ enum RouteRelink {
         guard !database.isReadOnly else { return 0 }
         let store = RouteQueries(database)
         let outlines = PlaceOutlineStore.all(database)   // note 18
-        let named = try store.places().filter { !($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
+        let named = try store.activePlaces().filter { !($0.name ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
             .map { WhereToDedupe.NamedPlace(id: $0.id, name: $0.name ?? "", center: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM,
                                             outline: outlines[$0.id]) }
         guard !named.isEmpty else { return 0 }

@@ -191,7 +191,7 @@ struct RoutesListView: View {
             return
         }
         model = RouteCardLoader.list(database: db, battery: BatteryNowSource.current(database: db))
-        placeCount = (try? RouteQueries(db).places().count) ?? 0
+        placeCount = (try? RouteQueries(db).activePlaces().count) ?? 0
     }
 }
 

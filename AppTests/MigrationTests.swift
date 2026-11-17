@@ -31,7 +31,7 @@ final class MigrationTests: XCTestCase {
         let db = try AppDatabase(url: folder.appendingPathComponent("corckie.sqlite"), build: "test-1")
         XCTAssertFalse(db.isReadOnly)
         XCTAssertNil(db.preMigrationCopy, "nothing to back up on a fresh install")
-        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3", "v4"])
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3", "v4", "v5"])
         let counts = try db.rowCounts()
         XCTAssertEqual(Set(counts.keys), Set(Migration0001.tables))
         XCTAssertEqual(counts["app_meta"], 1)
@@ -72,7 +72,7 @@ final class MigrationTests: XCTestCase {
         let db = try AppDatabase(url: url, build: "test-3", migrator: migrator)
         let copy = try XCTUnwrap(db.preMigrationCopy)
         XCTAssertTrue(FileManager.default.fileExists(atPath: copy.path))
-        XCTAssertEqual(db.migratedNow, ["v2", "v2-test", "v3", "v4"])
+        XCTAssertEqual(db.migratedNow, ["v2", "v2-test", "v3", "v4", "v5"])
         let copiedRides = try DatabaseQueue(path: copy.path).read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM ride") }
         XCTAssertEqual(copiedRides, 3)
 
@@ -136,8 +136,8 @@ final class MigrationTests: XCTestCase {
         let db = try AppDatabase(url: url, build: "test-t02c")
         XCTAssertFalse(db.isReadOnly)
         XCTAssertNotNil(db.preMigrationCopy, "v4 migrates existing data, so a copy is written first")
-        XCTAssertEqual(db.migratedNow, ["v4"])
-        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3", "v4"])
+        XCTAssertEqual(db.migratedNow, ["v4", "v5"])
+        XCTAssertEqual(try db.appliedMigrations(), ["v1", "v2", "v3", "v4", "v5"])
         let after = try db.allRowCounts()
         for (table, count) in before {
             XCTAssertGreaterThanOrEqual(after[table] ?? 0, count, "rows lost in \(table)")
@@ -162,7 +162,7 @@ final class MigrationTests: XCTestCase {
             try db.execute(sql: "ALTER TABLE ride ADD COLUMN futureColumn TEXT")
         }
         let db = try AppDatabase(url: url, build: "test-t02d", migrator: migrator)
-        XCTAssertEqual(db.migratedNow, ["v4", "v5-test"])
+        XCTAssertEqual(db.migratedNow, ["v4", "v5", "v5-test"])
         XCTAssertNotNil(db.preMigrationCopy)
         let counts = try XCTUnwrap(db.updateCounts)
         XCTAssertEqual(counts.before, before)

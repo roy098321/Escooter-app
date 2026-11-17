@@ -99,12 +99,14 @@ enum RouteProcessor {
 
     static func loadBook(_ store: RouteQueries, outlines: [String: [GeoPoint]] = [:]) throws -> RouteBook {
         var book = RouteBook()
-        for p in try store.places() {
+        // N6-1: a removed place is out of the matching of new rides, and so are the routes to or from it (their past rides keep them)
+        let removed = Set(try store.removedPlaces().map(\.id))
+        for p in try store.activePlaces() {
             book.places.append(PlaceInfo(id: p.id, name: p.name, point: GeoPoint(lat: p.lat, lon: p.lon), radiusM: p.radiusM, canCharge: p.canCharge,
                                          outline: outlines[p.id]))
         }
         for r in try store.routes() {
-            guard let from = r.fromPlaceId, let to = r.toPlaceId else { continue }
+            guard let from = r.fromPlaceId, let to = r.toPlaceId, !removed.contains(from), !removed.contains(to) else { continue }
             book.routes.append(RouteInfo(id: r.id, fromPlaceId: from, toPlaceId: to, name: r.name, usualDistanceM: r.usualDistanceM ?? 0,
                                          state: RouteState(rawValue: r.state) ?? .suggested, sizeClass: r.sizeClass))
         }
@@ -236,5 +238,17 @@ enum PlaceService {
 
     static func setCanCharge(placeId: String, canCharge: Bool, database: AppDatabase) throws {
         try RouteQueries(database).setCanCharge(placeId: placeId, canCharge: canCharge)
+    }
+
+    /// N6-1 (B95): remove a place, keep its history. It also leaves the Home quick dial.
+    static func remove(placeId: String, database: AppDatabase, nowMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) throws {
+        try RouteQueries(database).setRemoved(placeId: placeId, at: nowMs)
+        let pins = QuickDialLoader.pins(database)
+        if pins[placeId] != nil { try QuickDialLoader.writePins(QuickDialSlot.unpin(placeId, in: pins), database: database) }
+    }
+
+    /// N6-1: Removed places → Put back.
+    static func putBack(placeId: String, database: AppDatabase) throws {
+        try RouteQueries(database).setRemoved(placeId: placeId, at: nil)
     }
 }

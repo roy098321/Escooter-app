@@ -61,7 +61,7 @@ enum PlaceMapLoader {
         let colours = PlaceColourStore.colours(database: database)
         let routes = ((try? store.routes()) ?? []).filter { $0.state != "dismissed" }
         let outlines = PlaceOutlineStore.all(database)   // note 18
-        return ((try? store.places()) ?? []).map { p in
+        return ((try? store.activePlaces()) ?? []).map { p in
             let count = routes.filter { $0.fromPlaceId == p.id || $0.toPlaceId == p.id }.count
             let colour = colours[p.id] ?? "orange"
             return PlaceMapItem(id: p.id, row: PlaceListBuilder.row(id: p.id, name: p.name, radiusM: p.radiusM, canCharge: p.canCharge,

@@ -71,6 +71,8 @@ struct PlaceMapView: View {
     @State private var askCircle = false
     /// N4-1: the centre editor is open
     @State private var movingCentre = false
+    /// N6-1: "Remove place?" is asked
+    @State private var askRemove = false
     @Environment(\.dismiss) private var dismiss
 
     private var shown: PlaceMapItem? { preview ?? item }
@@ -123,6 +125,21 @@ struct PlaceMapView: View {
         } message: {
             Text("The outline you drew is removed.")
         }
+        .confirmationDialog("Remove \(shown?.row.title ?? "this place")?", isPresented: $askRemove, titleVisibility: .visible) {
+            Button("Remove place", role: .destructive) {
+                guard preview == nil, let place = item, let db = AppModel.shared.displayDatabase else { return }
+                do {
+                    try PlaceService.remove(placeId: place.id, database: db)
+                    Haptics.success()
+                    dismiss()
+                } catch {
+                    errorText = error.localizedDescription
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("It leaves Where to, Home and the maps. Past rides keep its name. Places → Removed places puts it back.")
+        }
         .hidesTabBar()                // B28: the place screen has actions; nothing may sit under the bar
         .screen("Place")
     }
@@ -148,6 +165,12 @@ struct PlaceMapView: View {
                 titleCard(place)
                 settingsCard(place)
                 if place.row.hasName { PlaceHomeCard(placeId: place.id, name: place.row.title, colourId: place.colourId, preview: preview != nil) }   // F-29
+                // N6-1 (B95): remove the place, keep its history
+                Button(role: .destructive) { askRemove = true } label: {
+                    Label("Remove place", systemImage: "trash").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .padding(.top, 4)
             }
         }
     }

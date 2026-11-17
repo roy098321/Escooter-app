@@ -83,7 +83,7 @@ final class ChargeTimer {
         let o = BatteryOverview.load(db, currentPct: lastReading().map { Double($0.pct) } ?? 50, connected: false)
         let q = RouteQueries(db)
         var best: (name: String, need: Double, n: Int)?
-        for p in (try? q.places()) ?? [] {
+        for p in (try? q.activePlaces()) ?? [] {
             guard let name = p.name, !name.isEmpty,
                   let rides = try? q.placeRides(placeId: p.id) else { continue }
             let used = rides.compactMap(\.usedPct).filter { $0 > 0 }

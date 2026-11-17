@@ -83,7 +83,7 @@ enum RouteCardLoader {
     static func places(database: AppDatabase) -> [PlaceRowModel] {
         let store = RouteQueries(database)
         let routes = ((try? store.routes()) ?? []).filter { $0.state != "dismissed" }
-        return ((try? store.places()) ?? []).map { p in
+        return ((try? store.activePlaces()) ?? []).map { p in
             let count = routes.filter { $0.fromPlaceId == p.id || $0.toPlaceId == p.id }.count
             return PlaceListBuilder.row(id: p.id, name: p.name, radiusM: p.radiusM, canCharge: p.canCharge, routeCount: count)
         }

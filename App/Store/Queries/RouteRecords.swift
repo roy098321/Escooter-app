@@ -18,6 +18,10 @@ struct PlaceRecord: Codable, FetchableRecord, PersistableRecord, Equatable {
     var canCharge: Bool = false
     var learnedAltM: Double?
     var createdAt: Int64?
+    /// N6-1: removed by the rider (ms); nil = in use. Removed places stay for history only.
+    var removedAt: Int64? = nil
+
+    var isRemoved: Bool { removedAt != nil }
 }
 
 /// `route`: A to B, one direction.

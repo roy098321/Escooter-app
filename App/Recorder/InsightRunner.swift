@@ -154,7 +154,7 @@ enum InsightRunner {
         // Q1-live: no route picked, a confident destination guess from the start place
         if routeId == nil, let lat, let lon {
             let outlines = PlaceOutlineStore.all(database)   // note 18
-            let places = ((try? routes.places()) ?? []).map {
+            let places = ((try? routes.activePlaces()) ?? []).map {
                 PlaceInfo(id: $0.id, name: $0.name, point: GeoPoint(lat: $0.lat, lon: $0.lon), radiusM: $0.radiusM, canCharge: $0.canCharge,
                           outline: outlines[$0.id])
             }
