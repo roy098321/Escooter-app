@@ -58,7 +58,13 @@ struct ChargingBlock: View {
         VStack(alignment: .trailing, spacing: 6) {
             HStack(spacing: 6) {
                 Text(session.scooterName).font(.title3.weight(.semibold)).lineLimit(1)
-                Image(systemName: "bolt.fill").font(.footnote).foregroundStyle(Theme.accent).pulseWhile(true)   // N7-5: charging
+                // N7-5: charging pulses; at the rider's target the icon turns into a green battery and hops once
+                let reached = ChargeModel.targetPct(session).map { pct >= Double($0) } ?? false
+                Image(systemName: reached ? "battery.100percent" : "bolt.fill").font(.footnote)
+                    .foregroundStyle(reached ? Theme.ok : Theme.accent)
+                    .pulseWhile(!reached)
+                    .bounceOnce(reached)
+                    .contentTransition(.symbolEffect(.replace))
                 Text("charging").font(.title3.weight(.semibold)).foregroundStyle(Theme.accentInk)
             }
             Text("\u{2248} \(Int(pct.rounded()))%")

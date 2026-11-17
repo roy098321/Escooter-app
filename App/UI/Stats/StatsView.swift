@@ -26,6 +26,9 @@ struct StatsView: View {
     @State private var scrubFrom: Int??
     /// N7-3: Stats cards grow into their detail
     @Namespace private var zoomSpace
+    /// N7-5: the ₪ hops once when the savings pass a new milestone (₪100, 250, 500, 1000, …)
+    @State private var shekelHop = 0
+    static let savingsMilestones: [Double] = [100, 250, 500, 1_000, 2_500, 5_000, 10_000]
 
     private var span: StatsSpan { StatsSpan(rawValue: spanRaw) ?? .week }
     private var mode: StatsMode { StatsMode(rawValue: modeRaw) ?? .calendar }
@@ -163,6 +166,16 @@ struct StatsView: View {
         if m.totals.fuelSavedIls != nil {
             SectionHeader("Money") { InfoButton("Money", info: Self.moneyInfo(m)) }
             HStack {
+                Image(systemName: "shekelsign.circle.fill").font(.title2).foregroundStyle(Theme.accent)
+                    .bounceOnce(shekelHop)
+                    .accessibilityHidden(true)
+                    .onAppear {
+                        let passed = Self.savingsMilestones.filter { Self.shownSaved(m) >= $0 }.count
+                        let key = "stats.savingsMilestone"
+                        guard passed > UserDefaults.standard.integer(forKey: key) else { return }
+                        UserDefaults.standard.set(passed, forKey: key)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { shekelHop += 1 }
+                    }
                 Text(StatsCalc.money(max(0, Self.shownSaved(m))))
                     .scaledFont(28, weight: .semibold, mono: true, relativeTo: .title)
                     .foregroundStyle(Theme.accentInk)
