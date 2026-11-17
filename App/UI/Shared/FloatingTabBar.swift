@@ -67,19 +67,33 @@ struct FloatingTabBar: View {
                 onReselect(item.id)
             } else {
                 Haptics.tick()
-                withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.3)) { selection = item.id }
+                withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.34, dampingFraction: 0.78)) { selection = item.id }
             }
         } label: {
-            Image(systemName: item.symbol)
-                .symbolVariant(on ? .fill : .none)
-                .font(.system(size: 20, weight: on ? .semibold : .regular))
-                .foregroundStyle(on ? Theme.onAccent : Color.secondary)
-                .frame(width: Self.pillWidth, height: Self.pillHeight)
-                .background { if on { Capsule().fill(Theme.accent).matchedGeometryEffect(id: "pill", in: pillSpace) } }
-                .frame(maxWidth: .infinity, minHeight: Self.barHeight)
-                .contentShape(Rectangle())
+            // N6-6 (batch 6): the selected tab widens and shows its name next to the icon; the others stay icon-only
+            HStack(spacing: 6) {
+                Image(systemName: item.symbol)
+                    .symbolVariant(on ? .fill : .none)
+                    .font(.system(size: 20, weight: on ? .semibold : .regular))
+                if on {
+                    Text(item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .fixedSize()
+                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.6, anchor: .leading)))
+                }
+            }
+            .foregroundStyle(on ? Theme.onAccent : Color.secondary)
+            .padding(.horizontal, on ? 14 : 0)
+            .frame(minWidth: Self.pillWidth, minHeight: Self.pillHeight)
+            .background { if on { Capsule().fill(Theme.accent).matchedGeometryEffect(id: "pill", in: pillSpace) } }
+            .frame(maxWidth: on ? nil : .infinity, minHeight: Self.barHeight)
+            .padding(.horizontal, on ? 4 : 0)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .layoutPriority(on ? 1 : 0)
         .accessibilityLabel(item.title)
         .accessibilityAddTraits(on ? .isSelected : [])
     }
@@ -200,6 +214,17 @@ private struct FloatingTabBarHost: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.hasFloatingTabBar, true)
+            // N6-3: lists fade out above the bar instead of a hard cut (only while the bar is there)
+            .scrollFadeEdges(bottom: visibility.hidden ? 0 : 36)
+            .animation(.easeInOut(duration: 0.2), value: visibility.hidden)
+            // N6-4: a soft blur behind the bar
+            .overlay(alignment: .bottom) {
+                ProgressiveBlur(edge: .bottom)
+                    .frame(height: FloatingTabBar.clearance + 8)
+                    .ignoresSafeArea(edges: .bottom)
+                    .opacity(visibility.hidden ? 0 : 1)
+                    .animation(.easeInOut(duration: 0.2), value: visibility.hidden)
+            }
             .overlay(alignment: .bottom) {
                 FloatingTabBar(selection: $selection, onReselect: onReselect)
                     .offset(y: visibility.hidden && !reduceMotion ? FloatingTabBar.barHeight + 60 : 0)

@@ -42,6 +42,11 @@ struct MapScreen<MapContent: View, TopBar: View, Side: View, Content: View>: Vie
                     .frame(height: mapHeight)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea(.container, edges: .top)
+                // N6-4: a soft blur behind the top bar over the map
+                ProgressiveBlur(edge: .top)
+                    .frame(height: inset + 64)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea(.container, edges: .top)
                 VStack(spacing: 0) {
                     controls
                         .frame(height: max(0, mapHeight - inset - overlap), alignment: .top)
@@ -76,6 +81,7 @@ struct MapScreen<MapContent: View, TopBar: View, Side: View, Content: View>: Vie
         .contentMargins(.bottom, hasBar ? FloatingTabBar.clearance : 12, for: .scrollContent)
         .scrollBounceBehavior(.basedOnSize)
         .stiffBounce()
+        .scrollFadeEdges(top: 18)      // N6-3: the numbers fade under the sheet's top edge
         .background(Theme.background, in: shape)
         .clipShape(shape)
     }

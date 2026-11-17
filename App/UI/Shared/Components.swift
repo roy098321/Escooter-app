@@ -236,6 +236,9 @@ struct StatusPill: View {
 struct SectionHeader<Trailing: View>: View {
     let title: String
     private let trailing: Trailing
+    /// N6-5: the ⓘ explanation open under this header (nil = closed)
+    @State private var open: InfoAccordion.Open?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(_ title: String, @ViewBuilder trailing: () -> Trailing) {
         self.title = title
@@ -243,17 +246,65 @@ struct SectionHeader<Trailing: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(title.uppercased())
-                .font(.caption.weight(.semibold))
-                .tracking(0.4)
-                .foregroundStyle(Theme.sectionLabel)
-                .accessibilityAddTraits(.isHeader)
-            trailing
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Text(title.uppercased())
+                    .font(.caption.weight(.semibold))
+                    .tracking(0.4)
+                    .foregroundStyle(Theme.sectionLabel)
+                    .accessibilityAddTraits(.isHeader)
+                trailing
+                    .environment(\.infoAccordion, InfoAccordion(openTitle: open?.title) { title, info in
+                        withAnimation(InfoAccordion.animation(reduceMotion: reduceMotion)) {
+                            open = open?.title == title ? nil : InfoAccordion.Open(title: title, info: info)
+                        }
+                    })
+                Spacer(minLength: 0)
+            }
+            if let open {
+                InfoDetails(title: open.title, info: open.info, showTitle: false)
+                    .padding(DS.Space.cardPad)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .glassCard(padding: 0)
+                    .padding(.top, 6)
+                    .transition(InfoAccordion.transition(reduceMotion: reduceMotion))
+            }
         }
         .padding(.top, 16)
         .padding(.bottom, 6)
+    }
+}
+
+/// N6-5 (batch 6): an ⓘ inside a `SectionHeader` opens its explanation in place, under the header, with a gentle spring
+/// (Reduce Motion: a fade); a second tap closes it. An ⓘ anywhere else keeps the sheet.
+struct InfoAccordion {
+    struct Open: Equatable {
+        var title: String
+        var info: InfoContent
+    }
+
+    /// the title whose explanation is open under this header
+    var openTitle: String?
+    var toggle: (String, InfoContent) -> Void
+
+    static func animation(reduceMotion: Bool) -> Animation {
+        MotionStyle.pick(reduceMotion: reduceMotion) == .fade ? .easeInOut(duration: MotionStyle.fadeS) : .spring(response: 0.38, dampingFraction: 0.72)
+    }
+
+    static func transition(reduceMotion: Bool) -> AnyTransition {
+        MotionStyle.pick(reduceMotion: reduceMotion) == .fade ? .opacity : .asymmetric(insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.96, anchor: .top)),
+                                              removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+    }
+}
+
+private struct InfoAccordionKey: EnvironmentKey {
+    static let defaultValue: InfoAccordion? = nil
+}
+
+extension EnvironmentValues {
+    var infoAccordion: InfoAccordion? {
+        get { self[InfoAccordionKey.self] }
+        set { self[InfoAccordionKey.self] = newValue }
     }
 }
 
@@ -284,16 +335,23 @@ struct InfoButton: View {
         self.init(title, info: InfoContent(lead: text))
     }
 
+    @Environment(\.infoAccordion) private var accordion
+
+    private var isOpen: Bool { accordion?.openTitle == title }
+
     var body: some View {
-        Button { open = true } label: {
-            Image(systemName: "info.circle")
+        Button {
+            if let accordion { accordion.toggle(title, info) } else { open = true }   // N6-5: in place under a header
+        } label: {
+            Image(systemName: isOpen ? "xmark.circle.fill" : "info.circle")
+                .contentTransition(.symbolEffect(.replace))
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Theme.canyon)
                 .frame(minWidth: DS.hit, minHeight: DS.hit / 1.5)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("About \(title)")
+        .accessibilityLabel(isOpen ? "Close about \(title)" : "About \(title)")
         .sheet(isPresented: $open) {
             InfoSheet(title: title, info: info)
                 .presentationDetents([.medium, .large])
@@ -315,22 +373,33 @@ struct InfoSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(title).font(.headline).fontDesign(.rounded)
-                    Text(info.lead).font(.body).fixedSize(horizontal: false, vertical: true)
-                    if !info.formula.isEmpty { formulaBox }
-                    if !info.basedOn.isEmpty { basedOnBox }
-                    if let caveat = info.caveat {
-                        Text(caveat).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
-                .padding(.bottom, 20)
+                InfoDetails(title: title, info: info, showTitle: true)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 24)
+                    .padding(.bottom, 20)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
+    }
+}
+
+/// The explanation itself: the same in the sheet and in the N6-5 accordion.
+struct InfoDetails: View {
+    let title: String
+    let info: InfoContent
+    var showTitle = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if showTitle { Text(title).font(.headline).fontDesign(.rounded) }
+            Text(info.lead).font(showTitle ? .body : .subheadline).fixedSize(horizontal: false, vertical: true)
+            if !info.formula.isEmpty { formulaBox }
+            if !info.basedOn.isEmpty { basedOnBox }
+            if let caveat = info.caveat {
+                Text(caveat).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var formulaBox: some View {
