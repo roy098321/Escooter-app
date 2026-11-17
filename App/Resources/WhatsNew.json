@@ -1,5 +1,41 @@
 [
   {
+    "version": "107.061226.00",
+    "headline": "The app comes alive",
+    "items": [
+      {
+        "symbol": "platter.filled.top.iphone",
+        "title": "Your scooter on the Lock Screen",
+        "line": "When the scooter connects, a card shows km left with a Start ride button. While riding it quietly shows Recording, and at your destination End ride or Keep going."
+      },
+      {
+        "symbol": "point.topleft.down.to.point.bottomright.curvepath",
+        "title": "Your ride draws itself",
+        "line": "After a ride, and the first time you open one, the route draws in its speed colours with a sound and a buzz you can feel that follows your speed."
+      },
+      {
+        "symbol": "switch.2",
+        "title": "Start from Control Center",
+        "line": "Add Free ride or Ride to next to Control Center or the Action button, or ask Siri: \"Ride to Work in CorckieApp\"."
+      },
+      {
+        "symbol": "hand.draw",
+        "title": "Touch the charts",
+        "line": "Drag across Stats bars or the Battery log to read each day or moment."
+      }
+    ],
+    "smallerFixes": 7,
+    "full": [
+      "On iOS 26 the tab bar, map buttons and live tiles are Liquid Glass. Sunlight mode keeps solid panels.",
+      "Cards grow into their screens and shrink back when you swipe down (iOS 18).",
+      "Icons react: Start squishes, the bag hops when you pick a load, the charging bolt pulses, the gear turns.",
+      "While charging, the Battery card glows softly; it turns green-gold when full.",
+      "New sounds for connecting, starting, ending, plugging in, a full charge and saving. Settings → Sounds → Charging and saving turns the new ones off.",
+      "One clear rule for vibration, and Settings → Sounds → Vibration turns it all off.",
+      "Ride, route and place lists shrink a little at the edges as you scroll."
+    ]
+  },
+  {
     "version": "106.291126.00",
     "headline": "Calmer screens, safer backups",
     "items": [

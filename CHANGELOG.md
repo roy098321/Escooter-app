@@ -2,6 +2,23 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 107.061226.00 — batch 7, due Sun 6 Dec 2026 (UI elevate round 2)
+
+- N7-0: CI builds with Xcode 26 (iOS 26 SDK); the app still targets iOS 17.
+- N7-1: scooter Live Activity / Dynamic Island: Ready on connect (km left, destination, Start ride / Change, gone after 2 min), Riding ("Recording", grey when GPS is lost), Arrived (End ride / Keep going). Charging adds "Enough for <place> by HH:MM". No alerts during a ride.
+- N7-2: Liquid Glass on iOS 26 for the tab bar, map top bars and buttons, layer control, map sheet and Live tiles; the selected tab keeps its solid orange pill; Sunlight mode and Reduce Transparency keep today's look.
+- N7-3: zoom transition (iOS 18): Rides, Routes, Places and Stats cards grow into their screens.
+- N7-4: the route draws itself after a ride and on its first open; one length curve (0.6–1.8 s) for the line, the replay sound and a speed-following Core Haptics buzz ending in a thump.
+- N7-5 (part 1): icon moments: Start squish and morph, connected bounce, cargo hop, gear turn, tab hop, motor-hot wiggle, charging pulse, searching waves, saved bounce.
+- N7-6: charging glow on the Battery card, Scooter photo rim and Home charge line; green-gold when full; none in Sunlight mode.
+- N7-7 (part 1): drag-to-scrub with callouts on Stats bars and the Battery log; VoiceOver per bar.
+- N7-8: one haptic rule (tick / light / success / ride warnings), a light tap on every switch, Settings → Sounds → Vibration mutes them all.
+- N7-9: Control Center controls Free ride and Ride to next (iOS 18); Siri / Spotlight "Ride to <place>".
+- N7-11 (part 1): the live screen settles into the summary.
+- N7-12: the sound family (synth drafts): new connect, ride start, ride end, arrival, ride replay, plugged in, charge full, saved; one warning sound for all three warnings; switch "Charging and saving".
+- N7-13: scroll-reactive cards on Rides, Routes and Places.
+- Guard tests: Batch107GuardTests, RouteDrawTests, BatteryLogTests (value at).
+
 ## 106.291126.00 — batch 6, due Sun 29 Nov 2026 (calmer screens, safer backups)
 
 - N6-1 (B95): Remove place (place screen, with a confirm) keeps its history: it leaves Where to, quick dial, Places, map pins and the matching of new rides; past rides, routes and stats keep the name. Places → Removed places → Put back. Database v5 adds `place.removedAt` (no row is dropped). Bring rider info back copies the shared columns, so an older backup still restores.
