@@ -218,6 +218,7 @@ struct HomeView: View {
                 // F-31: while charging the status pill is the charge line; F-31b: the alert time and Unplugged under it
                 NavigationLink { BatteryView() } label: {
                     ChargeStatusLine(session: cs, nowMs: previewCharge != nil ? ChargePreview.nowMs : ChargeTimer.shared.nowMs, utcOffsetMin: previewCharge != nil ? 0 : ChargeTimer.shared.utcOffsetMin)
+                        .chargeGlow(cs, nowMs: previewCharge != nil ? ChargePreview.nowMs : ChargeTimer.shared.nowMs, .faint)   // N7-6
                 }.buttonStyle(.plain)
                 if previewCharge == nil {
                     ChargeAlertRow(text: PlugIn.chargeLineAlert(cs, plugAlert, utcOffsetMin: ChargeTimer.shared.utcOffsetMin),

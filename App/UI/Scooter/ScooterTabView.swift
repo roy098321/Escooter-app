@@ -162,6 +162,7 @@ struct ScooterTabView: View {
                         onEditCharge: { if preview == nil { showCharge = true } }) {
             if preview == nil { link.start() }
         }
+        .chargeGlow(charge, nowMs: preview?.nowMs ?? timer.nowMs, .rim, radius: DS.Radius.hero)   // N7-6: orange rim while charging
         parkedRow
         // S3: one row: what is due next
         NavigationLink { MaintenanceView() } label: {

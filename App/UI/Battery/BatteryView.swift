@@ -26,6 +26,7 @@ struct BatteryView: View {
             VStack(alignment: .leading, spacing: DS.Space.block) {
                 if let o = overview {
                     rangeCard(o)
+                        .chargeGlow(preview == nil ? ChargeTimer.shared.session : nil, nowMs: ChargeTimer.shared.nowMs, .full)   // N7-6
                     tiles(o)
                     calibrationRow(o.calibration)
                     lbpRow
