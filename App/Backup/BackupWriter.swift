@@ -15,6 +15,8 @@ final class BackupWriter {
     private(set) var lastBackupMs: Int64?
     private(set) var lastFullMs: Int64?
     private(set) var lastError: String?
+    /// N6-7: the last backup that left the phone (picked folder); the Home banner reads this
+    private(set) var lastOffPhoneMs: Int64?
 
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private let queue = DispatchQueue(label: "corckie.backup", qos: .utility)
@@ -23,31 +25,39 @@ final class BackupWriter {
     private init() {
         lastBackupMs = defaults.object(forKey: "corckie.lastBackupMs") as? Int64
         lastFullMs = defaults.object(forKey: "corckie.lastFullBackupMs") as? Int64
+        // before N6-7 every backup went to the picked folder
+        lastOffPhoneMs = defaults.object(forKey: "corckie.lastOffPhoneMs") as? Int64 ?? (BackupFolder.shared.hasFolder ? lastBackupMs : nil)
     }
+
+    /// N6-7: Settings → Backup → Back up now (a full backup)
+    func backUpNow() { start(rideId: nil, forceFull: true) }
 
     // MARK: Triggers (main thread)
 
     /// A ride was closed: its delta, plus a full backup when one is due.
-    func rideEnded(rideId: String) { start(rideId: rideId) }
+    func rideEnded(rideId: String) { start(rideId: rideId, forceFull: false) }
 
     /// Home opened: a full backup when one is due (no timers, C13 S1).
     func runIfDue() {
-        if BackupPlan.fullDue(lastFullMs: lastFullMs, nowMs: Self.nowMs()) { start(rideId: nil) }
+        if BackupPlan.fullDue(lastFullMs: lastFullMs, nowMs: Self.nowMs()) { start(rideId: nil, forceFull: false) }
     }
 
     private static func nowMs() -> Int64 { Int64(Date().timeIntervalSince1970 * 1000) }
 
-    private func start(rideId: String?) {
-        guard !busy, BackupFolder.shared.hasFolder, let db = AppModel.shared.database else { return }
+    private func start(rideId: String?, forceFull: Bool) {
+        // N6-7: always backed up; to the phone when no folder is picked or the picked one is gone
+        guard !busy, let db = AppModel.shared.database else { return }
         busy = true
         let task = UIApplication.shared.beginBackgroundTask(withName: "corckie-backup", expirationHandler: nil)
         let now = Self.nowMs()
         let offset = TimeZone.current.secondsFromGMT() / 60
-        let fullDue = BackupPlan.fullDue(lastFullMs: lastFullMs, nowMs: now)
+        let fullDue = forceFull || BackupPlan.fullDue(lastFullMs: lastFullMs, nowMs: now)
         queue.async {
             let result = Result<Outcome, Error> {
-                try BackupFolder.shared.withFolder { root in
-                    try Self.perform(db: db, root: root, rideId: rideId, fullDue: fullDue, nowMs: now, offsetMin: offset)
+                try BackupFolder.shared.withTarget { root, picked in
+                    var o = try Self.perform(db: db, root: root, rideId: rideId, fullDue: fullDue, nowMs: now, offsetMin: offset)
+                    o.offPhone = picked
+                    return o
                 }
             }
             DispatchQueue.main.async {
@@ -57,6 +67,10 @@ final class BackupWriter {
                     self.lastError = nil
                     self.lastBackupMs = now
                     self.defaults.set(now, forKey: "corckie.lastBackupMs")
+                    if o.offPhone {
+                        self.lastOffPhoneMs = now
+                        self.defaults.set(now, forKey: "corckie.lastOffPhoneMs")
+                    }
                     if o.fullName != nil {
                         self.lastFullMs = now
                         self.defaults.set(now, forKey: "corckie.lastFullBackupMs")
@@ -81,6 +95,8 @@ final class BackupWriter {
         var fullName: String?
         var rideFile: String?
         var simulated = false
+        /// N6-7: written to the picked folder (false = the phone)
+        var offPhone = false
     }
 
     struct RideDelta: Codable {

@@ -30,7 +30,7 @@ public enum BackupPlan {
 
     public static func bannerText(hasFolder: Bool) -> String {
         hasFolder ? "No backup for 14 days. Check that the backup folder is still reachable, then finish a ride or open Settings."
-                  : "Your rides are not backed up. Pick a backup folder in Developer > Backup folder."
+                  : "Your rides are only backed up on this iPhone. Choose a backup folder in Settings > Data & backup > Backup."
     }
 
     /// "today 18:10" / "yesterday 18:10" / "3 Oct, 18:10" / "never"
@@ -145,5 +145,32 @@ public enum GzipFrame {
         for i in 0..<4 { out.append(UInt8((crc >> UInt32(i * 8)) & 0xFF)) }
         for i in 0..<4 { out.append(UInt8((size >> UInt32(i * 8)) & 0xFF)) }
         return out
+    }
+}
+
+/// N6-7 (batch 6): where a backup goes. The folder the rider picked (iCloud Drive or any Files folder) when it can be reached,
+/// otherwise the app's own folder on the phone, with a quiet note when a picked folder is gone. Pure, so the "bookmark lost →
+/// fallback, no crash" rule is tested on Linux.
+public enum BackupTarget: Equatable {
+    case pickedFolder
+    case phone(note: String?)
+
+    public static let folderLostNote = "Backup folder not found. Backups stay on this iPhone until you choose the folder again."
+
+    /// - hasBookmark: a folder was picked once
+    /// - folderReachable: its bookmark resolved and the folder exists (false when resolving threw)
+    public static func choose(hasBookmark: Bool, folderReachable: Bool) -> BackupTarget {
+        guard hasBookmark else { return .phone(note: nil) }
+        return folderReachable ? .pickedFolder : .phone(note: folderLostNote)
+    }
+
+    /// What Settings shows for the folder: "iCloud Drive › CorckieApp", the folder's name, or "On this iPhone".
+    public static func label(folderPath: String?) -> String {
+        guard let path = folderPath, !path.isEmpty else { return "On this iPhone" }
+        let name = path.split(separator: "/").last.map(String.init) ?? path
+        if path.contains("com~apple~CloudDocs") {
+            return name == "com~apple~CloudDocs" ? "iCloud Drive" : "iCloud Drive \u{203A} \(name)"
+        }
+        return name
     }
 }

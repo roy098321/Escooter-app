@@ -157,7 +157,7 @@ struct SettingsView: View {
             }
             let writer = BackupWriter.shared
             NavigationLink {
-                BackupView()
+                BackupSettingsView()      // N6-7
             } label: {
                 LabeledContent("Backup", value: BackupPlan.lastBackupText(
                     lastMs: writer.lastBackupMs, nowMs: Int64(Date().timeIntervalSince1970 * 1000),

@@ -1,3 +1,4 @@
+import CorckieCore
 import Foundation
 import Observation
 
@@ -13,6 +14,10 @@ final class BackupFolder {
     @ObservationIgnored private let lastWriteKey = "corckie.lastBackupTestWrite"
 
     private(set) var folderName: String?
+    /// N6-7: the picked folder's path (for "iCloud Drive › CorckieApp"); nil = none picked
+    private(set) var folderPath: String?
+    /// N6-7: set when the last backup fell back to the phone because the picked folder is gone; cleared by the next good write
+    private(set) var fallbackNote: String?
     private(set) var log: [String] = []
 
     var hasFolder: Bool { defaults.data(forKey: bookmarkKey) != nil }
@@ -20,7 +25,42 @@ final class BackupFolder {
     private init() {
         if let data = defaults.data(forKey: bookmarkKey), let url = try? resolve(data) {
             folderName = url.lastPathComponent
+            folderPath = url.path
         }
+    }
+
+    /// N6-7: what Settings shows ("iCloud Drive › CorckieApp" / "On this iPhone")
+    var label: String { BackupTarget.label(folderPath: hasFolder ? folderPath : nil) }
+
+    /// N6-7: the app's own folder on the phone (Documents, visible in Files › On My iPhone › CorckieApp)
+    static func phoneFolder() throws -> URL {
+        try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+    }
+
+    /// N6-7: runs `body` with the picked folder when it can be reached, else with the phone folder (`BackupTarget`). A lost
+    /// bookmark or a failed write to the picked folder never throws here: the backup goes to the phone with a quiet note.
+    /// The Bool is true when the picked folder was used. Any thread.
+    func withTarget<T>(_ body: (URL, Bool) throws -> T) throws -> T {
+        let picked = hasFolder
+        if picked {
+            do {
+                let value = try withFolder { root -> T in
+                    guard FileManager.default.fileExists(atPath: root.path) else {
+                        throw CocoaError(.fileNoSuchFile, userInfo: [NSLocalizedDescriptionKey: "Backup folder not found"])
+                    }
+                    return try body(root, true)
+                }
+                DispatchQueue.main.async { self.fallbackNote = nil }
+                return value
+            } catch {
+                Log.error(source: "backup", "picked folder failed, writing to the phone: \(error.localizedDescription)")
+            }
+        }
+        let value = try body(try Self.phoneFolder(), false)
+        if case let .phone(note) = BackupTarget.choose(hasBookmark: picked, folderReachable: false) {
+            DispatchQueue.main.async { self.fallbackNote = note }
+        }
+        return value
     }
 
     func remember(_ url: URL) {
@@ -29,6 +69,8 @@ final class BackupFolder {
         do {
             defaults.set(try url.bookmarkData(), forKey: bookmarkKey)
             folderName = url.lastPathComponent
+            folderPath = url.path
+            fallbackNote = nil
             add("Folder saved: \(url.lastPathComponent)")
         } catch {
             add("❌ Couldn't remember the folder: \(error.localizedDescription)")

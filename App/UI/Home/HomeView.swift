@@ -585,7 +585,7 @@ struct HomeView: View {
     /// M1-16 (C13 S3): 14 days without a backup
     private var backupBannerShown: Bool {
         guard preview == nil else { return false }
-        return BackupPlan.bannerShown(lastBackupMs: BackupWriter.shared.lastBackupMs, oldestRideMs: oldestRideMs,
+        return BackupPlan.bannerShown(lastBackupMs: BackupWriter.shared.lastOffPhoneMs, oldestRideMs: oldestRideMs,
                                       nowMs: Int64(now.timeIntervalSince1970 * 1000))
     }
 
