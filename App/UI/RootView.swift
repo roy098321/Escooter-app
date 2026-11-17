@@ -349,15 +349,25 @@ struct RideCover: View {
         }
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// N7-11 (batch 7): at hold-to-end the live screen settles into the summary: the live view shrinks back and fades while the
+    /// summary grows in from it (then N7-4 draws the route). Reduce Motion: a cross-fade.
     @ViewBuilder private var cover: some View {
         let service = RecorderService.shared
-        if service.rideShown || service.readyRequested {
-            LiveRideView().liveDark().startReveal()   // A3
-        } else if let id = service.summaryRideId {
-            NavigationStack {
-                RideDetailView(rideId: id, onDone: { RecorderService.shared.dismissSummary() })
+        let live = service.rideShown || service.readyRequested
+        ZStack {
+            if live {
+                LiveRideView().liveDark().startReveal()   // A3
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.9)))
+            } else if let id = service.summaryRideId {
+                NavigationStack {
+                    RideDetailView(rideId: id, onDone: { RecorderService.shared.dismissSummary() })
+                }
+                .interactiveDismissDisabled(true)
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 1.06)))
             }
-            .interactiveDismissDisabled(true)
         }
+        .animation(reduceMotion ? .easeInOut(duration: MotionStyle.fadeS) : .spring(response: 0.5, dampingFraction: 0.86), value: live)
     }
 }
