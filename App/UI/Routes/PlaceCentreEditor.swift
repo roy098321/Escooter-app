@@ -13,6 +13,8 @@ struct PlaceCentreEditor: View {
     @State private var editor: CentreEditor
     /// the pin while it is dragged (the editor learns only the end: one undo step)
     @State private var dragging: GeoPoint?
+    /// owner 18 Nov: the finger grabbed the pin; the map holds still and the pin follows the finger
+    @State private var pinDrag = false
     @State private var camera: MapCameraPosition
     @Environment(\.dismiss) private var dismiss
 
@@ -32,26 +34,37 @@ struct PlaceCentreEditor: View {
         let colour = PlaceColourStore.color(colourId)
         let centre = dragging ?? editor.centre
         MapReader { proxy in
-            Map(position: $camera, interactionModes: [.pan, .zoom]) {
+            Map(position: $camera, interactionModes: pinDrag ? [] : [.pan, .zoom]) {
                 MapCircle(center: Self.coord(centre), radius: circleM).foregroundStyle(colour.opacity(0.22)).stroke(colour, lineWidth: 2)
                 Annotation("", coordinate: Self.coord(centre), anchor: .center) {
-                    Circle().fill(colour).frame(width: 24, height: 24)
+                    Circle().fill(colour).frame(width: pinDrag ? 30 : 24, height: pinDrag ? 30 : 24)
                         .overlay(Circle().stroke(Color.white, lineWidth: 3))
-                        .frame(width: 48, height: 48).contentShape(Circle())
-                        .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .global)
-                            .onChanged { v in
-                                if let c = proxy.convert(v.location, from: .global) { dragging = GeoPoint(lat: c.latitude, lon: c.longitude) }
-                            }
-                            .onEnded { _ in
-                                if let d = dragging { editor.move(to: d) }
-                                dragging = nil
-                            })
+                        .shadow(radius: pinDrag ? 4 : 0)
+                        .allowsHitTesting(false)
                         .accessibilityLabel("Centre of the circle")
                 }
             }
-            .mapStyle(.hybrid(elevation: .flat, pointsOfInterest: .excludingAll))
+            // owner 18 Nov: the same map as the place screen (not satellite)
+            .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+            // owner 18 Nov: a touch on the pin grabs it and the pin follows the finger (the map does not pan meanwhile)
+            .simultaneousGesture(DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                .onChanged { v in
+                    if !pinDrag {
+                        guard dragging == nil, let p = proxy.convert(Self.coord(editor.centre), to: .local),
+                              hypot(v.startLocation.x - p.x, v.startLocation.y - p.y) <= 32 else { return }
+                        pinDrag = true
+                        Haptics.tick()
+                    }
+                    if let c = proxy.convert(v.location, from: .local) { dragging = GeoPoint(lat: c.latitude, lon: c.longitude) }
+                }
+                .onEnded { _ in
+                    guard pinDrag else { return }
+                    if let d = dragging { editor.move(to: d) }
+                    dragging = nil
+                    pinDrag = false
+                })
             .onTapGesture { location in
-                guard dragging == nil, let c = proxy.convert(location, from: .local) else { return }
+                guard dragging == nil, !pinDrag, let c = proxy.convert(location, from: .local) else { return }
                 editor.move(to: GeoPoint(lat: c.latitude, lon: c.longitude))
                 Haptics.light()
             }

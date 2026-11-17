@@ -80,7 +80,7 @@ struct PlaceOutlineEditor: View {
                     }
                 }
             }
-            .mapStyle(.hybrid(elevation: .flat, pointsOfInterest: .excludingAll))
+            .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))   // owner 18 Nov: the map, not satellite
             .onTapGesture { location in
                 guard dragging == nil, editor.canAdd, let c = proxy.convert(location, from: .local) else { return }
                 editor.add(GeoPoint(lat: c.latitude, lon: c.longitude))
