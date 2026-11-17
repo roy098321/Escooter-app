@@ -60,4 +60,13 @@ final class Batch108Tests: XCTestCase {
         let strip = try String(contentsOf: app.appendingPathComponent("UI/Live/WarningStripView.swift"), encoding: .utf8)
         XCTAssertTrue(strip.contains("guard expandable else { return }"), "while moving a tap does nothing")
     }
+
+    func test_N8_4_turnBackInTwoSteps() {
+        XCTAssertEqual(V09Message.turnBackSoon.line, "Turn-back point in one kilometre.")
+        XCTAssertEqual(V09Message.turnBackNow.line, "Turn back now to make it back.")
+        XCTAssertTrue(V09Message.turnBackSoon.urgent && V09Message.turnBackNow.urgent)
+        XCTAssertTrue(V09Message.samples.contains(.turnBackSoon) && V09Message.samples.contains(.turnBackNow))
+        XCTAssertFalse(V09Message.samples.contains(.pointOfNoReturn(metres: 300)), "the single 300 m line is replaced")
+        XCTAssertEqual(V09Director.turnBackSoonM, 1000)
+    }
 }

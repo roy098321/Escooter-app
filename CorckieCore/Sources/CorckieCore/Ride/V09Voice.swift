@@ -22,6 +22,10 @@ public enum V09Message: Equatable, Sendable {
     case runningLate(minutes: Int, arriveAt: String)
     case backOnTime
     case pointOfNoReturn(metres: Int)
+    /// N8-4 (batch 8): 1 km before the turn-back point (after the soft level-2 tone)
+    case turnBackSoon
+    /// N8-4: at the turn-back point (after ping-ping)
+    case turnBackNow
     case powerLimitComing(pct: Int)
     case engineHot(c: Int)
     case engineOverheating(c: Int)
@@ -53,6 +57,8 @@ public enum V09Message: Equatable, Sendable {
         case .runningLate: return "late"
         case .backOnTime: return "ontime"
         case .pointOfNoReturn: return "pnr"
+        case .turnBackSoon: return "pnr1"
+        case .turnBackNow: return "pnr2"
         case .powerLimitComing: return "limit"
         case .engineHot: return "hot"
         case .engineOverheating: return "overheat"
@@ -76,7 +82,7 @@ public enum V09Message: Equatable, Sendable {
         case let .engineHot(c), let .engineOverheating(c): return c
         case let .arrived(_, p): return p
         case let .startLine(_, _, p): return p
-        case .backOnTime, .recordingProblem, .unusualDrag, .drainingFast, .farAboveUsual: return nil
+        case .backOnTime, .recordingProblem, .unusualDrag, .drainingFast, .farAboveUsual, .turnBackSoon, .turnBackNow: return nil
         }
     }
 
@@ -96,6 +102,8 @@ public enum V09Message: Equatable, Sendable {
         case let .runningLate(m, at): return "Running \(w(m)) \(m == 1 ? "minute" : "minutes") late, arriving at \(at)."
         case .backOnTime: return "Back on time."
         case let .pointOfNoReturn(m): return "Last chance to turn back in \(w(max(1, m / 100))) hundred metres."
+        case .turnBackSoon: return "Turn-back point in one kilometre."
+        case .turnBackNow: return "Turn back now to make it back."
         case let .powerLimitComing(p): return "Power limit coming at \(w(p)) percent."
         case let .engineHot(c): return "Motor hot, \(w(c)) degrees."
         case let .engineOverheating(c): return "Motor overheating, \(w(c)) degrees."
@@ -129,7 +137,7 @@ public enum V09Message: Equatable, Sendable {
         .startLine(place: "Uni", arriveAt: "8:56", pct: 98),
         .usingMore(pctPerKm: 2.6, aboveUsualPct: 15), .everyTen(pct: 60, pctPerKm: 2.5), .arrivingLow(pct: 15), .sharpDrop(pct: 40), .backOnTrack(pct: 50),
         .runningLate(minutes: 6, arriveAt: "9:02"), .backOnTime,
-        .pointOfNoReturn(metres: 300), .powerLimitComing(pct: 18), .engineHot(c: 86), .engineOverheating(c: 94), .recordingProblem,
+        .turnBackSoon, .turnBackNow, .powerLimitComing(pct: 18), .engineHot(c: 86), .engineOverheating(c: 94), .recordingProblem,
         .arrived(place: "Uni", pct: 58), .arrived(place: nil, pct: 41),
         .unusualDrag, .drainingFast(pctPerKm: 2.5)
     ]
@@ -343,6 +351,9 @@ public struct V09Director: Sendable {
     public static let startLineUntilS = 120.0
     /// Point of no return: said this far before it, on tight trips (arrival estimate under 20 %)
     public static let pnrBeforeM = 300.0
+    /// N8-4 (batch 8): the turn-back point in two steps: 1 km before it, and at it (within this much)
+    public static let turnBackSoonM = 1000.0
+    public static let turnBackNowM = 50.0
     /// Power limit: said this many % before the learned limit
     public static let powerLimitAheadPct = 3
 
@@ -373,6 +384,7 @@ public struct V09Director: Sendable {
     private var backOnTimeSaid = false
     private var startLineDone = false
     private var pnrSaid = false
+    private var turnBackSoonSaid = false
     private var powerLimitSaid = false
     private var problemSaid = false
     private var problemClearSince: Double?
@@ -509,10 +521,14 @@ public struct V09Director: Sendable {
                 // point of no return (tight trips only), just before it
                 if !pnrSaid, arrive < Self.arrivingLowPct, let along = i.alongKm, i.rideKm >= 1, start > pct,
                    let pnr = Self.pointOfNoReturnKm(pct: pct, alongKm: along, ratePctPerKm: (start - pct) / i.rideKm, reservePct: i.reservePct) {
+                    // N8-4: two steps (replaces "Last chance to turn back in three hundred metres."); nothing after turning back
                     let ahead = (pnr - along) * 1000
-                    if ahead > 0 && ahead <= Self.pnrBeforeM {
+                    if ahead <= Self.turnBackNowM {
                         pnrSaid = true
-                        urgent.append(.pointOfNoReturn(metres: Int((ahead / 100).rounded(.up)) * 100))
+                        if ahead > -Self.turnBackNowM { urgent.append(.turnBackNow) }
+                    } else if ahead <= Self.turnBackSoonM, !turnBackSoonSaid {
+                        turnBackSoonSaid = true
+                        urgent.append(.turnBackSoon)
                     }
                 }
             }

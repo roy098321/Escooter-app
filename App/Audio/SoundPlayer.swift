@@ -186,6 +186,12 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
         if !start(kind, speaking: u.text) { speak(u.text) }
     }
 
+    /// N8-4: a cue sound, then the spoken line (the turn-back steps: the soft tone, or ping-ping); no haptic
+    func cue(_ kind: SoundKind, then text: String) {
+        warningsInFlight += 1
+        if !start(kind, speaking: text) { speak(text) }
+    }
+
     /// F-35: a plain spoken line ("Riding to Uni, 8 km.") on the same channel as the battery lines: no ping and no haptic
     func say(_ text: String) {
         warningsInFlight += 1

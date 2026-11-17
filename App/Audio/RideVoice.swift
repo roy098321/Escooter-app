@@ -204,7 +204,11 @@ final class RideVoice {
 
     /// V09: one line on the warnings' channel (no ping), logged with the numbers behind it (Hotfix 03)
     private func say(_ m: V09Message, numbers: V09Numbers? = nil) {
-        SoundPlayer.shared.say(m.line)
+        switch m {
+        case .turnBackSoon: SoundPlayer.shared.cue(.level2Tone, then: m.line)       // N8-4: soft tone first
+        case .turnBackNow: SoundPlayer.shared.cue(.batteryPing, then: m.line)       // N8-4: ping-ping (the one warning sound)
+        default: SoundPlayer.shared.say(m.line)
+        }
         var why = ""
         if let n = numbers {
             func f(_ x: Double?) -> String { x.map { String(format: "%.1f", $0) } ?? "-" }
