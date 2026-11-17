@@ -126,6 +126,7 @@ struct ScooterHeroCard: View {
                     Button { connectTap += 1; onConnect() } label: {
                         Image(systemName: "antenna.radiowaves.left.and.right")
                             .font(.title3)
+                            .searchingWhile(connectTap > 0)     // N7-5: searching after Connect
                             .foregroundStyle(Theme.onAccent)
                             .frame(width: 62, height: 62)
                             .background(Theme.accent, in: Circle())

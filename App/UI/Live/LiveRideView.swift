@@ -295,7 +295,10 @@ struct LiveRideView: View {
         let tint: Color = hot ? Color.red : Color.orange
         return GlassCard(tint: tint) {
             HStack(spacing: 12) {
-                if hot { Image(systemName: "thermometer.medium").font(.title3.weight(.semibold)).accessibilityHidden(true) }
+                if hot {
+                    Image(systemName: "thermometer.medium").font(.title3.weight(.semibold)).accessibilityHidden(true)
+                        .motorHotWiggle(s.banner?.banner == .veryHot)   // N7-5: one wiggle as it appears / gets hotter
+                }
                 Text(text)
                     .font(.title3.weight(.semibold))
                     .multilineTextAlignment(.leading)

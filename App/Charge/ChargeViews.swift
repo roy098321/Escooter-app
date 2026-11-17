@@ -58,7 +58,7 @@ struct ChargingBlock: View {
         VStack(alignment: .trailing, spacing: 6) {
             HStack(spacing: 6) {
                 Text(session.scooterName).font(.title3.weight(.semibold)).lineLimit(1)
-                Image(systemName: "bolt.fill").font(.footnote).foregroundStyle(Theme.accent)
+                Image(systemName: "bolt.fill").font(.footnote).foregroundStyle(Theme.accent).pulseWhile(true)   // N7-5: charging
                 Text("charging").font(.title3.weight(.semibold)).foregroundStyle(Theme.accentInk)
             }
             Text("\u{2248} \(Int(pct.rounded()))%")
@@ -86,7 +86,7 @@ struct ChargeStatusLine: View {
         let pct = ChargeModel.pct(session, atMs: nowMs)
         VStack(spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: "bolt.fill").font(.caption.weight(.bold)).foregroundStyle(Theme.accent)
+                Image(systemName: "bolt.fill").font(.caption.weight(.bold)).foregroundStyle(Theme.accent).pulseWhile(true)   // N7-5
                 Text("Charging \u{00B7} \u{2248} \(Int(pct.rounded()))%").font(.subheadline.weight(.semibold)).lineLimit(1)
                 Spacer(minLength: 8)
                 Text(ChargeText.fullLine(session, utcOffsetMin: utcOffsetMin).replacingOccurrences(of: "Full", with: "full"))

@@ -32,7 +32,7 @@ struct MissedRideView: View {
             Section {
                 if saved {
                     VStack(alignment: .leading, spacing: 6) {
-                        Label(cause == nil ? "Saved" : "Found it", systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.headline)
+                        Label(cause == nil ? "Saved" : "Found it", systemImage: "checkmark.circle.fill").bounceOnce(saved).foregroundStyle(.green).font(.headline)
                         Text(cause ?? "Saved. It goes with your next export.").font(.subheadline)
                     }
                     .padding(.vertical, 4)

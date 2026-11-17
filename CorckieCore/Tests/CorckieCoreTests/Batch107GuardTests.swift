@@ -64,4 +64,13 @@ final class Batch107GuardTests: XCTestCase {
         let edge = try text("UI/Shared/EdgeEffects.swift")
         XCTAssertTrue(edge.contains("if reduceMotion {") && edge.contains(".scrollTransition("), "scroll cards stay still with Reduce Motion")
     }
+
+    /// N7-5: icon moments move once on a real change, nothing with Reduce Motion; the motor-hot wiggle is one reusable modifier
+    func test_N7_5_iconMomentsRespectReduceMotion() throws {
+        let m = try text("UI/Shared/SymbolMoments.swift")
+        XCTAssertEqual(m.components(separatedBy: "accessibilityReduceMotion").count - 1, 2)
+        XCTAssertTrue(m.contains("func motorHotWiggle"))
+        XCTAssertTrue(try text("UI/Live/LiveRideView.swift").contains(".motorHotWiggle("))
+        XCTAssertTrue(try text("UI/Shared/FloatingTabBar.swift").contains(".bounceOnce(on)"))
+    }
 }

@@ -81,6 +81,7 @@ struct FloatingTabBar: View {
                 Image(systemName: item.symbol)
                     .symbolVariant(on ? .fill : .none)
                     .font(.system(size: 20, weight: on ? .semibold : .regular))
+                    .bounceOnce(on)     // N7-5: the icon hops as its name slides out
                 if on {
                     Text(item.title)
                         .font(.subheadline.weight(.semibold))

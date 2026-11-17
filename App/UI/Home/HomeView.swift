@@ -44,6 +44,8 @@ struct HomeView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var now = Date()
     @State private var connectingSince: Date?
+    /// N7-5: the Settings gear turns once per tap
+    @State private var gearTurns = 0
     @State private var discTap = 0
     /// A3: the disc's frame on screen (the start transition grows from its centre) and the press-in state
     @State private var discFrame: CGRect = .zero
@@ -107,8 +109,9 @@ struct HomeView: View {
                         NavigationLink {
                             SettingsView()
                         } label: {
-                            GlassIcon(symbol: "gearshape")
+                            GlassIcon(symbol: "gearshape", turn: gearTurns)     // N7-5: the gear turns as Settings opens
                         }
+                        .simultaneousGesture(TapGesture().onEnded { gearTurns += 1 })
                         .accessibilityLabel("Settings")
                     }
                 }
@@ -276,6 +279,7 @@ struct HomeView: View {
     private var loadRow: some View {
         HStack(spacing: 10) {
             Image(systemName: "bag.fill").foregroundStyle(Theme.canyon).accessibilityHidden(true)
+                .bounceOnce(loadSel)     // N7-5: the bag hops when the load changes
             GlassSegmented(options: [(Self.loadNone, "Unloaded"), (Self.loadFive, "5 kg"), (Self.loadTen, "10 kg"), (Self.loadCustom, loadCustomLabel)],
                            selection: Binding(get: { loadSel }, set: { _ in }), slidingPill: true, onSelect: { id in
                                if id == Self.loadCustom {
@@ -358,10 +362,12 @@ struct HomeView: View {
                                 Image(systemName: discSymbol(m.primary))
                                     .font(.system(size: 40, weight: .semibold))
                                     .symbolEffect(.pulse, options: .repeating, isActive: m.state == .connecting && !reduceMotion)
+                                    .bounceOnce(m.primary == .startRide)   // N7-5: connected → Start bounces once
+                                    .squishOnce(discTap)                    // N7-5: the play squishes on press
                             }
                         }
                         .frame(height: 48)
-                        .contentTransition(.opacity)
+                        .contentTransition(reduceMotion ? .opacity : .symbolEffect(.replace))   // N7-5: one symbol morphs into the next
                         .animation(.easeInOut(duration: 0.3), value: discSymbol(m.primary) + (discDestinationIcon(m)?.code ?? ""))
                         Text(HomeCopy.buttonWord(m.primary, connecting: m.state == .connecting))
                             .font(.title3.weight(.semibold))
