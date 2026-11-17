@@ -1,5 +1,33 @@
 [
   {
+    "version": "108.131226.01",
+    "headline": "Finishing touches",
+    "items": [
+      {
+        "symbol": "cloud.rain",
+        "title": "More warning lights",
+        "line": "Rain within 20 minutes, dark before you arrive, power limit soon, a gear reminder and a recording problem now light up too. Ones that didn't fit show on the ride summary."
+      },
+      {
+        "symbol": "square.on.square",
+        "title": "The ride lands on its summary",
+        "line": "When you end a ride, the time, battery and speed tiles fly into their places on the summary, and the numbers count up as the route draws."
+      },
+      {
+        "symbol": "hand.draw",
+        "title": "Touch every chart",
+        "line": "Drag across Insights and the Battery report too. On Stats, today's bar stands out."
+      }
+    ],
+    "smallerFixes": 4,
+    "full": [
+      "The charging bolt turns into a green battery at your charge target.",
+      "Settings → Data & backup → Backup shows a green tick when a backup is done.",
+      "The Scooter tab's battery icon shows the real level, and the scooter icon turns green when it connects.",
+      "Your savings icon on Stats hops when you pass ₪100, ₪250, ₪500 and so on."
+    ]
+  },
+  {
     "version": "108.131226.00",
     "headline": "Calmer warnings while you ride",
     "items": [

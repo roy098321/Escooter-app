@@ -2,6 +2,17 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 108.131226.01 — hotfix 01 of batch 8 (batch 7 and 8 open items finished)
+
+- N8-1: more lights: recording problem, phone took over, power limit soon, dark before you arrive (offline sun position), rain within 20 min (stored forecast), gear reminder (60 s at the gear's cap); lights that never got a slot are listed on the ride summary.
+- N7-4: summary numbers count up during the draw; place pins appear after the line.
+- N7-5: charge target (green battery hop), savings milestone hop, real battery icon level, connect / disconnect glyph, backup arrows → green tick, arrival flag wave (plain flag, P-3).
+- N7-6: MeshGradient glow on iOS 18.
+- N7-7: Insights curve scrub, Battery report ticks, today's bar highlighted on Stats.
+- N7-11: live tiles fly into their summary spots (matchedGeometryEffect).
+- Xcode 26 build fixes (View.tint clash, main-actor haptics).
+- Still open: N7-3 swipe-to-close only from the top bar; N7-5 pin drop and iOS 26 draw-on tick; N7-9 per-place controls (needs an App Group).
+
 ## 108.131226.00 — batch 8, due Sun 13 Dec 2026 (in-ride signals)
 
 - N8-1: warning-light strip at the top of the live screen (at most 3, red / amber / blue, red first, nothing when all is fine); it replaces the very hot / hot / disconnected / No GPS / phone battery banners and the No GPS / Offline map chips. At a stop (wheel speed 0 for 1 s) a tap expands an icon into its line. Lights today: motor very hot / hot, disconnected, phone battery low, No GPS, offline map.
