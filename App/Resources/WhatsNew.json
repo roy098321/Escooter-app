@@ -1,5 +1,30 @@
 [
   {
+    "version": "108.131226.02",
+    "headline": "Fixes for the new iPhone look",
+    "items": [
+      {
+        "symbol": "rectangle.dashed",
+        "title": "No more grey bands",
+        "line": "The grey strips at the top and bottom of the screen are gone, and the Settings and logo buttons are round again."
+      },
+      {
+        "symbol": "map",
+        "title": "Move centre shows the map",
+        "line": "Moving a place's centre (or drawing its outline) shows the normal map again, not a satellite image."
+      },
+      {
+        "symbol": "hand.point.up.left",
+        "title": "The pin follows your finger",
+        "line": "Touch the pin and slide: it moves with your finger and the map stays still."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "Nothing else changed."
+    ]
+  },
+  {
     "version": "108.131226.01",
     "headline": "Finishing touches",
     "items": [

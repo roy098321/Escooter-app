@@ -2,6 +2,11 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 108.131226.02 — hotfix 02 of batch 8 (owner 18 Nov, on 108.131226.01)
+
+- iOS 26 look (the first Xcode 26 build): no shared glass shell around Home's gear and logo, no scroll edge effects, Home's bar background hidden; the N6-3 fade above the tab bar is removed (it faded the map background into a grey band).
+- Place centre and outline editors use the standard map (not satellite); the pin follows the finger (a touch on the pin grabs it, the map holds still).
+
 ## 108.131226.01 — hotfix 01 of batch 8 (batch 7 and 8 open items finished)
 
 - N8-1: more lights: recording problem, phone took over, power limit soon, dark before you arrive (offline sun position), rain within 20 min (stored forecast), gear reminder (60 s at the gear's cap); lights that never got a slot are listed on the ride summary.
