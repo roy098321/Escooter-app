@@ -180,6 +180,7 @@ final class RecorderService {
         let engaged = (rawInput.phase == .starting || rawInput.phase == .riding) && rawInput.ridingEngaged
         if engaged != ridingEngaged { ridingEngaged = engaged }   // B76
         input.mapOffline = NetworkStatus.shared.offline
+        input.rainSoon = rainSoonNow(lat: input.lat, lon: input.lon)       // N8-1
         input.phoneGpsOff = PhoneSensors.shared.gpsMode == .off          // M6-06: phone battery < 10%
         input.locationDenied = PhoneSensors.shared.locationDenied        // M6-06: location turned off for the app
         // M2-06: the route chosen with Where to? is followed from the start of the ride to its end (once per ride).
@@ -279,6 +280,21 @@ final class RecorderService {
                                                   destination: destination?.name, distanceM: input.rideDistanceM, elapsedS: input.rideElapsedS,
                                                   name: "Scooter")
         }
+    }
+
+    // MARK: N8-1 rain within 20 min (the stored forecast, read once a minute)
+
+    @ObservationIgnored private var rainCheck: (at: Date, rain: Bool)?
+
+    private func rainSoonNow(lat: Double?, lon: Double?) -> Bool {
+        if let c = rainCheck, Date().timeIntervalSince(c.at) < 60 { return c.rain }
+        guard let lat, let lon, let db = AppModel.shared.displayDatabase else { return false }
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let rows = (try? OutsideQueries(db).weather(cell: GeoCell.key(lat: lat, lon: lon), from: OutsideTime.floorHour(now),
+                                                     to: OutsideTime.floorHour(now) + 2 * 3_600_000, kind: .forecast)) ?? []
+        let rain = RainSoon.within20Min(rows, nowMs: now)
+        rainCheck = (Date(), rain)
+        return rain
     }
 
     // MARK: F-35 destination during the ride

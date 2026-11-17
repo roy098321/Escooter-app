@@ -107,3 +107,16 @@ public struct WarningStrip: Equatable, Sendable {
 
     public mutating func rideEnded() { self = WarningStrip() }
 }
+
+/// N8-1 "Rain within 20 min" from the hourly forecast already stored for the ride's cell (no new download during a ride).
+public enum RainSoon {
+    /// rain this much or more in an hour counts
+    public static let minMm = 0.2
+
+    public static func within20Min(_ rows: [WeatherRow], nowMs: Int64) -> Bool {
+        let hour = OutsideTime.floorHour(nowMs)
+        let soon = OutsideTime.floorHour(nowMs + 20 * 60_000)
+        return rows.contains { ($0.hourAt == hour || $0.hourAt == soon) && ($0.precipMm ?? 0) >= minMm }
+    }
+}
+

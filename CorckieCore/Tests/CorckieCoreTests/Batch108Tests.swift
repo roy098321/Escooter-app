@@ -81,4 +81,15 @@ final class Batch108Tests: XCTestCase {
         XCTAssertFalse(SunPosition.darkBeforeArrival(lat: 0, lon: 0, nowS: day + 15 * 3600, remainingS: nil))
         XCTAssertFalse(SunPosition.darkBeforeArrival(lat: 0, lon: 0, nowS: day + 22 * 3600, remainingS: nil), "already dark: cleared")
     }
+
+    func test_N8_1_rainWithin20Min() {
+        let h: Int64 = 3_600_000
+        func row(_ hour: Int64, _ mm: Double) -> WeatherRow {
+            WeatherRow(cellKey: "1,1", hourAt: hour * h, source: "t", kind: .forecast, windKmh: 0, precipMm: mm, fetchedAt: 0)
+        }
+        let rows = [row(10, 0), row(11, 1.2)]
+        XCTAssertFalse(RainSoon.within20Min(rows, nowMs: 10 * h + 30 * 60_000), "rain at 11:00, now 10:30: more than 20 min")
+        XCTAssertTrue(RainSoon.within20Min(rows, nowMs: 10 * h + 45 * 60_000), "now 10:45: within 20 min")
+        XCTAssertTrue(RainSoon.within20Min(rows, nowMs: 11 * h + 5 * 60_000))
+    }
 }

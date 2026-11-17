@@ -223,6 +223,7 @@ public struct LiveScreenDriver: Sendable {
             if tiles.chips.contains(.noGps) && !input.phoneGpsOff { on.insert(.noGps) }
             if tiles.chips.contains(.offlineMap) { on.insert(.offlineMap) }
             if input.formatChanged { on.insert(.recordingProblem) }
+            if input.rainSoon { on.insert(.rainSoon) }
             if tiles.speedSource == .gps && !input.phoneMode { on.insert(.phoneTookOver) }
             if let below = lowBatteryPower?.belowPct, let pct = input.smoothedBatteryPct ?? input.scooterBatteryPct,
                pct > Double(below), pct <= Double(below + WarningStrip.powerLimitAheadPct) {
