@@ -169,8 +169,16 @@ final class ChargeTimer {
         LiveActivityController.shared.end()
     }
 
+    /// N7-12: the session whose "full" sound has played
+    private var fullPlayedFor: String?
+
     func tick() {
         nowMs = now
+        if sideEffects, let s = session, nowMs >= ChargeModel.fullMs(s), fullPlayedFor != s.id {
+            fullPlayedFor = s.id
+            SoundPlayer.shared.play(.chargeFull)     // N7-12 + N7-8: charge full
+            Task { @MainActor in Haptics.success() }
+        }
         let link = AppModel.shared.scooter
         if sideEffects, session != nil, link.connected, let p = AppModel.shared.settledBatteryPct { realReading(pct: p); return }
         if sideEffects, session == nil, unplugged != nil { settleUnplugged() }   // B72

@@ -79,6 +79,10 @@ final class BackupWriter {
                         CheckResults.shared.set("d10", .pass, "Backup written after a real ride: \(name)")
                     }
                     Log.info(source: "backup", "Backup written (\(o.fullName ?? "ride delta only"))")
+                    if forceFull {     // N7-12 + N7-8: Back up now finished
+                        SoundPlayer.shared.play(.saved)
+                        Haptics.success()
+                    }
                 case let .failure(error):
                     self.lastError = error.localizedDescription
                     if rideId != nil { CheckResults.shared.set("d10", .fail, error.localizedDescription) }

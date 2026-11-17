@@ -62,6 +62,7 @@ struct MissedRideView: View {
             saving = false
             saved = true
             Haptics.success()
+            SoundPlayer.shared.play(.saved)
         }
     }
 

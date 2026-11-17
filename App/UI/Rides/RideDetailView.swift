@@ -490,7 +490,7 @@ struct RideDetailView: View {
             if !o.saved {
                 HStack(spacing: 12) {
                     Button("Save route") { saveTap += 1; routeAction(o.routeId, save: true) }.buttonStyle(.borderedProminent)
-                        .onChange(of: saveTap) { _, _ in Haptics.success() }
+                        .onChange(of: saveTap) { _, _ in Haptics.success(); SoundPlayer.shared.play(.saved) }
                     Button("Not a route") { routeAction(o.routeId, save: false) }.buttonStyle(.bordered)
                 }
             }

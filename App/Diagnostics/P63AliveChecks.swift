@@ -95,7 +95,7 @@ enum P63AliveChecks {
         let missing = RideAudio.missingFiles
         expect(missing.isEmpty, "all sound files are in the app" + (missing.isEmpty ? "" : " (missing \(missing))"))
         if let url = SoundKind.rideStart.url, let p = try? AVAudioPlayer(contentsOf: url) {
-            expect(abs(p.duration - 0.66) < 0.02, "ride_start is 0.66 s long: \(String(format: "%.2f", p.duration)) s")
+            expect(abs(p.duration - 1.44) < 0.05, "ride_start is 1.44 s long (N7-12): \(String(format: "%.2f", p.duration)) s")
             expect(p.numberOfChannels == 2, "stereo")
         } else {
             expect(false, "ride_start loads")

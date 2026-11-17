@@ -73,4 +73,20 @@ final class Batch107GuardTests: XCTestCase {
         XCTAssertTrue(try text("UI/Live/LiveRideView.swift").contains(".motorHotWiggle("))
         XCTAssertTrue(try text("UI/Shared/FloatingTabBar.swift").contains(".bounceOnce(on)"))
     }
+
+    /// N7-12: every sound kind has its file; one warning sound for battery, destination and motor; the new sounds sit behind
+    /// the "Charging and saving" switch; the replay sound lasts as long as the route draws.
+    func test_N7_12_soundFamily() throws {
+        let sounds = appFolder.appendingPathComponent("Resources/Sounds")
+        for name in ["connect", "ride_start", "ride_start_short", "ride_replay", "ride_end", "arrival", "plugged_in", "charge_full",
+                     "saved", "battery_ping", "destination_ping", "motor_ping"] {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: sounds.appendingPathComponent("\(name).wav").path), name)
+        }
+        let ping = try Data(contentsOf: sounds.appendingPathComponent("battery_ping.wav"))
+        XCTAssertEqual(ping, try Data(contentsOf: sounds.appendingPathComponent("destination_ping.wav")), "one warning sound")
+        XCTAssertEqual(ping, try Data(contentsOf: sounds.appendingPathComponent("motor_ping.wav")), "one warning sound")
+        let player = try text("Audio/SoundPlayer.swift")
+        XCTAssertTrue(player.contains("case .pluggedIn, .chargeFull, .saved: return .chargingSaving"))
+        XCTAssertTrue(player.contains("\"Charging and saving\""))
+    }
 }

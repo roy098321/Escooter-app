@@ -3,7 +3,10 @@ import CorckieCore
 import Foundation
 import UIKit
 
-// F-19 / P6-3 chunk 3: the app's own sounds (made offline by Tools/render_sounds.py, App/Resources/Sounds) and the spoken ride warnings.
+// F-19 / P6-3 chunk 3: the app's own sounds (App/Resources/Sounds) and the spoken ride warnings.
+// N7-12 (batch 7): one sound family on a G→D motif (synth drafts; a sound designer makes the finals): connect, ride start (+ short),
+// ride replay (its length follows `RouteDraw`), ride end, arrival, plugged in, charge full, saved. ONE warning sound for battery,
+// destination and motor (the spoken line says which). "Going for a ride?" (chime2_kickoff) is unchanged.
 // Warnings (battery 20 / 15 / 10 %, F-22, motor hot) are P-4 interruptions: they play even with the silent switch on and whatever the
 // sound toggles say. Connect, ride start / end and arrival are the "nice" sounds: they follow the silent switch and a toggle each.
 // Background audio exists only while a ride is running: the session is activated at ride start and given back at ride end.
@@ -17,11 +20,16 @@ enum SoundKind: String, CaseIterable {
     case arrival
     case destinationPing = "destination_ping"
     case motorPing = "motor_ping"
+    // N7-12
+    case rideReplay = "ride_replay"
+    case pluggedIn = "plugged_in"
+    case chargeFull = "charge_full"
+    case saved
 
     var volume: Float {
         switch self {
-        case .connect, .arrival: return 0.8
-        case .rideStart, .rideStartShort, .rideEnd: return 0.9
+        case .connect, .arrival, .pluggedIn, .chargeFull, .saved: return 0.8
+        case .rideStart, .rideStartShort, .rideEnd, .rideReplay: return 0.9
         case .batteryPing, .destinationPing, .motorPing: return 1.0
         }
     }
@@ -30,8 +38,9 @@ enum SoundKind: String, CaseIterable {
     var toggle: SoundToggle? {
         switch self {
         case .connect: return .connect
-        case .rideStart, .rideStartShort, .rideEnd: return .ride
+        case .rideStart, .rideStartShort, .rideEnd, .rideReplay: return .ride
         case .arrival: return .arrival
+        case .pluggedIn, .chargeFull, .saved: return .chargingSaving
         case .batteryPing, .destinationPing, .motorPing: return nil
         }
     }
@@ -42,12 +51,15 @@ enum SoundKind: String, CaseIterable {
 /// Settings -> Sounds: one switch each, on by default
 enum SoundToggle: String, CaseIterable {
     case connect, ride, arrival
+    /// N7-12: plugged in, charge full, saved
+    case chargingSaving = "charging"
 
     var title: String {
         switch self {
         case .connect: return "Scooter connected"
         case .ride: return "Ride start and end"
         case .arrival: return "Arrival at your destination"
+        case .chargingSaving: return "Charging and saving"
         }
     }
 
@@ -123,6 +135,14 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
     func play(_ kind: SoundKind) -> Bool {
         if let t = kind.toggle, !t.isOn { return false }
         return start(kind)
+    }
+
+    /// N7-12: the ride replay sound, faded out so it lasts as long as the route draws (`RouteDraw.durationS`)
+    @discardableResult
+    func play(_ kind: SoundKind, lastingS: Double) -> Bool {
+        guard play(kind), let p = players.last else { return false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(0.1, lastingS - 0.15)) { p.setVolume(0, fadeDuration: 0.35) }
+        return true
     }
 
     @discardableResult

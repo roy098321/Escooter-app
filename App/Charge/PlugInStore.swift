@@ -60,6 +60,7 @@ enum PlugInStore {
         guard ChargeTimer.shared.canStart, let s = draft(alert: alert) else { return }
         ChargeTimer.shared.begin(s)
         Haptics.light()
+        SoundPlayer.shared.play(.pluggedIn)     // N7-12
         Log.info(source: "charge", "F-31b: Plug in from \(Int(s.startPct))%, alert \(alert.pillText)")
     }
 
