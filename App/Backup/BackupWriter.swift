@@ -20,7 +20,8 @@ final class BackupWriter {
 
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private let queue = DispatchQueue(label: "corckie.backup", qos: .utility)
-    @ObservationIgnored private var busy = false
+    /// N7-5: observable, so Settings can spin the arrows while a backup runs
+    private(set) var busy = false
 
     private init() {
         lastBackupMs = defaults.object(forKey: "corckie.lastBackupMs") as? Int64

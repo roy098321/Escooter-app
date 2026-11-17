@@ -14,9 +14,21 @@ struct BackupSettingsView: View {
         List {
             Section {
                 LabeledContent("Folder", value: folder.label)
-                LabeledContent("Last backup", value: BackupPlan.lastBackupText(
-                    lastMs: writer.lastBackupMs, nowMs: Int64(Date().timeIntervalSince1970 * 1000),
-                    utcOffsetMin: TimeZone.current.secondsFromGMT() / 60))
+                LabeledContent {
+                    HStack(spacing: 6) {
+                        Text(BackupPlan.lastBackupText(lastMs: writer.lastBackupMs, nowMs: Int64(Date().timeIntervalSince1970 * 1000),
+                                                       utcOffsetMin: TimeZone.current.secondsFromGMT() / 60))
+                        // N7-5: the arrows turn while a backup runs, then become a green tick
+                        if writer.busy || writer.lastBackupMs != nil {
+                            Image(systemName: writer.busy ? "arrow.triangle.2.circlepath" : "checkmark.circle.fill")
+                                .foregroundStyle(writer.busy ? Color.secondary : Theme.ok)
+                                .contentTransition(.symbolEffect(.replace))
+                                .pulseWhile(writer.busy)
+                        }
+                    }
+                } label: {
+                    Text("Last backup")
+                }
                 if let note = folder.fallbackNote {
                     Label(note, systemImage: "exclamationmark.icloud")
                         .font(.footnote)
