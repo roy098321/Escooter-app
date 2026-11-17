@@ -69,6 +69,8 @@ struct RideDetailView: View {
     /// B53: 0 = drawing (a canvas over the map, `revealStart`), 1 = done (the real map line)
     @State private var pathReveal = 1.0
     @State private var revealStart: Date?
+    /// N7-4: how long this ride's intro lasts (line, sound and haptic together)
+    @State private var drawS = RouteReveal.durationS
     /// B53, Reduce Motion: no draw, the map fades in
     @State private var mapShown = true
     @State private var tilesShown = 99
@@ -119,7 +121,7 @@ struct RideDetailView: View {
             if let l = previewLayer { layerView = LayerView(l) }
             if previewSeries != nil { paintLayer() }
             if previewSeries != nil { moreOpen = true }
-            if onDone != nil, preview == nil, !reduceMotion, model == nil {
+            if drawsIntro, !reduceMotion, model == nil {
                 pathReveal = 0
                 tilesShown = 0
             }
@@ -315,17 +317,33 @@ struct RideDetailView: View {
 
     /// A4: the path draws itself, then a soft tap and the tiles fade in one by one.
     /// B53: the drawing runs on the display's timeline (RouteRevealView), not 30 steps of re-added map lines.
+    /// N7-4: the intro plays after a ride ends and on the FIRST open of each ride, never on a re-open
+    private var drawsIntro: Bool {
+        guard preview == nil, let id = activeId else { return false }
+        return onDone != nil || !UserDefaults.standard.bool(forKey: RouteDraw.seenKey(rideId: id))
+    }
+
     private func playSummaryReveal() {
         if !mapShown { withAnimation(.easeIn(duration: 0.35)) { mapShown = true } }
-        guard onDone != nil, preview == nil, !reduceMotion, pathReveal < 1 else { return }
+        guard drawsIntro, !reduceMotion, pathReveal < 1 else { return }
+        if let id = activeId { UserDefaults.standard.set(true, forKey: RouteDraw.seenKey(rideId: id)) }
+        let km = drawn.reduce(0.0) { $0 + Geo.distanceM($1.a, $1.b) } / 1000
+        drawS = RouteDraw.durationS(km: km)
         Task { @MainActor in
             if !drawn.isEmpty {
                 revealStart = Date()
-                try? await Task.sleep(nanoseconds: UInt64(RouteReveal.durationS * 1_000_000_000))
+                // N7-4: one length for the line, the replay sound and the speed haptic; the numbers come up alongside
+                SoundPlayer.shared.play(.rideReplay, lastingS: drawS)
+                RideDrawHaptic.shared.play(speedsKmh: (series?.points ?? []).compactMap(\.speedKmh), durationS: drawS)
+                let step = UInt64(drawS / 6 * 1_000_000_000)
+                for n in 1...6 {
+                    withAnimation(.easeOut(duration: 0.25)) { tilesShown = n }
+                    try? await Task.sleep(nanoseconds: step)
+                }
             }
             pathReveal = 1
             revealStart = nil
-            for n in 1...6 {
+            for n in 1...6 where tilesShown < n {
                 withAnimation(.easeOut(duration: 0.25)) { tilesShown = n }
                 try? await Task.sleep(nanoseconds: 60_000_000)
             }
@@ -583,7 +601,7 @@ struct RideDetailView: View {
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .overlay {
             if pathReveal < 1, let start = revealStart {
-                RouteRevealView(stretches: fullGradient, ramp: ramp, start: start, proxy: proxy)
+                RouteRevealView(stretches: fullGradient, ramp: ramp, start: start, proxy: proxy, durationS: drawS)
             }
         }
         .opacity(mapShown ? 1 : 0)

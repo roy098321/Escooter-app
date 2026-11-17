@@ -11,11 +11,13 @@ struct RouteRevealView: View {
     let start: Date
     let proxy: MapProxy
     var width: CGFloat = 5
+    /// N7-4: the length follows the ride (`RouteDraw.durationS`)
+    var durationS: Double = RouteReveal.durationS
 
     var body: some View {
         let ends = RouteReveal.ends(stretches)
         TimelineView(.animation) { timeline in
-            let progress = RouteReveal.progress(elapsedS: timeline.date.timeIntervalSince(start))
+            let progress = RouteReveal.progress(elapsedS: timeline.date.timeIntervalSince(start), durationS: durationS)
             Canvas { context, _ in
                 let shown = RouteReveal.visible(ends: ends, progress: progress)
                 let count = min(stretches.count, shown.whole + (shown.partial > 0 ? 1 : 0))
