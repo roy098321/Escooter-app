@@ -312,6 +312,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         AppModel.shared.launch(options: launchOptions)
         BudgetedNotifier.registerBackgroundRefresh()
+        ScooterActivityController.shared.installIntents()     // N7-1 / N7-9: the shared ride intents
         return true
     }
 

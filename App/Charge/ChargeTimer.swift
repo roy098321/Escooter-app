@@ -245,7 +245,12 @@ final class LiveActivityController {
         // R4 / B68: the countdown goes to the target % (or full); a changed estimate moves these dates on the next sync
         let targetPct = ChargeModel.targetPct(s).flatMap { $0 < 100 ? $0 : nil }
         let targetAt = targetPct.map { Date(timeIntervalSince1970: Double(ChargeModel.timeMs(toPct: Double($0), s)) / 1000) }
-        let state = ChargeActivityAttributes.ContentState(zeroAt: zero, fullAt: full, targetAt: targetAt, targetPct: targetPct)
+        var state = ChargeActivityAttributes.ContentState(zeroAt: zero, fullAt: full, targetAt: targetAt, targetPct: targetPct)
+        // N7-1: "Enough for Work by 21:40" while that moment is still ahead
+        if let need = s.usualNeedPct, let name = s.usualName {
+            let at = Date(timeIntervalSince1970: Double(ChargeModel.timeMs(toPct: min(100, need), s)) / 1000)
+            if at > Date() { state.enoughName = name; state.enoughAt = at }
+        }
         let content = ActivityContent(state: state, staleDate: full.addingTimeInterval(3600))
         if activity == nil { activity = Activity<ChargeActivityAttributes>.activities.first }
         if let a = activity {

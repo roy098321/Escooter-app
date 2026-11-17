@@ -131,6 +131,9 @@ struct HomeView: View {
             if previewSheet { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showWhereTo = true } }
         }
         .onChange(of: ScreenSimulator.shared.active) { _, _ in lastRide = nil; reloadLastRide() }
+        .onChange(of: HomeRequests.shared.openWhereTo) { _, open in      // N7-1: the Ready card's Change
+            if open { showWhereTo = true; HomeRequests.shared.openWhereTo = false }
+        }
         .onChange(of: RecorderService.shared.summaryRideId) { _, _ in reloadLastRide() }
         .onChange(of: RecorderService.shared.rideShown) { _, active in
             if !active { loadReady = false; loadSelectorFromStore(); RouteFollowSelection.shared.placeId = nil }

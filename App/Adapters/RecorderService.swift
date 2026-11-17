@@ -133,7 +133,18 @@ final class RecorderService {
 
     // MARK: Sources
 
-    func scooterConnected(at date: Date) { let t = EngineClock.shared.fromWall(date); send(.scooter(TimedScooterEvent(t: t, event: .connected)), at: t) }
+    func scooterConnected(at date: Date) {
+        let t = EngineClock.shared.fromWall(date)
+        send(.scooter(TimedScooterEvent(t: t, event: .connected)), at: t)
+        // N7-1: the Ready card, once the first battery reading has settled
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
+            guard let self, !self.rideActive, !self.simActive, let db = AppModel.shared.displayDatabase else { return }
+            let pct = AppModel.shared.settledBatteryPct.map(Double.init)
+            let km = pct.flatMap { BatteryOverview.load(db, currentPct: $0, connected: true).range?.rangeKm }.map { Int($0.rounded()) }
+            let dest = RouteFollowSelection.shared.chosenKey.flatMap { self.resolveDestination($0)?.name }
+            ScooterActivityController.shared.connected(name: "Scooter", kmLeft: km, destination: dest)
+        }
+    }
     func scooterDisconnected(at date: Date) { let t = EngineClock.shared.fromWall(date); send(.scooter(TimedScooterEvent(t: t, event: .disconnected)), at: t) }
     func packet(_ bytes: [UInt8], at date: Date) {
         let t = EngineClock.shared.fromWall(date)
@@ -252,6 +263,12 @@ final class RecorderService {
             }
         }
         liveScreen = screen
+        // N7-1: the scooter Live Activity follows the ride (no alerts in it, P-4)
+        if !fromSimulator {
+            ScooterActivityController.shared.live(rideOn: rideOn, gpsLost: rideOn && input.secondsWithoutGps > 15, arrived: screen.arrived,
+                                                  destination: destination?.name, distanceM: input.rideDistanceM, elapsedS: input.rideElapsedS,
+                                                  name: "Scooter")
+        }
     }
 
     // MARK: F-35 destination during the ride

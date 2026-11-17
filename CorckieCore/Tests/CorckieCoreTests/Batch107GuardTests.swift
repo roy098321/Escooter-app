@@ -89,4 +89,19 @@ final class Batch107GuardTests: XCTestCase {
         XCTAssertTrue(player.contains("case .pluggedIn, .chargeFull, .saved: return .chargingSaving"))
         XCTAssertTrue(player.contains("\"Charging and saving\""))
     }
+
+    /// N7-1 / N7-9: one set of ride intents shared by the island and the controls; no alerts in the island (P-4); Next never by time
+    func test_N7_1_scooterIslandIsQuiet_andIntentsAreShared() throws {
+        let shared = appFolder.deletingLastPathComponent().appendingPathComponent("Shared/RideActivity")
+        let intents = try String(contentsOf: shared.appendingPathComponent("RideIntents.swift"), encoding: .utf8)
+        XCTAssertTrue(intents.contains("struct StartRideIntent: LiveActivityIntent"))
+        let attrs = try String(contentsOf: shared.appendingPathComponent("ScooterActivityAttributes.swift"), encoding: .utf8)
+        for word in ["alert", "warning", "hot"] {
+            XCTAssertFalse(attrs.lowercased().contains("var \(word)"), "no mid-ride alert state in the island")
+        }
+        let controller = try text("Adapters/ScooterActivityController.swift")
+        XCTAssertTrue(controller.contains("static let readyS: TimeInterval = 120"))
+        XCTAssertFalse(controller.contains("hour") || controller.contains("weekday") || controller.contains("Calendar"),
+                       "Next never picks by time")
+    }
 }

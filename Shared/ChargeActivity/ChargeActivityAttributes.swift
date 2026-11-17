@@ -11,6 +11,9 @@ struct ChargeActivityAttributes: ActivityAttributes {
         /// R4 / B68: the countdown runs to the rider's target when it is below 100 % (nil = to full)
         var targetAt: Date? = nil
         var targetPct: Int? = nil
+        /// N7-1: "Enough for <place> by HH:MM" (the usual trip's battery need is reached then)
+        var enoughName: String? = nil
+        var enoughAt: Date? = nil
     }
 
     var name: String

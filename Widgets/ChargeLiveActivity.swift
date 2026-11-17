@@ -4,7 +4,10 @@ import WidgetKit
 
 @main
 struct CorckieWidgets: WidgetBundle {
-    var body: some Widget { ChargeLiveActivity() }
+    var body: some Widget {
+        ChargeLiveActivity()
+        ScooterLiveActivity()     // N7-1
+    }
 }
 
 private let orange = Color(red: 0.973, green: 0.576, blue: 0.333)
@@ -49,6 +52,10 @@ struct ChargeLiveActivity: Widget {
                             Text(context.state.toText).foregroundStyle(.secondary)
                         }
                         .font(.footnote)
+                        if let name = context.state.enoughName, let at = context.state.enoughAt {   // N7-1
+                            (Text("Enough for \(name) by ") + Text(at, style: .time)).environment(\.locale, clock24)
+                                .font(.footnote.weight(.semibold)).foregroundStyle(orange)
+                        }
                     }
                 }
             } compactLeading: {
@@ -80,6 +87,10 @@ private struct LockCard: View {
                     .font(.system(size: 28, weight: .bold)).monospacedDigit()
                 Text(state.toText).font(.subheadline).foregroundStyle(.secondary)
                 Spacer()
+            }
+            if let name = state.enoughName, let at = state.enoughAt {   // N7-1
+                (Text("Enough for \(name) by ") + Text(at, style: .time)).environment(\.locale, clock24)
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(orange)
             }
         }
         .padding(16)
