@@ -9,6 +9,10 @@ import UIKit
 /// Home's "Where to?" are standard iOS sheets (`glassPresentation`).
 struct MapScreen<MapContent: View, TopBar: View, Side: View, Content: View>: View {
     @Environment(\.hasFloatingTabBar) private var hasBar
+    @Environment(\.sunlight) private var glassSunlight
+    @Environment(\.accessibilityReduceTransparency) private var glassReduceTransparency
+    private var glass: Bool { LiquidGlass.allowed(sunlight: glassSunlight, reduceTransparency: glassReduceTransparency) }
+
     private let map: MapContent
     private let topBar: TopBar
     private let side: Side
@@ -82,7 +86,7 @@ struct MapScreen<MapContent: View, TopBar: View, Side: View, Content: View>: Vie
         .scrollBounceBehavior(.basedOnSize)
         .stiffBounce()
         .scrollFadeEdges(top: 18)      // N6-3: the numbers fade under the sheet's top edge
-        .background(Theme.background, in: shape)
+        .liquidGlass(in: shape, enabled: glass) { $0.background(Theme.background, in: shape) }   // N7-2: the map sheet
         .clipShape(shape)
     }
 }
@@ -103,6 +107,9 @@ struct GlassTopBar<Leading: View, Trailing: View>: View {
     var subtitle: String?
     private let leading: Leading
     private let trailing: Trailing
+    @Environment(\.sunlight) private var glassSunlight
+    @Environment(\.accessibilityReduceTransparency) private var glassReduceTransparency
+    private var glass: Bool { LiquidGlass.allowed(sunlight: glassSunlight, reduceTransparency: glassReduceTransparency) }
 
     init(title: String, subtitle: String? = nil, @ViewBuilder leading: () -> Leading, @ViewBuilder trailing: () -> Trailing) {
         self.title = title
@@ -128,7 +135,9 @@ struct GlassTopBar<Leading: View, Trailing: View>: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
-        .glassCard(radius: DS.Radius.hero, padding: 0)
+        .liquidGlass(in: RoundedRectangle(cornerRadius: DS.Radius.hero, style: .continuous), enabled: glass) {   // N7-2
+            $0.glassCard(radius: DS.Radius.hero, padding: 0)
+        }
     }
 }
 
@@ -136,6 +145,9 @@ struct GlassTopBar<Leading: View, Trailing: View>: View {
 struct GlassLayerControl<T: Hashable>: View {
     let options: [(T, String)]
     @Binding var selection: T
+    @Environment(\.sunlight) private var glassSunlight
+    @Environment(\.accessibilityReduceTransparency) private var glassReduceTransparency
+    private var glass: Bool { LiquidGlass.allowed(sunlight: glassSunlight, reduceTransparency: glassReduceTransparency) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -153,8 +165,10 @@ struct GlassLayerControl<T: Hashable>: View {
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
-        .sunPanel(RoundedRectangle(cornerRadius: 16, style: .continuous), thin: true)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .liquidGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous), enabled: glass) {   // N7-2
+            $0.sunPanel(RoundedRectangle(cornerRadius: 16, style: .continuous), thin: true)
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Map layer")
     }

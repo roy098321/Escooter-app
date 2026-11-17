@@ -27,6 +27,8 @@ struct FloatingTabBar: View {
     var onReselect: (Int) -> Void = { _ in }
     @Environment(\.sunlight) private var sunlight
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    private var glass: Bool { LiquidGlass.allowed(sunlight: sunlight, reduceTransparency: reduceTransparency) }
     /// A5: the orange pill slides to the chosen tab
     @Namespace private var pillSpace
 
@@ -48,11 +50,15 @@ struct FloatingTabBar: View {
         }
         .padding(.horizontal, 8)
         .frame(height: Self.barHeight)
-        .background {
-            Capsule().fill(Theme.bar)
-                .shadow(color: .black.opacity(sunlight ? 0 : 0.10), radius: 10, y: 2)
+        // N7-2: Liquid Glass on iOS 26 (the selected tab keeps its solid orange pill); today's capsule otherwise
+        .liquidGlass(in: Capsule(), enabled: glass) { bar in
+            bar
+                .background {
+                    Capsule().fill(Theme.bar)
+                        .shadow(color: .black.opacity(sunlight ? 0 : 0.10), radius: 10, y: 2)
+                }
+                .overlay { Capsule().strokeBorder(sunlight ? Color(.separator) : Theme.line, lineWidth: sunlight ? 1 : 0.5) }
         }
-        .overlay { Capsule().strokeBorder(sunlight ? Color(.separator) : Theme.line, lineWidth: sunlight ? 1 : 0.5) }
         .padding(.horizontal, DS.Space.gutter)
         .padding(.bottom, Self.bottomGap)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)

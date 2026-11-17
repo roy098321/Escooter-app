@@ -13,8 +13,8 @@ struct ProgressiveBlur: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
-        if sunlight {
-            Color.clear
+        if sunlight || LiquidGlass.allowed(sunlight: sunlight, reduceTransparency: reduceTransparency) {
+            Color.clear     // N7-2: on iOS 26 the glass itself handles what is behind
         } else {
             Group {
                 if reduceTransparency {

@@ -36,4 +36,32 @@ final class Batch107GuardTests: XCTestCase {
         XCTAssertTrue(try text("Audio/SoundPlayer.swift").contains("Haptics.taps("), "ride warnings keep their vibration")
         XCTAssertFalse(try text("UI/Rides/RideDetailView.swift").contains("Haptics.warning()"), "no haptic on delete")
     }
+
+    /// N7-2: Liquid Glass only behind #available(iOS 26) in one place; sunlight and Reduce Transparency switch it off; the selected
+    /// tab keeps its solid orange pill; glass on the floating controls and Live tiles only.
+    func test_N7_2_liquidGlassIsGatedAndScoped() throws {
+        let lg = try text("UI/Shared/LiquidGlass.swift")
+        XCTAssertTrue(lg.contains("#available(iOS 26.0, *)") && lg.contains("guard !sunlight, !reduceTransparency"))
+        for (name, source) in allSwift() where name != "LiquidGlass.swift" {
+            XCTAssertFalse(source.contains(".glassEffect("), "\(name) uses glass outside the gate")
+        }
+        let bar = try text("UI/Shared/FloatingTabBar.swift")
+        XCTAssertTrue(bar.contains(".liquidGlass(in: Capsule()") && bar.contains("Capsule().fill(Theme.accent)"))
+        for file in ["UI/Shared/MapScreen.swift", "UI/Shared/GlassCard.swift", "UI/Shared/DesignSystem.swift"] {
+            XCTAssertTrue(try text(file).contains(".liquidGlass(in:"), "\(file) has no glass")
+        }
+        XCTAssertFalse(try text("UI/Stats/StatsView.swift").contains(".liquidGlass("), "no glass on plain-page cards")
+    }
+
+    /// N7-3 / N7-13: zoom only on iOS 18 with the slide on iOS 17; scroll cards off with Reduce Motion
+    func test_N7_3_N7_13_motionFallbacks() throws {
+        let zoom = try text("UI/Shared/ZoomTransition.swift")
+        XCTAssertEqual(zoom.components(separatedBy: "#available(iOS 18.0, *)").count - 1, 2)
+        for file in ["UI/Rides/RidesListView.swift", "UI/Routes/RoutesListView.swift", "UI/Routes/PlacesView.swift"] {
+            let s = try text(file)
+            XCTAssertTrue(s.contains(".zoomSource(") && s.contains(".zoomDestination(") && s.contains(".scrollReactive()"), file)
+        }
+        let edge = try text("UI/Shared/EdgeEffects.swift")
+        XCTAssertTrue(edge.contains("if reduceMotion {") && edge.contains(".scrollTransition("), "scroll cards stay still with Reduce Motion")
+    }
 }

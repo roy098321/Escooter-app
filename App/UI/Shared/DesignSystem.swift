@@ -79,13 +79,16 @@ extension View {
 /// The look of a round glass icon (40 pt disc inside a 44 pt hit area); use as a label or inside `GlassIconButton`.
 struct GlassIcon: View {
     let symbol: String
+    @Environment(\.sunlight) private var glassSunlight
+    @Environment(\.accessibilityReduceTransparency) private var glassReduceTransparency
+    private var glass: Bool { LiquidGlass.allowed(sunlight: glassSunlight, reduceTransparency: glassReduceTransparency) }
 
     var body: some View {
         Image(systemName: symbol)
             .font(.system(size: 17, weight: .semibold))
             .foregroundStyle(.primary)
             .frame(width: 40, height: 40)
-            .sunPanel(Circle(), thin: true)
+            .liquidGlass(in: Circle(), interactive: true, enabled: glass) { $0.sunPanel(Circle(), thin: true) }   // N7-2
             .frame(width: DS.hit, height: DS.hit)
             .contentShape(Circle())
     }

@@ -8,6 +8,7 @@ struct GlassCard<Content: View>: View {
     var tint: Color?
     private let content: Content
     @Environment(\.sunlight) private var sunlight
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     init(tint: Color? = nil, @ViewBuilder content: () -> Content) {
         self.tint = tint
@@ -19,12 +20,17 @@ struct GlassCard<Content: View>: View {
         content
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background {
-                if let tint { shape.fill(tint.opacity(sunlight ? 0.5 : 0.35)) }
-            }
-            .sunPanel(shape)
-            .overlay {
-                if !sunlight { shape.strokeBorder(.white.opacity(0.25), lineWidth: 1) }
+            // N7-2: the Live tiles are Liquid Glass on iOS 26 (a tint stays a tint); sunlight = solid panel
+            .liquidGlass(in: shape, tint: tint?.opacity(0.35),
+                         enabled: LiquidGlass.allowed(sunlight: sunlight, reduceTransparency: reduceTransparency)) { tile in
+                tile
+                    .background {
+                        if let tint { shape.fill(tint.opacity(sunlight ? 0.5 : 0.35)) }
+                    }
+                    .sunPanel(shape)
+                    .overlay {
+                        if !sunlight { shape.strokeBorder(.white.opacity(0.25), lineWidth: 1) }
+                    }
             }
     }
 }
