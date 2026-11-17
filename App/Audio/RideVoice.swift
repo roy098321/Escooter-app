@@ -54,7 +54,7 @@ final class RideVoice {
     func startTapped() {
         startTappedAt = Date()
         SoundPlayer.shared.play(Self.reduceMotion ? .rideStartShort : .rideStart)
-        Haptics.success()     // N7-8: ride started
+        Task { @MainActor in Haptics.success() }     // N7-8: ride started
     }
 
     static var reduceMotion: Bool { UIAccessibility.isReduceMotionEnabled }

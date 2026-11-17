@@ -81,7 +81,7 @@ final class BackupWriter {
                     Log.info(source: "backup", "Backup written (\(o.fullName ?? "ride delta only"))")
                     if forceFull {     // N7-12 + N7-8: Back up now finished
                         SoundPlayer.shared.play(.saved)
-                        Haptics.success()
+                        Task { @MainActor in Haptics.success() }
                     }
                 case let .failure(error):
                     self.lastError = error.localizedDescription
