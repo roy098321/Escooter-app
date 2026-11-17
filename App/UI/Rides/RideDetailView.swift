@@ -576,7 +576,8 @@ struct RideDetailView: View {
         return MapReader { proxy in
         Map(initialPosition: Self.fitted(path), interactionModes: [.pan, .zoom]) {
             GradientPath.lines(gradient, ramp: ramp)
-            PlacePinMarks(pins: preview != nil ? RideDetailPreview.pins : pins)
+            // N7-4: the start / destination pins appear once the line has drawn itself
+            PlacePinMarks(pins: preview != nil ? RideDetailPreview.pins : (pathReveal >= 1 ? pins : []))
             ForEach(Array((layerView.showsStops && pathReveal >= 1 ? stopDots : []).enumerated()), id: \.offset) { _, stop in
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: stop.point.lat, longitude: stop.point.lon), anchor: .center) {
                     StopDotMark(stop: stop)
