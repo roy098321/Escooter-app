@@ -25,12 +25,15 @@ enum SoundKind: String, CaseIterable {
     case pluggedIn = "plugged_in"
     case chargeFull = "charge_full"
     case saved
+    /// N8-3: the soft low tone of a level-2 warning light (no words, no vibration, once per light per ride); draft, final by the sound designer
+    case level2Tone = "level2_tone"
 
     var volume: Float {
         switch self {
         case .connect, .arrival, .pluggedIn, .chargeFull, .saved: return 0.8
         case .rideStart, .rideStartShort, .rideEnd, .rideReplay: return 0.9
         case .batteryPing, .destinationPing, .motorPing: return 1.0
+        case .level2Tone: return 0.7
         }
     }
 
@@ -41,7 +44,7 @@ enum SoundKind: String, CaseIterable {
         case .rideStart, .rideStartShort, .rideEnd, .rideReplay: return .ride
         case .arrival: return .arrival
         case .pluggedIn, .chargeFull, .saved: return .chargingSaving
-        case .batteryPing, .destinationPing, .motorPing: return nil
+        case .batteryPing, .destinationPing, .motorPing, .level2Tone: return nil
         }
     }
 

@@ -44,6 +44,17 @@ public struct LiveScreenState: Equatable, Sendable {
     public var arrived: Bool = false
     /// V09: the time still to ride on the followed route, s (LBP-stretched), nil = none
     public var remainingS: Double? = nil
+    /// N8-1: the warning lights shown now (at most 3, red first; empty when all is fine)
+    public var warnings: [WarningLight] = []
+    /// N8-1: an icon may expand into its line (wheel speed 0 for 1 s)
+    public var warningsExpandable: Bool = false
+    /// N8-3: L2 lights that play the soft tone now
+    public var warningTones: [WarningLight] = []
+    /// N8-1: lights that never got a slot this ride (for the summary)
+    public var warningsNeverShown: Set<WarningLight> = []
+
+    /// N8-1: the banners and chips the strip replaces (the other live banners stay)
+    public static let stripBanners: Set<LiveBanner> = [.veryHot, .hot, .disconnected, .noGps, .phoneBatteryLow]
 }
 
 public struct RouteLiveProgress: Equatable, Sendable {
@@ -93,6 +104,9 @@ public struct LiveScreenDriver: Sendable {
     private var builder = LiveStateBuilder()
     private var banners = BannerQueue()
     private var lastPhase: RidePhase = .idle
+    /// N8-1 / N8-3
+    private var strip = WarningStrip()
+    private var stripHeat = HeatWatch()
     private var follower: RouteFollower?
     private var arrivalDisplay = ArrivalDisplay()
     private var utcOffsetMin = 0
@@ -127,6 +141,8 @@ public struct LiveScreenDriver: Sendable {
             banners.beginRide(messages: [])
             builder.reset()
         } else if !active && Self.active(lastPhase) {
+            strip.rideEnded()
+            stripHeat = HeatWatch()
             banners = BannerQueue()
             builder.reset()
             follower = nil
@@ -193,6 +209,22 @@ public struct LiveScreenDriver: Sendable {
         state.remainingS = remaining
         state.dotHollow = dotOverride != nil
         if dotOverride != nil { state.dotGreyed = false }
+        // N8-1 / N8-3: the warning-light strip (riding only; the conditions the app knows today)
+        if active {
+            var on: Set<WarningLight> = []
+            if let temp = input.scooterTempC {
+                stripHeat.update(temp)
+                if stripHeat.level == .veryHot { on.insert(.motorVeryHot) } else if stripHeat.level == .hot { on.insert(.motorHot) }
+            }
+            if input.phoneMode { on.insert(.disconnected) }
+            if input.phoneGpsOff { on.insert(.phoneBatteryLow) }
+            if tiles.chips.contains(.noGps) && !input.phoneGpsOff { on.insert(.noGps) }
+            if tiles.chips.contains(.offlineMap) { on.insert(.offlineMap) }
+            state.warningTones = strip.update(on: on, wheelSpeedKmh: input.scooterSpeedKmh, at: t)
+            state.warnings = strip.shown
+            state.warningsExpandable = strip.canExpand(at: t)
+            state.warningsNeverShown = strip.neverShown
+        }
         return state
     }
 

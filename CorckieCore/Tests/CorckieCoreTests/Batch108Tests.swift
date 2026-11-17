@@ -46,4 +46,18 @@ final class Batch108Tests: XCTestCase {
         strip.rideEnded()
         XCTAssertEqual(strip.update(on: [.noGps], wheelSpeedKmh: 10, at: 0), [.noGps], "a new ride may tone again")
     }
+
+    /// N8-1: the strip replaces the very hot / hot / disconnected / No GPS / phone battery banners and the No GPS / Offline map
+    /// chips on the live screen; other banners stay
+    func test_N8_1_stripReplacesThoseBannersAndChips() throws {
+        let app = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("App")
+        let live = try String(contentsOf: app.appendingPathComponent("UI/Live/LiveRideView.swift"), encoding: .utf8)
+        XCTAssertTrue(live.contains("WarningStripView(lights: s.warnings"))
+        XCTAssertTrue(live.contains("LiveScreenState.stripBanners.contains($0.banner)"))
+        XCTAssertFalse(live.contains("ForEach(Array(s.chips.enumerated())"), "the No GPS / Offline map chips are lights now")
+        XCTAssertEqual(LiveScreenState.stripBanners, [.veryHot, .hot, .disconnected, .noGps, .phoneBatteryLow])
+        let strip = try String(contentsOf: app.appendingPathComponent("UI/Live/WarningStripView.swift"), encoding: .utf8)
+        XCTAssertTrue(strip.contains("guard expandable else { return }"), "while moving a tap does nothing")
+    }
 }

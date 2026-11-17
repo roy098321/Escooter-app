@@ -179,15 +179,14 @@ struct LiveRideView: View {
 
     private func topArea(_ s: LiveScreenState) -> some View {
         VStack(spacing: 8) {
-            if let text = s.bannerText {
+            // N8-1: the warning lights replace the very hot / hot / disconnected / No GPS / phone battery banners and the chips
+            if !s.warnings.isEmpty { WarningStripView(lights: s.warnings, expandable: s.warningsExpandable) }
+            if let text = s.bannerText, !(s.banner.map { LiveScreenState.stripBanners.contains($0.banner) } ?? false) {
                 banner(s, text)
             }
             HStack(spacing: 8) {
                 if s.tiles.showStartingDot {
                     chip("starting\u{2026}", dot: .orange)
-                }
-                ForEach(Array(s.chips.enumerated()), id: \.offset) { _, c in
-                    chip(c == .noGps ? "No GPS" : "Offline map", dot: nil, symbol: c == .noGps ? "location.slash" : "map")
                 }
             }
             if stopHint {

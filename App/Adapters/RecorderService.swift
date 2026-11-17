@@ -263,6 +263,8 @@ final class RecorderService {
             }
         }
         liveScreen = screen
+        // N8-3: a level-2 warning light plays one soft tone (no words, no vibration), once per light per ride
+        if !screen.warningTones.isEmpty, !fromSimulator { SoundPlayer.shared.play(.level2Tone) }
         // N7-1: the scooter Live Activity follows the ride (no alerts in it, P-4)
         if !fromSimulator {
             ScooterActivityController.shared.live(rideOn: rideOn, gpsLost: rideOn && input.secondsWithoutGps > 15, arrived: screen.arrived,
