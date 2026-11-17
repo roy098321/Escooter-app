@@ -34,6 +34,21 @@ struct ChargeGlow: ViewModifier {
         content
             .background {
                 if let c = colour, strength != .rim {
+                if #available(iOS 18.0, *) {
+                    // N7-6: a soft MeshGradient on iOS 18 (the middle point drifts with `drift`)
+                    let o = strength == .full ? 0.55 : 0.30
+                    MeshGradient(width: 3, height: 3,
+                                 points: [[0, 0], [0.5, 0], [1, 0],
+                                          [0, 0.5], [drift ? 0.7 : 0.3, drift ? 0.35 : 0.65], [1, 0.5],
+                                          [0, 1], [0.5, 1], [1, 1]],
+                                 colors: [.clear, c.opacity(o * 0.5), .clear,
+                                          c.opacity(o * 0.6), c.opacity(o), c.opacity(o * 0.4),
+                                          .clear, c.opacity(o * 0.5), .clear])
+                        .blur(radius: 18)
+                        .clipShape(shape)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                } else {
                     ZStack {
                         Circle().fill(c.opacity(strength == .full ? 0.55 : 0.30))
                             .frame(width: 180, height: 180)
@@ -46,6 +61,7 @@ struct ChargeGlow: ViewModifier {
                     .clipShape(shape)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
+                }
                 }
             }
             .overlay {
