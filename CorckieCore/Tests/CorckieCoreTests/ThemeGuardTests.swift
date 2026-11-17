@@ -73,7 +73,8 @@ final class ThemeGuardTests: XCTestCase {
     /// F-14: one flat capsule, icons only, Home a normal icon, the selected tab a filled icon on an orange pill, hides on scroll
     func test_F14_flatTabBar() throws {
         let bar = try text("UI/Shared/FloatingTabBar.swift")
-        XCTAssertFalse(bar.contains("Text(item.title)"), "icons only (VoiceOver keeps the names)")
+        // N6-6 (batch 6): only the selected tab shows its name; the others stay icons only
+        XCTAssertTrue(bar.contains("if on {") && bar.contains("Text(item.title)"), "the selected tab shows its name (N6-6)")
         XCTAssertTrue(bar.contains(".accessibilityLabel(item.title)"))
         XCTAssertFalse(bar.contains("discSize") || bar.contains("item.id == 2"), "no raised Home disc")
         XCTAssertTrue(bar.contains(".symbolVariant(on ? .fill : .none)") && bar.contains("Capsule().fill(Theme.accent)"))
