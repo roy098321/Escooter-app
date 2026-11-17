@@ -2,6 +2,18 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 106.291126.00 — batch 6, due Sun 29 Nov 2026 (calmer screens, safer backups)
+
+- N6-1 (B95): Remove place (place screen, with a confirm) keeps its history: it leaves Where to, quick dial, Places, map pins and the matching of new rides; past rides, routes and stats keep the name. Places → Removed places → Put back. Database v5 adds `place.removedAt` (no row is dropped). Bring rider info back copies the shared columns, so an older backup still restores.
+- N6-2: the Charge log is now the Battery log: one line from every reading, rides drawn as their smoothed level (no load dips), light fill, dashed average line ("avg 80%", time-weighted), faint 0/50/100 grid and day lines, headline "51% now · 6 charges · 12 rides", Day / Week switch (tap a day to open it), legend behind the ⓘ, no charging bands. Charges less than 15 min apart count as one.
+- N6-7: backups always run: to the folder you pick (iCloud Drive or any Files folder) when it can be reached, otherwise to the app's own folder with a quiet note. Settings → Data & backup → Backup shows the folder, the last backup, Choose folder and Back up now. The Home "not backed up" card counts only backups that left the phone.
+- N6-3: lists fade out above the floating tab bar; a map screen's numbers fade under the sheet's top edge.
+- N6-4: a soft blur behind the tab bar and the map top bars (none in Sunlight mode; a plain fade with Reduce Transparency).
+- N6-5: an ⓘ in a section heading opens its explanation in place with a spring; tap again to close.
+- N6-6: the selected tab widens and shows its name.
+- Reduce Motion turns every new spring into a short fade.
+- Guard tests: Batch106StoreTests (AppTests); BatteryLogTests, BackupTargetTests, MotionStyleTests (Core).
+
 ## 105.221126.01 — hotfix 01 of batch 5 (the rest of the new-scooter work)
 
 - D2 4b: every alert has its own switch (Settings → Notifications, in groups Rides / Charging / Tips, plus the "always on" expiry line); switch-on, charge and battery-wear alerts check their switch; setup has an "All the alerts" list behind a tap.

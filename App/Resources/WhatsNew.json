@@ -1,5 +1,33 @@
 [
   {
+    "version": "106.291126.00",
+    "headline": "Calmer screens, safer backups",
+    "items": [
+      {
+        "symbol": "chart.xyaxis.line",
+        "title": "A clearer Battery log",
+        "line": "One smooth battery line with your average, Day and Week views, and a single line on top: % now, charges and rides. Tap a day to open it."
+      },
+      {
+        "symbol": "icloud.and.arrow.up",
+        "title": "Backups off the phone",
+        "line": "Settings → Data & backup → Backup: choose a folder in iCloud Drive and every ride is backed up there. If the folder is gone, backups stay on the phone until you choose it again."
+      },
+      {
+        "symbol": "mappin.slash",
+        "title": "Remove a place",
+        "line": "Open a place and tap Remove place. It leaves Where to, Home and the maps; past rides keep its name. Places → Removed places puts it back."
+      }
+    ],
+    "smallerFixes": 4,
+    "full": [
+      "The ⓘ explanations open right under their heading instead of a sheet; tap again to close.",
+      "The tab you're on shows its name.",
+      "Lists fade softly above the tab bar, and a light blur sits behind the tab bar and the map buttons.",
+      "Restoring rider info from an older backup works after this update too."
+    ]
+  },
+  {
     "version": "105.221126.01",
     "headline": "More control, fewer surprises",
     "items": [
