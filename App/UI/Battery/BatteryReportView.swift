@@ -154,7 +154,9 @@ struct BatteryReportView: View {
                                 guard let plot = proxy.plotFrame else { return }
                                 let x = g.location.x - geo[plot].origin.x
                                 guard let d: Date = proxy.value(atX: x) else { return }
-                                selected = r.points.min { abs(Self.date($0.atMs).timeIntervalSince(d)) < abs(Self.date($1.atMs).timeIntervalSince(d)) }
+                                let next = r.points.min { abs(Self.date($0.atMs).timeIntervalSince(d)) < abs(Self.date($1.atMs).timeIntervalSince(d)) }
+                                if next?.atMs != selected?.atMs { Haptics.tick() }     // N7-7: a tick per point passed
+                                selected = next
                             }
                             .onEnded { _ in selected = nil })
                 }

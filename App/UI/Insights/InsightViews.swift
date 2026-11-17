@@ -423,6 +423,13 @@ struct InsightDetailView: View {
 /// The chart of the detail page: highlighted band, confidence band, fitted curve (or levels), the rider's own dots.
 struct InsightChartCard: View {
     let chart: InsightChart
+    /// N7-7: the x under the finger while scrubbing (iOS 17 chartXSelection)
+    @State private var scrubX: Double?
+
+    /// N7-7: the fitted curve's point nearest to `x`
+    private func nearest(_ x: Double) -> InsightCurvePoint? {
+        chart.curve.min { abs($0.x - x) < abs($1.x - x) }
+    }
 
     private struct Segment: Identifiable {
         var id: Int
@@ -472,7 +479,20 @@ struct InsightChartCard: View {
                         .foregroundStyle(InsightStyle.dot)
                         .symbolSize(44)
                 }
+                // N7-7: drag to read the curve (rule, dot, callout)
+                if let x = scrubX, let p = nearest(x) {
+                    RuleMark(x: .value("x", p.x)).foregroundStyle(Theme.accent.opacity(0.35))
+                    PointMark(x: .value("x", p.x), y: .value("y", p.y)).foregroundStyle(Theme.accent).symbolSize(60)
+                        .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            Text(String(format: "%.1f \u{00B7} %.1f", p.x, p.y))
+                                .font(.caption.weight(.semibold).monospacedDigit())
+                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .background(.thinMaterial, in: Capsule())
+                        }
+                }
             }
+            .chartXSelection(value: $scrubX)
+            .onChange(of: scrubX.flatMap { nearest($0)?.x }) { old, new in if new != nil, old != new { Haptics.tick() } }
             .chartXScale(domain: xDom)
             .chartYScale(domain: yDom)
             .chartXAxis {

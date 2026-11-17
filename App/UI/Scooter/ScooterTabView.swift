@@ -180,7 +180,7 @@ struct ScooterTabView: View {
         .buttonStyle(.plain)
         NavigationLink { BatteryView() } label: {
             HStack {
-                Label("Battery", systemImage: "battery.75percent")
+                Label("Battery", systemImage: Self.batterySymbol(shown.pct))   // N7-5: the icon fills to the real (smoothed) level
                 Spacer()
                 Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
             }
@@ -191,6 +191,18 @@ struct ScooterTabView: View {
     }
 
     /// F-31: after Unplugged the card keeps the line's estimate ("≈ 72 % · estimate when unplugged") until the real % is read
+    /// N7-5: the battery icon at the real level (0 / 25 / 50 / 75 / 100 %); "battery.0percent" when unknown
+    static func batterySymbol(_ pct: Int?) -> String {
+        guard let p = pct else { return "battery.0percent" }
+        switch p {
+        case ..<13: return "battery.0percent"
+        case ..<38: return "battery.25percent"
+        case ..<63: return "battery.50percent"
+        case ..<88: return "battery.75percent"
+        default: return "battery.100percent"
+        }
+    }
+
     static func chargeAdjusted(pct: Int?, caption: String?, unplugged: (pct: Double, ms: Int64)?, utcOffsetMin: Int) -> (pct: Int?, caption: String?) {
         guard let u = unplugged else { return (pct, caption) }
         return (Int(u.pct.rounded()), "\u{2248} estimate when unplugged \u{00B7} \(ChargeText.clock(u.ms, utcOffsetMin: utcOffsetMin))")
