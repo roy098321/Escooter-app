@@ -18,30 +18,30 @@ struct ScooterLiveActivity: Widget {
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Label(title(s, context.attributes.name), systemImage: symbol(s))
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(tint(s)).lineLimit(1)
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(phaseColour(s)).lineLimit(1)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     if s.phase == .riding, let since = s.recordingSince {
                         Text(timerInterval: since...Date.distantFuture, countsDown: false)
-                            .font(.title3.weight(.bold)).monospacedDigit().frame(maxWidth: 90).foregroundStyle(tint(s))
+                            .font(.title3.weight(.bold)).monospacedDigit().frame(maxWidth: 90).foregroundStyle(phaseColour(s))
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     ScooterCardBody(state: s)
                 }
             } compactLeading: {
-                Image(systemName: symbol(s)).foregroundStyle(tint(s))
+                Image(systemName: symbol(s)).foregroundStyle(phaseColour(s))
             } compactTrailing: {
                 if s.phase == .riding, let since = s.recordingSince {
                     Text(timerInterval: since...Date.distantFuture, countsDown: false)
-                        .monospacedDigit().frame(maxWidth: 56).foregroundStyle(tint(s))
+                        .monospacedDigit().frame(maxWidth: 56).foregroundStyle(phaseColour(s))
                 } else if s.phase == .ready, let km = s.kmLeft {
                     Text("\(km) km").monospacedDigit()
                 } else {
                     Image(systemName: "flag.checkered")
                 }
             } minimal: {
-                Image(systemName: symbol(s)).foregroundStyle(tint(s))
+                Image(systemName: symbol(s)).foregroundStyle(phaseColour(s))
             }
         }
     }
@@ -55,7 +55,7 @@ private func symbol(_ s: ScooterActivityAttributes.ContentState) -> String {
     }
 }
 
-private func tint(_ s: ScooterActivityAttributes.ContentState) -> Color {
+private func phaseColour(_ s: ScooterActivityAttributes.ContentState) -> Color {
     s.phase == .riding && s.gpsLost ? .gray : (s.phase == .riding ? .red : orange)
 }
 
@@ -116,11 +116,11 @@ private struct ScooterLockCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label(title(state, name), systemImage: symbol(state)).foregroundStyle(tint(state)).font(.subheadline.weight(.semibold))
+                Label(title(state, name), systemImage: symbol(state)).foregroundStyle(phaseColour(state)).font(.subheadline.weight(.semibold))
                 Spacer()
                 if state.phase == .riding, let since = state.recordingSince {
                     Text(timerInterval: since...Date.distantFuture, countsDown: false)
-                        .font(.title3.weight(.bold)).monospacedDigit().foregroundStyle(tint(state))
+                        .font(.title3.weight(.bold)).monospacedDigit().foregroundStyle(phaseColour(state))
                 }
             }
             ScooterCardBody(state: state)
