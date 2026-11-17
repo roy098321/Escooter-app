@@ -107,6 +107,7 @@ public struct LiveScreenDriver: Sendable {
     /// N8-1 / N8-3
     private var strip = WarningStrip()
     private var stripHeat = HeatWatch()
+    private var stripDarkDone = false
     private var follower: RouteFollower?
     private var arrivalDisplay = ArrivalDisplay()
     private var utcOffsetMin = 0
@@ -143,6 +144,7 @@ public struct LiveScreenDriver: Sendable {
         } else if !active && Self.active(lastPhase) {
             strip.rideEnded()
             stripHeat = HeatWatch()
+            stripDarkDone = false
             banners = BannerQueue()
             builder.reset()
             follower = nil
@@ -220,6 +222,20 @@ public struct LiveScreenDriver: Sendable {
             if input.phoneGpsOff { on.insert(.phoneBatteryLow) }
             if tiles.chips.contains(.noGps) && !input.phoneGpsOff { on.insert(.noGps) }
             if tiles.chips.contains(.offlineMap) { on.insert(.offlineMap) }
+            if input.formatChanged { on.insert(.recordingProblem) }
+            if tiles.speedSource == .gps && !input.phoneMode { on.insert(.phoneTookOver) }
+            if let below = lowBatteryPower?.belowPct, let pct = input.smoothedBatteryPct ?? input.scooterBatteryPct,
+               pct > Double(below), pct <= Double(below + WarningStrip.powerLimitAheadPct) {
+                on.insert(.powerLimitSoon)
+            }
+            // dark before you arrive: once per ride, clears when it is dark or the ride ends
+            if !stripDarkDone, let lat = input.lat, let lon = input.lon {
+                if SunPosition.isDark(lat: lat, lon: lon, epochS: t) {
+                    stripDarkDone = true
+                } else if SunPosition.darkBeforeArrival(lat: lat, lon: lon, nowS: t, remainingS: remaining) {
+                    on.insert(.darkBeforeArrival)
+                }
+            }
             state.warningTones = strip.update(on: on, wheelSpeedKmh: input.scooterSpeedKmh, at: t)
             state.warnings = strip.shown
             state.warningsExpandable = strip.canExpand(at: t)

@@ -69,4 +69,16 @@ final class Batch108Tests: XCTestCase {
         XCTAssertFalse(V09Message.samples.contains(.pointOfNoReturn(metres: 300)), "the single 300 m line is replaced")
         XCTAssertEqual(V09Director.turnBackSoonM, 1000)
     }
+
+    /// N8-1 "Dark before you arrive": offline sun position (made-up place on the equator, 0° lon)
+    func test_N8_1_darkBeforeArrival() {
+        // 2026-03-20 (equinox) at the equator, 0°: noon ~12:07 UTC, sunset ~18:07, civil dusk ~18:30
+        let day = 1_773_964_800.0          // 2026-03-20 00:00 UTC
+        XCTAssertGreaterThan(SunPosition.elevationDeg(lat: 0, lon: 0, epochS: day + 12 * 3600), 80)
+        XCTAssertTrue(SunPosition.isDark(lat: 0, lon: 0, epochS: day + 1 * 3600))
+        XCTAssertFalse(SunPosition.isDark(lat: 0, lon: 0, epochS: day + 17 * 3600))
+        XCTAssertTrue(SunPosition.darkBeforeArrival(lat: 0, lon: 0, nowS: day + 18 * 3600, remainingS: 45 * 60))
+        XCTAssertFalse(SunPosition.darkBeforeArrival(lat: 0, lon: 0, nowS: day + 15 * 3600, remainingS: nil))
+        XCTAssertFalse(SunPosition.darkBeforeArrival(lat: 0, lon: 0, nowS: day + 22 * 3600, remainingS: nil), "already dark: cleared")
+    }
 }

@@ -69,6 +69,8 @@ public enum WarningLight: Int, CaseIterable, Comparable, Sendable {
 
 public struct WarningStrip: Equatable, Sendable {
     public static let maxShown = 3
+    /// "Power limit soon": within this many % above the learned low-battery power limit
+    public static let powerLimitAheadPct = 3
     /// "At a stop": wheel speed 0 for this long
     public static let stopHoldS = 1.0
 
