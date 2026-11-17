@@ -354,17 +354,20 @@ struct LiveRideView: View {
     }
 
     /// battery and ride time share one look: same font, centred, a small label under the number (B21)
-    private func smallTile(_ number: String, label: String) -> some View {
+    private func smallTile(_ number: String, label: String, tint: Color? = nil) -> some View {
         GlassCard {
             VStack(spacing: 0) {
                 Text(number)
                     .font(.system(size: Self.tilePt, weight: .bold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(tint ?? Color.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)       // only for "~100%" or a ride past an hour; normally the full size
                 Text(label).font(.footnote).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
         }
+        // N8-2: a thin coloured border (the tile never fills)
+        .overlay { if let tint { RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(tint, lineWidth: 2) } }
     }
 
     private func batteryTile(_ s: LiveScreenState) -> some View {
@@ -374,7 +377,11 @@ struct LiveRideView: View {
             return (t.batteryEstimated ? "~" : "") + "\(b)%"
         }()
         let spoken = "Battery " + (t.batteryPct.map { "\($0) percent" + (t.batteryEstimated ? ", estimated" : "") } ?? "unknown")
-        return smallTile(number, label: t.batteryEstimated ? "battery \u{00B7} est." : "battery")
+        // N8-2: amber at 20 % or less, red at 10 % or less (the smoothed % the tile shows); colour-blind mode adds ▼
+        let level = BatteryTileLevel.level(pct: t.batteryPct)
+        let tint: Color? = level == .critical ? Color.red : (level == .low ? Color.orange : nil)
+        return smallTile(BatteryTileLevel.number(number, level: level, colourBlind: DisplaySettings.colourBlind),
+                         label: t.batteryEstimated ? "battery \u{00B7} est." : "battery", tint: tint)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(spoken)
     }
