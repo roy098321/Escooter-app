@@ -319,7 +319,17 @@ struct StatsView: View {
     /// Hotfix 01 (H5): the tallest bar(s) red (Theme token), the others orange; a tapped bar keeps the others dimmed
     private func barColour(_ i: Int, tallest: Set<Int>) -> Color {
         let base = tallest.contains(i) ? Theme.danger : Theme.accent
-        return selectedBar == nil || selectedBar == i ? base : base.opacity(0.35)
+        if let sel = selectedBar { return sel == i ? base : base.opacity(0.35) }
+        // N7-7: today's bar full, the others a little softer
+        if let today = todayBar { return today == i ? base : base.opacity(0.7) }
+        return base
+    }
+
+    /// N7-7: the index of today's bar in the shown chart (nil when today is not shown)
+    private var todayBar: Int? {
+        guard let m = model else { return nil }
+        let count = Self.barData(m).values.count
+        return StatsChart.todayIndex(period: m.period, span: m.span, mode: m.mode, count: count, nowMs: Int64(Date().timeIntervalSince1970 * 1000))
     }
 
     private func barAxis(_ labels: [String]) -> some AxisContent {

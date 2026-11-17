@@ -83,6 +83,17 @@ public enum StatsChart {
         }
     }
 
+    /// N7-7 (batch 7): which bar is "today" (full orange; the others softer); nil when today is not in the shown period.
+    /// Day bars: the day since the period's start; a year: the month (calendar) or the slice of the period (rolling).
+    public static func todayIndex(period p: StatsPeriod, span: StatsSpan, mode: StatsMode, count: Int, nowMs: Int64) -> Int? {
+        guard count > 0, nowMs >= p.startMs else { return nil }
+        let days = Int((nowMs - p.startMs) / OutsideTime.dayMs)
+        guard days < p.dayCount else { return nil }
+        if span != .year { return days < count ? days : nil }
+        let i = Int(Double(days) / Double(max(1, p.dayCount)) * Double(count))
+        return min(count - 1, i)
+    }
+
     public static func make(_ t: StatsTotals, metric: PastWeeksMetric, period p: StatsPeriod, span: StatsSpan, mode: StatsMode,
                             utcOffsetMin: Int) -> StatsChartData {
         let grouped = StatsCalc.chartBars(barsKm: dayValues(t, metric), period: p, span: span, mode: mode, utcOffsetMin: utcOffsetMin)

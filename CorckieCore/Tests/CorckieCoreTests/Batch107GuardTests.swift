@@ -1,4 +1,5 @@
 import XCTest
+@testable import CorckieCore
 
 /// Batch 7 guards, checked against the app's source text on Linux CI (like ThemeGuardTests).
 final class Batch107GuardTests: XCTestCase {
@@ -103,5 +104,13 @@ final class Batch107GuardTests: XCTestCase {
         XCTAssertTrue(controller.contains("static let readyS: TimeInterval = 120"))
         XCTAssertFalse(controller.contains("hour") || controller.contains("weekday") || controller.contains("Calendar"),
                        "Next never picks by time")
+    }
+
+    func test_N7_7_todayBar() {
+        let d: Int64 = 86_400_000
+        let week = StatsPeriod(startMs: 10 * d, endMs: 17 * d, label: "week", isPartial: true, dayCount: 7)
+        XCTAssertEqual(StatsChart.todayIndex(period: week, span: .week, mode: .calendar, count: 7, nowMs: 13 * d + 5), 3)
+        XCTAssertNil(StatsChart.todayIndex(period: week, span: .week, mode: .calendar, count: 7, nowMs: 20 * d))
+        XCTAssertNil(StatsChart.todayIndex(period: week, span: .week, mode: .calendar, count: 7, nowMs: 5 * d))
     }
 }
