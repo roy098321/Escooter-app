@@ -381,6 +381,12 @@ struct RideDetailView: View {
             ForEach(Array(m.notes.enumerated()), id: \.offset) { _, n in
                 if n.kind != .heat { note(n) }
             }
+            // N8-1: warning lights that were on but never got a slot on the strip during the ride
+            if let id = activeId, let lights = UserDefaults.standard.stringArray(forKey: "ride.lightsNotShown.\(id)"), !lights.isEmpty {
+                Label("Also during the ride: " + lights.joined(separator: " \u{00B7} "), systemImage: "exclamationmark.triangle")
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if let s = stopTrim { stopTrimRow(s) }
             if previewPrompt == nil, prompt == nil, let o = previewOffer ?? offer { offerCard(o) }
             if let p = previewPrompt ?? prompt { promptCard(p) }

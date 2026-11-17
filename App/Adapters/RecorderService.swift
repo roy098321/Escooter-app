@@ -24,6 +24,8 @@ final class RecorderService {
     private(set) var lastClosedRideId: String?
     /// M1-13: the ride whose summary is waiting to be shown once the live view is done (nil = none)
     private(set) var summaryRideId: String?
+    /// N8-1: warning lights that were on during the ride but never shown (the strip holds 3); saved with the ride at its end
+    @ObservationIgnored var stripOverflow: Set<WarningLight> = []
     /// M1-12: everything the live ride screen draws (computed here once a second by `LiveScreenDriver`)
     private(set) var liveScreen: LiveScreenState?
     private(set) var livePath = LivePath()
@@ -75,6 +77,10 @@ final class RecorderService {
                     // F-39: an arrived trip's legs become one ride; the summary shows that one
                     let id = TripService.shared.rideClosed(id: closedId, database: AppModel.shared.database)
                     RecorderService.shared.lastClosedRideId = id
+                    // N8-1: the lights that never got a slot go to this ride's summary
+                    let overflow = RecorderService.shared.stripOverflow.sorted().map(\.line)
+                    if !overflow.isEmpty { UserDefaults.standard.set(overflow, forKey: "ride.lightsNotShown.\(id)") }
+                    RecorderService.shared.stripOverflow = []
                     RecorderService.shared.summaryRideId = id
                     PhoneBatteryWatch.shared.rideEnded()
                     BackupWriter.shared.rideEnded(rideId: id)
@@ -263,6 +269,8 @@ final class RecorderService {
             }
         }
         liveScreen = screen
+        // N8-1: lights that never got a slot, kept for the ride summary
+        if rideOn { stripOverflow = screen.warningsNeverShown }
         // N8-3: a level-2 warning light plays one soft tone (no words, no vibration), once per light per ride
         if !screen.warningTones.isEmpty, !fromSimulator { SoundPlayer.shared.play(.level2Tone) }
         // N7-1: the scooter Live Activity follows the ride (no alerts in it, P-4)
