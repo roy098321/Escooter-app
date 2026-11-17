@@ -71,6 +71,9 @@ public struct WarningStrip: Equatable, Sendable {
     public static let maxShown = 3
     /// "Power limit soon": within this many % above the learned low-battery power limit
     public static let powerLimitAheadPct = 3
+    /// Gear reminder: at the cap this long, below this gear
+    public static let gearHoldS = 60.0
+    public static let topGear = 3
     /// "At a stop": wheel speed 0 for this long
     public static let stopHoldS = 1.0
 

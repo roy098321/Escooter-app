@@ -92,4 +92,18 @@ final class Batch108Tests: XCTestCase {
         XCTAssertTrue(RainSoon.within20Min(rows, nowMs: 10 * h + 45 * 60_000), "now 10:45: within 20 min")
         XCTAssertTrue(RainSoon.within20Min(rows, nowMs: 11 * h + 5 * 60_000))
     }
+
+    func test_N8_1_gearReminderAfter60sAtTheCap() {
+        var screen = LiveScreenDriver()
+        func input(gear: Int, kmh: Double) -> LiveInput {
+            var i = LiveInput(scooterSpeedKmh: kmh, scooterBatteryPct: 80, phase: .riding)
+            i.scooterGear = gear
+            i.scooterCapKmh = 25
+            return i
+        }
+        _ = screen.update(input(gear: 2, kmh: 24.5), at: 0)
+        XCTAssertFalse(screen.update(input(gear: 2, kmh: 25), at: 59).warnings.contains(.gearReminder))
+        XCTAssertTrue(screen.update(input(gear: 2, kmh: 25), at: 61).warnings.contains(.gearReminder))
+        XCTAssertFalse(screen.update(input(gear: 3, kmh: 25), at: 62).warnings.contains(.gearReminder), "top gear: no reminder")
+    }
 }

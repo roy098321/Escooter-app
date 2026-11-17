@@ -52,6 +52,9 @@ public struct LiveInput: Equatable, Sendable {
     public var phoneGpsOff: Bool = false
     /// N8-1: the ride cell's already-fetched forecast shows rain within 20 min
     public var rainSoon: Bool = false
+    /// N8-1: the gear (1 / 2 / 3) and its speed cap, nil without the scooter
+    public var scooterGear: Int? = nil
+    public var scooterCapKmh: Int? = nil
     /// M6-06: the rider turned location off for the app (during the ride): "No GPS \u{00B7} location is off for CorckieApp"
     public var locationDenied: Bool = false
     /// Hotfix 03 (H1): the scooter's power (V × I, W) and current (A) right now, for the sag-proof battery level; nil = no reading

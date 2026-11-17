@@ -340,6 +340,9 @@ public struct RideEngine: Codable, Equatable, Sendable {
     public private(set) var odometerKm: Double?
     /// Newest scooter temperature (M1-12: motor heat banners)
     public private(set) var temperatureC: Double?
+    /// N8-1: the scooter's gear (1 / 2 / 3) and that gear's speed cap
+    public private(set) var gear: Int?
+    public private(set) var capKmh: Int?
     /// 0x80 seen since the last (re)connect
     public private(set) var shuttingDownSeen = false
     /// After a ride ends, a new one waits until the wheel has been at ≤ T10 once (a held end while rolling)
@@ -484,6 +487,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
         batteryPct = nil
         odometerKm = nil
         temperatureC = nil
+        gear = nil
+        capKmh = nil
         lastFrameOdoKm = nil
         untrustedSince = nil
         shuttingDownSeen = false
@@ -508,6 +513,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
         lastFrameOdoKm = f.odometerKm
         if let s = f.speedKmh { speedKmh = s }      // a dropped reading (G1b) keeps the last one
         if let tc = f.temperatureC { temperatureC = tc } else if f.temperatureNoReading { temperatureC = nil }   // B73: 0xFFFF clears
+        if let g = f.gear { gear = g }
+        if let c = f.capKmh { capKmh = c }
         currentA = f.currentA
         powerW = f.powerW
         if let b = f.batteryPct { batteryPct = b }
@@ -1117,6 +1124,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
                          rideDistanceM: ride.map { $0.wheelM })
         input.scooterPowerW = linked ? powerW : nil
         input.scooterCurrentA = linked ? currentA : nil
+        input.scooterGear = linked ? gear : nil         // N8-1
+        input.scooterCapKmh = linked ? capKmh : nil
         input.ridingEngaged = ride.map { $0.ridingStartT != nil || $0.manual } ?? false   // B76
         input.rideStartT = ride?.startT
         return input

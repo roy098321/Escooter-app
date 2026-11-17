@@ -108,6 +108,7 @@ public struct LiveScreenDriver: Sendable {
     private var strip = WarningStrip()
     private var stripHeat = HeatWatch()
     private var stripDarkDone = false
+    private var gearAtCapSince: Double?
     private var follower: RouteFollower?
     private var arrivalDisplay = ArrivalDisplay()
     private var utcOffsetMin = 0
@@ -224,6 +225,14 @@ public struct LiveScreenDriver: Sendable {
             if tiles.chips.contains(.offlineMap) { on.insert(.offlineMap) }
             if input.formatChanged { on.insert(.recordingProblem) }
             if input.rainSoon { on.insert(.rainSoon) }
+            // gear reminder: wheel speed within 1 km/h of the gear's cap for 60 s and a higher gear exists; gone on a gear change
+            if let g = input.scooterGear, let cap = input.scooterCapKmh, let v = input.scooterSpeedKmh,
+               g < WarningStrip.topGear, cap > 0, abs(v - Double(cap)) <= 1 {
+                if gearAtCapSince == nil { gearAtCapSince = t }
+                if let s = gearAtCapSince, t - s >= WarningStrip.gearHoldS { on.insert(.gearReminder) }
+            } else {
+                gearAtCapSince = nil
+            }
             if tiles.speedSource == .gps && !input.phoneMode { on.insert(.phoneTookOver) }
             if let below = lowBatteryPower?.belowPct, let pct = input.smoothedBatteryPct ?? input.scooterBatteryPct,
                pct > Double(below), pct <= Double(below + WarningStrip.powerLimitAheadPct) {
