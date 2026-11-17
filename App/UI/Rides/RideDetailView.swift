@@ -359,10 +359,10 @@ struct RideDetailView: View {
     /// D1: six key tiles
     private func keyTiles(_ m: RideSummaryModel) -> some View {
         StatTileGrid {
-            StatTile(value: Self.countUp(stat(m, "Time"), shown: tilesShown >= 1), label: "Time").opacity(tilesShown >= 1 ? 1 : 0)
+            StatTile(value: Self.countUp(stat(m, "Time"), shown: tilesShown >= 1), label: "Time").opacity(tilesShown >= 1 ? 1 : 0).rideMorph("time")
             StatTile(value: Self.countUp(stat(m, "Distance"), shown: tilesShown >= 2), label: "Distance").opacity(tilesShown >= 2 ? 1 : 0)
-            StatTile(value: Self.countUp(stat(m, "Avg. speed"), shown: tilesShown >= 3), label: "Avg speed").opacity(tilesShown >= 3 ? 1 : 0)
-            StatTile(value: Self.countUp(stat(m, "Battery"), shown: tilesShown >= 4), label: "Battery").opacity(tilesShown >= 4 ? 1 : 0)
+            StatTile(value: Self.countUp(stat(m, "Avg. speed"), shown: tilesShown >= 3), label: "Avg speed").opacity(tilesShown >= 3 ? 1 : 0).rideMorph("speed")
+            StatTile(value: Self.countUp(stat(m, "Battery"), shown: tilesShown >= 4), label: "Battery").opacity(tilesShown >= 4 ? 1 : 0).rideMorph("battery")
             StatTile(value: Self.countUp(stat(m, "Top speed"), shown: tilesShown >= 5), label: "Top speed").opacity(tilesShown >= 5 ? 1 : 0)
             StatTile(value: Self.countUp(climbText(m), shown: tilesShown >= 6), label: "Climb").opacity(tilesShown >= 6 ? 1 : 0)
         }

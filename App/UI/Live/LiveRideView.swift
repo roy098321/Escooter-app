@@ -323,10 +323,10 @@ struct LiveRideView: View {
 
     private func tiles(_ s: LiveScreenState) -> some View {
         VStack(spacing: 12) {
-            speedTile(s)
+            speedTile(s).rideMorph("speed")
             HStack(spacing: 12) {
-                batteryTile(s)
-                if s.showClock { clockTile(s) }
+                batteryTile(s).rideMorph("battery")
+                if s.showClock { clockTile(s).rideMorph("time") }
             }
         }
     }

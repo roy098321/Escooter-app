@@ -23,3 +23,31 @@ extension View {
         }
     }
 }
+
+// N7-11 (batch 7): the live tiles fly into their summary spots at ride end (ride time → Time, battery → Battery, speed → Avg speed).
+// RideCover gives both screens one namespace; each pair shares an id. Without it (previews, the ride page from the list) nothing moves.
+private struct RideMorphKey: EnvironmentKey {
+    static let defaultValue: Namespace.ID? = nil
+}
+
+extension EnvironmentValues {
+    var rideMorph: Namespace.ID? {
+        get { self[RideMorphKey.self] }
+        set { self[RideMorphKey.self] = newValue }
+    }
+}
+
+private struct RideMorphTile: ViewModifier {
+    let id: String
+    @Environment(\.rideMorph) private var space
+
+    func body(content: Content) -> some View {
+        if let space { content.matchedGeometryEffect(id: id, in: space, properties: .frame) } else { content }
+    }
+}
+
+extension View {
+    /// N7-11: this tile flies to (or from) its partner on the other ride screen
+    func rideMorph(_ id: String) -> some View { modifier(RideMorphTile(id: id)) }
+}
+

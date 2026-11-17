@@ -350,6 +350,7 @@ struct RideCover: View {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var morph
 
     /// N7-11 (batch 7): at hold-to-end the live screen settles into the summary: the live view shrinks back and fades while the
     /// summary grows in from it (then N7-4 draws the route). Reduce Motion: a cross-fade.
@@ -368,6 +369,7 @@ struct RideCover: View {
                 .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 1.06)))
             }
         }
+        .environment(\.rideMorph, reduceMotion ? nil : morph)      // N7-11: tile flight (Reduce Motion: the cross-fade only)
         .animation(reduceMotion ? .easeInOut(duration: MotionStyle.fadeS) : .spring(response: 0.5, dampingFraction: 0.86), value: live)
     }
 }
