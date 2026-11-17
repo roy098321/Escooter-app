@@ -1,6 +1,6 @@
 import Foundation
 
-/// G1b plausibility filter + format-change watch · CALC_SPEC §2, thresholds T03–T07 (no fixed speed maximum: T02 retired, P4 D1 A2).
+/// G1b plausibility filter + format-change watch · CALC_SPEC §2, thresholds T04–T07 (speed is never discarded: T02 and T03 retired, owner 17 Nov).
 /// Runs on every frame before anything else. A dropped value becomes "missing" for that
 /// frame; the rest of the frame is kept.
 public struct Plausibility {
@@ -97,14 +97,10 @@ public struct Plausibility {
         if armedAt == nil { armedAt = t }
 
         if isPacketA {
-            // Speed: only a step larger than T03 per second (no fixed maximum, P4 D1 A2)
+            // Speed: never discarded for its value or its jump (owner 17 Nov: "readings above 50 km/h are ok, don't discard
+            // readings based on speed"; T02 and now T03 retired). Only an impossible negative value is dropped.
             if let v = f.speedKmh {
-                var bad = v < 0
-                if !bad, let last = lastSpeed {
-                    let dt = max(t - last.t, 0.001)
-                    bad = abs(v - last.kmh) > T.t03MaxSpeedStepKmhPerS * max(dt, 1)
-                }
-                if bad { f.speedKmh = nil; dropped.append(.speed) } else { lastSpeed = (t, v) }
+                if v < 0 { f.speedKmh = nil; dropped.append(.speed) } else { lastSpeed = (t, v) }
             }
             // Voltage outside the pack range (T05)
             if let volts = f.voltage, volts < T.t05MinVoltage || volts > T.t05MaxVoltage {

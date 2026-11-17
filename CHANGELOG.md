@@ -8,6 +8,7 @@ One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). P
 - N8-2: the battery tile turns amber at 20 % and red at 10 % (number and thin border, smoothed %); colour-blind mode adds a down triangle.
 - N8-3: level-2 lights play one soft tone (draft) once per ride; level-3 warnings stay voice + vibration.
 - N8-4: turn-back point in two steps: 1 km before (soft tone + "Turn-back point in one kilometre.") and at the point (ping-ping + "Turn back now to make it back.").
+- Owner 17 Nov: speed readings are never discarded (no maximum, no jump check; T03 retired, only a negative value is dropped).
 - Guard tests: Batch108Tests.
 
 ## 107.061226.00 — batch 7, due Sun 6 Dec 2026 (UI elevate round 2)

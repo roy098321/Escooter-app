@@ -10,7 +10,7 @@ public enum T {
     public static let t01WheelKmhPerUnit = 0.0476
     // T02 (max plausible speed) is retired: no fixed maximum, only the step check T03
     // (owner, P4_DILEMMAS D1 A2 — real speeds reach 50.7 km/h). The ID stays so IDs never move.
-    /// T03 Max speed step within 1 s
+    /// T03 Max speed step within 1 s: RETIRED 17 Nov (owner: never discard readings based on speed); kept so IDs never move
     public static let t03MaxSpeedStepKmhPerS = 15.0
     /// T04 Max battery % change while moving, per 60 s
     public static let t04MaxBatteryStepPct = 5.0

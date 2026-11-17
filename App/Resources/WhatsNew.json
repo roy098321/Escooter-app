@@ -19,9 +19,10 @@
         "line": "On a tight trip you hear \"Turn-back point in one kilometre\", then \"Turn back now to make it back\" at the point."
       }
     ],
-    "smallerFixes": 1,
+    "smallerFixes": 2,
     "full": [
-      "Less urgent warnings play one soft tone instead of speaking."
+      "Less urgent warnings play one soft tone instead of speaking.",
+      "Fast speeds are always kept: a reading above 50 km/h, or a sudden jump, is no longer thrown away."
     ]
   },
   {

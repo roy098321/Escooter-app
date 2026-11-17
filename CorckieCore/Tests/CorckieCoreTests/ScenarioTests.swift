@@ -52,11 +52,11 @@ final class ScenarioTests: XCTestCase {
         XCTAssertGreaterThan(p.plausibility.ignoredReadings, 50)
     }
 
-    /// SC-15: spikes are dropped, the ride is kept; "Some scooter readings were ignored".
+    /// SC-15: a battery spike is dropped, the ride is kept; a speed reading is never dropped (owner 17 Nov).
     func test_SC15_spikesDropped() throws {
         let p = try ride2([.speedSpike(at: 200, kmh: 80), .batterySpike(at: 400, points: 20)])
-        XCTAssertGreaterThan(p.plausibility.ignoredReadings, 0)
-        XCTAssertLessThan(p.totals.topSpeedKmh, 60, "the 80 km/h spike is dropped by the step check")
+        XCTAssertGreaterThan(p.plausibility.ignoredReadings, 0, "the battery spike")
+        XCTAssertGreaterThan(p.totals.topSpeedKmh, 60, "the 80 km/h reading is kept: speed is never discarded")
         XCTAssertFalse(p.plausibility.formatChanged)
     }
 
@@ -77,7 +77,7 @@ final class ScenarioTests: XCTestCase {
         var g = Plausibility()
         XCTAssertTrue(g.check(frame(0, kmh: 45), isPacketA: true).dropped.isEmpty)
         XCTAssertTrue(g.check(frame(0.3, kmh: 50.7), isPacketA: true).dropped.isEmpty, "no fixed maximum (P4 D1 A2)")
-        XCTAssertEqual(g.check(frame(0.6, kmh: 20), isPacketA: true).dropped, [.speed], "step > 15 km/h in 1 s")
+        XCTAssertTrue(g.check(frame(0.6, kmh: 20), isPacketA: true).dropped.isEmpty, "a speed jump is kept (owner 17 Nov)")
         XCTAssertEqual(g.check(frame(5, kmh: 20, volts: 38.9), isPacketA: true).dropped, [.voltage])
         XCTAssertTrue(g.check(frame(6, kmh: 20, volts: 39.0), isPacketA: true).dropped.isEmpty)
         XCTAssertEqual(g.check(frame(7, kmh: 20, pct: 86), isPacketA: true).dropped, [.battery])
