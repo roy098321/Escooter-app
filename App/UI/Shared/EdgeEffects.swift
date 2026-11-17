@@ -47,3 +47,24 @@ extension View {
         }
     }
 }
+
+// N7-13 (batch 7): cards react to scrolling (Rides, Routes, Places): up to 7 % smaller and faded near the top and bottom edges,
+// full size in the middle. iOS 17 `.scrollTransition`. Reduce Motion: off (cards stay still).
+private struct ScrollReactive: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        if reduceMotion {
+            content
+        } else {
+            content.scrollTransition(.interactive.threshold(.visible(0.85)), axis: .vertical) { view, phase in
+                view.scaleEffect(phase.isIdentity ? 1 : 0.93).opacity(phase.isIdentity ? 1 : 0.55)
+            }
+        }
+    }
+}
+
+extension View {
+    /// N7-13: a list card that shrinks a little and fades near the scroll edges
+    func scrollReactive() -> some View { modifier(ScrollReactive()) }
+}

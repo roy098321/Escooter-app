@@ -23,6 +23,8 @@ struct PlacesView: View {
     /// N6-1: removed places (newest first) and whether their list is open
     @State private var removed: [PlaceRecord] = []
     @State private var showRemoved = false
+    /// N7-3: the card grows into the place map
+    @Namespace private var zoomSpace
 
     private var shown: [PlaceMapItem] { preview ?? items }
 
@@ -36,6 +38,8 @@ struct PlacesView: View {
                     ForEach(shown, id: \.id) { place in
                         Button { opened = place.id } label: { row(place) }
                             .buttonStyle(.plain)
+                            .zoomSource(place.id, in: zoomSpace)
+                            .scrollReactive()     // N7-13
                             .contextMenu { menu(place) }
                             .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
                             .listRowBackground(Color.clear)
@@ -54,6 +58,7 @@ struct PlacesView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(item: $opened) { id in
             PlaceMapView(placeId: id, preview: preview?.first { $0.id == id })
+                .zoomDestination(id, in: zoomSpace)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

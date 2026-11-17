@@ -12,6 +12,8 @@ struct RoutesListView: View {
     @State private var placeCount = 0
     @State private var errorText: String?
     @State private var selected: RouteRef?
+    /// N7-3: the card grows into the route
+    @Namespace private var zoomSpace
     @State private var showPlaces = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -28,7 +30,7 @@ struct RoutesListView: View {
                 .navigationTitle("Routes")
                 .navigationBarTitleDisplayMode(.inline)   // G3: small title; G12: Settings only on Home
                 .screen("Routes")
-                .navigationDestination(item: $selected) { RouteCardView(routeId: $0.id) }
+                .navigationDestination(item: $selected) { RouteCardView(routeId: $0.id).zoomDestination($0.id, in: zoomSpace) }
                 .navigationDestination(isPresented: $showPlaces) { PlacesView() }
         }
         .onAppear(perform: reload)
@@ -57,11 +59,11 @@ struct RoutesListView: View {
         } else {
             List {
                 if !m.saved.isEmpty {
-                    ForEach(m.saved, id: \.routeId) { row($0) }
+                    ForEach(m.saved, id: \.routeId) { row($0).zoomSource($0.routeId, in: zoomSpace).scrollReactive() }   // N7-13
                 }
                 if !m.suggested.isEmpty {
                     header("Suggested")
-                    ForEach(m.suggested, id: \.routeId) { row($0) }
+                    ForEach(m.suggested, id: \.routeId) { row($0).zoomSource($0.routeId, in: zoomSpace).scrollReactive() }
                 }
                 if placeCount > 0 || preview != nil {
                     Button { showPlaces = true } label: {

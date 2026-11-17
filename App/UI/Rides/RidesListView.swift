@@ -30,6 +30,8 @@ struct RidesListView: View {
     @State private var pendingDelete: RideListItem?
     @State private var errorText: String?
     @State private var selected: RideRoute?
+    /// N7-3: the card grows into the ride
+    @Namespace private var zoomSpace
     /// B57: discarded pieces of the last 30 days that can be restored
     @State private var discarded: [RideRecord] = []
     @State private var restoreOpen = false
@@ -56,7 +58,7 @@ struct RidesListView: View {
                 .navigationBarTitleDisplayMode(.inline)   // G3: small title; G12: Settings only on Home
                 .screen("Rides")
                 .searchable(text: $query, prompt: "Place or date")
-                .navigationDestination(item: $selected) { RideDetailView(rideId: $0.id) }
+                .navigationDestination(item: $selected) { RideDetailView(rideId: $0.id).zoomDestination($0.id, in: zoomSpace) }
         }
         .onAppear(perform: reload)
         .onChange(of: ScreenSimulator.shared.active) { _, _ in reload() }
@@ -107,7 +109,7 @@ struct RidesListView: View {
                     }
                     ForEach(m.groups, id: \.title) { group in
                         Section {
-                            ForEach(group.rides, id: \.id) { row($0) }
+                            ForEach(group.rides, id: \.id) { row($0).zoomSource($0.id, in: zoomSpace).scrollReactive() }   // N7-13
                         } header: {
                             SectionHeader(group.title).padding(.top, 0)
                         }
@@ -115,7 +117,7 @@ struct RidesListView: View {
                     if !m.shortHops.isEmpty {
                         Section {
                             DisclosureGroup("Short hops (\(m.shortHops.count))", isExpanded: $hopsOpen) {
-                                ForEach(m.shortHops, id: \.id) { row($0, showDay: true) }
+                                ForEach(m.shortHops, id: \.id) { row($0, showDay: true).zoomSource($0.id, in: zoomSpace).scrollReactive() }
                             }
                             .font(.subheadline.weight(.semibold))
                         }

@@ -22,6 +22,8 @@ struct StatsView: View {
     @State private var model: StatsModel?
     /// Note 8: the tapped bar (its readout shows above the chart)
     @State private var selectedBar: Int?
+    /// N7-3: Stats cards grow into their detail
+    @Namespace private var zoomSpace
 
     private var span: StatsSpan { StatsSpan(rawValue: spanRaw) ?? .week }
     private var mode: StatsMode { StatsMode(rawValue: modeRaw) ?? .calendar }
@@ -297,7 +299,7 @@ struct StatsView: View {
     }
 
     private var factorsLink: some View {
-        NavigationLink { FactorsView() } label: {
+        NavigationLink { FactorsView().zoomDestination("factors", in: zoomSpace) } label: {
             HStack {
                 Label("What affects my rides", systemImage: "wind")
                 Spacer()
@@ -305,6 +307,7 @@ struct StatsView: View {
             }
             .padding(DS.Space.cardPad)
             .glassCard(padding: 0)
+            .zoomSource("factors", in: zoomSpace)
         }
         .buttonStyle(.plain)
         .padding(.top, DS.Space.block)
@@ -313,7 +316,7 @@ struct StatsView: View {
     /// Note 8: the Past weeks card left Stats (the one chart above has its switch); its long history stays one tap away
     @ViewBuilder private func pastWeeksLink(_ m: StatsModel) -> some View {
         if !m.weekBars.isEmpty {
-            NavigationLink { PastWeeksView(weeks: m.pastWeeks, bars: m.weekBars, utcOffsetMin: m.utcOffsetMin) } label: {
+            NavigationLink { PastWeeksView(weeks: m.pastWeeks, bars: m.weekBars, utcOffsetMin: m.utcOffsetMin).zoomDestination("weeks", in: zoomSpace) } label: {
                 HStack {
                     Label("Past weeks", systemImage: "calendar")
                     Spacer()
@@ -321,6 +324,7 @@ struct StatsView: View {
                 }
                 .padding(DS.Space.cardPad)
                 .glassCard(padding: 0)
+                .zoomSource("weeks", in: zoomSpace)
             }
             .buttonStyle(.plain)
             .padding(.top, DS.Space.row)
