@@ -25,3 +25,29 @@ enum LiquidGlass {
         return false
     }
 }
+
+// Xcode 26 builds opt the whole app into the iOS 26 look: toolbar buttons get a shared glass shell and scroll views get a soft
+// "edge effect" under the bars. The app draws its own round buttons and bars, so both are switched off (owner, 18 Nov: grey bands
+// at the top and bottom, odd shapes around the gear and the logo).
+extension ToolbarContent {
+    /// iOS 26: no shared glass shell behind this toolbar item (its own round button stays)
+    @ToolbarContentBuilder func noSystemGlass() -> some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            self.sharedBackgroundVisibility(.hidden)
+        } else {
+            self
+        }
+    }
+}
+
+extension View {
+    /// iOS 26: no automatic edge effect (grey band) where scroll content meets the bars
+    @ViewBuilder func noSystemEdgeEffect() -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectHidden(true, for: .all)
+        } else {
+            self
+        }
+    }
+}
+

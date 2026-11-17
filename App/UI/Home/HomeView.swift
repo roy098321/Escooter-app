@@ -100,10 +100,11 @@ struct HomeView: View {
                 .navigationTitle("Home")
                 .navigationBarTitleDisplayMode(.inline)
                 .screen("Home")
+                .toolbarBackground(.hidden, for: .navigationBar)      // the map runs under the bar (no grey band on iOS 26)
                 .toolbar {
                     // G3: no page title on Home, the app mark + name small (theme v2 mock-up)
                     ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
-                    ToolbarItem(placement: .topBarLeading) { brand }
+                    ToolbarItem(placement: .topBarLeading) { brand }.noSystemGlass()     // iOS 26: our own round button only
                     // G12: the only settings button of the app
                     ToolbarItem(placement: .topBarTrailing) {
                         NavigationLink {
@@ -114,6 +115,7 @@ struct HomeView: View {
                         .simultaneousGesture(TapGesture().onEnded { gearTurns += 1 })
                         .accessibilityLabel("Settings")
                     }
+                    .noSystemGlass()
                 }
         }
         .overlay {

@@ -221,9 +221,8 @@ private struct FloatingTabBarHost: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.hasFloatingTabBar, true)
-            // N6-3: lists fade out above the bar instead of a hard cut (only while the bar is there)
-            .scrollFadeEdges(bottom: visibility.hidden ? 0 : 36)
-            .animation(.easeInOut(duration: 0.2), value: visibility.hidden)
+            // N6-3's fade above the bar is gone (owner 18 Nov: it faded the backgrounds too and left a grey band at the bottom);
+            // the soft blur behind the bar (N6-4) does that job
             // N6-4: a soft blur behind the bar
             .overlay(alignment: .bottom) {
                 ProgressiveBlur(edge: .bottom)

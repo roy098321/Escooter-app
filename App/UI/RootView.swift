@@ -16,6 +16,7 @@ struct RootView: View {
         // G4 (P6-2): the version shows only in Settings → About now, no longer on every screen.
         content.themeRoot().sunlightRoot()
             .toggleStyle(HapticSwitchStyle())   // N7-8: light tap on every switch
+            .noSystemEdgeEffect()               // iOS 26: no grey band under the bars
             .buildStamp()   // F-30: the build number above the home indicator, on every screen
             .onAppear { MapSnapshotStore.shared.refresh() }
             .onChange(of: scenePhase) { _, p in if p == .active { MapSnapshotStore.shared.refresh() } }
