@@ -168,11 +168,17 @@ struct BatteryView: View {
 
     @ViewBuilder private func chargeLogSection(_ o: BatteryOverview) -> some View {
         if let d = chartData ?? preview?.chart {
-            ChargeLogChartView(readings: d.readings, rows: d.rows, info: InfoContent(lead: "A charge is found from the timer you start with Plugged in, or when the battery % is higher at the next ride than where the last ride ended.",
-                                                                                  basedOn: [InfoBasedOn("Charging speed", "learned from your own charges (a typical speed until then)"), InfoBasedOn("Solid bar", "the real % was read afterwards")],
-                                                                                  caveat: "Lighter bars and times with \u{2248} are estimates."), nowMs: d.nowMs)
+            // N6-2: the legend lives behind the ⓘ
+            ChargeLogChartView(readings: d.readings, rows: d.rows,
+                               info: InfoContent(lead: "The battery level over time from every reading: rides as their steady level (no dips under load), charges and rests.",
+                                                 basedOn: [InfoBasedOn("Dashed white line", "the average level of what is shown, weighted by time"),
+                                                           InfoBasedOn("Grey dashed line", "no reading in between"),
+                                                           InfoBasedOn("Charges", "from the Plugged in timer, or a higher % at the next ride; two less than 15 min apart count as one"),
+                                                           InfoBasedOn("Solid bar", "the real % was read afterwards")],
+                                                 caveat: "Lighter bars and times with \u{2248} are estimates."),
+                               nowMs: d.nowMs, rideStarts: d.rideStarts)
         } else {
-        card("Charge log", info: InfoContent(lead: "A charge is found when the battery % is higher at the next ride than where the last ride ended.", basedOn: [InfoBasedOn("Charge cycles", "battery used, added up, in full charges")], caveat: "The scooter switches off while charging, so charges are never seen directly.")) {
+        card("Battery log", info: InfoContent(lead: "A charge is found when the battery % is higher at the next ride than where the last ride ended.", basedOn: [InfoBasedOn("Charge cycles", "battery used, added up, in full charges")], caveat: "The scooter switches off while charging, so charges are never seen directly.")) {
             if o.charges.isEmpty {
                 Label("No charge yet", systemImage: "bolt.slash").font(.subheadline).foregroundStyle(.secondary)
             }

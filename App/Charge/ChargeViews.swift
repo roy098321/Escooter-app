@@ -102,59 +102,84 @@ struct ChargeStatusLine: View {
     }
 }
 
-// MARK: Charge log (F-27)
+// MARK: Battery log (F-27, N6-2)
 
-/// The 7-day battery line (real readings only, long gaps dashed), charge windows shaded, and "Each charge" rows.
+/// N6-2 (batch 6): the Battery log. One battery line from ALL readings (rides as their smoothed level, so no load-sag spikes),
+/// light fill, a dashed average line of what is shown ("avg 80%"), faint 0 / 50 / 100 grid and day lines, one headline
+/// "51% now · 6 charges · 12 rides", Day / Week switch (tap a day in Week to open it). The legend is behind the ⓘ; a stretch
+/// with no reading in between is a grey dashed line. No charging bands, no strips. Then the "Each charge" rows.
 struct ChargeLogChartView: View {
     var readings: [ChargeReading]
     var rows: [ChargeRow]
     var info: InfoContent?
     var nowMs: Int64
+    var rideStarts: [Int64] = []
 
-    private var from: Date { Date(timeIntervalSince1970: Double(nowMs - Int64(ChargeLogChart.windowDays) * 86_400_000) / 1000) }
-    private var to: Date { Date(timeIntervalSince1970: Double(nowMs) / 1000) }
+    @State private var range: BatteryLog.Range = .week
+    /// Day view: the local midnight of the day shown (nil = today)
+    @State private var dayStartMs: Int64?
+
+    private static let dayMs: Int64 = 86_400_000
     private func date(_ ms: Int64) -> Date { Date(timeIntervalSince1970: Double(ms) / 1000) }
+    private func ms(_ d: Date) -> Int64 { Int64(d.timeIntervalSince1970 * 1000) }
+    private var todayStartMs: Int64 { ms(Calendar.current.startOfDay(for: date(nowMs))) }
+    private var isToday: Bool { range == .week || dayStartMs == nil || dayStartMs == todayStartMs }
+
+    private var span: (fromMs: Int64, toMs: Int64) {
+        switch range {
+        case .week: return BatteryLog.weekRange(todayStartMs: todayStartMs, nowMs: nowMs)
+        case .day: return BatteryLog.dayRange(dayStartMs: dayStartMs ?? todayStartMs, nowMs: nowMs)
+        }
+    }
 
     var body: some View {
-        let segs = ChargeLogChart.segments(ChargeLogChart.lastWeek(readings, nowMs: nowMs))
-        let recent = rows.filter { $0.endMs >= Int64(from.timeIntervalSince1970 * 1000) }
+        let sp = span
+        let shown = BatteryLog.window(readings, fromMs: sp.fromMs, toMs: sp.toMs)
+        let segs = ChargeLogChart.segments(shown)
+        let avg = BatteryLog.average(shown)
+        let charges = BatteryLog.chargeCount(rows, fromMs: sp.fromMs, toMs: sp.toMs)
+        let rides = rideStarts.filter { $0 >= sp.fromMs && $0 <= sp.toMs }.count
+        let big = isToday ? shown.last?.pct : avg
+        let dayName = isToday ? nil : date(dayStartMs ?? todayStartMs).formatted(.dateTime.weekday(.abbreviated))
         VStack(alignment: .leading, spacing: 0) {
-            if let info {
-                SectionHeader("Charge log \u{00B7} last 7 days") { InfoButton("Charge log", info: info) }
-            } else {
-                SectionHeader("Charge log \u{00B7} last 7 days")
+            HStack(alignment: .center) {
+                if let info {
+                    SectionHeader("Battery log") { InfoButton("Battery log", info: info) }
+                } else {
+                    SectionHeader("Battery log")
+                }
+                Spacer(minLength: 8)
+                Picker("Range", selection: Binding(get: { range }, set: { r in
+                    Haptics.tick()
+                    range = r
+                    dayStartMs = nil
+                })) {
+                    Text("Day").tag(BatteryLog.Range.day)
+                    Text("Week").tag(BatteryLog.Range.week)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 132)
             }
             VStack(alignment: .leading, spacing: 10) {
-                Chart {
-                    ForEach(recent) { r in
-                        RectangleMark(xStart: .value("From", date(r.startMs)), xEnd: .value("To", date(r.endMs)), yStart: .value("Low", 0), yEnd: .value("High", 100))
-                            .foregroundStyle(Theme.accent.opacity(r.solid ? 0.22 : 0.12))
-                    }
-                    ForEach(segs.indices, id: \.self) { i in
-                        let s = segs[i]
-                        LineMark(x: .value("Time", date(s.from.ms)), y: .value("%", s.from.pct), series: .value("Part", "s\(i)"))
-                            .foregroundStyle(s.dashed ? Theme.accent : Color.primary)
-                            .lineStyle(StrokeStyle(lineWidth: 2.5, dash: s.dashed ? [4, 4] : []))
-                        LineMark(x: .value("Time", date(s.to.ms)), y: .value("%", s.to.pct), series: .value("Part", "s\(i)"))
-                            .foregroundStyle(s.dashed ? Theme.accent : Color.primary)
-                            .lineStyle(StrokeStyle(lineWidth: 2.5, dash: s.dashed ? [4, 4] : []))
-                    }
-                    if let last = ChargeLogChart.lastWeek(readings, nowMs: nowMs).last {
-                        PointMark(x: .value("Time", date(last.ms)), y: .value("%", last.pct)).foregroundStyle(Theme.accent).symbolSize(70)
-                    }
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(big.map { "\(Int($0.rounded()))%" } ?? "\u{2013}")
+                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                        .monospacedDigit()
+                    Text(BatteryLog.headline(charges: charges, rides: rides, range: range, dayName: dayName))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                .chartXScale(domain: from...to)
-                .chartYScale(domain: 0...100)
-                .chartYAxis { AxisMarks(values: [0, 50, 100]) { AxisGridLine(); AxisValueLabel() } }
-                .chartXAxis { AxisMarks(values: .stride(by: .day, count: 2)) { AxisValueLabel(format: .dateTime.weekday(.abbreviated)) } }
-                .frame(height: 180)
-                HStack(spacing: 14) {
-                    Label("charging", systemImage: "square.fill").foregroundStyle(Theme.accent).font(.caption)
-                    Label("dashed: no reading in between", systemImage: "line.diagonal").font(.caption).foregroundStyle(.secondary)
-                }
+                chart(shown: shown, segs: segs, avg: avg, sp: sp)
+                    .frame(height: 200)
+                Text(range == .week ? "Tap a day to open it." : "Back to Week to see all 7 days.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
             .padding(DS.Space.cardPad)
             .glassCard(padding: 0)
+            .accessibilityElement(children: .combine)
             SectionHeader("Each charge")
             VStack(spacing: 0) {
                 if rows.isEmpty {
@@ -165,6 +190,81 @@ struct ChargeLogChartView: View {
             .padding(.horizontal, DS.Space.cardPad)
             .glassCard(padding: 0)
         }
+    }
+
+    private func chart(shown: [ChargeReading], segs: [ChargeLineSegment], avg: Double?, sp: (fromMs: Int64, toMs: Int64)) -> some View {
+        let midnights = (0..<8).map { todayStartMs - Int64($0) * Self.dayMs }.filter { $0 > sp.fromMs && $0 < sp.toMs }
+        // Week: one label per day (at noon, centred); Day: every 6 hours
+        let ticks: [Date] = range == .week
+            ? (0..<7).map { date(todayStartMs - Int64($0) * Self.dayMs + Self.dayMs / 2) }.filter { $0 > date(sp.fromMs) }
+            : stride(from: sp.fromMs, through: sp.toMs, by: 6 * 3_600_000).map { date($0) }
+        let week = range == .week
+        return Chart {
+            if range == .week {
+                ForEach(midnights, id: \.self) { m in
+                    RuleMark(x: .value("Day", date(m))).foregroundStyle(Color.secondary.opacity(0.15)).lineStyle(StrokeStyle(lineWidth: 0.5))
+                }
+            }
+            ForEach(shown.indices, id: \.self) { i in
+                AreaMark(x: .value("Time", date(shown[i].ms)), yStart: .value("Low", 0), yEnd: .value("%", shown[i].pct))
+                    .foregroundStyle(Theme.accent.opacity(0.14))
+                    .interpolationMethod(.linear)
+            }
+            ForEach(segs.indices, id: \.self) { i in
+                let s = segs[i]
+                ForEach([s.from, s.to], id: \.ms) { r in
+                    LineMark(x: .value("Time", date(r.ms)), y: .value("%", r.pct), series: .value("Part", "s\(i)"))
+                        .foregroundStyle(s.dashed ? Color.secondary : Theme.accent)
+                        .lineStyle(StrokeStyle(lineWidth: s.dashed ? 1.5 : 2, dash: s.dashed ? [3, 4] : []))
+                }
+            }
+            if let avg {
+                RuleMark(y: .value("Average", avg))
+                    .foregroundStyle(Color.primary.opacity(0.75))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+                    .annotation(position: .top, alignment: .leading, spacing: 2) {
+                        Text(BatteryLog.averageText(avg))
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+            }
+            if let last = shown.last, isToday {
+                PointMark(x: .value("Time", date(last.ms)), y: .value("%", last.pct)).foregroundStyle(Theme.accent).symbolSize(60)
+            }
+        }
+        .chartXScale(domain: date(sp.fromMs)...date(sp.toMs))
+        .chartYScale(domain: 0...100)
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: [0, 50, 100]) {
+                AxisGridLine().foregroundStyle(Color.secondary.opacity(0.2))
+                AxisValueLabel()
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: ticks) { v in
+                AxisValueLabel {
+                    if let d = v.as(Date.self) {
+                        Text(week ? d.formatted(.dateTime.weekday(.abbreviated)) : d.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute()))
+                    }
+                }
+            }
+        }
+        .chartOverlay { proxy in
+            GeometryReader { g in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    .onTapGesture { loc in
+                        guard range == .week, let plot = proxy.plotFrame else { return }
+                        let x = loc.x - g[plot].origin.x
+                        guard let d: Date = proxy.value(atX: x) else { return }
+                        Haptics.tick()
+                        dayStartMs = ms(Calendar.current.startOfDay(for: d))
+                        range = .day
+                    }
+            }
+        }
+        .accessibilityLabel(range == .week ? "Battery over the last 7 days" : "Battery over the day")
+        .accessibilityValue(avg.map { "Average \(Int($0.rounded())) percent" } ?? "No readings")
     }
 }
 
