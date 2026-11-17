@@ -127,7 +127,7 @@ final class ThemeGuardTests: XCTestCase {
             XCTAssertTrue(try text(file).contains(".navigationBarTitleDisplayMode(.inline)"), "\(file): small inline title (G3)")
         }
         XCTAssertTrue(try text("UI/Shared/DesignSystem.swift").contains(".navigationBarTitleDisplayMode(.inline)"), "list screens: small titles")
-        XCTAssertTrue(try text("UI/Home/HomeView.swift").contains("GlassIcon(symbol: \"gearshape\")"))
+        XCTAssertTrue(try text("UI/Home/HomeView.swift").contains("GlassIcon(symbol: \"gearshape\""))   // N7-5 adds a turn: argument
         for file in ["UI/Rides/RidesListView.swift", "UI/Routes/RoutesListView.swift", "UI/Stats/StatsView.swift", "UI/Scooter/ScooterTabView.swift"] {
             XCTAssertFalse(try text(file).contains("symbol: \"gearshape\""), "\(file): settings only on Home (G12)")
         }
