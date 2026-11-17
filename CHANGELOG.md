@@ -2,6 +2,14 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 108.131226.00 — batch 8, due Sun 13 Dec 2026 (in-ride signals)
+
+- N8-1: warning-light strip at the top of the live screen (at most 3, red / amber / blue, red first, nothing when all is fine); it replaces the very hot / hot / disconnected / No GPS / phone battery banners and the No GPS / Offline map chips. At a stop (wheel speed 0 for 1 s) a tap expands an icon into its line. Lights today: motor very hot / hot, disconnected, phone battery low, No GPS, offline map.
+- N8-2: the battery tile turns amber at 20 % and red at 10 % (number and thin border, smoothed %); colour-blind mode adds a down triangle.
+- N8-3: level-2 lights play one soft tone (draft) once per ride; level-3 warnings stay voice + vibration.
+- N8-4: turn-back point in two steps: 1 km before (soft tone + "Turn-back point in one kilometre.") and at the point (ping-ping + "Turn back now to make it back.").
+- Guard tests: Batch108Tests.
+
 ## 107.061226.00 — batch 7, due Sun 6 Dec 2026 (UI elevate round 2)
 
 - N7-0: CI builds with Xcode 26 (iOS 26 SDK); the app still targets iOS 17.

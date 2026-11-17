@@ -1,5 +1,30 @@
 [
   {
+    "version": "108.131226.00",
+    "headline": "Calmer warnings while you ride",
+    "items": [
+      {
+        "symbol": "exclamationmark.triangle",
+        "title": "Warning lights",
+        "line": "Small icons at the top of the ride screen, like a car's dashboard: red, amber or blue, and nothing when all is fine. At a stop, tap one to read it."
+      },
+      {
+        "symbol": "battery.25percent",
+        "title": "Battery turns amber, then red",
+        "line": "The battery number and its edge turn amber at 20 % and red at 10 %."
+      },
+      {
+        "symbol": "arrow.uturn.backward",
+        "title": "Turn back in two steps",
+        "line": "On a tight trip you hear \"Turn-back point in one kilometre\", then \"Turn back now to make it back\" at the point."
+      }
+    ],
+    "smallerFixes": 1,
+    "full": [
+      "Less urgent warnings play one soft tone instead of speaking."
+    ]
+  },
+  {
     "version": "107.061226.00",
     "headline": "The app comes alive",
     "items": [
