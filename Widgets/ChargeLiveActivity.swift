@@ -7,6 +7,10 @@ struct CorckieWidgets: WidgetBundle {
     var body: some Widget {
         ChargeLiveActivity()
         ScooterLiveActivity()     // N7-1
+        if #available(iOS 18.0, *) {   // N7-9
+            FreeRideControl()
+            NextRideControl()
+        }
     }
 }
 
