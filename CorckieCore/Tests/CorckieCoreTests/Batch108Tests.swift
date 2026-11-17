@@ -12,4 +12,38 @@ final class Batch108Tests: XCTestCase {
         XCTAssertEqual(BatteryTileLevel.number("18%", level: .low, colourBlind: true), "\u{25BC} 18%")
         XCTAssertEqual(BatteryTileLevel.number("18%", level: .low, colourBlind: false), "18%")
     }
+
+    func test_N8_1_rankingMaxThreeRedFirst_overflowToSummary() {
+        var strip = WarningStrip()
+        strip.update(on: [.offlineMap, .noGps, .motorVeryHot, .disconnected, .rainSoon], wheelSpeedKmh: 20, at: 0)
+        XCTAssertEqual(strip.shown, [.motorVeryHot, .disconnected, .noGps])
+        XCTAssertEqual(strip.shown.first?.colour, .red)
+        XCTAssertEqual(strip.neverShown, [.rainSoon, .offlineMap])
+        strip.update(on: [.offlineMap], wheelSpeedKmh: 20, at: 1)
+        XCTAssertEqual(strip.shown, [.offlineMap], "a waiting light takes a free slot")
+        XCTAssertEqual(strip.neverShown, [.rainSoon])
+        strip.update(on: [], wheelSpeedKmh: 20, at: 2)
+        XCTAssertTrue(strip.shown.isEmpty, "nothing when all is fine")
+    }
+
+    func test_N8_1_expandOnlyAtWheelSpeedZeroForOneSecond() {
+        var strip = WarningStrip()
+        strip.update(on: [.noGps], wheelSpeedKmh: 0, at: 10)
+        XCTAssertFalse(strip.canExpand(at: 10.5))
+        XCTAssertTrue(strip.canExpand(at: 11))
+        strip.update(on: [.noGps], wheelSpeedKmh: 3, at: 11.2)
+        XCTAssertFalse(strip.canExpand(at: 12), "moving: a tap does nothing")
+        strip.update(on: [.disconnected], wheelSpeedKmh: nil, at: 13)
+        XCTAssertFalse(strip.canExpand(at: 20), "no wheel speed (disconnected): no expand, GPS speed never counts")
+    }
+
+    func test_N8_3_levelTwoToneOncePerRide() {
+        var strip = WarningStrip()
+        XCTAssertEqual(strip.update(on: [.noGps, .offlineMap], wheelSpeedKmh: 10, at: 0), [.noGps])
+        XCTAssertEqual(strip.update(on: [.noGps], wheelSpeedKmh: 10, at: 1), [])
+        XCTAssertEqual(WarningLight.motorVeryHot.level, 3)
+        XCTAssertEqual(WarningLight.offlineMap.level, 1)
+        strip.rideEnded()
+        XCTAssertEqual(strip.update(on: [.noGps], wheelSpeedKmh: 10, at: 0), [.noGps], "a new ride may tone again")
+    }
 }
