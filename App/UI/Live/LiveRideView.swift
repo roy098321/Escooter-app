@@ -194,7 +194,7 @@ struct LiveRideView: View {
                     .accessibilityLabel(DestinationLive.stopToChange)
             } else if let a = s.arrival {
                 // M2-06 arrival strip (M28); under the banner, never over the speed and battery tiles. F-35: tap it at a stop to change.
-                destinationCapsule(Text(a.short).monospacedDigit(), symbol: s.arrived ? "flag.checkered" : "mappin.and.ellipse")
+                destinationCapsule(Text(a.short).monospacedDigit(), symbol: s.arrived ? "flag.fill" : "mappin.and.ellipse")
                     .onTapGesture { destinationTapped(s) }
                     .accessibilityLabel(a.text)
                     .accessibilityHint("Tap when stopped to change the destination")
@@ -216,7 +216,7 @@ struct LiveRideView: View {
         Label { text } icon: {
             Image(systemName: symbol)
                 .contentTransition(.symbolEffect(.replace))
-                .motorHotWiggle(symbol == "flag.checkered")
+                .motorHotWiggle(symbol == "flag.fill")
         }
             .font(.headline)
             .lineLimit(1)

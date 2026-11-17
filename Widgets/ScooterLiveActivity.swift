@@ -38,7 +38,7 @@ struct ScooterLiveActivity: Widget {
                 } else if s.phase == .ready, let km = s.kmLeft {
                     Text("\(km) km").monospacedDigit()
                 } else {
-                    Image(systemName: "flag.checkered")
+                    Image(systemName: "flag.fill")
                 }
             } minimal: {
                 Image(systemName: symbol(s)).foregroundStyle(phaseColour(s))
@@ -51,7 +51,7 @@ private func symbol(_ s: ScooterActivityAttributes.ContentState) -> String {
     switch s.phase {
     case .ready: return "scooter"
     case .riding: return s.gpsLost ? "location.slash" : "record.circle"
-    case .arrived: return "flag.checkered"
+    case .arrived: return "flag.fill"
     }
 }
 
