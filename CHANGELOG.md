@@ -2,6 +2,21 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 108.131226.03 — hotfix 03 of batch 8: all of batch 9 (B96 + the new-rider audit of 18 Nov)
+
+- N9-1 / B96: the ride replay sound plays out in full (no fade at the route-draw length); the line and the haptic keep their length.
+- A-01 / A-02 / A-27: a fresh install opens onboarding by itself, marks What's new as seen silently, and Home on day 0 is the status and Start (Where to? with the first ride or place).
+- A-03 / A-04: no outside data and no location fix before onboarding is done and location is allowed; Hebcal holidays only for phone region IL.
+- A-05: the build stamp is off; the version shows in Settings → About.
+- A-06: welcome screen (theme image or a plain fallback, slow zoom-out, none with Reduce Motion) + optional 7-card tour; Settings → About → App tour.
+- A-07 / A-08 / A-09 / A-21: onboarding says Can't find your scooter after 30 s with tips and Which scooters work?; While Using now, Always later; plain alert words; one safety line.
+- A-10 / A-11 / A-12 / A-13: Load row after 3 rides; hint lines on empty Routes and Stats; Connect on the empty Scooter tab; the card name is the model name.
+- A-14 / A-15: one km-left number (KmLeft, the Battery page's real range at the smoothed level): "≈ N km left" under the live battery %, and the voice lines say km left (the % per km rate is no longer spoken; the plain line while learning).
+- A-16: ride summary 8 tiles (2 × 4): + Cost (StatsCalc.rideCostIls, a period's rides add up to its Electricity) + km left at the end level.
+- A-17: CSV, GPX and Replay file first ask "Hide where this ride starts and ends?"; Hide start and end blanks the location within ~200 m of the first and last point in the shared copy only.
+- A-18: "Full ≈ … · learning" until a charging speed is learned or measured. A-24: Settings → About → Credits. A-26: fixed font sizes outside Developer and the live numbers now scale.
+- Lab checks u201 (automatic), ui201–ui203 (phone).
+
 ## 108.131226.02 — hotfix 02 of batch 8 (owner 18 Nov, on 108.131226.01)
 
 - iOS 26 look (the first Xcode 26 build): no shared glass shell around Home's gear and logo, no scroll edge effects, Home's bar background hidden; the N6-3 fade above the tab bar is removed (it faded the map background into a grey band).

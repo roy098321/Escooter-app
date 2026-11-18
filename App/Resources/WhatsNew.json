@@ -1,5 +1,49 @@
 [
   {
+    "version": "108.131226.03",
+    "headline": "Easier first steps, and range in km",
+    "items": [
+      {
+        "symbol": "battery.75",
+        "title": "Kilometres left",
+        "line": "The live battery tile shows about how many km you have left, and the voice says the same number."
+      },
+      {
+        "symbol": "square.grid.2x2",
+        "title": "Cost and km left on every ride",
+        "line": "The ride summary has two new tiles: what the ride cost in electricity, and km left at the end."
+      },
+      {
+        "symbol": "eye.slash",
+        "title": "Hide where you start and end",
+        "line": "Sharing a ride (Replay file, GPX, CSV) first asks if you want to hide its start and end."
+      },
+      {
+        "symbol": "hand.wave",
+        "title": "A welcome for new riders",
+        "line": "A welcome screen and a short tour on first open. Settings, About, App tour shows it again."
+      }
+    ],
+    "smallerFixes": 11,
+    "full": [
+      "The ride replay sound plays to its end.",
+      "Live battery tile: about N km left under the %, 'learning range' until your rides give a range.",
+      "Voice: 'Battery at 80 percent, about 18 kilometres left.' and 'Using 15 percent more than usual. About 16 kilometres left.' The % per km rate is no longer spoken.",
+      "Ride summary: 8 tiles, + Cost and km left.",
+      "Sharing or exporting a ride asks: Hide start and end, or Share full route.",
+      "New install: a welcome screen and a 7-card tour, then onboarding opens by itself; no What's new card, no location pop-up before setup.",
+      "Onboarding: after 30 s without the scooter it says what to try and which scooters work; clearer words for location and alerts; one safety line.",
+      "The build number is no longer on every screen (Settings, About keeps it).",
+      "Home on day 0 shows only the status and Start; the Load row comes after 3 rides.",
+      "Empty Routes and Stats say how they fill; the empty Scooter tab has a Connect button.",
+      "The scooter card uses its model name.",
+      "'Full at' says 'learning' until your charging speed is learned.",
+      "Holidays only for phones set to Israel.",
+      "Map and weather credits in Settings, About, Credits.",
+      "More text grows with your text size setting."
+    ]
+  },
+  {
     "version": "108.131226.02",
     "headline": "Fixes for the new iPhone look",
     "items": [
