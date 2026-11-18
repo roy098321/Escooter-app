@@ -13,15 +13,32 @@ struct OnboardingView: View {
     @State private var busy = false
     @State private var alertsOpen = false
     @State private var showRestore = false      // D2: "Have a backup? Restore" (a new phone or a reinstall)
+    /// A-06: the welcome screen (and optional tour) first, on the first launch only
+    @State private var showWelcome: Bool
+    /// A-07: when the search for the scooter started (the 30 s "Can't find it" rule, as on Home)
+    @State private var searchingSince: Date?
+    @State private var now = Date()
+    @State private var whichOpen = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    init(startAt: OnboardingFlow.Step = .connect, previewFound: Bool = false, onFinish: @escaping (OnboardingFlow) -> Void) {
+    init(startAt: OnboardingFlow.Step = .connect, previewFound: Bool = false, welcome: Bool = false, onFinish: @escaping (OnboardingFlow) -> Void) {
         self.previewFound = previewFound
         self.onFinish = onFinish
+        _showWelcome = State(initialValue: welcome)
         _flow = State(initialValue: OnboardingFlow(scooterFound: previewFound, startAt: startAt))
     }
 
     var body: some View {
+        if showWelcome {
+            WelcomeView {
+                withAnimation(.easeOut(duration: 0.25)) { showWelcome = false }
+            }
+        } else {
+            steps
+        }
+    }
+
+    private var steps: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 24)
             heroIcon
@@ -46,10 +63,11 @@ struct OnboardingView: View {
             guard !previewFound else { return }
             // D2 3a: the line on screen is read before the iPhone's Bluetooth pop-up covers it
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { AppModel.shared.scooter.start() }
+            searchingSince = Date()
             PermissionsCheck.shared.refresh()
             refreshFound()
         }
-        .onReceive(tick) { _ in refreshFound() }
+        .onReceive(tick) { t in now = t; refreshFound() }
     }
 
     // MARK: Steps
@@ -67,7 +85,7 @@ struct OnboardingView: View {
         case .done: symbol = "checkmark"
         }
         return Image(systemName: symbol)
-            .font(.system(size: 56, weight: .semibold))
+            .scaledFont(56, weight: .semibold)      // A-26: grows with large text
             .foregroundStyle(tint)
             .frame(width: 140, height: 140)
             .glassCard(radius: 70, padding: 0)
@@ -106,6 +124,9 @@ struct OnboardingView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
+            } else if NewRider.cantFind(searchingSinceS: searchingSince?.timeIntervalSince1970, nowS: now.timeIntervalSince1970,
+                                        found: flow.scooterFound) {
+                cantFindBlock      // A-07: after 30 s, what to try and which scooters work
             } else {
                 VStack(spacing: 8) {
                     Text("Switch it on, keep it close.")
@@ -131,11 +152,37 @@ struct OnboardingView: View {
         }
     }
 
+    /// A-07: the same 30 s rule as Home, then tips and "Which scooters work?"; the search keeps running underneath
+    private var cantFindBlock: some View {
+        VStack(spacing: 8) {
+            Label(NewRider.cantFindTitle, systemImage: "magnifyingglass")
+                .font(.headline)
+                .foregroundStyle(Theme.accentInk)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(NewRider.cantFindTips, id: \.self) { tip in
+                    Text("\u{2022} " + tip).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Button(whichOpen ? "Hide" : "Which scooters work?") { withAnimation { whichOpen.toggle() } }
+                .font(.footnote.weight(.semibold))
+            if whichOpen {
+                Text(NewRider.supportedLine)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+    }
+
     private var locationStep: some View {
         VStack(spacing: 14) {
             Text("Let rides start on their own").font(.title2.bold()).multilineTextAlignment(.center)
-            Text("Tap While Using, then Change to Always, so rides record with the phone locked. Then allow Motion, for climbs.")
+            Text(NewRider.locationLine)      // A-08: iOS asks for Always later, not right away
                 .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Label(NewRider.safetyLine, systemImage: "eye")      // A-21: once, calm
+                .font(.footnote)
                 .foregroundStyle(.secondary)
             bigButton(busy ? "Asking\u{2026}" : "Allow", enabled: !busy) { allowLocation() }
             Button("Not now") { finish(.notNow) }
@@ -148,7 +195,7 @@ struct OnboardingView: View {
     private var notificationsStep: some View {
         VStack(spacing: 14) {
             Text("Scooter alerts").font(.title2.bold()).multilineTextAlignment(.center)
-            Text("When you switch on, and when it's charged. Tips: two a day at most.")
+            Text(NewRider.alertsLine)      // A-09: plain words
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             Button(alertsOpen ? "Hide" : "All the alerts") { alertsOpen.toggle() }      // D2 4b: optional, behind a tap
@@ -228,6 +275,8 @@ struct OnboardingView: View {
 
     private func complete() {
         OnboardingState.done = true
+        // A-03: outside data waited for onboarding; it may start now that location was asked
+        OutsideDataService.shared.refresh(database: AppModel.shared.database, reason: "onboarding done")
         // N5-2 / T8: the lab check "o1" is no longer written from the real onboarding
         onFinish(flow)
     }

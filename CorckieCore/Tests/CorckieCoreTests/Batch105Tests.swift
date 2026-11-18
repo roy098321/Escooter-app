@@ -69,7 +69,7 @@ final class Batch105Tests: XCTestCase {
     /// 4c / 5c: a quiet line when alerts or Motion are refused, with a way to Settings
     func test_4c_5c_quietPermissionLines() throws {
         let home = try source("App/UI/Home/HomeView.swift")
-        XCTAssertTrue(home.contains("Switch-on alerts are off."))
+        XCTAssertTrue(home.contains("Alerts are off: no"))      // A-09 (batch 9) reworded it
         XCTAssertTrue(home.contains("notificationsDenied"))
         let ride = try source("App/UI/Rides/RideDetailView.swift")
         XCTAssertTrue(ride.contains("motionDenied"))

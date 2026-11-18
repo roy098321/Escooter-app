@@ -140,14 +140,6 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
         return start(kind)
     }
 
-    /// N7-12: the ride replay sound, faded out so it lasts as long as the route draws (`RouteDraw.durationS`)
-    @discardableResult
-    func play(_ kind: SoundKind, lastingS: Double) -> Bool {
-        guard play(kind), let p = players.last else { return false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + max(0.1, lastingS - 0.15)) { p.setVolume(0, fadeDuration: 0.35) }
-        return true
-    }
-
     @discardableResult
     private func start(_ kind: SoundKind, speaking text: String? = nil) -> Bool {
         guard let url = kind.url else { return false }

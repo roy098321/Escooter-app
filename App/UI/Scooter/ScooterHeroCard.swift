@@ -501,7 +501,8 @@ struct ScooterColourSheet: View {
                                 .overlay {
                                     if c == selected {
                                         Image(systemName: "checkmark")
-                                            .font(.system(size: 20, weight: .bold))
+                                            .scaledFont(20, weight: .bold, relativeTo: .body, design: .default)      // A-26
+                                            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
                                             .foregroundStyle(PlaceColours.glyphIsDark(hex: String(format: "#%06lX", c.hex)) ? Color(white: 0.1) : Color.white)
                                     }
                                 }

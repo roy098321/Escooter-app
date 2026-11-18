@@ -18,6 +18,9 @@ enum WhatsNewStore {
     }
 
     static func markSeen() { UserDefaults.standard.set(AppInfo.releaseName, forKey: seenKey) }
+
+    /// A-02: nil on a fresh install
+    static var lastSeen: String? { UserDefaults.standard.string(forKey: seenKey) }
 }
 
 /// F-32: the card over the dimmed Home: "What's new · 251026", 3–4 items, the smaller-changes line, ✕ (a tap outside also closes it)

@@ -87,7 +87,8 @@ struct GlassIcon: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 17, weight: .semibold))
+            .scaledFont(17, weight: .semibold, relativeTo: .body, design: .default)      // A-26
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .foregroundStyle(.primary)
             .turnOnce(turn)
             .frame(width: 40, height: 40)
@@ -241,7 +242,8 @@ struct SquircleLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 12) {
             configuration.icon
-                .font(.system(size: 15, weight: .semibold))
+                .scaledFont(15, weight: .semibold, relativeTo: .body, design: .default)      // A-26
+                .dynamicTypeSize(...DynamicTypeSize.xLarge)
                 .foregroundStyle(Theme.accentInk)
                 .frame(width: 29, height: 29)
                 .background(Theme.chip, in: RoundedRectangle(cornerRadius: 7, style: .continuous))

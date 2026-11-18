@@ -6,8 +6,8 @@ import UIKit
 /// indicator on every tab, and at the same spot above the home indicator on pushed screens that have no tab bar. It is drawn over the
 /// app's root, so sheets and the ride cover (which are presented above it) are never covered by it. Caption2, tertiary colour, not tappable.
 enum BuildStamp {
-    /// The one flag: set it to false to remove the stamp near the end of the project.
-    static let isVisible = true
+    /// The one flag. A-05 (audit 18 Nov, batch 9): off for riders; the version shows in Settings → About only.
+    static let isVisible = false
 
     static var text: String { AppInfo.versionLine }
 

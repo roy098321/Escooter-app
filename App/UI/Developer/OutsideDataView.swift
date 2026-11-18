@@ -1,3 +1,4 @@
+import CorckieCore
 import SwiftUI
 
 /// Developer → Outside data (e1–e7): fetch and parse every outside source once.
@@ -71,7 +72,7 @@ struct OutsideDataView: View {
             }
                 .glassRows()
             GlassSection("Attribution") {
-                Text("Weather: Open-Meteo.com (CC BY 4.0) and MET Norway (CC BY 4.0) · Holidays: Hebcal (CC BY 4.0) · Fuel price: Israel Ministry of Energy · Map tiles: © OpenStreetMap contributors © CARTO")
+                Text(NewRider.creditsLine)      // A-24: the same list as Settings → About → Credits
                     .font(.footnote)
             }
                 .glassRows()

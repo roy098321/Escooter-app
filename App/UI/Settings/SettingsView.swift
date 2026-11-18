@@ -8,6 +8,7 @@ struct SettingsView: View {
     /// ui-shot only: scroll to a group
     var startAt: String?
 
+    @State private var showTour = false      // A-06
     @State private var weight = ""
     @State private var light = ""
     @State private var heavy = ""
@@ -185,6 +186,9 @@ struct SettingsView: View {
         group("About") {
             LabeledContent("Version") { VersionLabel() }   // G4: the only place the version tag shows
             NavigationLink("What's new") { WhatsNewListView() }   // F-32: every build's list
+            Button("App tour") { showTour = true }      // A-06: the welcome tour again
+                .fullScreenCover(isPresented: $showTour) { WelcomeView(tourOnly: true) { showTour = false } }
+            NavigationLink("Credits") { CreditsView() }      // A-24: licence credits for every rider
         }
     }
 

@@ -75,7 +75,7 @@ struct TrendChip: View {
             }
         }()
         HStack(spacing: 2) {
-            Image(systemName: arrow).font(.system(size: 7, weight: .bold))
+            Image(systemName: arrow).scaledFont(7, weight: .bold, relativeTo: .caption2, design: .default)      // A-26
             Text(text).font(.caption2.weight(.semibold)).monospacedDigit()
         }
         .padding(.horizontal, 5)

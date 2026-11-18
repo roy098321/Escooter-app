@@ -5,21 +5,25 @@ private struct ScaledFont: ViewModifier {
     @ScaledMetric private var size: CGFloat
     private let weight: Font.Weight
     private let mono: Bool
+    private let design: Font.Design
 
-    init(size: CGFloat, weight: Font.Weight, mono: Bool, style: Font.TextStyle) {
+    init(size: CGFloat, weight: Font.Weight, mono: Bool, style: Font.TextStyle, design: Font.Design) {
         _size = ScaledMetric(wrappedValue: size, relativeTo: style)
         self.weight = weight
         self.mono = mono
+        self.design = design
     }
 
     func body(content: Content) -> some View {
-        let font = Font.system(size: size, weight: weight, design: .rounded)
+        let font = Font.system(size: size, weight: weight, design: design)
         return content.font(mono ? font.monospacedDigit() : font)
     }
 }
 
 extension View {
-    func scaledFont(_ size: CGFloat, weight: Font.Weight = .regular, mono: Bool = false, relativeTo style: Font.TextStyle = .title3) -> some View {
-        modifier(ScaledFont(size: size, weight: weight, mono: mono, style: style))
+    /// A-26 (batch 9): also for icons outside Developer; `design` .default keeps the plain SF look
+    func scaledFont(_ size: CGFloat, weight: Font.Weight = .regular, mono: Bool = false, relativeTo style: Font.TextStyle = .title3,
+                    design: Font.Design = .rounded) -> some View {
+        modifier(ScaledFont(size: size, weight: weight, mono: mono, style: style, design: design))
     }
 }

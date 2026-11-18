@@ -435,7 +435,7 @@ struct LiveRideView: View {
                     .stroke(Color.red, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .frame(width: 84, height: 84)
-                Image(systemName: "stop.fill").font(.system(size: 30)).foregroundStyle(Color.red)
+                Image(systemName: "stop.fill").scaledFont(30, relativeTo: .title, design: .default).dynamicTypeSize(...DynamicTypeSize.xxxLarge)      // A-26.foregroundStyle(Color.red)
             }
             .gesture(
                 DragGesture(minimumDistance: 0)

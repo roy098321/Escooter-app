@@ -337,8 +337,9 @@ struct RideDetailView: View {
         Task { @MainActor in
             if !drawn.isEmpty {
                 revealStart = Date()
-                // N7-4: one length for the line, the replay sound and the speed haptic; the numbers come up alongside
-                SoundPlayer.shared.play(.rideReplay, lastingS: drawS)
+                // N7-4: one length for the line and the speed haptic; the numbers come up alongside.
+                // B96: the replay sound plays out in full (its top note is at 1.2 s), its tail runs past the line
+                SoundPlayer.shared.play(.rideReplay)
                 RideDrawHaptic.shared.play(speedsKmh: (series?.points ?? []).compactMap(\.speedKmh), durationS: drawS)
                 let step = UInt64(drawS / 6 * 1_000_000_000)
                 for n in 1...6 {

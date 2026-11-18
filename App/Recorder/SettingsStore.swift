@@ -67,7 +67,7 @@ enum NotifyKind: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .switchOn: return "Going for a ride? (when you switch on)"
+        case .switchOn: return "Going for a ride? (when your scooter is ready)"
         case .arriveBy: return "Arrive-by: time to leave"
         case .charge: return "Charge alerts"
         case .weekly: return "Weekly summary (Sun 7:30)"

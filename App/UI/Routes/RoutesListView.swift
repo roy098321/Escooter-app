@@ -49,6 +49,8 @@ struct RoutesListView: View {
             VStack(spacing: 8) {
                 Image(systemName: "point.topleft.down.to.point.bottomright.curvepath").font(.largeTitle).foregroundStyle(.secondary)
                 Text("No routes yet").font(.headline)
+                Text(NewRider.emptyRoutesHint)      // A-11: how the list fills
+                    .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
             .padding(24)

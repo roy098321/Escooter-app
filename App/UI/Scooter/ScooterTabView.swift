@@ -54,6 +54,8 @@ struct ScooterTabView: View {
     }
     @Environment(\.dynamicTypeSize) private var typeSize
     private let link = AppModel.shared.scooter
+    /// A-12: the empty tab is not a dead end, the same Connect as Home (onboarding)
+    @State private var showOnboarding = false
 
     private var connected: Bool { preview?.connected ?? link.connected }
     private var paired: Bool { preview != nil ? preview?.record != nil : (link.hasKnownScooter || record != nil) }
@@ -68,11 +70,21 @@ struct ScooterTabView: View {
                         VStack(spacing: 8) {
                             Image(systemName: "scooter").font(.largeTitle).foregroundStyle(.secondary)
                             Text("No scooter paired").font(.headline)
+                            Button {
+                                if preview == nil { showOnboarding = true }
+                            } label: {
+                                Text("Connect").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 4)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                            .padding(.top, 8)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(24)
                         .glassCard(radius: DS.Radius.hero, padding: 0)
-                        .opacity(0.75)
+                        .fullScreenCover(isPresented: $showOnboarding) {
+                            OnboardingView { _ in showOnboarding = false }
+                        }
                     }
                 }
                 .padding(DS.Space.gutter)

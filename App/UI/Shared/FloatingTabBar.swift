@@ -80,7 +80,8 @@ struct FloatingTabBar: View {
             HStack(spacing: 6) {
                 Image(systemName: item.symbol)
                     .symbolVariant(on ? .fill : .none)
-                    .font(.system(size: 20, weight: on ? .semibold : .regular))
+                    .scaledFont(20, weight: on ? .semibold : .regular, relativeTo: .body, design: .default)      // A-26
+                    .dynamicTypeSize(...DynamicTypeSize.xxLarge)
                     .bounceOnce(on)     // N7-5: the icon hops as its name slides out
                 if on {
                     Text(item.title)

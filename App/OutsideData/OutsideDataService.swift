@@ -1,4 +1,5 @@
 import CorckieCore
+import CoreLocation
 import Foundation
 
 /// The one HTTP client of the outside data (ARCHITECTURE section 3 request rules): 10 s timeout, 2 retries with
@@ -59,6 +60,10 @@ final class OutsideDataService: @unchecked Sendable {
     /// Fire and forget. App-open runs are spaced 10 min apart; a ride end always runs.
     func refresh(database: AppDatabase?, reason: String) {
         guard let database, !database.isReadOnly else { return }
+        // A-03: nothing goes out (and no location fix is asked) before onboarding is done and location is allowed
+        let status = PermissionsCheck.shared.locationStatus
+        guard NewRider.outsideDataAllowed(onboardingDone: OnboardingState.done, paired: AppModel.shared.scooter.hasKnownScooter,
+                                          locationAllowed: status == .authorizedAlways || status == .authorizedWhenInUse) else { return }
         if tooSoon(reason) { return }
         Task.detached(priority: .utility) { _ = await OutsideDataService.shared.runNow(database: database, reason: reason) }
     }
@@ -74,8 +79,13 @@ final class OutsideDataService: @unchecked Sendable {
         let year = Calendar(identifier: .gregorian).component(.year, from: Date())
         var parts: [String] = []
 
-        let holidays = await client.refreshHolidays(years: [year, year + 1])
-        parts.append("Holidays " + holidays.years.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))
+        // A-04: Hebcal (the Israeli calendar) only for riders whose phone region is Israel; elsewhere no holidays for now
+        if NewRider.usesHebcalHolidays(regionCode: Locale.current.region?.identifier) {
+            let holidays = await client.refreshHolidays(years: [year, year + 1])
+            parts.append("Holidays " + holidays.years.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))
+        } else {
+            parts.append("Holidays: none for this region")
+        }
 
         var location = await MainActor.run { PhoneSensors.shared.roundedLocation }
         if location == nil {

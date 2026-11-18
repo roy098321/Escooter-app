@@ -127,6 +127,8 @@ struct StatsView: View {
         VStack(spacing: 8) {
             Image(systemName: "chart.bar").font(.largeTitle).foregroundStyle(.secondary)
             Text("No rides yet").font(.headline)
+            Text(NewRider.emptyStatsHint)      // A-11: how the page fills
+                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(24)

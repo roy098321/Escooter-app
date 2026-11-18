@@ -61,6 +61,9 @@ public enum ChargeModel {
 
     public static let msPerHour = 3_600_000.0
 
+    /// A-18: no learned or measured speed yet (the default 13.6 %/h is used)
+    public static func isLearning(_ s: ChargeSession) -> Bool { s.ratePctPerHour == nil }
+
     /// The session's charging speed: learned from Plug ins when known, else the measured 13.6 %/h
     public static func rate(_ s: ChargeSession) -> Double { s.ratePctPerHour ?? ratePctPerHour }
 
@@ -149,7 +152,10 @@ public enum ChargeText {
         return String(format: "%d h %02d min", m / 60, m % 60)
     }
 
-    public static func fullLine(_ s: ChargeSession, utcOffsetMin: Int) -> String { "Full \u{2248} \(clock(ChargeModel.fullMs(s), utcOffsetMin: utcOffsetMin))" }
+    /// A-18 (audit 18 Nov): until a charging speed is learned (3 Plug ins) or measured, the time comes from a default speed, so it says so
+    public static func fullLine(_ s: ChargeSession, utcOffsetMin: Int) -> String {
+        "Full \u{2248} \(clock(ChargeModel.fullMs(s), utcOffsetMin: utcOffsetMin))" + (ChargeModel.isLearning(s) ? " \u{00B7} learning" : "")
+    }
 
     /// "80 % ≈ 23:34 · 100 % ≈ 01:02"
     public static func ticksLine(_ s: ChargeSession, utcOffsetMin: Int) -> String {

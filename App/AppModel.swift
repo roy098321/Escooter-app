@@ -207,7 +207,9 @@ final class AppModel {
         // B03: keep the fingerprint in the `scooter` table, so exports after a relaunch have it
         if !fingerprintSaved, scooter.hasKnownScooter, let fw = info.firmware, let sw = info.software, let db = database {
             do {
-                try ScooterRecord.save(id: scooter.knownPeripheralID ?? "scooter", name: ScooterGatt.advertisedName,
+                // A-13: the card name is the model name ("RND G100"), not the Bluetooth name "G2"
+                let model = scooter.foundModel ?? KnownScooters.modelName(advertisedName: ScooterGatt.advertisedName, makerTagged: false)
+                try ScooterRecord.save(id: scooter.knownPeripheralID ?? "scooter", name: NewRider.cardName(foundModel: model),
                                        chip: info.model, firmware: fw, software: sw, in: db)
                 fingerprintSaved = true
             } catch {

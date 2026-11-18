@@ -52,6 +52,8 @@ struct HomeView: View {
     @State private var discPressed = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showOnboarding = false
+    /// A-06: the welcome screen comes first only when onboarding opens by itself on the first launch
+    @State private var onboardingWelcome = false
     /// B29: the Where to? list is a standard iOS sheet
     @State private var showWhereTo = false
     /// V17: where the scooter was last parked
@@ -68,6 +70,8 @@ struct HomeView: View {
     @State private var whatsNew: WhatsNewEntry?
     @State private var oldestRideMs: Int64?
     @State private var ridesLoaded = false      // D2 6a
+    /// A-10 / A-27: real rides so far (the Load row waits for 3, day-0 Home hides Where to?)
+    @State private var rideCount = 0
     /// F-02: the Load for the next ride (None / Light / Heavy / Exact), kept until the next ride starts
     @State private var loadSel = "none"
     @State private var customKg = 0
@@ -127,6 +131,7 @@ struct HomeView: View {
             }
         }
         .onAppear {
+            firstLaunch()
             if preview == nil, whatsNew == nil, WhatsNewStore.shouldShow(riding: RecorderService.shared.rideShown) { whatsNew = WhatsNewStore.current }
             loadSelectorFromStore()
             reloadLastRide()
@@ -153,8 +158,9 @@ struct HomeView: View {
             }
         }
         .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingView(onFinish: { _ in
+            OnboardingView(welcome: onboardingWelcome, onFinish: { _ in
                 showOnboarding = false
+                onboardingWelcome = false
                 reloadLastRide()
             })
         }
@@ -265,8 +271,25 @@ struct HomeView: View {
         VStack(spacing: DS.Space.row) {
             if m.state != .riding, preview == nil, let trip = TripService.shared.offer { continueRow(trip) }
             // B55: the quick dial is never hidden (No destination and the dots are always there), even when the places could not be read
-            if m.state != .riding { whereToRow.onAppear { if preview == nil, quick.isEmpty { reloadLastRide() } } }
-            if m.state != .riding { loadRow }
+            // A-27: day-0 Home is the status and Start; Where to? comes with the first ride or saved place
+            if m.state != .riding, showsWhereTo { whereToRow.onAppear { if preview == nil, quick.isEmpty { reloadLastRide() } } }
+            if m.state != .riding, showsLoad { loadRow }      // A-10: after 3 rides
+        }
+    }
+
+    private var showsWhereTo: Bool { preview != nil || !ridesLoaded || NewRider.showsWhereTo(rides: rideCount, places: rows.count) }
+    private var showsLoad: Bool { preview != nil || (ridesLoaded && NewRider.showsLoadRow(rides: rideCount)) }
+
+    /// A-01 / A-02: a fresh install opens onboarding by itself and never sees What's new (the build is marked as seen silently)
+    private func firstLaunch() {
+        guard preview == nil, UIShot.requested == nil else { return }
+        let paired = AppModel.shared.scooter.hasKnownScooter
+        if NewRider.isFreshInstall(lastSeenWhatsNew: WhatsNewStore.lastSeen, onboardingDone: OnboardingState.done, paired: paired) {
+            WhatsNewStore.markSeen()
+        }
+        if NewRider.opensOnboarding(onboardingDone: OnboardingState.done, paired: paired), !RecorderService.shared.rideShown, !showOnboarding {
+            onboardingWelcome = true
+            showOnboarding = true
         }
     }
 
@@ -366,12 +389,13 @@ struct HomeView: View {
                                 destinationGlyph(icon)
                             } else {
                                 Image(systemName: discSymbol(m.primary))
-                                    .font(.system(size: 40, weight: .semibold))
+                                    .scaledFont(40, weight: .semibold, relativeTo: .title, design: .default)      // A-26
                                     .symbolEffect(.pulse, options: .repeating, isActive: m.state == .connecting && !reduceMotion)
                                     .bounceOnce(m.primary == .startRide)   // N7-5: connected → Start bounces once
                                     .squishOnce(discTap)                    // N7-5: the play squishes on press
                             }
                         }
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)      // A-26: grows, but stays inside the disc
                         .frame(height: 48)
                         .contentTransition(reduceMotion ? .opacity : .symbolEffect(.replace))   // N7-5: one symbol morphs into the next
                         .animation(.easeInOut(duration: 0.3), value: discSymbol(m.primary) + (discDestinationIcon(m)?.code ?? ""))
@@ -423,11 +447,11 @@ struct HomeView: View {
         switch icon {
         case .symbol(let name):
             Image(systemName: UIImage(systemName: name) != nil ? name : PlaceIcon.fallbackSymbol)
-                .font(.system(size: 40, weight: .semibold))
+                .scaledFont(40, weight: .semibold, relativeTo: .title, design: .default)      // A-26
                 .transition(.opacity)
         case .letters(let text):
             Text(text)
-                .font(.system(size: 38, weight: .semibold, design: .rounded))
+                .scaledFont(38, weight: .semibold, relativeTo: .title)      // A-26
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
                 .transition(.opacity)
@@ -688,7 +712,9 @@ struct HomeView: View {
         if let id = RouteFollowSelection.shared.chosenKey, !chips.contains(where: { $0.routeId == id }) { RouteFollowSelection.shared.choose(key: nil) }
         parked = ParkedResolver.current(database: db, simulated: ScreenSimulator.shared.active)
         gap = ScreenSimulator.shared.active ? nil : ConnectionWatch.visibleGap(db)
-        oldestRideMs = (try? RideQueries(db).rides())?.last(where: { !$0.isSimulated })?.startAt      // T11
+        let real = ((try? RideQueries(db).rides()) ?? []).filter { !$0.isSimulated }      // T11
+        oldestRideMs = real.last?.startAt
+        rideCount = real.count
         ridesLoaded = true
         BackupWriter.shared.runIfDue()
         EdgeWatch.shared.refresh(database: db)
@@ -899,7 +925,7 @@ private struct WhereToSheet: View {
         let on = r.pin != nil
         return Button { togglePin(r) } label: {
             Image(systemName: on ? "pin.fill" : "pin")
-                .font(.system(size: 16, weight: .semibold))
+                .scaledFont(16, weight: .semibold, relativeTo: .body, design: .default)      // A-26
                 .foregroundStyle(on ? Theme.accentInk : Color.secondary)
                 .frame(width: DS.hit, height: DS.hit)
                 .contentShape(Rectangle())
@@ -1034,7 +1060,7 @@ private struct FirstRideCard: View {
             Text("Estimates sharpen over your first rides.")
                 .font(.footnote).foregroundStyle(.secondary)
             if alertsOff {
-                Text("Switch-on alerts are off.")
+                Text("Alerts are off: no \"scooter ready\" or \"charging done\" alerts.")      // A-09: plain words
                     .font(.footnote).foregroundStyle(.secondary)
                 Button("Open Settings") { PermissionsCheck.openSettings() }
                     .font(.footnote.weight(.semibold))
