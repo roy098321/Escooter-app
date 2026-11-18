@@ -126,4 +126,79 @@ final class Batch109Tests: XCTestCase {
         XCTAssertTrue(welcome.contains("Button(\"Skip\""))
         XCTAssertTrue(try text("UI/Settings/SettingsView.swift").contains("WelcomeView(tourOnly: true)"))
     }
+
+    // MARK: N9-3 · A-14 / A-15 one km-left number
+
+    func test_A14_A15_tileKmEqualsVoiceKm() throws {
+        let range = RealRange(currentPct: 80, reservePct: 5, pctPerKm: 2.5, basedOnRides: 10, fromEnergy: false, lowBattery: false,
+                              rangeKm: 30, decisionRangeKm: 27)
+        for level in stride(from: 100.0, through: 6, by: -7) {
+            let km = KmLeft.km(levelPct: level, range: range)
+            let tile = KmLeft.tileText(km)
+            let voice = V09Message.everyTen(pct: Int(level), kmLeft: km).line
+            XCTAssertTrue(tile.contains("\(km!) km left"))
+            if km! >= 2 { XCTAssertTrue(voice.contains("about \(SpokenNumber.words(km!)) kilometres left"), voice) }
+        }
+        XCTAssertEqual(KmLeft.km(levelPct: 80, range: range), 30)
+        XCTAssertEqual(KmLeft.tileText(nil), "learning range")
+        XCTAssertNil(KmLeft.km(levelPct: 80, range: nil), "no real range yet = learning")
+        XCTAssertEqual(V09Message.everyTen(pct: 80).line, "Battery at eighty percent.", "learning: the plain line")
+        XCTAssertEqual(V09Message.usingMore(aboveUsualPct: 15, kmLeft: 16).line, "Using fifteen percent more than usual. About sixteen kilometres left.")
+        for m in V09Message.samples { XCTAssertFalse(m.line.contains("per kilometre"), "the rate is no longer spoken: \(m.line)") }
+        // the app: the tile and the voice read the same LiveRange with the same rounded level
+        let live = try text("UI/Live/LiveRideView.swift")
+        XCTAssertTrue(live.contains("LiveRange.shared.km(levelPct:") && live.contains("KmLeft.tileText(km)") && live.contains("KmLeft.spokenText(km)"))
+        XCTAssertTrue(try text("Audio/RideVoice.swift").contains("vi.kmLeft = LiveRange.shared.km(levelPct:"))
+        XCTAssertTrue(try text("Recorder/LiveRange.swift").contains("$0.rounded()"))
+    }
+
+    func test_A14_batteryTileKeepsItsSafeSize() throws {
+        let live = try text("UI/Live/LiveRideView.swift")
+        XCTAssertTrue(live.contains("static let tilePt: CGFloat = 60"), "B21: battery stays >= 60 pt; the km line is a second line")
+    }
+
+    // MARK: N9-3 · A-16 cost + km left on the summary
+
+    func test_A16_rideCostsAddUpToTheStatsWeek() throws {
+        let day: Int64 = 86_400_000
+        let t0: Int64 = 1_790_000_000_000
+        let rides = (0..<6).map { StatsRide(startAt: t0 + Int64($0) * day / 2, utcOffsetMin: 120, kind: $0 == 3 ? "shortHop" : "ride",
+                                             distanceM: 5_000, totalS: 900, usedPct: 8 + Double($0)) }
+        for prices in [StatsPrices(packWh: 760), StatsPrices(packWh: 760, electricityIlsPerKwh: 0.7)] {
+            let period = StatsCalc.period(span: .week, mode: .rolling, nowMs: t0 + 3 * day, utcOffsetMin: 120)
+            let week = StatsCalc.totals(rides, period: period, prices: prices, utcOffsetMin: 120).electricityIls
+            let sum = rides.reduce(0.0) { $0 + StatsCalc.rideCostIls($1, prices: prices) }
+            XCTAssertEqual(sum, week, accuracy: 1e-9)
+        }
+        XCTAssertEqual(KmLeft.summaryText(18), "\u{2248} 18 km")
+        XCTAssertEqual(KmLeft.summaryText(nil), "learning")
+        let detail = try text("UI/Rides/RideDetailView.swift")
+        XCTAssertTrue(detail.contains("static let keyTileCount = 8") && detail.contains("StatTileGrid(columns: 2)"))
+        XCTAssertTrue(detail.contains("label: \"Cost\"") && detail.contains("label: \"km left\""))
+        XCTAssertTrue(detail.contains("StatsCalc.rideCostIls(costRide, prices: StatsLoader.prices(db))"))
+    }
+
+    // MARK: N9-3 · A-17 ask before sharing
+
+    func test_A17_trimmedExportHasNoPointNearTheEnds() throws {
+        // made up, in the ocean
+        let rows = (0..<80).map { i in ReplayRow(t: Double(i) * 5, lat: 0.001 * Double(i), lon: -30, speedKmh: 18, batteryPct: 70) }
+        let cut = ShareTrim.hideEnds(rows)
+        let first = (lat: rows.first!.lat!, lon: rows.first!.lon!), last = (lat: rows.last!.lat!, lon: rows.last!.lon!)
+        for r in cut {
+            guard let lat = r.lat, let lon = r.lon else { continue }
+            XCTAssertGreaterThan(PrivacyExport.distanceM(lat, lon, first.lat, first.lon), 200)
+            XCTAssertGreaterThan(PrivacyExport.distanceM(lat, lon, last.lat, last.lon), 200)
+        }
+        XCTAssertEqual(cut.count, rows.count, "the timeline stays")
+        XCTAssertGreaterThan(cut.compactMap(\.lat).count, 50, "the middle stays")
+        XCTAssertEqual(ShareTrim.hideEnds([]), [])
+        let detail = try text("UI/Rides/RideDetailView.swift")
+        XCTAssertTrue(detail.contains("confirmationDialog(ShareTrim.question") && detail.contains("askExport = .csv") && detail.contains("askExport = .gpx"))
+        let replay = try text("UI/Rides/ReplayView.swift")
+        XCTAssertTrue(replay.contains("confirmationDialog(ShareTrim.question") && replay.contains("download(hideEnds: true)"))
+        XCTAssertFalse(replay.contains("await download() }"), "no share without the question")
+        XCTAssertTrue(try text("Recorder/RideExportService.swift").contains("ShareTrim.hideEnds(all)"))
+        XCTAssertTrue(try text("Recorder/ReplayDataLoader.swift").contains("ShareTrim.hideEnds(all)"))
+    }
 }

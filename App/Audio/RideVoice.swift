@@ -88,6 +88,8 @@ final class RideVoice {
             if let db = database {
                 let overview = BatteryOverview.load(db, currentPct: input.scooterBatteryPct, connected: true)
                 recentPctPerKm = overview.range?.pctPerKm
+                // A-14 / A-15: the rate for km left (a level is needed to load it; the tile and the voice pass their own level)
+                LiveRange.shared.load(BatteryOverview.load(db, currentPct: input.scooterBatteryPct ?? 50, connected: true))
                 reservePct = overview.reservePct
                 recentUsageLines = RouteFollowLoader.recentUsageLines(database: db)
             } else {
@@ -180,6 +182,8 @@ final class RideVoice {
             vi.levelStartPct = RideBatteryService.shared.startPct
             vi.tensReached = RideBatteryService.shared.reachedNow
         }
+        // A-15: km left, the same number as the live battery tile (A-14)
+        vi.kmLeft = LiveRange.shared.km(levelPct: input.smoothedBatteryPct ?? input.scooterBatteryPct)
         for m in v09.update(vi) { say(m, numbers: v09.numbers) }
     }
 

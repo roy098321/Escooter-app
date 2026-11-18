@@ -29,6 +29,8 @@ struct ReplayView: View {
     @State private var building = false
     @State private var buildText = ""
     @State private var shareItem: ShareFile?
+    /// A-17: "Hide where this ride starts and ends?" before the file is made
+    @State private var askHide = false
     @State private var errorText: String?
     private let ticker = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
@@ -55,6 +57,13 @@ struct ReplayView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $shareItem) { item in
             ShareSheet(url: item.url)
+        }
+        .confirmationDialog(ShareTrim.question, isPresented: $askHide, titleVisibility: .visible) {
+            Button(ShareTrim.hideButton) { Task { await download(hideEnds: true) } }
+            Button(ShareTrim.fullButton) { Task { await download(hideEnds: false) } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(ShareTrim.message)
         }
         .alert("Could not make the file", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("OK") {}
@@ -122,7 +131,7 @@ struct ReplayView: View {
             if building {
                 ProgressView().frame(width: 44, height: 44)
             } else {
-                Button { Task { await download() } } label: { GlassIcon(symbol: "square.and.arrow.down") }
+                Button { askHide = true } label: { GlassIcon(symbol: "square.and.arrow.down") }      // A-17: asks first
                     .buttonStyle(.plain)
                     .accessibilityLabel("Replay file")
                     .disabled(ride == nil)
@@ -239,7 +248,7 @@ struct ReplayView: View {
         }
         paint()
         if previewData != nil { playback.scrub(to: t.durationS * 0.4) }
-        if startDownload { Task { await download() } }
+        if startDownload { askHide = true }      // A-17
     }
 
     /// The path runs and the chart strip of the chosen layer (made once per layer, not per frame)
@@ -262,8 +271,14 @@ struct ReplayView: View {
     }
 
     /// One HTML file: the page with its tiles as data addresses
-    private func download() async {
-        guard let ride, !building else { return }
+    private func download(hideEnds: Bool) async {
+        guard let shown = ride, !building else { return }
+        // A-17: the shared copy is built again without its ends; the replay on screen stays full (both layouts of the file get the cut)
+        var ride = shown
+        if hideEnds, previewData == nil, let id = rideId, let db = AppModel.shared.displayDatabase,
+           let trimmed = ReplayDataLoader.load(db, rideId: id, hideEnds: true) {
+            ride = trimmed
+        }
         building = true
         buildText = ""
         defer { building = false }

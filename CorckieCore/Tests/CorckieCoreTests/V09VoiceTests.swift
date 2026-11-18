@@ -13,7 +13,8 @@ final class V09VoiceTests: XCTestCase {
         XCTAssertEqual(V09Message.round5(42.4), 40)
         XCTAssertEqual(V09Message.round5(42.6), 45)
         XCTAssertEqual(V09Message.pointOfNoReturn(metres: 300).line, "Last chance to turn back in three hundred metres.")
-        XCTAssertEqual(V09Message.usingMore(pctPerKm: 2.6, aboveUsualPct: 15).line, "Using two point six percent per kilometre, fifteen percent above usual.")
+        XCTAssertEqual(V09Message.usingMore(aboveUsualPct: 15, kmLeft: 16).line, "Using fifteen percent more than usual. About sixteen kilometres left.")      // A-15
+        XCTAssertEqual(V09Message.usingMore(aboveUsualPct: 15).line, "Using fifteen percent more than usual.", "learning: no km")
         XCTAssertTrue(V09Message.engineOverheating(c: 94).urgent)
         XCTAssertFalse(V09Message.runningLate(minutes: 8, arriveAt: "9:02").urgent)
         XCTAssertEqual(V09Message.samples.count, 18)   // + V-U1 Level 2 (batch 3); batch 4: drain and far share one calmer line; N8-4: the turn-back point is two lines
@@ -41,7 +42,7 @@ final class V09VoiceTests: XCTestCase {
     func testEveryTenIsUrgentAndStartsBelowTheStart() {
         var d = V09Director()
         XCTAssertEqual(d.update(V09Input(t: 0, pct: 87, rideKm: 0, speedKmh: 25)), [])
-        XCTAssertEqual(d.update(V09Input(t: 60, pct: 80, rideKm: 1, speedKmh: 25)), [.everyTen(pct: 80, pctPerKm: 7)])
+        XCTAssertEqual(d.update(V09Input(t: 60, pct: 80, rideKm: 1, speedKmh: 25)), [.everyTen(pct: 80)])      // A-15: no km given = still learning
         XCTAssertEqual(d.update(V09Input(t: 70, pct: 79, rideKm: 1.1, speedKmh: 25)), [])
         XCTAssertEqual(d.update(V09Input(t: 80, pct: 69, rideKm: 1.2, speedKmh: 25)).map(\.value), [70])
     }

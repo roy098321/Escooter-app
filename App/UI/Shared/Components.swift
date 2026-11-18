@@ -94,15 +94,22 @@ struct StatTileGrid<Content: View>: View {
     @ScaledMetric(relativeTo: .body) private var minTile: CGFloat = 100
     @Environment(\.dynamicTypeSize) private var typeSize
     private let weighted: Bool
+    /// A-16: a fixed number of columns (the ride summary's 2 × 4); large accessibility text falls back to the adaptive grid
+    private let columns: Int?
     private let content: Content
-    init(weighted: Bool = false, @ViewBuilder content: () -> Content) {
+    init(weighted: Bool = false, columns: Int? = nil, @ViewBuilder content: () -> Content) {
         self.weighted = weighted
+        self.columns = columns
         self.content = content()
     }
 
     var body: some View {
         if weighted && !typeSize.isAccessibilitySize {
             WeightedTileRow(spacing: DS.Space.row) { content }
+        } else if let columns, !typeSize.isAccessibilitySize {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: DS.Space.row), count: columns), spacing: DS.Space.row) {
+                content
+            }
         } else {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: minTile), spacing: DS.Space.row)], spacing: DS.Space.row) {
                 content

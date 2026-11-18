@@ -43,6 +43,8 @@ struct RideDetailView: View {
     @State private var showTrim = false
     @State private var showReplay = false
     @State private var replayDownload = false
+    /// A-17: the export waiting for "Hide where this ride starts and ends?"
+    @State private var askExport: RideExportService.Format?
     /// F-28: the speed / battery charts full screen
     @State private var showCharts = false
     @State private var exportFile: ExportedFile?
@@ -166,6 +168,14 @@ struct RideDetailView: View {
             if let s = previewSeries ?? series { RideGraphView(data: s.layerData) }   // note 13: one graph with chips
         }
         .sheet(item: $exportFile) { file in ShareSheet(url: file.url) }
+        .confirmationDialog(ShareTrim.question, isPresented: Binding(get: { askExport != nil }, set: { if !$0 { askExport = nil } }),
+                            titleVisibility: .visible, presenting: askExport) { format in
+            Button(ShareTrim.hideButton) { exportRide(format, hideEnds: true) }
+            Button(ShareTrim.fullButton) { exportRide(format, hideEnds: false) }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text(ShareTrim.message)
+        }
         .overlay(alignment: .bottom) { toastBar }
         .task(id: toast) {
             guard toast != nil else { return }
@@ -190,10 +200,10 @@ struct RideDetailView: View {
         }
     }
 
-    private func exportRide(_ format: RideExportService.Format) {
+    private func exportRide(_ format: RideExportService.Format, hideEnds: Bool) {
         guard let id = activeId, let db = AppModel.shared.displayDatabase else { return }
         do {
-            exportFile = ExportedFile(url: try RideExportService.write(db, rideId: id, format: format))
+            exportFile = ExportedFile(url: try RideExportService.write(db, rideId: id, format: format, hideEnds: hideEnds))
         } catch {
             errorText = error.localizedDescription
         }
@@ -286,8 +296,8 @@ struct RideDetailView: View {
         Menu {
             Button { replayDownload = true; showReplay = true } label: { Label("Replay file", systemImage: "square.and.arrow.down") }
                 .disabled(needsGps)
-            Button { exportRide(.csv) } label: { Label("CSV", systemImage: "tablecells") }
-            Button { exportRide(.gpx) } label: { Label("GPX", systemImage: "map") }
+            Button { askExport = .csv } label: { Label("CSV", systemImage: "tablecells") }      // A-17: asks first
+            Button { askExport = .gpx } label: { Label("GPX", systemImage: "map") }
         } label: { Label("Export", systemImage: "square.and.arrow.up") }
         Divider()
         Button(role: .destructive) { confirmDelete = true } label: { Label("Delete", systemImage: "trash") }
@@ -341,15 +351,15 @@ struct RideDetailView: View {
                 // B96: the replay sound plays out in full (its top note is at 1.2 s), its tail runs past the line
                 SoundPlayer.shared.play(.rideReplay)
                 RideDrawHaptic.shared.play(speedsKmh: (series?.points ?? []).compactMap(\.speedKmh), durationS: drawS)
-                let step = UInt64(drawS / 6 * 1_000_000_000)
-                for n in 1...6 {
+                let step = UInt64(drawS / Double(Self.keyTileCount) * 1_000_000_000)
+                for n in 1...Self.keyTileCount {
                     withAnimation(.easeOut(duration: 0.25)) { tilesShown = n }
                     try? await Task.sleep(nanoseconds: step)
                 }
             }
             pathReveal = 1
             revealStart = nil
-            for n in 1...6 where tilesShown < n {
+            for n in 1...Self.keyTileCount where tilesShown < n {
                 withAnimation(.easeOut(duration: 0.25)) { tilesShown = n }
                 try? await Task.sleep(nanoseconds: 60_000_000)
             }
@@ -357,15 +367,19 @@ struct RideDetailView: View {
         }
     }
 
-    /// D1: six key tiles
+    /// D1: six key tiles; A-16 (batch 9): eight, + Cost and km left (2 columns, 4 rows)
+    static let keyTileCount = 8
+
     private func keyTiles(_ m: RideSummaryModel) -> some View {
-        StatTileGrid {
+        StatTileGrid(columns: 2) {
             StatTile(value: Self.countUp(stat(m, "Time"), shown: tilesShown >= 1), label: "Time").opacity(tilesShown >= 1 ? 1 : 0).rideMorph("time")
             StatTile(value: Self.countUp(stat(m, "Distance"), shown: tilesShown >= 2), label: "Distance").opacity(tilesShown >= 2 ? 1 : 0)
             StatTile(value: Self.countUp(stat(m, "Avg. speed"), shown: tilesShown >= 3), label: "Avg speed").opacity(tilesShown >= 3 ? 1 : 0).rideMorph("speed")
             StatTile(value: Self.countUp(stat(m, "Battery"), shown: tilesShown >= 4), label: "Battery").opacity(tilesShown >= 4 ? 1 : 0).rideMorph("battery")
             StatTile(value: Self.countUp(stat(m, "Top speed"), shown: tilesShown >= 5), label: "Top speed").opacity(tilesShown >= 5 ? 1 : 0)
             StatTile(value: Self.countUp(climbText(m), shown: tilesShown >= 6), label: "Climb").opacity(tilesShown >= 6 ? 1 : 0)
+            StatTile(value: Self.countUp(m.costText ?? "\u{2013}", shown: tilesShown >= 7), label: "Cost").opacity(tilesShown >= 7 ? 1 : 0)
+            StatTile(value: m.kmLeftText ?? "\u{2013}", label: "km left").opacity(tilesShown >= 8 ? 1 : 0)
         }
     }
 
@@ -751,6 +765,15 @@ enum RideDetailLoader {
                       gpsSpeedKmh: s.gpsSpeedMps.map { v in v * 3.6 }, batteryPct: s.batteryPct, mode: s.mode)
         }
         var model = RideSummaryBuilder.build(input, gaps: gaps, points: points)
+        // A-16 (batch 9): Cost (the Stats calculation, so a week's rides add up to its Electricity) and km left at the end level
+        if !r.isSimulated {
+            let costRide = StatsRide(startAt: r.startAt, utcOffsetMin: r.utcOffsetMin ?? 0, kind: r.kind, distanceM: r.distanceM ?? 0,
+                                     totalS: r.totalS ?? 0, usedPct: r.usedPct)
+            if r.usedPct != nil { model.costText = StatsCalc.money(StatsCalc.rideCostIls(costRide, prices: StatsLoader.prices(db))) }
+            let endPct = model.batteryEnds?.endPct ?? r.endRestPct
+            let range = BatteryOverview.load(db, currentPct: endPct ?? 50, connected: false).range
+            model.kmLeftText = KmLeft.summaryText(endPct == nil ? nil : KmLeft.km(levelPct: endPct.map { $0.rounded() }, range: range))
+        }
         // M4-02 (check mf1): the ride's factor columns as one line under More
         // N5-2 / T3: only when Developer is unlocked
         if DeveloperGateView.isUnlocked, let line = FactorEffects.developerLine(db, rideId: id) { model.infoLines.append(line) }
@@ -799,7 +822,10 @@ enum RideDetailPreview {
         default:
             break
         }
-        return RideSummaryBuilder.build(input, gaps: gaps, points: points)
+        var model = RideSummaryBuilder.build(input, gaps: gaps, points: points)
+        model.costText = StatsCalc.money(0.14)      // A-16: made-up numbers for the ui-shots
+        model.kmLeftText = KmLeft.summaryText(27)
+        return model
     }
 }
 

@@ -15,7 +15,9 @@ final class QuickDialShownGuardTests: XCTestCase {
     func test_B55_quickDialRowIsNeverHidden_andFailuresAreLogged() throws {
         let home = try text("UI/Home/HomeView.swift")
         XCTAssertFalse(home.contains("shownChips.isEmpty && shownQuick.isEmpty"), "the quick dial must not hide when the lists are empty")
-        XCTAssertTrue(home.contains("if m.state != .riding { whereToRow"), "shown whenever no ride is on")
+        // A-27 (batch 9): the one exception is day 0 (no ride and no place yet); a failed read never hides it (rides still counted)
+        XCTAssertTrue(home.contains("if m.state != .riding, showsWhereTo { whereToRow"), "shown whenever no ride is on")
+        XCTAssertTrue(home.contains("!ridesLoaded || NewRider.showsWhereTo(rides: rideCount, places: rows.count)"), "shown until the rides are read")
         XCTAssertTrue(home.contains("QuickDialLoader.lastFailure"), "a failed load is logged")
         let loader = try text("Routes/QuickDialLoader.swift")
         XCTAssertFalse(loader.contains("(try? store.places())"), "the places read is not swallowed")

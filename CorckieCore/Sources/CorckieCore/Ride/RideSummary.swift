@@ -228,6 +228,9 @@ public struct RideSummaryModel: Equatable, Sendable {
     public var hotPeakC: Int? = nil
     /// N4-12 (B91): the ride's one start / end battery level (the map's Battery legend and the voice proof use it)
     public var batteryEnds: RideBatteryEnds? = nil
+    /// A-16 (batch 9): the ride's electricity cost ("0.14 ₪", StatsCalc.rideCostIls) and km left at its end level (KmLeft.summaryText)
+    public var costText: String? = nil
+    public var kmLeftText: String? = nil
 
     /// T7: what a rider sees under More. Odometer ranges, "Phone took over" reasons and ignored-reading counts are
     /// log-style lines; they show only after the Developer unlock. The plain notes above stay for everyone.

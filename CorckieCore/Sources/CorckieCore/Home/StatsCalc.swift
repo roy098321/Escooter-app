@@ -207,7 +207,7 @@ public enum StatsCalc {
             let used = r.usedPct ?? 0
             let dayKey = RideListLogic.dayKey(RideListLogic.localDay(startAt: r.startAt, utcOffsetMin: r.utcOffsetMin))
             let rate = prices.electricityHistory?.value(on: dayKey) ?? prices.electricityIlsPerKwh
-            elec += used * kwhPerPct * rate
+            elec += rideCostIls(r, prices: prices)      // A-16: the same number as the ride summary's Cost tile
             t.charges += used / 100
             // M35b: rides over 2 km, the same distance by car minus what the ride cost in electricity
             if r.kind == "ride", km > 2,
@@ -225,6 +225,14 @@ public enum StatsCalc {
         t.barsSeconds = barsSeconds
         t.barsSaved = barsSaved
         return t
+    }
+
+    /// A-16 (batch 9): one ride's electricity cost: battery used × the pack's kWh per 1 % × the price on the ride's day. The ride
+    /// summary's Cost tile; a period's rides add up to its Electricity total.
+    public static func rideCostIls(_ r: StatsRide, prices: StatsPrices) -> Double {
+        let dayKey = RideListLogic.dayKey(RideListLogic.localDay(startAt: r.startAt, utcOffsetMin: r.utcOffsetMin))
+        let rate = prices.electricityHistory?.value(on: dayKey) ?? prices.electricityIlsPerKwh
+        return (r.usedPct ?? 0) * prices.packWh / 100 / 1000 * rate
     }
 
     /// The fuel price of the month the ride was in, else the last known / manual one

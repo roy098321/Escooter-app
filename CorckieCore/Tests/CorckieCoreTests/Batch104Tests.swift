@@ -172,10 +172,11 @@ final class Batch104Tests: XCTestCase {
     // MARK: N4-5 · the calmer lines with the rate
 
     func test_N4_5_calmerLinesCarryTheRate() {
-        XCTAssertEqual(V09Message.everyTen(pct: 90, pctPerKm: 2.5).line, "Battery at ninety percent, using two point five percent per kilometre.")
+        // A-15 (batch 9): km left instead of the % per km rate
+        XCTAssertEqual(V09Message.everyTen(pct: 90, kmLeft: 34).line, "Battery at ninety percent, about thirty four kilometres left.")
         XCTAssertEqual(V09Message.everyTen(pct: 90).line, "Battery at ninety percent.")
-        XCTAssertEqual(V09Message.drainingFast(pctPerKm: 2.5).line, "Energy use higher than normal, using two point five percent per kilometre.")
-        XCTAssertEqual(V09Message.farAboveUsual(pctPerKm: 3.04).line, "Energy use higher than normal, using three point zero percent per kilometre.")
+        XCTAssertEqual(V09Message.drainingFast(kmLeft: 12).line, "Energy use higher than normal. About twelve kilometres left.")
+        XCTAssertEqual(V09Message.farAboveUsual().line, "Energy use higher than normal.")
         XCTAssertEqual(V09Message.unusualDrag.line, "Unusual drag, check brakes and tyres.", "names an action: unchanged")
         XCTAssertNil(V09Message.rideRate(startPct: 99, levelPct: 97, rideKm: 0.8), "only after 1 km")
         XCTAssertEqual(V09Message.rideRate(startPct: 99, levelPct: 94, rideKm: 2) ?? 0, 2.5, accuracy: 1e-9)
@@ -184,13 +185,18 @@ final class Batch104Tests: XCTestCase {
         XCTAssertFalse(V09Message.samples.contains { $0.line.contains("abnormally") || $0.line.contains("check the scooter") })
     }
 
-    func test_N4_5_tenPercentLineHasTheRideRateAfterOneKm() {
+    /// A-15 (batch 9) replaces N4-5's rate: the 10 % line carries the km left it was given (the live tile's number)
+    func test_N4_5_tenPercentLineCarriesKmLeft() {
         var d = V09Director()
         var tens: [V09Message] = []
-        for k in madeUpRide(km: 6) { tens += d.update(input(k, usual: nil)).filter { $0.kind == "ten" } }
-        guard case let .everyTen(p, rate)? = tens.first else { return XCTFail("no 10 % line") }
+        for k in madeUpRide(km: 6) {
+            var i = input(k, usual: nil)
+            i.kmLeft = 21
+            tens += d.update(i).filter { $0.kind == "ten" }
+        }
+        guard case let .everyTen(p, km)? = tens.first else { return XCTFail("no 10 % line") }
         XCTAssertEqual(p, 90)
-        XCTAssertEqual(rate ?? 0, 2.5, accuracy: 0.15)
+        XCTAssertEqual(km, 21)
     }
 
     // MARK: N4-12 = B91 · one end-of-ride number

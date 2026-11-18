@@ -358,7 +358,7 @@ struct LiveRideView: View {
     }
 
     /// battery and ride time share one look: same font, centred, a small label under the number (B21)
-    private func smallTile(_ number: String, label: String, tint: Color? = nil) -> some View {
+    private func smallTile(_ number: String, label: String, tint: Color? = nil, second: String? = nil) -> some View {
         GlassCard {
             VStack(spacing: 0) {
                 Text(number)
@@ -367,6 +367,13 @@ struct LiveRideView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)       // only for "~100%" or a ride past an hour; normally the full size
                 Text(label).font(.footnote).foregroundStyle(.secondary)
+                if let second {      // A-14: "≈ 18 km left" under the battery %
+                    Text(second)
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .padding(.top, 2)
+                }
             }
             .frame(maxWidth: .infinity)
         }
@@ -384,10 +391,14 @@ struct LiveRideView: View {
         // N8-2: amber at 20 % or less, red at 10 % or less (the smoothed % the tile shows); colour-blind mode adds ▼
         let level = BatteryTileLevel.level(pct: t.batteryPct)
         let tint: Color? = level == .critical ? Color.red : (level == .low ? Color.orange : nil)
+        // A-14 (owner 18 Nov): km left at the shown (smoothed) level, the same number the voice says (KmLeft); "learning range" first
+        let km = LiveRange.shared.km(levelPct: t.batteryPct.map(Double.init))
         return smallTile(BatteryTileLevel.number(number, level: level, colourBlind: DisplaySettings.colourBlind),
-                         label: t.batteryEstimated ? "battery \u{00B7} est." : "battery", tint: tint)
+                         label: t.batteryEstimated ? "battery \u{00B7} est." : "battery", tint: tint,
+                         second: t.batteryPct == nil ? nil : KmLeft.tileText(km))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(spoken)
+            .accessibilityValue(t.batteryPct == nil ? "" : KmLeft.spokenText(km))      // the km line's own VoiceOver text
     }
 
     private func clockTile(_ s: LiveScreenState) -> some View {

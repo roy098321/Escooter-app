@@ -24,8 +24,10 @@ enum ReplayDataLoader {
         return (ride, rows)
     }
 
-    static func load(_ db: AppDatabase, rideId: String) -> ReplayRide? {
-        guard let (ride, rows) = readings(db, rideId: rideId) else { return nil }
+    /// A-17: `hideEnds` builds the shared file's copy without ~200 m at each end
+    static func load(_ db: AppDatabase, rideId: String, hideEnds: Bool = false) -> ReplayRide? {
+        guard let (ride, all) = readings(db, rideId: rideId) else { return nil }
+        let rows = hideEnds ? ShareTrim.hideEnds(all) : all
         let q = RideQueries(db)
         let stopRows = (try? q.stops(rideId: rideId)) ?? []
         var stops: [(startS: Double, endS: Double)] = []

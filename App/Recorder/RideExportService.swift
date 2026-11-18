@@ -32,8 +32,10 @@ enum RideExportService {
         }
     }
 
-    static func write(_ db: AppDatabase, rideId: String, format: Format) throws -> URL {
-        guard let (ride, rows) = ReplayDataLoader.readings(db, rideId: rideId) else { throw ExportError.noData }
+    /// A-17: `hideEnds` = the rider chose "Hide start and end" (only this copy is trimmed)
+    static func write(_ db: AppDatabase, rideId: String, format: Format, hideEnds: Bool) throws -> URL {
+        guard let (ride, all) = ReplayDataLoader.readings(db, rideId: rideId) else { throw ExportError.noData }
+        let rows = hideEnds ? ShareTrim.hideEnds(all) : all
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ReplayShare", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appendingPathComponent(fileName(ride, format: format))
