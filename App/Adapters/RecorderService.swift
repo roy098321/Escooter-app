@@ -143,6 +143,7 @@ final class RecorderService {
     func scooterConnected(at date: Date) {
         let t = EngineClock.shared.fromWall(date)
         send(.scooter(TimedScooterEvent(t: t, event: .connected)), at: t)
+        FaultSwitchOn.shared.connected()          // N10-12: F11 / F12 / F16 on the first readings
         // N7-1: the Ready card, once the first battery reading has settled
         DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
             guard let self, !self.rideActive, !self.simActive, let db = AppModel.shared.displayDatabase else { return }

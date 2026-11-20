@@ -17,6 +17,7 @@ final class LiveFaultWatch {
 
     /// Every scooter packet (main thread)
     func packet(_ bytes: [UInt8], at t: Double) {
+        FaultSwitchOn.shared.packet(bytes, at: t)
         let riding = RecorderService.shared.rideActive && !RecorderService.shared.simActive
         if riding != wasRiding {
             wasRiding = riding

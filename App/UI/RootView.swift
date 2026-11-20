@@ -53,6 +53,7 @@ struct RootView: View {
                     t.disablesAnimations = shown && StartTransition.shared.visible
                     withTransaction(t) { coverShown = shown }
                 }
+                .overlay { if !coverShown { faultPopup } }      // N10-12: a switch-on finding over Home
                 .safeAreaInset(edge: .top) {
                     VStack(spacing: 0) {
                         if model.simulator.running || ScreenSimulator.shared.active {

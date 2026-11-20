@@ -2,6 +2,7 @@ import CorckieCore
 import Foundation
 import GRDB
 import Observation
+import UIKit
 
 /// N10 (batch 10): fault recognition glue. After a ride closes, the ride's raw scooter readings are decoded again and run through
 /// `AfterRideFaults` (CorckieCore, unit tested). The books (the rider's normals per scooter), the open faults and each route's
@@ -98,12 +99,20 @@ enum FaultService {
         let context = RideContext(routeId: extra?["routeId"], airTempC: extra?["airTempC"], headwindKmh: extra?["headwindKmh"])
         DispatchQueue.global(qos: .utility).async {
             let frames = Self.frames(chunks)
-            guard frames.count > 60 else { return }
+            guard frames.count > 60 else {
+                DispatchQueue.main.async {
+                    if let d = FaultSwitchOn.shared.deferred { FaultCenter.shared.popup = d }
+                    FaultSwitchOn.shared.deferred = nil
+                }
+                return
+            }
             let result = Self.run(ride: ride, context: context, frames: frames, samples: samples, scooterId: ride.scooterId ?? scooter?.id ?? "scooter",
                                   firmware: scooter?.firmware, db: db)
             DispatchQueue.main.async {
                 FaultCenter.shared.reload(db)
-                if let shown = result { FaultCenter.shared.popup = shown }
+                // one at a time: this ride's finding first, else a switch-on finding that waited for the summary
+                if let shown = result ?? FaultSwitchOn.shared.deferred { FaultCenter.shared.popup = shown }
+                FaultSwitchOn.shared.deferred = nil
             }
         }
     }
@@ -199,5 +208,85 @@ enum FaultService {
         Log.info(source: "faults", "After ride: \(report.findings.map(\.kind.code).joined(separator: ", "))")
         guard let show = report.show else { return nil }
         return list.first { $0.kind == show.kind && $0.scooterId == scooterId && $0.status == .open }
+    }
+}
+
+/// N10-12 (batch 10) switch-on alerts: F11 "Your battery needs checking" (parked drain), F12 "Your charger needs checking"
+/// (battery not filled), F16 "Km counter reset" across a park. Judged on the first 20 s of readings after the scooter connects.
+/// App open → pop-up over Home; app in the background → a notification (tapping it opens the app, where the pop-up waits);
+/// a ride starting within those seconds → the pop-up waits for the ride summary.
+final class FaultSwitchOn {
+    static let shared = FaultSwitchOn()
+    static let collectS = 20.0
+    /// The voltage rose this much across the park: a charge happened
+    static let chargedV = 0.3
+
+    private var collecting = false
+    private var assembler = FrameAssembler()
+    private var frames: [ScooterFrame] = []
+    /// A switch-on finding that waits for the ride summary
+    var deferred: FaultRecord?
+
+    private init() {}
+
+    func connected() {
+        guard !RecorderService.shared.simActive else { return }
+        collecting = true
+        assembler = FrameAssembler()
+        frames = []
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.collectS) { [weak self] in self?.evaluate() }
+    }
+
+    func packet(_ bytes: [UInt8], at t: Double) {
+        guard collecting, let f = assembler.ingest(bytes, at: t) else { return }
+        frames.append(f)
+    }
+
+    private func evaluate() {
+        guard collecting else { return }
+        collecting = false
+        guard let db = AppModel.shared.database, !db.isReadOnly, frames.count > 5 else { return }
+        let id = ScooterRecord.latest(in: db)?.id ?? "scooter"
+        let last = try? db.writer.read { d in
+            try Row.fetchOne(d, sql: """
+                SELECT endAt, endRestV, odoEndKm FROM ride
+                WHERE (scooterId = ? OR scooterId IS NULL) AND endAt IS NOT NULL AND isSimulated = 0
+                ORDER BY endAt DESC LIMIT 1
+                """, arguments: [id])
+        }
+        let endAt: Int64? = last?["endAt"]
+        let endV: Double? = last?["endRestV"]
+        let odoEnd: Double? = last?["odoEndKm"]
+        let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
+        let firstV = FaultDetectors.f12RestingVoltage(frames)
+        let odoNow = frames.lazy.compactMap(\.odometerKm).first
+        let charged = firstV != nil && endV != nil && firstV! > endV! + Self.chargedV
+        var park: (startV: Double, endV: Double, hours: Double, odoStartKm: Double?, odoEndKm: Double?)?
+        if let a = endAt, let v0 = endV, let v1 = firstV {
+            park = (v0, v1, Double(nowMs - a) / 3_600_000, odoEnd, odoNow)
+        }
+        var book = FaultStore.load(db, FaultStore.bookKey, as: FaultBook.self) ?? FaultBook()
+        let day = FaultGate.day(epochMs: nowMs)
+        let report = AfterRideFaults.switchOn(scooterId: id, day: day, park: park, firstFrames: frames, charged: charged, book: &book)
+        FaultStore.save(db, FaultStore.bookKey, book)
+        frames = []
+        guard let show = report.show else { return }
+        var list = FaultStore.records(db)
+        for f in report.findings {
+            list = FaultRecord.merge(list, FaultRecord(kind: f.kind, scooterId: id, value: f.value, day: day, odoKm: odoNow))
+        }
+        FaultStore.saveRecords(db, list)
+        FaultCenter.shared.reload(db)
+        guard let rec = list.first(where: { $0.kind == show.kind && $0.scooterId == id && $0.status == .open }) else { return }
+        Log.info(source: "faults", "Switch-on: \(show.kind.code)")
+        if RecorderService.shared.rideActive {
+            deferred = rec                                  // waits for the ride summary
+        } else {
+            FaultCenter.shared.popup = rec
+            if UIApplication.shared.applicationState != .active {
+                let t = FaultCopy.text(rec.kind)
+                Notifier.shared.send(id: "fault.\(rec.kind.rawValue)", title: t.title, body: t.line, soundName: "")
+            }
+        }
     }
 }
