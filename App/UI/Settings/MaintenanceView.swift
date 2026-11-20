@@ -57,6 +57,14 @@ struct MaintenanceView: View {
             .padding(.bottom, 24)
         }
         .navigationTitle("Maintenance")
+        .toolbar {
+            // N10-14: History = the clock button top right
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink { MaintenanceHistoryView() } label: {
+                    Image(systemName: "clock.arrow.circlepath").accessibilityLabel("History")
+                }
+            }
+        }
         .navigationDestination(isPresented: $battery) { BatteryView() }
         .sheet(item: $fault) { r in FaultDetailSheet(record: r, onDone: reload) }
         .sheet(item: $reminder, onDismiss: reload) { t in ReminderSheet(reminderId: t.id) }

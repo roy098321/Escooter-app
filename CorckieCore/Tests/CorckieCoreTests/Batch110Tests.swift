@@ -508,4 +508,25 @@ final class Batch110Tests: XCTestCase {
         XCTAssertEqual(years.map(\.year), [2026, 2025])
         XCTAssertEqual(years[1].entries.map(\.id), ["l2", "tracking-started"])
     }
+    func test_reportText_bothLanguagesComplete() {
+        for k in ReportText.Key.allCases {
+            XCTAssertNotEqual(ReportText.t(k, .english), k.rawValue, k.rawValue)
+            XCTAssertNotEqual(ReportText.t(k, .hebrew), ReportText.t(k, .english), "Hebrew missing: \(k.rawValue)")
+        }
+        for f in FaultKind.allCases { XCTAssertNotEqual(ReportText.faultTitle(f, .hebrew), ReportText.faultTitle(f, .english)) }
+        for w in LogWhatIDid.allCases { XCTAssertNotEqual(ReportText.logTitle(w, .hebrew), w.title) }
+        XCTAssertTrue(ReportLanguage.hebrew.rightToLeft)
+        let all = ReportText.Key.allCases.map { ReportText.t($0, .english) }.joined(separator: " ")
+        XCTAssertTrue(all.contains("No places, routes or times of day"))
+    }
+    func test_N10_14_historyWiring() throws {
+        XCTAssertTrue(try text("UI/Settings/MaintenanceView.swift").contains("MaintenanceHistoryView()"), "History from the clock button")
+        let h = try text("UI/Maintenance/MaintenanceHistoryView.swift")
+        XCTAssertTrue(h.contains("Button(\"English\")") && h.contains("Button(\"עברית\")"), "language pop-up before export")
+        XCTAssertTrue(h.contains("MaintHistory.counts(entries)") && h.contains("90 % \u{00B7} first notice"))
+        let pdf = try text("UI/Maintenance/ReportPDF.swift")
+        XCTAssertTrue(pdf.contains("\"ArialMT\"") && pdf.contains("\"Arial-BoldMT\""), "one font")
+        XCTAssertTrue(pdf.contains(".rightToLeft"))
+        XCTAssertFalse(pdf.contains(".lat") || pdf.contains("placeId") || pdf.contains("routeId"), "no places or routes")
+    }
 }
