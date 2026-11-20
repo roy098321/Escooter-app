@@ -240,7 +240,10 @@ public enum FaultDetectors {
         guard odo.count > hold else { return false }
         for k in 1..<odo.count where abs(odo[k] - odo[k - 1]) >= jumpKm {
             let after = odo[k..<min(odo.count, k + hold)]
-            if after.count >= hold && after.allSatisfy({ abs($0 - odo[k]) < jumpKm / 2 }) { return true }
+            // the new number holds, and it is not just the return to what the counter showed before a single wrong reading
+            let before = odo[max(0, k - hold)..<k]
+            let sameAsBefore = before.filter { abs($0 - odo[k]) < jumpKm / 2 }.count * 2 >= before.count
+            if after.count >= hold && after.allSatisfy({ abs($0 - odo[k]) < jumpKm / 2 }) && !sameAsBefore { return true }
         }
         return false
     }
