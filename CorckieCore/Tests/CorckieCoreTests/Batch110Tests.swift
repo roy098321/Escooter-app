@@ -529,4 +529,27 @@ final class Batch110Tests: XCTestCase {
         XCTAssertTrue(pdf.contains(".rightToLeft"))
         XCTAssertFalse(pdf.contains(".lat") || pdf.contains("placeId") || pdf.contains("routeId"), "no places or routes")
     }
+    // MARK: N10-15 · mechanic report
+
+    func test_N10_15_textsOccurrencesTrend() {
+        for k in MechanicText.Key.allCases { XCTAssertNotEqual(MechanicText.t(k, .hebrew), MechanicText.t(k, .english), k.rawValue) }
+        for f in FaultKind.allCases {
+            XCTAssertNotEqual(MechanicText.found(f, .hebrew), MechanicText.found(f, .english))
+            XCTAssertNotEqual(MechanicText.what(f, .hebrew), MechanicText.what(f, .english))
+        }
+        XCTAssertEqual(MechanicText.trend([60, 61, 62, 80, 85, 90], higherIsWorse: true), 1)
+        XCTAssertEqual(MechanicText.trend([60, 61, 60], higherIsWorse: true), 0)
+        XCTAssertEqual(MechanicText.trend([54, 53, 52], higherIsWorse: false), 1, "voltage dropping = worse")
+        var ride = (0..<120).map { frame(Double($0), kmh: 30, a: 12, odo: 1000 + Double($0) / 100) }
+        ride[60].shuttingDown = true
+        let occ = FaultOccurrence.fromRide(kinds: [.f2PowerCut, .f1Sag], values: [.f1Sag: 90], frames: ride, scooterId: "S",
+                                           rideId: "R", day: 10, airC: 18)
+        XCTAssertEqual(occ.count, 2)
+        let cut = occ.first { $0.kind == .f2PowerCut }!
+        XCTAssertEqual(cut.minutesIn!, 1, accuracy: 0.01)
+        XCTAssertEqual(cut.speedKmh, 30)
+        XCTAssertEqual(occ.first { $0.kind == .f1Sag }?.value, 90)
+        let many = FaultOccurrence.append([], Array(repeating: cut, count: 40))
+        XCTAssertEqual(many.count, 30, "newest 30 kept")
+    }
 }

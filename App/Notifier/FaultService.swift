@@ -40,6 +40,7 @@ enum FaultStore {
     static let recordsKey = "faults.records"
     static let ratiosKey = "faults.routeRatios"
     static let lastOdoKey = "faults.lastOdo"
+    static let occurrencesKey = "faults.occurrences"
 
     static func load<T: Decodable>(_ db: AppDatabase?, _ key: String, as: T.Type) -> T? {
         guard let s = SettingsValue.text(db, key), let d = s.data(using: .utf8) else { return nil }
@@ -205,6 +206,13 @@ enum FaultService {
         FaultStore.save(db, FaultStore.heatKey, heat)
         FaultStore.save(db, FaultStore.ratiosKey, ratios)
         FaultStore.save(db, FaultStore.lastOdoKey, lastOdo)
+        // N10-15: every occurrence past the bar (told or watching) is kept for the mechanic report
+        if !report.beyond.isEmpty {
+            let occ = FaultOccurrence.fromRide(kinds: Set(report.beyond.keys), values: report.beyond, frames: frames, scooterId: scooterId,
+                                               rideId: ride.id, day: day, airC: context.airTempC)
+            let old = FaultStore.load(db, FaultStore.occurrencesKey, as: [FaultOccurrence].self) ?? []
+            FaultStore.save(db, FaultStore.occurrencesKey, FaultOccurrence.append(old, occ))
+        }
 
         guard !report.findings.isEmpty else { return nil }
         var list = FaultStore.records(db)

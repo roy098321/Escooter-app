@@ -85,6 +85,14 @@ public struct FaultReport: Equatable, Sendable {
     public var show: FaultFinding? { FaultFinding.pickOne(findings) }
     /// Firmware changed: every fault started learning again (A29)
     public var relearned: Bool
+    /// N10-15: every fault past its bar on this ride (told or still "watching"), with its number, for the mechanic report
+    public var beyond: [FaultKind: Double] = [:]
+
+    public init(findings: [FaultFinding], relearned: Bool, beyond: [FaultKind: Double] = [:]) {
+        self.findings = findings
+        self.relearned = relearned
+        self.beyond = beyond
+    }
 }
 
 /// Heat model points per scooter (F6 needs the rides, not just one number)
@@ -105,6 +113,7 @@ public enum AfterRideFaults {
         }
         let out = r.ruleOuts.ruledOut
         var findings: [FaultFinding] = []
+        var beyond: [FaultKind: Double] = [:]
 
         func gate(_ kind: FaultKind, _ value: Double?, variant: String = "", minGap: Double = 0, atLeast: Double? = nil) {
             guard let value else { return }
@@ -113,9 +122,13 @@ public enum AfterRideFaults {
             let (verdict, nb) = FaultGate.evaluate(b, kind: kind, value: value, ruledOut: out.contains(kind), minGap: minGap,
                                                    atLeast: atLeast, day: r.day)
             book.set(nb, r.scooterId, kind, variant)
-            if case .alert(let v) = verdict {
+            switch verdict {
+            case .alert(let v):
                 let excess = bar.map { abs(v - $0) / max(abs($0), 1e-9) } ?? 1
                 findings.append(FaultFinding(kind: kind, value: v, excess: excess))
+                beyond[kind] = v
+            case .watching: beyond[kind] = value
+            default: break
             }
         }
 
@@ -148,7 +161,7 @@ public enum AfterRideFaults {
         if FaultDetectors.f16Reset(previousKm: r.previousOdoKm, nowKm: firstOdo) || FaultDetectors.f16JumpInRide(r.frames) {
             gate(.f16OdoReset, 1)
         }
-        return FaultReport(findings: findings, relearned: relearned)
+        return FaultReport(findings: findings, relearned: relearned, beyond: beyond)
     }
 
     /// Switch-on: a park (F11) and the first resting voltage after a charge (F12). `charged` = the voltage rose across the park.
