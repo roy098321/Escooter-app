@@ -39,7 +39,6 @@ struct PlacesView: View {
                         Button { opened = place.id } label: { row(place) }
                             .buttonStyle(.plain)
                             .zoomSource(place.id, in: zoomSpace)
-                            .scrollReactive()     // N7-13
                             .contextMenu { menu(place) }
                             .listRowInsets(EdgeInsets(top: 4, leading: DS.Space.gutter, bottom: 4, trailing: DS.Space.gutter))
                             .listRowBackground(Color.clear)

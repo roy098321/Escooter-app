@@ -61,11 +61,11 @@ struct RoutesListView: View {
         } else {
             List {
                 if !m.saved.isEmpty {
-                    ForEach(m.saved, id: \.routeId) { row($0).zoomSource($0.routeId, in: zoomSpace).scrollReactive() }   // N7-13
+                    ForEach(m.saved, id: \.routeId) { row($0).zoomSource($0.routeId, in: zoomSpace) }   // B98: no N7-13 fade inside a List
                 }
                 if !m.suggested.isEmpty {
                     header("Suggested")
-                    ForEach(m.suggested, id: \.routeId) { row($0).zoomSource($0.routeId, in: zoomSpace).scrollReactive() }
+                    ForEach(m.suggested, id: \.routeId) { row($0).zoomSource($0.routeId, in: zoomSpace) }
                 }
                 if placeCount > 0 || preview != nil {
                     Button { showPlaces = true } label: {

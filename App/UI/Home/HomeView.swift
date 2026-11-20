@@ -167,18 +167,14 @@ struct HomeView: View {
     }
 
     private var brand: some View {
-        HStack(spacing: 8) {
-            Image("AppMark")
-                .resizable()
-                .frame(width: 30, height: 30)
-                .clipShape(Circle())
-                .accessibilityHidden(true)
-            Text("CorckieApp")
-                .font(.headline)
-                .fontDesign(.rounded)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
+        // B97 (batch 10): the C mark only. iOS 26 sizes this toolbar item for a round button, so a name next to it was clipped
+        // to a sliver; the name stays as the accessibility label.
+        Image("HeaderMark")
+            .resizable()
+            .frame(width: 34, height: 34)
+            .clipShape(Circle())
+            .accessibilityLabel("CorckieApp")
+            .accessibilityAddTraits(.isHeader)
     }
 
     /// F-17: status pill (and any cards) on top, the Start / Connect disc centred in the free space, the Where to? row and the Load row

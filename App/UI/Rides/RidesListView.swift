@@ -109,7 +109,7 @@ struct RidesListView: View {
                     }
                     ForEach(m.groups, id: \.title) { group in
                         Section {
-                            ForEach(group.rides, id: \.id) { row($0).zoomSource($0.id, in: zoomSpace).scrollReactive() }   // N7-13
+                            ForEach(group.rides, id: \.id) { row($0).zoomSource($0.id, in: zoomSpace) }   // B98: no N7-13 fade inside a List
                         } header: {
                             SectionHeader(group.title).padding(.top, 0)
                         }
@@ -117,7 +117,7 @@ struct RidesListView: View {
                     if !m.shortHops.isEmpty {
                         Section {
                             DisclosureGroup("Short hops (\(m.shortHops.count))", isExpanded: $hopsOpen) {
-                                ForEach(m.shortHops, id: \.id) { row($0, showDay: true).zoomSource($0.id, in: zoomSpace).scrollReactive() }
+                                ForEach(m.shortHops, id: \.id) { row($0, showDay: true).zoomSource($0.id, in: zoomSpace) }
                             }
                             .font(.subheadline.weight(.semibold))
                         }
@@ -215,10 +215,13 @@ struct RidesListView: View {
     /// F-08: a thin strip on the left of the row in the colour of the place the ride ended at (grey without a saved destination)
     private func placeStrip(_ ride: RideListItem) -> some View {
         let colour = (ride.endPlaceId ?? around[ride.id]).flatMap { placeColours[$0] }
-        return Capsule()
+        // B99 (batch 10): a fixed rounded bar a few points in from the row edge, so the zoom source's rounded clip
+        // (DS.Radius.card) can't shave it into a crescent
+        return RoundedRectangle(cornerRadius: 2, style: .continuous)
             .fill(colour.map { PlaceColourStore.color($0) } ?? Color(hex: PlaceColours.greyHex).opacity(0.5))
             .frame(width: 4)
-            .padding(.vertical, 2)
+            .padding(.vertical, 6)
+            .padding(.leading, 4)
             .accessibilityHidden(true)
     }
 
