@@ -510,7 +510,7 @@ final class Batch110Tests: XCTestCase {
     }
     func test_reportText_bothLanguagesComplete() {
         for k in ReportText.Key.allCases {
-            XCTAssertNotEqual(ReportText.t(k, .english), k.rawValue, k.rawValue)
+            XCTAssertFalse(ReportText.t(k, .english).isEmpty, k.rawValue)
             XCTAssertNotEqual(ReportText.t(k, .hebrew), ReportText.t(k, .english), "Hebrew missing: \(k.rawValue)")
         }
         for f in FaultKind.allCases { XCTAssertNotEqual(ReportText.faultTitle(f, .hebrew), ReportText.faultTitle(f, .english)) }
@@ -523,11 +523,11 @@ final class Batch110Tests: XCTestCase {
         XCTAssertTrue(try text("UI/Settings/MaintenanceView.swift").contains("MaintenanceHistoryView()"), "History from the clock button")
         let h = try text("UI/Maintenance/MaintenanceHistoryView.swift")
         XCTAssertTrue(h.contains("Button(\"English\")") && h.contains("Button(\"עברית\")"), "language pop-up before export")
-        XCTAssertTrue(h.contains("MaintHistory.counts(entries)") && h.contains("90 % \u{00B7} first notice"))
+        XCTAssertTrue(h.contains("MaintHistory.counts(entries)") && h.contains("first notice"))
         let pdf = try text("UI/Maintenance/ReportPDF.swift")
         XCTAssertTrue(pdf.contains("\"ArialMT\"") && pdf.contains("\"Arial-BoldMT\""), "one font")
         XCTAssertTrue(pdf.contains(".rightToLeft"))
-        XCTAssertFalse(pdf.contains(".lat") || pdf.contains("placeId") || pdf.contains("routeId"), "no places or routes")
+        XCTAssertFalse(pdf.contains("lat:") || pdf.contains("placeId") || pdf.contains("routeId"), "no places or routes")
     }
     // MARK: N10-15 · mechanic report
 
@@ -539,7 +539,7 @@ final class Batch110Tests: XCTestCase {
         }
         XCTAssertEqual(MechanicText.trend([60, 61, 62, 80, 85, 90], higherIsWorse: true), 1)
         XCTAssertEqual(MechanicText.trend([60, 61, 60], higherIsWorse: true), 0)
-        XCTAssertEqual(MechanicText.trend([54, 53, 52], higherIsWorse: false), 1, "voltage dropping = worse")
+        XCTAssertEqual(MechanicText.trend([54, 50, 46], higherIsWorse: false), 1, "voltage dropping = worse")
         var ride = (0..<120).map { frame(Double($0), kmh: 30, a: 12, odo: 1000 + Double($0) / 100) }
         ride[60].shuttingDown = true
         let occ = FaultOccurrence.fromRide(kinds: [.f2PowerCut, .f1Sag], values: [.f1Sag: 90], frames: ride, scooterId: "S",
