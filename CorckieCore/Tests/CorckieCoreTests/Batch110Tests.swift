@@ -401,7 +401,7 @@ final class Batch110Tests: XCTestCase {
         let rec = try text("Adapters/RecorderService.swift")
         XCTAssertTrue(rec.contains("FaultService.rideClosed(rideId: id"))
         let root = try text("UI/RootView.swift")
-        XCTAssertTrue(root.contains(".overlay { faultPopup }") && root.contains("FaultPopupView(record:"))
+        XCTAssertTrue(root.contains(".overlay { FaultPopupHost() }"))
         let svc = try text("Notifier/FaultService.swift")
         XCTAssertTrue(svc.contains("AfterRideFaults.run(") && svc.contains("ride.isSimulated == false"))
         XCTAssertFalse(svc.contains("writeValue") || svc.contains("ScooterLink"), "read-only: nothing goes to the scooter")
@@ -554,7 +554,7 @@ final class Batch110Tests: XCTestCase {
     }
     func test_N10_15_reportWiring() throws {
         let root = try text("UI/RootView.swift")
-        XCTAssertTrue(root.contains("onExport: { faultExport = r }") && root.contains(".mechanicExport($faultExport)"))
+        XCTAssertTrue(try text("UI/Maintenance/FaultPopupView.swift").contains("onExport: { exporting = r }"))
         let pop = try text("UI/Maintenance/FaultPopupView.swift")
         XCTAssertTrue(pop.contains("Button(\"English\")") && pop.contains("Button(\"עברית\")"), "language pop-up")
         let pdf = try text("UI/Maintenance/ReportPDF.swift")

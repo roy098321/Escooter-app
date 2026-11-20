@@ -26,6 +26,13 @@ public struct HistoryCounts: Equatable, Sendable {
     public var found: Int
     public var dealtWith: Int
     public var open: Int
+
+    public init(logged: Int, found: Int, dealtWith: Int, open: Int) {
+        self.logged = logged
+        self.found = found
+        self.dealtWith = dealtWith
+        self.open = open
+    }
 }
 
 public enum MaintHistory {

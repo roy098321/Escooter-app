@@ -188,3 +188,22 @@ struct FilesShareSheet: UIViewControllerRepresentable {
     }
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
+
+/// N10-12: shows FaultCenter's pop-up wherever it is placed (over the ride summary, over Home); Tell me more and Export a report
+struct FaultPopupHost: View {
+    @State private var detail: FaultRecord?
+    @State private var exporting: FaultRecord?
+
+    var body: some View {
+        if let r = FaultCenter.shared.popup {
+            FaultPopupView(record: r,
+                           onTellMore: { detail = r },
+                           onExport: { exporting = r },
+                           onClose: { FaultCenter.shared.dismissPopup() })
+                .sheet(item: $detail) { rec in
+                    FaultDetailSheet(record: rec, onDone: { FaultCenter.shared.dismissPopup() })
+                }
+                .mechanicExport($exporting)
+        }
+    }
+}

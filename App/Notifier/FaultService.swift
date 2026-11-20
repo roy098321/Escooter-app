@@ -175,7 +175,7 @@ enum FaultService {
         let rule = FaultRuleOuts(
             airC: context.airTempC,
             minBatteryPct: ride.endRestPct.map { Int($0.rounded()) },
-            weakGps: (ride.hasGps ?? 1) == 0 || (ride.gapGpsS ?? 0) > 60,
+            weakGps: ride.hasGps == false || (ride.gapGpsS ?? 0) > 60,
             phoneLinkTrouble: (ride.gapScooterS ?? 0) > 60,
             hilly: distKm > 0 && (ride.elevGainM ?? 0) / distKm > 15,
             windy: (context.headwindKmh ?? 0) > 20)
@@ -221,9 +221,11 @@ enum FaultService {
             list = FaultRecord.merge(list, FaultRecord(kind: f.kind, scooterId: scooterId, value: f.value, day: day, odoKm: odoNow))
         }
         FaultStore.saveRecords(db, list)
-        Log.info(source: "faults", "After ride: \(report.findings.map(\.kind.code).joined(separator: ", "))")
+        let codes: [String] = report.findings.map { (f: FaultFinding) -> String in f.kind.code }
+        Log.info(source: "faults", "After ride: " + codes.joined(separator: ", "))
         guard let show = report.show else { return nil }
-        return list.first { $0.kind == show.kind && $0.scooterId == scooterId && $0.status == .open }
+        let kind: FaultKind = show.kind
+        return list.first { (rec: FaultRecord) -> Bool in rec.kind == kind && rec.scooterId == scooterId && rec.status == .open }
     }
 }
 
