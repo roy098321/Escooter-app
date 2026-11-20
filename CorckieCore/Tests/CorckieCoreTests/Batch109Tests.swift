@@ -125,6 +125,9 @@ final class Batch109Tests: XCTestCase {
         XCTAssertTrue(welcome.contains("accessibilityReduceMotion") && welcome.contains("guard !reduceMotion"), "no zoom with Reduce Motion")
         XCTAssertTrue(welcome.contains("Button(\"Skip\""))
         XCTAssertTrue(try text("UI/Settings/SettingsView.swift").contains("WelcomeView(tourOnly: true)"))
+        // 108.131226.04: the theme image ships (owner OK 20 Nov, AI-generated)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: appFolder.appendingPathComponent("Resources/Assets.xcassets/WelcomeHero.imageset/WelcomeHero.jpg").path))
+        XCTAssertTrue(welcome.contains("UIImage(named: \"WelcomeHero\")"))
     }
 
     // MARK: N9-3 · A-14 / A-15 one km-left number

@@ -2,6 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 108.131226.04 — hotfix 04 of batch 8 (owner 20 Nov: welcome image OK, AI-generated)
+
+- A-06: the welcome screen's theme image is in the app (asset WelcomeHero, JPEG from reports/onboarding-welcome/hero.webp, no metadata); the plain fallback stays in code.
+
 ## 108.131226.03 — hotfix 03 of batch 8: all of batch 9 (B96 + the new-rider audit of 18 Nov)
 
 - N9-1 / B96: the ride replay sound plays out in full (no fade at the route-draw length); the line and the haptic keep their length.

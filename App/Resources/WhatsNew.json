@@ -1,5 +1,30 @@
 [
   {
+    "version": "108.131226.04",
+    "headline": "The welcome picture",
+    "items": [
+      {
+        "symbol": "photo",
+        "title": "Welcome picture",
+        "line": "The welcome screen now shows the CorckieApp picture: two riders at sunset."
+      },
+      {
+        "symbol": "hand.wave",
+        "title": "See it again",
+        "line": "Settings, About, App tour shows the short tour again."
+      },
+      {
+        "symbol": "checkmark.circle",
+        "title": "Nothing else changed",
+        "line": "Everything from the last update stays as it was."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "The welcome screen shows the CorckieApp picture instead of the plain orange glow."
+    ]
+  },
+  {
     "version": "108.131226.03",
     "headline": "Easier first steps, and range in km",
     "items": [
