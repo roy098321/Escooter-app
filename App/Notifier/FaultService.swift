@@ -285,7 +285,7 @@ final class FaultSwitchOn {
             FaultCenter.shared.popup = rec
             if UIApplication.shared.applicationState != .active {
                 let t = FaultCopy.text(rec.kind)
-                Notifier.shared.send(id: "fault.\(rec.kind.rawValue)", title: t.title, body: t.line, soundName: "")
+                Notifier.shared.send(id: "fault.\(rec.kind.rawValue)", title: t.title, body: t.line, soundName: GoingForARideContent.soundName)   // the app's own chime
             }
         }
     }
