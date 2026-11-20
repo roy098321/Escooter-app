@@ -178,3 +178,49 @@ public enum AfterRideFaults {
         return FaultReport(findings: findings, relearned: false)
     }
 }
+
+/// N10-13 / N10-14: a fault the rider was told about, kept for the Maintenance screen and the history (date as a day number and
+/// km only; never a time of day, never a place)
+public struct FaultRecord: Codable, Equatable, Identifiable, Sendable {
+    public enum Status: String, Codable, Sendable { case open, checkedFine, fixed }
+
+    public var id: String
+    public var kind: FaultKind
+    public var scooterId: String
+    public var value: Double
+    public var day: Int
+    public var odoKm: Double?
+    public var status: Status
+    /// Day the status last changed
+    public var closedDay: Int?
+
+    public init(id: String = UUID().uuidString, kind: FaultKind, scooterId: String, value: Double, day: Int, odoKm: Double?,
+                status: Status = .open, closedDay: Int? = nil) {
+        self.id = id
+        self.kind = kind
+        self.scooterId = scooterId
+        self.value = value
+        self.day = day
+        self.odoKm = odoKm
+        self.status = status
+        self.closedDay = closedDay
+    }
+
+    /// A new finding of a kind that is already open updates that record instead of adding another (one card per fault)
+    public static func merge(_ list: [FaultRecord], _ new: FaultRecord) -> [FaultRecord] {
+        var out = list
+        if let i = out.firstIndex(where: { $0.kind == new.kind && $0.scooterId == new.scooterId && $0.status == .open }) {
+            out[i].value = new.value
+            out[i].day = new.day
+            out[i].odoKm = new.odoKm
+        } else {
+            out.append(new)
+        }
+        return out
+    }
+
+    /// Open faults of one scooter, red first
+    public static func open(_ list: [FaultRecord], scooterId: String) -> [FaultRecord] {
+        list.filter { $0.status == .open && $0.scooterId == scooterId }.sorted { $0.kind.level > $1.kind.level }
+    }
+}

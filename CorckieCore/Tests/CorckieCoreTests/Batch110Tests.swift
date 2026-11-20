@@ -384,4 +384,29 @@ final class Batch110Tests: XCTestCase {
                                              book: &book)
         XCTAssertEqual(reset.findings.map(\.kind), [.f16OdoReset])
     }
+    func test_faultRecords_oneCardPerFault() {
+        var list: [FaultRecord] = []
+        list = FaultRecord.merge(list, FaultRecord(kind: .f1Sag, scooterId: "S", value: 90, day: 10, odoKm: 1000))
+        list = FaultRecord.merge(list, FaultRecord(kind: .f1Sag, scooterId: "S", value: 95, day: 20, odoKm: 1100))
+        list = FaultRecord.merge(list, FaultRecord(kind: .f3BrakeCut, scooterId: "S", value: 1, day: 21, odoKm: 1110))
+        XCTAssertEqual(list.count, 2)
+        XCTAssertEqual(list.first { $0.kind == .f1Sag }?.value, 95)
+        XCTAssertEqual(FaultRecord.open(list, scooterId: "S").first?.kind, .f3BrakeCut, "red first")
+        list[0].status = .fixed
+        list = FaultRecord.merge(list, FaultRecord(kind: .f1Sag, scooterId: "S", value: 99, day: 40, odoKm: 1300))
+        XCTAssertEqual(list.count, 3, "after a fix, a new finding is a new record")
+    }
+    /// N10-12 wiring: the fault check runs when a ride closes; the pop-up sits over the ride summary; the scooter is only read
+    func test_N10_12_wiring() throws {
+        let rec = try text("Adapters/RecorderService.swift")
+        XCTAssertTrue(rec.contains("FaultService.rideClosed(rideId: id"))
+        let root = try text("UI/RootView.swift")
+        XCTAssertTrue(root.contains(".overlay { faultPopup }") && root.contains("FaultPopupView(record:"))
+        let svc = try text("Notifier/FaultService.swift")
+        XCTAssertTrue(svc.contains("AfterRideFaults.run(") && svc.contains("ride.isSimulated == false"))
+        XCTAssertFalse(svc.contains("writeValue") || svc.contains("ScooterLink"), "read-only: nothing goes to the scooter")
+        let pop = try text("UI/Maintenance/FaultPopupView.swift")
+        XCTAssertTrue(pop.contains("FaultCopy.notSafe") && pop.contains("exclamationmark.triangle"))
+        XCTAssertTrue(pop.contains("FaultCopy.tellMeMore") && pop.contains("FaultCopy.exportReport") && pop.contains("FaultCopy.gotIt"))
+    }
 }

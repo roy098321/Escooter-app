@@ -5,6 +5,7 @@ import SwiftUI
 struct RootView: View {
     @State private var tab = 2
     @State private var coverShown = false
+    @State private var faultDetail: FaultRecord?     // N10-12: Tell me more
     @Environment(\.scenePhase) private var scenePhase
     private let model = AppModel.shared
 
@@ -355,6 +356,19 @@ struct RideCover: View {
 
     /// N7-11 (batch 7): at hold-to-end the live screen settles into the summary: the live view shrinks back and fades while the
     /// summary grows in from it (then N7-4 draws the route). Reduce Motion: a cross-fade.
+    /// N10-12 (batch 10): the one fault found on this ride, over the summary; Tell me more opens its details
+    @ViewBuilder private var faultPopup: some View {
+        if let r = FaultCenter.shared.popup {
+            FaultPopupView(record: r,
+                           onTellMore: { faultDetail = r },
+                           onExport: nil,
+                           onClose: { FaultCenter.shared.dismissPopup() })
+                .sheet(item: $faultDetail) { rec in
+                    FaultDetailSheet(record: rec, onDone: { FaultCenter.shared.dismissPopup() })
+                }
+        }
+    }
+
     @ViewBuilder private var cover: some View {
         let service = RecorderService.shared
         let live = service.rideShown || service.readyRequested
@@ -367,6 +381,7 @@ struct RideCover: View {
                     RideDetailView(rideId: id, onDone: { RecorderService.shared.dismissSummary() })
                 }
                 .interactiveDismissDisabled(true)
+                .overlay { faultPopup }      // N10-12: a fault pops up OVER the ride summary
                 .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 1.06)))
             }
         }

@@ -1,0 +1,203 @@
+import CorckieCore
+import Foundation
+import GRDB
+import Observation
+
+/// N10 (batch 10): fault recognition glue. After a ride closes, the ride's raw scooter readings are decoded again and run through
+/// `AfterRideFaults` (CorckieCore, unit tested). The books (the rider's normals per scooter), the open faults and each route's
+/// wheel/GPS ratios are kept as JSON in the `setting` table, so Export everything and the backup carry them. At most one finding
+/// becomes the pop-up over the ride summary. Read-only: nothing is ever written to the scooter.
+@Observable
+final class FaultCenter {
+    static let shared = FaultCenter()
+
+    /// The finding shown over the ride summary (or over Home at switch-on)
+    var popup: FaultRecord?
+    /// Open faults, for the Maintenance screen, the Scooter tab and the tab dot
+    private(set) var records: [FaultRecord] = []
+
+    private init() {}
+
+    func reload(_ db: AppDatabase?) {
+        records = FaultStore.records(db)
+    }
+
+    func dismissPopup() { popup = nil }
+}
+
+enum FaultStore {
+    static let bookKey = "faults.book"
+    static let heatKey = "faults.heat"
+    static let recordsKey = "faults.records"
+    static let ratiosKey = "faults.routeRatios"
+    static let lastOdoKey = "faults.lastOdo"
+
+    static func load<T: Decodable>(_ db: AppDatabase?, _ key: String, as: T.Type) -> T? {
+        guard let s = SettingsValue.text(db, key), let d = s.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(T.self, from: d)
+    }
+
+    static func save<T: Encodable>(_ db: AppDatabase?, _ key: String, _ value: T) {
+        guard let d = try? JSONEncoder().encode(value), let s = String(data: d, encoding: .utf8) else { return }
+        SettingsValue.set(db, key, s)
+    }
+
+    static func records(_ db: AppDatabase?) -> [FaultRecord] { load(db, recordsKey, as: [FaultRecord].self) ?? [] }
+    static func saveRecords(_ db: AppDatabase?, _ list: [FaultRecord]) { save(db, recordsKey, list) }
+
+    /// "Checked, it's fine": the gate raises its bar (twice → quiet) and the record closes
+    static func checkedFine(_ id: String, _ db: AppDatabase?) {
+        var list = records(db)
+        guard let i = list.firstIndex(where: { $0.id == id }) else { return }
+        var book = load(db, bookKey, as: FaultBook.self) ?? FaultBook()
+        let r = list[i]
+        let variants = book.baselines.keys.filter { $0.hasPrefix(FaultBook.key(r.scooterId, r.kind)) }
+        for key in variants {
+            if let b = book.baselines[key] { book.baselines[key] = FaultGate.checkedFine(b, kind: r.kind) }
+        }
+        save(db, bookKey, book)
+        list[i].status = .checkedFine
+        list[i].closedDay = FaultGate.day(epochMs: Int64(Date().timeIntervalSince1970 * 1000))
+        saveRecords(db, list)
+        FaultCenter.shared.reload(db)
+    }
+
+    /// "I fixed it" on a fault page: the record closes and that part's faults start learning again (A30)
+    static func fixed(_ id: String, _ db: AppDatabase?) {
+        var list = records(db)
+        guard let i = list.firstIndex(where: { $0.id == id }) else { return }
+        var book = load(db, bookKey, as: FaultBook.self) ?? FaultBook()
+        book.partReplaced(list[i].kind.part, scooterId: list[i].scooterId)
+        save(db, bookKey, book)
+        list[i].status = .fixed
+        list[i].closedDay = FaultGate.day(epochMs: Int64(Date().timeIntervalSince1970 * 1000))
+        saveRecords(db, list)
+        FaultCenter.shared.reload(db)
+    }
+
+    /// "Log what I did" → a part was replaced or serviced: its faults relearn (A30)
+    static func partServiced(_ part: MaintPart, scooterId: String, _ db: AppDatabase?) {
+        var book = load(db, bookKey, as: FaultBook.self) ?? FaultBook()
+        book.partReplaced(part, scooterId: scooterId)
+        save(db, bookKey, book)
+    }
+}
+
+enum FaultService {
+    /// A gap in the scooter's readings longer than this counts as a link drop / restart (F7 "no reading" after a restart is normal)
+    static let linkDropS = 5.0
+
+    static func rideClosed(rideId: String, database: AppDatabase?) {
+        guard let db = database, !db.isReadOnly, let ride = try? RideQueries(db).ride(id: rideId), ride.isSimulated == false else { return }
+        let chunks = ((try? RideQueries(db).chunks(rideId: rideId)) ?? []).filter { $0.kind == "scooter" }.sorted { $0.seq < $1.seq }
+        let samples = (try? RideQueries(db).samples(rideId: rideId)) ?? []
+        let scooter = ScooterRecord.latest(in: db)
+        let extra = try? db.writer.read { d in
+            try Row.fetchOne(d, sql: "SELECT routeId, airTempC, headwindKmh FROM ride WHERE id = ?", arguments: [rideId])
+        }
+        let context = RideContext(routeId: extra?["routeId"], airTempC: extra?["airTempC"], headwindKmh: extra?["headwindKmh"])
+        DispatchQueue.global(qos: .utility).async {
+            let frames = Self.frames(chunks)
+            guard frames.count > 60 else { return }
+            let result = Self.run(ride: ride, context: context, frames: frames, samples: samples, scooterId: ride.scooterId ?? scooter?.id ?? "scooter",
+                                  firmware: scooter?.firmware, db: db)
+            DispatchQueue.main.async {
+                FaultCenter.shared.reload(db)
+                if let shown = result { FaultCenter.shared.popup = shown }
+            }
+        }
+    }
+
+    /// The ride's raw scooter packets → frames (the same decoder as live)
+    static func frames(_ chunks: [RawChunkRecord]) -> [ScooterFrame] {
+        var asm = FrameAssembler()
+        var out: [ScooterFrame] = []
+        for c in chunks {
+            let data: Data
+            if c.codec == "zlib-v1" {
+                guard let d = try? (c.blob as NSData).decompressed(using: .zlib) as Data else { continue }
+                data = d
+            } else {
+                data = c.blob
+            }
+            for p in RecorderRaw.unpack(data, startT: Double(c.startAt) / 1000) {
+                if let f = asm.ingest(p.bytes, at: p.t) { out.append(f) }
+            }
+        }
+        return out
+    }
+
+    /// Wheel distance / GPS distance on this ride, from the 5-second samples with a good fix and both speeds above 2 m/s
+    static func wheelGpsRatio(_ samples: [RideSampleRecord]) -> Double? {
+        var wheel = 0.0, gps = 0.0
+        for s in samples {
+            guard let w = s.speedMps, let g = s.gpsSpeedMps, w > 2, g > 2, (s.hAccM ?? 99) <= 20 else { continue }
+            wheel += w
+            gps += g
+        }
+        return gps > 300 ? wheel / gps : nil
+    }
+
+    /// Runs the gate; returns the record to pop up (at most one)
+    /// Ride columns RideRecord doesn't carry
+    struct RideContext {
+        var routeId: String?
+        var airTempC: Double?
+        var headwindKmh: Double?
+    }
+
+    static func run(ride: RideRecord, context: RideContext, frames: [ScooterFrame], samples: [RideSampleRecord], scooterId: String, firmware: String?,
+                    db: AppDatabase) -> FaultRecord? {
+        var book = FaultStore.load(db, FaultStore.bookKey, as: FaultBook.self) ?? FaultBook()
+        var heat = FaultStore.load(db, FaultStore.heatKey, as: HeatBook.self) ?? HeatBook()
+        var ratios = FaultStore.load(db, FaultStore.ratiosKey, as: [String: [Double]].self) ?? [:]
+        var lastOdo = FaultStore.load(db, FaultStore.lastOdoKey, as: [String: Double].self) ?? [:]
+
+        let distKm = (ride.distanceM ?? 0) / 1000
+        let rule = FaultRuleOuts(
+            airC: context.airTempC,
+            minBatteryPct: ride.endRestPct.map { Int($0.rounded()) },
+            weakGps: (ride.hasGps ?? 1) == 0 || (ride.gapGpsS ?? 0) > 60,
+            phoneLinkTrouble: (ride.gapScooterS ?? 0) > 60,
+            hilly: distKm > 0 && (ride.elevGainM ?? 0) / distKm > 15,
+            windy: (context.headwindKmh ?? 0) > 20)
+
+        var routeRatios: [Double] = []
+        if let route = context.routeId, let r = wheelGpsRatio(samples) {
+            var list = ratios[route] ?? []
+            list.append(r)
+            if list.count > 40 { list.removeFirst(list.count - 40) }
+            ratios[route] = list
+            routeRatios = list
+        }
+        var heatPoint: FaultDetectors.HeatPoint?
+        if let peak = ride.tempPeakC, let air = context.airTempC, let wh = ride.energyWhCal, let moving = ride.movingS, moving > 300 {
+            heatPoint = .init(riseC: peak - air, whPerMin: wh / (moving / 60), minutes: moving / 60)
+        }
+        var drops: [Double] = []
+        for k in 1..<frames.count where frames[k].t - frames[k - 1].t > linkDropS { drops.append(frames[k].t) }
+
+        let day = FaultGate.day(epochMs: ride.endAt ?? ride.startAt)
+        let input = RideFaultInput(scooterId: scooterId, firmware: firmware, frames: frames, day: day, ruleOuts: rule,
+                                   routeId: context.routeId, routeRatios: routeRatios, heat: heatPoint, linkDropTimes: drops,
+                                   previousOdoKm: lastOdo[scooterId])
+        let report = AfterRideFaults.run(input, book: &book, heat: &heat)
+        if let odo = frames.last(where: { $0.odometerKm != nil })?.odometerKm { lastOdo[scooterId] = odo }
+
+        FaultStore.save(db, FaultStore.bookKey, book)
+        FaultStore.save(db, FaultStore.heatKey, heat)
+        FaultStore.save(db, FaultStore.ratiosKey, ratios)
+        FaultStore.save(db, FaultStore.lastOdoKey, lastOdo)
+
+        guard !report.findings.isEmpty else { return nil }
+        var list = FaultStore.records(db)
+        let odoNow = lastOdo[scooterId]
+        for f in report.findings {
+            list = FaultRecord.merge(list, FaultRecord(kind: f.kind, scooterId: scooterId, value: f.value, day: day, odoKm: odoNow))
+        }
+        FaultStore.saveRecords(db, list)
+        Log.info(source: "faults", "After ride: \(report.findings.map(\.kind.code).joined(separator: ", "))")
+        guard let show = report.show else { return nil }
+        return list.first { $0.kind == show.kind && $0.scooterId == scooterId && $0.status == .open }
+    }
+}
