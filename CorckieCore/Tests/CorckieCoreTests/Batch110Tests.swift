@@ -377,9 +377,9 @@ final class Batch110Tests: XCTestCase {
         for (k, v) in [54.4, 53.9, 53.4, 54.0, 54.2, 54.1, 53.8, 54.3, 54.0, 53.6, 54.1, 53.9].enumerated() {
             XCTAssertEqual(charge(v, k).findings, [], "normal full \(v) V")
         }
-        XCTAssertEqual(charge(53.0, 20).findings, [], "1st low charge: watching")
-        XCTAssertEqual(charge(52.9, 21).findings, [])
-        XCTAssertEqual(charge(52.8, 22).findings.map(\.kind), [.f12FullVoltage], "3 charges ≥ 0.5 V (+10 %) under the lowest normal")
+        XCTAssertEqual(charge(52.7, 20).findings, [], "1st low charge: watching")
+        XCTAssertEqual(charge(52.6, 21).findings, [])
+        XCTAssertEqual(charge(52.5, 22).findings.map(\.kind), [.f12FullVoltage], "3 charges ≥ 0.5 V (+10 %) under the lowest normal")
         let reset = AfterRideFaults.switchOn(scooterId: "S", day: 30, park: (48, 48, 20, 1114, 0.2), firstFrames: [], charged: false,
                                              book: &book)
         XCTAssertEqual(reset.findings.map(\.kind), [.f16OdoReset])
