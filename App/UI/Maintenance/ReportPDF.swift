@@ -173,3 +173,99 @@ enum HistoryPDF {
         }
     }
 }
+
+/// N10-15 (batch 10): the report for a mechanic, ONE issue (spec reports/maintenance/mechanic-report.md, samples _SAMPLE*.pdf).
+/// Page 1 at a glance: the scooter, the issue as facts, what to do first; then occurrences, your normal vs now, history, what the
+/// app can't see, raw data, and a workshop result line. Leads / first checks for the workshop are left out until a mechanic has
+/// checked the per-fault table (owner 20 Nov). A CSV of every reading around each occurrence goes with it. No map, places,
+/// routes, clock times or name.
+enum MechanicReport {
+    /// The PDF and the CSV, ready to share
+    static func make(_ db: AppDatabase, record r: FaultRecord, language lang: ReportLanguage) -> [URL] {
+        let occ = (FaultStore.load(db, FaultStore.occurrencesKey, as: [FaultOccurrence].self) ?? [])
+            .filter { $0.kind == r.kind && $0.scooterId == r.scooterId }
+        let scooter = ScooterRecord.latest(in: db)
+        let odo = (try? MaintenanceQueries(db).odometerKm()) ?? nil
+        let book = FaultStore.load(db, FaultStore.bookKey, as: FaultBook.self) ?? FaultBook()
+        let others = FaultRecord.open(FaultStore.records(db), scooterId: r.scooterId).filter { $0.id != r.id }
+        let logged = MaintenanceService.logged(db).filter { $0.scooterId == r.scooterId }.suffix(8)
+        let today = FaultGate.day(epochMs: Int64(Date().timeIntervalSince1970 * 1000))
+        let m = { (k: MechanicText.Key) in MechanicText.t(k, lang) }
+        func d(_ day: Int) -> String { HistoryDates.date(day).formatted(.dateTime.day().month(.abbreviated).year()) }
+        func n(_ x: Double?, _ digits: Int = 0) -> String { x.map { String(format: "%.\(digits)f", $0) } ?? "-" }
+        let unit = MechanicText.unit(r.kind)
+        let values = occ.map(\.value)
+        let trend = MechanicText.trend(values, higherIsWorse: r.kind.higherIsWorse)
+        let base = book.baselines.filter { $0.key.hasPrefix(FaultBook.key(r.scooterId, r.kind)) }.values.max { $0.samples.count < $1.samples.count }
+        let suffix = lang == .hebrew ? "_HE" : ""
+        let title = ReportText.faultTitle(r.kind, lang)
+
+        let pdf = PDFWriter.make(name: "CorckieApp_Mechanic_Report\(suffix).pdf", lang: lang,
+                                 footer: "CorckieApp \u{00B7} " + ReportText.t(.mechanicTitle, lang)) { w in
+            w.text(ReportText.t(.mechanicTitle, lang), size: 11, grey: 0.35, gap: 2)
+            w.text(title, size: 20, bold: true, gap: 4)
+            w.text(ReportText.t(.notADiagnosis, lang), size: 9, grey: 0.35, gap: 10)
+            w.section(1, m(.theScooter))
+            w.rows([(m(.model), scooter?.name ?? "-"), (m(.firmware), scooter?.firmware ?? "-"),
+                    (ReportText.t(.odometer, lang), odo.map { "\(Int($0.rounded())) km" } ?? "-"),
+                    (m(.reportDate), d(today)), (m(.appVersion), AppInfo.build)])
+            w.section(2, m(.theIssue))
+            let trendText = trend > 0 ? m(.worse) : trend < 0 ? m(.better) : m(.steady)
+            w.rows([(m(.found), MechanicText.found(r.kind, lang)),
+                    (m(.confirmedOn), "\(max(occ.count, 1)) \(m(.times))"),
+                    (m(.firstSeen), d(occ.map(\.day).min() ?? r.day)),
+                    (m(.lastSeen), d(occ.map(\.day).max() ?? r.day)),
+                    (m(.trend), values.count >= 3 ? trendText : "-"),
+                    (m(.whatToDo), MechanicText.what(r.kind, lang))])
+            w.text(m(.leadsLater), size: 9, grey: 0.35, gap: 8)
+            w.section(3, m(.occurrences))
+            let rows = occ.suffix(15).map { o -> [String] in
+                [d(o.day), n(o.odoKm), n(o.minutesIn, 1), n(o.speedKmh), n(o.currentA, 1), n(o.voltage, 2), n(o.tempC), n(o.airC),
+                 o.brake.map { $0 ? m(.yes) : m(.no) } ?? "-"]
+            }
+            w.table([ReportText.t(.date, lang), "km", m(.minutesIn), m(.speed), m(.current), m(.voltage), m(.motorTemp), m(.air), m(.braking)],
+                    rows.isEmpty ? [[d(r.day), n(r.odoKm), "-", "-", "-", "-", "-", "-", "-"]] : rows,
+                    widths: [0.15, 0.09, 0.11, 0.11, 0.10, 0.11, 0.11, 0.10, 0.12])
+            if !unit.isEmpty, let b = base, !b.samples.isEmpty {
+                w.section(4, m(.normalVsNow))
+                let lo = b.samples.min() ?? 0, hi = b.samples.max() ?? 0
+                w.rows([(m(.normalLine), "\(n(lo, 2)) – \(n(hi, 2)) \(unit)"), (m(.now), "\(n(r.value, 2)) \(unit)")])
+            }
+            w.section(5, m(.history))
+            w.rows([(m(.otherFaults), others.isEmpty ? m(.none) : others.map { ReportText.faultTitle($0.kind, lang) }.joined(separator: ", ")),
+                    (m(.loggedWork), logged.isEmpty ? m(.none) : logged.reversed().map { "\(d($0.day)) \u{00B7} \(n($0.odoKm)) km \u{00B7} " + ReportText.logTitle($0.what, lang) }.joined(separator: "\n"))])
+            w.section(6, m(.cantSee))
+            w.text(m(.cantSeeText), size: 9.5)
+            w.section(7, m(.rawData))
+            w.text(m(.rawDataText), size: 9.5)
+            w.section(8, m(.workshop))
+            w.text(m(.workshopLine), size: 10, gap: 4)
+        }
+        var out: [URL] = []
+        if let pdf { out.append(pdf) }
+        if let csv = csv(db, occ, name: "CorckieApp_Mechanic_Report\(suffix).csv") { out.append(csv) }
+        return out
+    }
+
+    /// Every reading ±2 min around each event occurrence (whole ride for slow faults, at most 3 rides). Times are seconds into
+    /// the ride, never clock times.
+    static func csv(_ db: AppDatabase, _ occ: [FaultOccurrence], name: String) -> URL? {
+        var lines = ["occurrence,ride_s,speed_kmh,current_a,voltage_v,temp_c,brake,shut_off,odometer_km"]
+        let rides = Array(Set(occ.compactMap(\.rideId))).prefix(3)
+        for (i, rideId) in rides.enumerated() {
+            let chunks = ((try? RideQueries(db).chunks(rideId: rideId)) ?? []).filter { $0.kind == "scooter" }.sorted { $0.seq < $1.seq }
+            let frames = FaultService.frames(chunks)
+            guard let t0 = frames.first?.t else { continue }
+            let events = occ.filter { $0.rideId == rideId }.compactMap(\.rideT)
+            for f in frames {
+                let s = f.t - t0
+                guard events.isEmpty || events.contains(where: { abs($0 - s) <= 120 }) else { continue }
+                func v(_ x: Double?) -> String { x.map { String(format: "%.2f", $0) } ?? "" }
+                lines.append("\(i + 1),\(String(format: "%.2f", s)),\(v(f.speedKmh)),\(v(f.currentA)),\(v(f.voltage)),\(v(f.temperatureC)),\(f.brake ? 1 : 0),\(f.shuttingDown ? 1 : 0),\(v(f.odometerKm))")
+            }
+        }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        do { try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8) } catch { return nil }
+        return url
+    }
+}

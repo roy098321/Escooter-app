@@ -6,6 +6,7 @@ struct RootView: View {
     @State private var tab = 2
     @State private var coverShown = false
     @State private var faultDetail: FaultRecord?     // N10-12: Tell me more
+    @State private var faultExport: FaultRecord?     // N10-15: Export a report
     @Environment(\.scenePhase) private var scenePhase
     private let model = AppModel.shared
 
@@ -363,11 +364,12 @@ struct RideCover: View {
         if let r = FaultCenter.shared.popup {
             FaultPopupView(record: r,
                            onTellMore: { faultDetail = r },
-                           onExport: nil,
+                           onExport: { faultExport = r },
                            onClose: { FaultCenter.shared.dismissPopup() })
                 .sheet(item: $faultDetail) { rec in
                     FaultDetailSheet(record: rec, onDone: { FaultCenter.shared.dismissPopup() })
                 }
+                .mechanicExport($faultExport)
         }
     }
 

@@ -105,6 +105,7 @@ struct FaultDetailSheet: View {
     let record: FaultRecord
     var onDone: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var exporting: FaultRecord?
 
     var body: some View {
         let t = FaultCopy.text(record.kind)
@@ -112,6 +113,13 @@ struct FaultDetailSheet: View {
             List {
                 Section("What was found") { Text(t.found) }
                 Section("What to do") { Text(t.what) }
+                if record.kind.level != .info {
+                    Section {
+                        Button { exporting = record } label: { Label(FaultCopy.exportReport, systemImage: "square.and.arrow.up") }
+                    } footer: {
+                        Text("A report for a mechanic: what the app measured, as a PDF and a data file. No map, places or times.")
+                    }
+                }
                 if let km = record.odoKm {
                     Section { LabeledContent("Found at", value: "\(Int(km.rounded())) km") }
                 }
@@ -131,6 +139,7 @@ struct FaultDetailSheet: View {
             .navigationTitle(t.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { close() } } }
+            .mechanicExport($exporting)
         }
     }
 
@@ -138,4 +147,44 @@ struct FaultDetailSheet: View {
         dismiss()
         onDone()
     }
+}
+
+/// N10-15: "Export a report" → a small pop-up English / עברית → the PDF + CSV made on the phone → the share sheet
+struct MechanicExport: ViewModifier {
+    @Binding var record: FaultRecord?
+    @State private var files: Files?
+
+    struct Files: Identifiable {
+        let urls: [URL]
+        var id: String { urls.map(\.path).joined() }
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .confirmationDialog("Choose the language for the report.", isPresented: Binding(get: { record != nil }, set: { if !$0 { record = nil } }),
+                                titleVisibility: .visible, presenting: record) { r in
+                Button("English") { make(r, .english) }
+                Button("עברית") { make(r, .hebrew) }
+            }
+            .sheet(item: $files) { f in FilesShareSheet(urls: f.urls) }
+    }
+
+    private func make(_ r: FaultRecord, _ lang: ReportLanguage) {
+        guard let db = AppModel.shared.database else { return }
+        let urls = MechanicReport.make(db, record: r, language: lang)
+        record = nil
+        if !urls.isEmpty { files = Files(urls: urls) }
+    }
+}
+
+extension View {
+    func mechanicExport(_ record: Binding<FaultRecord?>) -> some View { modifier(MechanicExport(record: record)) }
+}
+
+struct FilesShareSheet: UIViewControllerRepresentable {
+    let urls: [URL]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: urls, applicationActivities: nil)
+    }
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

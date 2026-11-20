@@ -552,4 +552,14 @@ final class Batch110Tests: XCTestCase {
         let many = FaultOccurrence.append([], Array(repeating: cut, count: 40))
         XCTAssertEqual(many.count, 30, "newest 30 kept")
     }
+    func test_N10_15_reportWiring() throws {
+        let root = try text("UI/RootView.swift")
+        XCTAssertTrue(root.contains("onExport: { faultExport = r }") && root.contains(".mechanicExport($faultExport)"))
+        let pop = try text("UI/Maintenance/FaultPopupView.swift")
+        XCTAssertTrue(pop.contains("Button(\"English\")") && pop.contains("Button(\"עברית\")"), "language pop-up")
+        let pdf = try text("UI/Maintenance/ReportPDF.swift")
+        XCTAssertTrue(pdf.contains("MechanicText.t(.leadsLater") || pdf.contains("m(.leadsLater)"), "no Leads until a mechanic checked them")
+        XCTAssertTrue(pdf.contains("abs($0 - s) <= 120"), "CSV: ±2 min around each event")
+        XCTAssertFalse(pdf.contains("Leads for the workshop:"), "no invented causes")
+    }
 }
