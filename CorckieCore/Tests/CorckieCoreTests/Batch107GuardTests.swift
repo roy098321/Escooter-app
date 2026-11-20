@@ -60,7 +60,7 @@ final class Batch107GuardTests: XCTestCase {
         XCTAssertEqual(zoom.components(separatedBy: "#available(iOS 18.0, *)").count - 1, 2)
         for file in ["UI/Rides/RidesListView.swift", "UI/Routes/RoutesListView.swift", "UI/Routes/PlacesView.swift"] {
             let s = try text(file)
-            XCTAssertTrue(s.contains(".zoomSource(") && s.contains(".zoomDestination(") && s.contains(".scrollReactive()"), file)
+            XCTAssertTrue(s.contains(".zoomSource(") && s.contains(".zoomDestination("), file)   // B98 (batch 10): no scroll fade on List rows
         }
         let edge = try text("UI/Shared/EdgeEffects.swift")
         XCTAssertTrue(edge.contains("if reduceMotion {") && edge.contains(".scrollTransition("), "scroll cards stay still with Reduce Motion")
