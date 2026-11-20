@@ -285,4 +285,103 @@ final class Batch110Tests: XCTestCase {
         for k in 15..<30 { ride[k].odometerKm = 900 }
         XCTAssertTrue(FaultDetectors.f16JumpInRide(ride))
     }
+    // MARK: N10-12 · words, voice, the after-ride pipeline
+
+    func test_N10_12_wording() {
+        for k in FaultKind.allCases {
+            let t = FaultCopy.text(k)
+            XCTAssertFalse(t.title.isEmpty || t.line.isEmpty || t.row.isEmpty || t.what.isEmpty, k.code)
+            let all = [t.title, t.line, t.todo ?? "", t.row, t.found, t.what].joined(separator: " ")
+            XCTAssertFalse(all.contains("OK to ride") || all.contains("safe to ride"), "never tell the rider it's safe")
+            if k.level == .red {
+                XCTAssertEqual(t.title, "Something isn't right"); XCTAssertNotNil(t.todo)
+            } else {
+                XCTAssertNil(t.todo)
+            }
+        }
+        XCTAssertEqual(FaultCopy.notSafe, "It's not safe to keep riding.")
+        XCTAssertEqual(FaultCopy.text(.f6Heat).title, "Your motor needs checking")
+        XCTAssertEqual(FaultCopy.text(.f11ParkedDrain).title, "Your battery needs checking")
+        XCTAssertEqual(FaultCopy.text(.f12FullVoltage).title, "Your charger needs checking")
+        XCTAssertEqual(FaultCopy.voiceBrake, "Brakes aren't cutting the motor when braking, check the brake switch and controller.")
+    }
+
+    func test_N10_2_N10_3_inRideVoice() {
+        var v = LiveFaultVoice(learned: true, brakeFoundBefore: false)
+        XCTAssertNil(v.powerCut())
+        XCTAssertEqual(v.powerCut(), FaultCopy.voicePowerCut2)
+        XCTAssertNil(v.powerCut())
+        XCTAssertEqual(v.powerCut(), FaultCopy.voicePowerCut4)
+        XCTAssertNil(v.brakeRunEnded(), "1st time → ride summary only")
+        var again = LiveFaultVoice(learned: true, brakeFoundBefore: true)
+        XCTAssertEqual(again.brakeRunEnded(), FaultCopy.voiceBrake)
+        XCTAssertNil(again.brakeRunEnded(), "once per ride")
+        var newRider = LiveFaultVoice(learned: false, brakeFoundBefore: true)
+        _ = newRider.powerCut()
+        XCTAssertNil(newRider.powerCut(), "a new rider hears nothing")
+        XCTAssertNil(newRider.brakeRunEnded())
+    }
+
+    func test_ruleOuts() {
+        XCTAssertEqual(FaultRuleOuts(airC: 2).ruledOut, [.f1Sag, .f6Heat])
+        XCTAssertEqual(FaultRuleOuts(airC: 20).ruledOut, [])
+        XCTAssertEqual(FaultRuleOuts(airC: nil).ruledOut, [.f6Heat])
+        XCTAssertTrue(FaultRuleOuts(airC: 20, minBatteryPct: 12).ruledOut.contains(.f1Sag))
+        XCTAssertTrue(FaultRuleOuts(airC: 20, weakGps: true).ruledOut.isSuperset(of: [.f5Tyre, .f7Sensor]))
+    }
+
+    private func healthyRide(_ k: Int) -> [ScooterFrame] {
+        (0..<900).map { j in
+            let i = 12 + 10 * sin(Double(j) / 7)
+            return frame(Double(j), v: 52 - i * (62 + Double(k % 4) * 3) / 1000, a: i, odo: 100 + Double(k) * 5 + Double(j) / 300)
+        }
+    }
+
+    /// HARSH RULE ship check (synthetic): 30 healthy rides → zero findings; then a power cut is caught on the very next ride and
+    /// only ONE finding reaches the pop-up even when a second fault shows at the same time
+    func test_pipeline_healthyRidesSilent_faultCaught_onePerSummary() {
+        var book = FaultBook(), heat = HeatBook()
+        var prevOdo: Double?
+        for k in 0..<30 {
+            let frames = healthyRide(k)
+            let rep = AfterRideFaults.run(RideFaultInput(scooterId: "S1", firmware: "1.0", frames: frames, day: k,
+                                                         ruleOuts: FaultRuleOuts(airC: 20), previousOdoKm: prevOdo),
+                                          book: &book, heat: &heat)
+            XCTAssertEqual(rep.findings, [], "healthy ride \(k + 1)")
+            prevOdo = frames.last?.odometerKm
+        }
+        var bad = healthyRide(30)
+        bad[400].shuttingDown = true                        // a power cut at 20 km/h
+        for j in 600..<610 { bad[j].brake = true }          // and 10 s of brake with current
+        let rep = AfterRideFaults.run(RideFaultInput(scooterId: "S1", firmware: "1.0", frames: bad, day: 30,
+                                                     ruleOuts: FaultRuleOuts(airC: 20), previousOdoKm: prevOdo),
+                                      book: &book, heat: &heat)
+        XCTAssertEqual(Set(rep.findings.map(\.kind)), [.f2PowerCut, .f3BrakeCut])
+        XCTAssertNotNil(rep.show)
+        XCTAssertEqual(rep.show?.kind.level, .red)
+        // a different scooter is a new rider: silent
+        let other = AfterRideFaults.run(RideFaultInput(scooterId: "S2", frames: bad, day: 30), book: &book, heat: &heat)
+        XCTAssertEqual(other.findings, [])
+        // firmware change → relearn
+        let fw = AfterRideFaults.run(RideFaultInput(scooterId: "S1", firmware: "1.1", frames: bad, day: 31), book: &book, heat: &heat)
+        XCTAssertTrue(fw.relearned)
+        XCTAssertEqual(fw.findings, [])
+    }
+
+    func test_switchOn_chargerAndParkedDrain() {
+        var book = FaultBook()
+        func charge(_ v: Double, _ d: Int) -> FaultReport {
+            let frames = (0..<30).map { frame(Double($0), kmh: 0, v: v, a: 0.1) }
+            return AfterRideFaults.switchOn(scooterId: "S", day: d, park: nil, firstFrames: frames, charged: true, book: &book)
+        }
+        for (k, v) in [54.4, 53.9, 53.4, 54.0, 54.2, 54.1, 53.8, 54.3, 54.0, 53.6, 54.1, 53.9].enumerated() {
+            XCTAssertEqual(charge(v, k).findings, [], "normal full \(v) V")
+        }
+        XCTAssertEqual(charge(53.0, 20).findings, [], "1st low charge: watching")
+        XCTAssertEqual(charge(52.9, 21).findings, [])
+        XCTAssertEqual(charge(52.8, 22).findings.map(\.kind), [.f12FullVoltage], "3 charges ≥ 0.5 V (+10 %) under the lowest normal")
+        let reset = AfterRideFaults.switchOn(scooterId: "S", day: 30, park: (48, 48, 20, 1114, 0.2), firstFrames: [], charged: false,
+                                             book: &book)
+        XCTAssertEqual(reset.findings.map(\.kind), [.f16OdoReset])
+    }
 }
