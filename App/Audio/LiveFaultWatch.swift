@@ -12,6 +12,9 @@ final class LiveFaultWatch {
     private var tracker = LiveFaultTracker()
     private var voice: LiveFaultVoice?
     private var wasRiding = false
+    /// The red ride-screen lights, on for the rest of the ride once the voice spoke
+    private(set) var powerCutLight = false
+    private(set) var brakeFaultLight = false
 
     private init() {}
 
@@ -22,13 +25,19 @@ final class LiveFaultWatch {
         if riding != wasRiding {
             wasRiding = riding
             if riding { start() } else { voice = nil }
+            powerCutLight = false
+            brakeFaultLight = false
         }
         guard riding, var v = voice, let f = assembler.ingest(bytes, at: t) else { return }
         for e in tracker.frame(f) {
             let line: String?
             switch e {
-            case .powerCut: line = v.powerCut()
-            case .brakeRunEnded: line = v.brakeRunEnded()
+            case .powerCut:
+                line = v.powerCut()
+                if line != nil { powerCutLight = true }
+            case .brakeRunEnded:
+                line = v.brakeRunEnded()
+                if line != nil { brakeFaultLight = true }
             }
             if let line { speak(line) }
         }

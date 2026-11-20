@@ -225,6 +225,8 @@ public struct LiveScreenDriver: Sendable {
             if tiles.chips.contains(.offlineMap) { on.insert(.offlineMap) }
             if input.formatChanged { on.insert(.recordingProblem) }
             if input.rainSoon { on.insert(.rainSoon) }
+            if input.powerCutLight { on.insert(.powerCut) }
+            if input.brakeFaultLight { on.insert(.brakeFault) }
             // gear reminder: wheel speed within 1 km/h of the gear's cap for 60 s and a higher gear exists; gone on a gear change
             if let g = input.scooterGear, let cap = input.scooterCapKmh, let v = input.scooterSpeedKmh,
                g < WarningStrip.topGear, cap > 0, abs(v - Double(cap)) <= 1 {

@@ -9,13 +9,15 @@ import Foundation
 public enum WarningLight: Int, CaseIterable, Comparable, Sendable {
     // owner order 1...12
     case motorVeryHot = 1, powerLimitSoon, disconnected, motorHot, phoneBatteryLow, recordingProblem, noGps,
-         rainSoon, darkBeforeArrival, phoneTookOver, offlineMap, gearReminder
+         rainSoon, darkBeforeArrival, phoneTookOver, offlineMap, gearReminder,
+         // N10-2 / N10-3 (batch 10): red, on for the rest of the ride once the voice spoke
+         powerCut, brakeFault
 
     public enum Colour: Sendable { case red, amber, blue }
 
     public var colour: Colour {
         switch self {
-        case .motorVeryHot: return .red
+        case .motorVeryHot, .powerCut, .brakeFault: return .red
         case .powerLimitSoon, .disconnected, .motorHot, .phoneBatteryLow, .recordingProblem, .noGps: return .amber
         case .rainSoon, .darkBeforeArrival, .phoneTookOver, .offlineMap, .gearReminder: return .blue
         }
@@ -24,7 +26,7 @@ public enum WarningLight: Int, CaseIterable, Comparable, Sendable {
     /// N8-3: 3 = icon + voice + vibration (today's), 2 = icon + one soft tone once per ride, 1 = icon only
     public var level: Int {
         switch self {
-        case .motorVeryHot, .motorHot, .powerLimitSoon: return 3
+        case .motorVeryHot, .motorHot, .powerLimitSoon, .powerCut, .brakeFault: return 3
         case .disconnected, .phoneBatteryLow, .recordingProblem, .noGps: return 2
         case .rainSoon, .darkBeforeArrival, .phoneTookOver, .offlineMap, .gearReminder: return 1
         }
@@ -43,6 +45,8 @@ public enum WarningLight: Int, CaseIterable, Comparable, Sendable {
         case .phoneTookOver: return "iphone"
         case .offlineMap: return "map"
         case .gearReminder: return "gauge.with.dots.needle.67percent"
+        case .powerCut: return "bolt.slash"
+        case .brakeFault: return "exclamationmark.brakesignal"
         }
     }
 
@@ -61,10 +65,16 @@ public enum WarningLight: Int, CaseIterable, Comparable, Sendable {
         case .phoneTookOver: return "Phone took over the speed reading"
         case .offlineMap: return "Offline map"
         case .gearReminder: return "Capped by the gear"
+        case .powerCut: return "Power cut, check the battery plug"
+        case .brakeFault: return "Brakes aren't cutting the motor"
         }
     }
 
-    public static func < (a: WarningLight, b: WarningLight) -> Bool { a.rawValue < b.rawValue }
+    /// Red first (rank 1), then the owner's order
+    public static func < (a: WarningLight, b: WarningLight) -> Bool {
+        let ar = a.colour == .red, br = b.colour == .red
+        return ar != br ? ar : a.rawValue < b.rawValue
+    }
 }
 
 public struct WarningStrip: Equatable, Sendable {

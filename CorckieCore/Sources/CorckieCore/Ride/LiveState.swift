@@ -52,6 +52,9 @@ public struct LiveInput: Equatable, Sendable {
     public var phoneGpsOff: Bool = false
     /// N8-1: the ride cell's already-fetched forecast shows rain within 20 min
     public var rainSoon: Bool = false
+    /// N10-2 / N10-3 (batch 10): a power cut / brake fault was spoken this ride: the red light stays on
+    public var powerCutLight: Bool = false
+    public var brakeFaultLight: Bool = false
     /// N8-1: the gear (1 / 2 / 3) and its speed cap, nil without the scooter
     public var scooterGear: Int? = nil
     public var scooterCapKmh: Int? = nil

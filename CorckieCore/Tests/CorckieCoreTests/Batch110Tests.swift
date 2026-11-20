@@ -562,4 +562,12 @@ final class Batch110Tests: XCTestCase {
         XCTAssertTrue(pdf.contains("abs($0 - s) <= 120"), "CSV: ±2 min around each event")
         XCTAssertFalse(pdf.contains("Leads for the workshop:"), "no invented causes")
     }
+    func test_N10_2_N10_3_redLights() throws {
+        XCTAssertEqual(WarningLight.powerCut.colour, .red)
+        XCTAssertEqual(WarningLight.brakeFault.colour, .red)
+        var strip = WarningStrip()
+        strip.update(on: [.rainSoon, .offlineMap, .gearReminder, .brakeFault], wheelSpeedKmh: 20, at: 0)
+        XCTAssertEqual(strip.shown.first, .brakeFault, "red first")
+        XCTAssertTrue(try text("Adapters/RecorderService.swift").contains("input.powerCutLight = LiveFaultWatch.shared.powerCutLight"))
+    }
 }

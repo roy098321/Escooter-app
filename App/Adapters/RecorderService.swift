@@ -184,6 +184,8 @@ final class RecorderService {
         if engaged != ridingEngaged { ridingEngaged = engaged }   // B76
         input.mapOffline = NetworkStatus.shared.offline
         input.rainSoon = rainSoonNow(lat: input.lat, lon: input.lon)       // N8-1
+        input.powerCutLight = LiveFaultWatch.shared.powerCutLight          // N10-2: red light after the voice
+        input.brakeFaultLight = LiveFaultWatch.shared.brakeFaultLight      // N10-3
         input.phoneGpsOff = PhoneSensors.shared.gpsMode == .off          // M6-06: phone battery < 10%
         input.locationDenied = PhoneSensors.shared.locationDenied        // M6-06: location turned off for the app
         // M2-06: the route chosen with Where to? is followed from the start of the ride to its end (once per ride).
