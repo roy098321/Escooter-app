@@ -156,6 +156,7 @@ final class RecorderService {
     func packet(_ bytes: [UInt8], at date: Date) {
         let t = EngineClock.shared.fromWall(date)
         send(.scooter(TimedScooterEvent(t: t, event: .packet(bytes))), at: t)
+        LiveFaultWatch.shared.packet(bytes, at: t)      // N10-2 / N10-3: power cuts and brake runs, spoken during the ride
     }
 
     func fix(lat: Double, lon: Double, hAccM: Double, speedMps: Double, courseDeg: Double, altitudeM: Double?, at date: Date) {

@@ -409,4 +409,23 @@ final class Batch110Tests: XCTestCase {
         XCTAssertTrue(pop.contains("FaultCopy.notSafe") && pop.contains("exclamationmark.triangle"))
         XCTAssertTrue(pop.contains("FaultCopy.tellMeMore") && pop.contains("FaultCopy.exportReport") && pop.contains("FaultCopy.gotIt"))
     }
+    func test_liveTracker_matchesTheAfterRideRules() {
+        var ride = (0..<60).map { frame(Double($0) * 0.5, kmh: 30, a: 10) }
+        ride[10].shuttingDown = true
+        for k in 20..<22 { ride[k].brake = true }      // 0.5 s: nothing
+        for k in 30..<38 { ride[k].brake = true }      // 3.5 s
+        var tr = LiveFaultTracker()
+        var events: [(Double, LiveFaultTracker.Event)] = []
+        for f in ride { for e in tr.frame(f) { events.append((f.t, e)) } }
+        XCTAssertEqual(events.map(\.1), [.powerCut, .brakeRunEnded])
+        XCTAssertEqual(events.last?.0, 19, "said right after the braking ends")
+        XCTAssertEqual(FaultDetectors.f2PowerCutTimes(ride).count, 1)
+        XCTAssertEqual(FaultDetectors.f3BrakeRuns(ride).count, 1)
+    }
+    func test_N10_2_N10_3_liveWiring() throws {
+        XCTAssertTrue(try text("Adapters/RecorderService.swift").contains("LiveFaultWatch.shared.packet(bytes, at: t)"))
+        let w = try text("Audio/LiveFaultWatch.swift")
+        XCTAssertTrue(w.contains("LiveFaultTracker()") && w.contains("LiveFaultVoice(learned:"))
+        XCTAssertTrue(w.contains("SoundPlayer.shared.cue(.batteryPing") && w.contains("notificationOccurred(.error)"), "L3: ping, voice, vibration")
+    }
 }
