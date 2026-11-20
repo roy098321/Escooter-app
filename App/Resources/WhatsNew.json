@@ -1,5 +1,40 @@
 [
   {
+    "version": "110.221126.00",
+    "headline": "Your scooter's health",
+    "items": [
+      {
+        "symbol": "wrench.adjustable",
+        "title": "Maintenance, all in one place",
+        "line": "Scooter tab: a card with every part. Tap it for the new Maintenance screen, the next checks in km and Log what I did."
+      },
+      {
+        "symbol": "exclamationmark.triangle",
+        "title": "Warns you only when it's sure",
+        "line": "The app learns your scooter for 10 rides, then tells you if something is really wrong: once, clearly, never for a guess."
+      },
+      {
+        "symbol": "doc.text",
+        "title": "A report for your mechanic",
+        "line": "Export a report makes a PDF and a data file in English or Hebrew, so you don't have to explain."
+      },
+      {
+        "symbol": "clock.arrow.circlepath",
+        "title": "Service history",
+        "line": "Everything you logged and every finding, with a PDF to keep or show a buyer."
+      }
+    ],
+    "smallerFixes": 3,
+    "full": [
+      "Faults the app can recognise: battery strain, power cuts, brakes not cutting the motor, tyre soft or worn, motor running hot, impossible sensor readings, battery draining while parked, charger not filling the battery, km counter reset.",
+      "During a ride only two are spoken: a power cut (the 2nd and 4th in a ride) and brakes not cutting the motor (when it repeats), with a red light on the ride screen.",
+      "After a ride, at most one warning shows over the ride summary: Tell me more, Export a report, Got it. Checked, it's fine makes the app less sensitive to it.",
+      "At switch-on: battery and charger findings, and a km counter reset.",
+      "The Battery page shows battery findings on top. A dot on the Scooter tab and a line on Home appear only when something needs doing.",
+      "Home logo is the C only; list rows are white again; the ride colour strip is a straight bar."
+    ]
+  },
+  {
     "version": "108.131226.04",
     "headline": "The welcome picture",
     "items": [

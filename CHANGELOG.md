@@ -2,6 +2,18 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 110.221126.00 — batch 10: maintenance (fault recognition, Maintenance screen, history, mechanic report) + B97–B99
+
+- N10-1..N10-11: fault recognition behind one shared gate (learn 10 rides per scooter, worst normal + 10 %, repeats, ruled-out rides, Checked it's fine, 2-week rule, one per summary; firmware change relearns, a replaced part resets): F1 battery strain, F2 power cuts (the scooter's shut-off signal; the link-lost path follows the standing test on the new scooter), F3 brake not cutting the motor, F5 tyre, F6 heat vs a learned model, F7 impossible sensor readings, F11 parked drain, F12 voltage at full, F16 km counter reset. F4 and F8 dropped after the audit.
+- N10-2 / N10-3: in-ride voice (L3: ping, line, vibration) for the 2nd / 4th power cut and a repeated brake fault, red light on the ride screen.
+- N10-12: one pop-up over the ride summary (amber / red / grey info), Tell me more with Checked it's fine / I fixed it; switch-on pop-up over Home or a notification.
+- N10-13: new Maintenance screen (issue cards on top, one list per part, reminder page, Log what I did) replacing Settings → Maintenance's list; fault page with your normal vs the last rides.
+- N10-14: full maintenance history (battery card + decay chart, counts, timeline with Measured / Entered) and a PDF service book in English / Hebrew.
+- N10-15: mechanic report PDF (English / Hebrew, one issue; Leads left out until a mechanic checks them) + CSV of the readings around each occurrence.
+- N10-19 / N10-20 / N10-21: orange dot on the Scooter tab, Home line when something is due, Scooter tab Maintenance card with the wide Battery tile (the separate Battery row removed), battery findings on top of the one Battery page.
+- N10-16..18: B97 Home logo is the C only, B98 List rows no longer grey, B99 the ride colour strip is a bar.
+- Lab checks u202 (automatic), ui204–ui207 (phone).
+
 ## 108.131226.04 — hotfix 04 of batch 8 (owner 20 Nov: welcome image OK, AI-generated)
 
 - A-06: the welcome screen's theme image is in the app (asset WelcomeHero, JPEG from reports/onboarding-welcome/hero.webp, no metadata); the plain fallback stays in code.
