@@ -488,4 +488,24 @@ final class Batch110Tests: XCTestCase {
         XCTAssertTrue(try text("UI/Shared/FloatingTabBar.swift").contains("item.id == 4, FaultCenter.shared.tabDot"))
         XCTAssertTrue(try text("UI/Home/HomeView.swift").contains("let line = FaultCenter.shared.homeLine"))
     }
+    // MARK: N10-14 · history
+
+    func test_N10_14_historyTimelineAndCounts() {
+        let logged = [LoggedWork(id: "l1", what: .replacedTyre, scooterId: "S", day: 300, odoKm: 4780),
+                      LoggedWork(id: "l2", what: .tyrePressure, scooterId: "S", day: 100, odoKm: 1800),
+                      LoggedWork(id: "x", what: .tyrePressure, scooterId: "OTHER", day: 100, odoKm: 1)]
+        let faults = [FaultRecord(id: "f1", kind: .f5Tyre, scooterId: "S", value: 4, day: 297, odoKm: 4760, status: .fixed),
+                      FaultRecord(id: "f2", kind: .f6Heat, scooterId: "S", value: 12, day: 200, odoKm: 2900, status: .checkedFine),
+                      FaultRecord(id: "f3", kind: .f1Sag, scooterId: "S", value: 90, day: 310, odoKm: 4800)]
+        let e = MaintHistory.entries(logged: logged, faults: faults, scooterId: "S", trackedSince: (50, 1150))
+        XCTAssertEqual(e.map(\.id), ["f3", "l1", "f1", "f2", "l2", "tracking-started"])
+        XCTAssertEqual(e.first { $0.id == "f1" }?.title, "Tyre soft or worn")
+        XCTAssertEqual(e.first { $0.id == "f1" }?.outcome, .fixed)
+        XCTAssertEqual(e.first { $0.id == "l1" }?.source, .entered)
+        XCTAssertEqual(e.last?.source, .measured)
+        XCTAssertEqual(MaintHistory.counts(e), HistoryCounts(logged: 2, found: 3, dealtWith: 2, open: 1))
+        let years = MaintHistory.byYear(e) { $0 >= 150 ? 2026 : 2025 }
+        XCTAssertEqual(years.map(\.year), [2026, 2025])
+        XCTAssertEqual(years[1].entries.map(\.id), ["l2", "tracking-started"])
+    }
 }
