@@ -1,3 +1,4 @@
+import Charts
 import CorckieCore
 import SwiftUI
 
@@ -111,7 +112,10 @@ struct FaultDetailSheet: View {
         let t = FaultCopy.text(record.kind)
         NavigationStack {
             List {
-                Section("What was found") { Text(t.found) }
+                Section("What was found") {
+                    Text(t.found)
+                    FaultNormalChart(record: record)      // your last rides vs your normal
+                }
                 Section("What to do") { Text(t.what) }
                 if record.kind.level != .info {
                     Section {
@@ -204,6 +208,39 @@ struct FaultPopupHost: View {
                     FaultDetailSheet(record: rec, onDone: { FaultCenter.shared.dismissPopup() })
                 }
                 .mechanicExport($exporting)
+        }
+    }
+}
+
+/// N10-13 fault page picture: your normal band (the learned rides, lowest to highest) and the last rides past it
+struct FaultNormalChart: View {
+    let record: FaultRecord
+
+    var body: some View {
+        let db = AppModel.shared.database
+        let book = FaultStore.load(db, FaultStore.bookKey, as: FaultBook.self) ?? FaultBook()
+        let prefix = FaultBook.key(record.scooterId, record.kind)
+        let base = book.baselines.filter { $0.key == prefix || $0.key.hasPrefix(prefix + "|") }.values.max { $0.samples.count < $1.samples.count }
+        let occ = (FaultStore.load(db, FaultStore.occurrencesKey, as: [FaultOccurrence].self) ?? [])
+            .filter { $0.kind == record.kind && $0.scooterId == record.scooterId }.suffix(10)
+        let unit = MechanicText.unit(record.kind)
+        if let b = base, let lo = b.samples.min(), let hi = b.samples.max(), !unit.isEmpty, !occ.isEmpty {
+            let points = Array(occ.enumerated())
+            Chart {
+                RectangleMark(xStart: .value("from", 0), xEnd: .value("to", max(1, points.count - 1)),
+                              yStart: .value("low", lo), yEnd: .value("high", hi))
+                    .foregroundStyle(Color.secondary.opacity(0.18))
+                ForEach(points, id: \.offset) { i, o in
+                    PointMark(x: .value("Ride", i), y: .value(unit, o.value))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+            .chartXAxis(.hidden)
+            .chartYAxisLabel(unit)
+            .frame(height: 140)
+            .accessibilityLabel("Your last rides compared with your normal")
+            Text("Grey band: your normal. Dots: the last rides where it showed.")
+                .font(.footnote).foregroundStyle(.secondary)
         }
     }
 }
