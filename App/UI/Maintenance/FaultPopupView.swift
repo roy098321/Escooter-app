@@ -230,8 +230,8 @@ struct FaultNormalChart: View {
                 RectangleMark(xStart: .value("from", 0), xEnd: .value("to", max(1, points.count - 1)),
                               yStart: .value("low", lo), yEnd: .value("high", hi))
                     .foregroundStyle(Color.secondary.opacity(0.18))
-                ForEach(points, id: \.offset) { i, o in
-                    PointMark(x: .value("Ride", i), y: .value(unit, o.value))
+                ForEach(points, id: \.offset) { p in
+                    PointMark(x: .value("Ride", p.offset), y: .value(unit, p.element.value))
                         .foregroundStyle(Theme.accent)
                 }
             }

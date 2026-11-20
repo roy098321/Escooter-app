@@ -195,9 +195,25 @@ enum FaultService {
         var drops: [Double] = []
         for k in 1..<frames.count where frames[k].t - frames[k - 1].t > linkDropS { drops.append(frames[k].t) }
 
+        // F7: the phone's GPS speed at a reading's time (samples are ms from the ride start; frames are epoch seconds)
+        let startMs = ride.startAt
+        let gps: [(t: Int64, kmh: Double)] = samples.compactMap { s in
+            guard let g = s.gpsSpeedMps, (s.hAccM ?? 99) <= 20 else { return nil }
+            return (s.t, g * 3.6)
+        }.sorted { $0.t < $1.t }
+        let gpsKmhAt: @Sendable (Double) -> Double? = { t in
+            let rel = Int64(t * 1000) - startMs
+            var lo = 0, hi = gps.count - 1
+            while lo < hi {
+                let mid = (lo + hi) / 2
+                if gps[mid].t < rel { lo = mid + 1 } else { hi = mid }
+            }
+            guard lo < gps.count, abs(gps[lo].t - rel) <= 6_000 else { return nil }
+            return gps[lo].kmh
+        }
         let day = FaultGate.day(epochMs: ride.endAt ?? ride.startAt)
         let input = RideFaultInput(scooterId: scooterId, firmware: firmware, frames: frames, day: day, ruleOuts: rule,
-                                   routeId: context.routeId, routeRatios: routeRatios, heat: heatPoint, linkDropTimes: drops,
+                                   routeId: context.routeId, routeRatios: routeRatios, heat: heatPoint, gpsKmhAt: gpsKmhAt, linkDropTimes: drops,
                                    previousOdoKm: lastOdo[scooterId])
         let report = AfterRideFaults.run(input, book: &book, heat: &heat)
         if let odo = frames.last(where: { $0.odometerKm != nil })?.odometerKm { lastOdo[scooterId] = odo }
