@@ -428,4 +428,49 @@ final class Batch110Tests: XCTestCase {
         XCTAssertTrue(w.contains("LiveFaultTracker()") && w.contains("LiveFaultVoice(learned:"))
         XCTAssertTrue(w.contains("SoundPlayer.shared.cue(.batteryPing") && w.contains("notificationOccurred(.error)"), "L3: ping, voice, vibration")
     }
+    // MARK: N10-13 / N10-19 / N10-20 · parts list, tab dot, Home line
+
+    func test_N10_13_partsList_issuesStandOut_neverOK() {
+        let open = [FaultRecord(id: "a", kind: .f6Heat, scooterId: "S", value: 12, day: 1, odoKm: 1400)]
+        let rem = [PartReminder(id: "brakes", part: .brakes, status: .dueKm(over: 3), name: "Brakes"),
+                   PartReminder(id: "tyres", part: .tyres, status: .ok(kmLeft: 80), name: "Tyre pressure"),
+                   PartReminder(id: "bolts", part: .bolts, status: .ok(kmLeft: 210), name: "Bolts")]
+        let rows = MaintParts.rows(open: open, reminders: rem, ridesLeft: [.electrics: 6], batteryLine: "Health 94% \u{00B7} about 36 km per charge")
+        XCTAssertEqual(rows.map(\.part), [.motor, .brakes, .battery, .tyres, .bolts, .electrics], "the mock's order")
+        XCTAssertEqual(rows[0].line, "Ran hot on your last 3 rides")
+        XCTAssertEqual(rows[1].line, "Check due now")
+        XCTAssertEqual(rows[3].line, "Pressure check in 80 km")
+        XCTAssertEqual(rows[4].line, "Check in 210 km")
+        XCTAssertEqual(rows[5].line, "Learning \u{00B7} about 6 more rides")
+        for r in rows { XCTAssertFalse(r.line.contains("OK") || r.line.lowercased().contains("safe to ride"), r.line) }
+        XCTAssertTrue(MaintParts.tabDot(rows))
+        XCTAssertEqual(MaintParts.homeLine(rows), "Motor \u{00B7} Ran hot on your last 3 rides")
+    }
+
+    func test_N10_13_redFirst_quietMeansNoDotNoHomeLine() {
+        let open = [FaultRecord(id: "a", kind: .f1Sag, scooterId: "S", value: 1, day: 1, odoKm: nil),
+                    FaultRecord(id: "b", kind: .f3BrakeCut, scooterId: "S", value: 1, day: 1, odoKm: nil)]
+        let rows = MaintParts.rows(open: open, reminders: [], ridesLeft: [:], batteryLine: nil)
+        XCTAssertEqual(rows.first?.part, .brakes)
+        XCTAssertTrue(rows.first!.isRed)
+        let quiet = MaintParts.rows(open: [], reminders: [PartReminder(id: "tyres", part: .tyres, status: .ok(kmLeft: 50), name: "")],
+                                    ridesLeft: [:], batteryLine: nil)
+        XCTAssertFalse(MaintParts.tabDot(quiet))
+        XCTAssertNil(MaintParts.homeLine(quiet), "nothing when all is quiet")
+        XCTAssertEqual(quiet.first { $0.part == .motor }?.line, "Nothing found so far")
+    }
+
+    func test_N10_13_ridesLeftAndLog() {
+        var book = FaultBook()
+        var b = FaultBaseline(); b.samples = [1, 2, 3, 4]
+        book.set(b, "S", .f6Heat)
+        XCTAssertEqual(MaintParts.ridesLeft(book, scooterId: "S", part: .motor), 6)
+        book.set(b, "S", .f5Tyre, "route-1")
+        XCTAssertEqual(MaintParts.ridesLeft(book, scooterId: "S", part: .tyres), 6, "a route variant counts")
+        XCTAssertEqual(LogWhatIDid.replacedPads.part, .brakes)
+        XCTAssertEqual(LogWhatIDid.replacedPads.reminderId, "brakes")
+        XCTAssertTrue(LogWhatIDid.replacedBattery.relearns)
+        XCTAssertFalse(LogWhatIDid.tyrePressure.relearns, "a check doesn't change the part")
+        XCTAssertEqual(PartReminder.part(forReminder: "bolts"), .bolts)
+    }
 }
