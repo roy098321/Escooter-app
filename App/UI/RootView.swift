@@ -54,6 +54,7 @@ struct RootView: View {
                     withTransaction(t) { coverShown = shown }
                 }
                 .overlay { if !coverShown { faultPopup } }      // N10-12: a switch-on finding over Home
+                .task { FaultCenter.shared.reload(AppModel.shared.database) }     // N10-19 / N10-20: tab dot and Home line
                 .safeAreaInset(edge: .top) {
                     VStack(spacing: 0) {
                         if model.simulator.running || ScreenSimulator.shared.active {

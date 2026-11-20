@@ -24,6 +24,7 @@ struct BatteryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Space.block) {
+                if preview == nil { BatteryFaultsSection() }      // N10-21: battery findings on top, only when there are any
                 if let o = overview {
                     rangeCard(o)
                         .chargeGlow(preview == nil ? ChargeTimer.shared.session : nil, nowMs: ChargeTimer.shared.nowMs, .full)   // N7-6

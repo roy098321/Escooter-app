@@ -241,6 +241,21 @@ struct HomeView: View {
             } else {
                 statusPill(m)
             }
+            // N10-20 (batch 10): one line under the status pill, only when something is due; nothing when all is quiet
+            if preview == nil, let line = FaultCenter.shared.homeLine {
+                NavigationLink { MaintenanceView() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "wrench.adjustable").accessibilityHidden(true)
+                        Text(line).lineLimit(1).minimumScaleFactor(0.8)
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).accessibilityHidden(true)
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accentInk)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+                }
+                .buttonStyle(.plain)
+            }
             if preview == nil, let problem = AppModel.shared.scooter.bluetoothProblem {      // D2 3b
                 BluetoothProblemView(problem: problem)
                     .frame(maxWidth: .infinity, alignment: .leading)

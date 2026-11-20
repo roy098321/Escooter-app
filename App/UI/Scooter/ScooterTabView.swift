@@ -28,6 +28,8 @@ struct ScooterTabView: View {
     @State private var record: ScooterRecord?
     @State private var odometerKm: Double?
     @State private var rows: [MaintenanceService.Row] = []
+    @State private var partRows: [PartRow] = []          // N10-21
+    @State private var batteryTileLine: String?
     @State private var parked: ParkedSpot?
     @State private var confirmForget = false
     @State private var customName: String?
@@ -175,31 +177,18 @@ struct ScooterTabView: View {
             if preview == nil { link.start() }
         }
         .chargeGlow(charge, nowMs: preview?.nowMs ?? timer.nowMs, .rim, radius: DS.Radius.hero)   // N7-6: orange rim while charging
+        // N10-21 (batch 10): the Maintenance card with the wide Battery tile; the separate Maintenance and Battery rows are gone
+        MaintenanceCard(rows: partRows, batteryLine: batteryTileLine)
         parkedRow
-        // S3: one row: what is due next
-        NavigationLink { MaintenanceView() } label: {
-            HStack {
-                Label("Maintenance", systemImage: "wrench.and.screwdriver")
-                Spacer()
-                if let next = Self.nextDue(rows) {
-                    Text(next.text).font(.subheadline).foregroundStyle(next.due ? Theme.accentInk : Color.secondary)
-                }
-                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
-            }
-            .padding(DS.Space.cardPad)
-            .glassCard(padding: 0)
-        }
-        .buttonStyle(.plain)
-        NavigationLink { BatteryView() } label: {
-            HStack {
-                Label("Battery", systemImage: Self.batterySymbol(shown.pct))   // N7-5: the icon fills to the real (smoothed) level
-                Spacer()
-                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
-            }
-            .padding(DS.Space.cardPad)
-            .glassCard(padding: 0)
-        }
-        .buttonStyle(.plain)
+    }
+
+    /// N10-21: "about 21 km, health 94%" on the wide Battery tile
+    static func makeBatteryTileLine(_ db: AppDatabase) -> String? {
+        let o = BatteryOverview.load(db, currentPct: AppModel.shared.settledBatteryPct.map(Double.init), connected: AppModel.shared.scooter.connected)
+        var parts: [String] = []
+        if let km = o.range?.rangeKm { parts.append("\u{2248} \(Int(km.rounded())) km") }
+        if case .health(let pct, _, _) = o.health { parts.append("health \(Int(pct.rounded()))%") }
+        return parts.isEmpty ? nil : parts.joined(separator: " \u{00B7} ")
     }
 
     /// F-31: after Unplugged the card keeps the line's estimate ("≈ 72 % · estimate when unplugged") until the real % is read
@@ -285,6 +274,8 @@ struct ScooterTabView: View {
         customName = SettingsValue.text(db, Self.nameKey)
         odometerKm = (try? MaintenanceQueries(db).odometerKm()) ?? nil
         rows = MaintenanceService.rows(db)
+        partRows = MaintenanceService.parts(db)
+        batteryTileLine = Self.makeBatteryTileLine(db)
         parked = ParkedResolver.current(database: db, simulated: false)   // B34: newest of the last ride end and the last-seen spot
     }
 

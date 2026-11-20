@@ -82,3 +82,63 @@ enum MaintenanceService {
         }
     }
 }
+
+// MARK: N10-13 (batch 10): the Maintenance screen's parts list
+
+extension MaintenanceService {
+    static let logKey = "maint.log"
+
+    /// The model name and km for the header
+    static func header(_ db: AppDatabase) -> String {
+        let name = ScooterRecord.latest(in: db)?.name ?? "Your scooter"
+        let odo = (try? MaintenanceQueries(db).odometerKm()) ?? nil
+        return odo.map { "\(name) \u{00B7} \(Int($0.rounded()).formatted()) km" } ?? name
+    }
+
+    static func scooterId(_ db: AppDatabase) -> String { ScooterRecord.latest(in: db)?.id ?? "scooter" }
+
+    /// "Health 94% · about 36 km per charge" (nil until the battery report has a number)
+    static func batteryLine(_ db: AppDatabase) -> String? {
+        switch BatteryOverview.load(db, currentPct: nil, connected: false).health {
+        case .health(let pct, let km, _): return "Health \(Int(pct.rounded()))% \u{00B7} about \(Int(km.rounded())) km per charge"
+        case .baseline(let km): return "About \(Int(km.rounded())) km per charge"
+        case .gathering: return nil
+        }
+    }
+
+    static func parts(_ db: AppDatabase) -> [PartRow] {
+        let id = scooterId(db)
+        let reminders = rows(db).compactMap { r -> PartReminder? in
+            guard let part = PartReminder.part(forReminder: r.id) else { return nil }
+            return PartReminder(id: r.id, part: part, status: r.status, name: r.item.name)
+        }
+        let book = FaultStore.load(db, FaultStore.bookKey, as: FaultBook.self) ?? FaultBook()
+        var left: [MaintPart: Int] = [:]
+        for p in MaintPart.allCases { left[p] = MaintParts.ridesLeft(book, scooterId: id, part: p) }
+        return MaintParts.rows(open: FaultRecord.open(FaultStore.records(db), scooterId: id), reminders: reminders, ridesLeft: left,
+                               batteryLine: batteryLine(db))
+    }
+
+    static func logged(_ db: AppDatabase?) -> [LoggedWork] { FaultStore.load(db, logKey, as: [LoggedWork].self) ?? [] }
+
+    /// "Log what I did": one tap. The km comes from the scooter; the part's reminder restarts; a replaced part relearns (A30).
+    static func log(_ what: LogWhatIDid, _ db: AppDatabase) {
+        let id = scooterId(db)
+        let odo = (try? MaintenanceQueries(db).odometerKm()) ?? nil
+        var list = logged(db)
+        list.append(LoggedWork(what: what, scooterId: id, day: FaultGate.day(epochMs: nowMs()), odoKm: odo))
+        FaultStore.save(db, logKey, list)
+        if let r = what.reminderId { markDone(id: r, db) }
+        if what.relearns { FaultStore.partServiced(what.part, scooterId: id, db) }
+        Log.info(source: "maintenance", "Logged: \(what.title)")
+    }
+
+    /// Reminder page: change the interval, or switch it off (nil)
+    static func setInterval(id: String, km: Double?, _ db: AppDatabase) {
+        let q = MaintenanceQueries(db)
+        guard var r = ((try? q.all()) ?? []).first(where: { $0.id == id }) else { return }
+        r.intervalKm = km
+        if km == nil { r.intervalDays = nil }
+        try? q.save(r)
+    }
+}

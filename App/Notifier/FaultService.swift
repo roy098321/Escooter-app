@@ -16,11 +16,19 @@ final class FaultCenter {
     var popup: FaultRecord?
     /// Open faults, for the Maintenance screen, the Scooter tab and the tab dot
     private(set) var records: [FaultRecord] = []
+    /// N10-19: the orange dot on the Scooter tab (an open issue or a due reminder)
+    private(set) var tabDot = false
+    /// N10-20: the Home line under the status pill, only when something needs doing
+    private(set) var homeLine: String?
 
     private init() {}
 
     func reload(_ db: AppDatabase?) {
         records = FaultStore.records(db)
+        guard let db else { return }
+        let parts = MaintenanceService.parts(db)
+        tabDot = MaintParts.tabDot(parts)
+        homeLine = MaintParts.homeLine(parts)
     }
 
     func dismissPopup() { popup = nil }

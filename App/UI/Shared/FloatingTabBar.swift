@@ -83,6 +83,13 @@ struct FloatingTabBar: View {
                     .scaledFont(20, weight: on ? .semibold : .regular, relativeTo: .body, design: .default)      // A-26
                     .dynamicTypeSize(...DynamicTypeSize.xxLarge)
                     .bounceOnce(on)     // N7-5: the icon hops as its name slides out
+                    .overlay(alignment: .topTrailing) {
+                        // N10-19 (batch 10): an orange dot on Scooter only while a part has an open issue or is due
+                        if item.id == 4, FaultCenter.shared.tabDot {
+                            Circle().fill(Theme.accent).frame(width: 8, height: 8).offset(x: 4, y: -2)
+                                .accessibilityLabel("Maintenance needs attention")
+                        }
+                    }
                 if on {
                     Text(item.title)
                         .font(.subheadline.weight(.semibold))

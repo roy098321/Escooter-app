@@ -473,4 +473,19 @@ final class Batch110Tests: XCTestCase {
         XCTAssertFalse(LogWhatIDid.tyrePressure.relearns, "a check doesn't change the part")
         XCTAssertEqual(PartReminder.part(forReminder: "bolts"), .bolts)
     }
+    /// N10-13 / N10-19 / N10-20 / N10-21 wiring
+    func test_N10_13_to_21_screens() throws {
+        let m = try text("UI/Settings/MaintenanceView.swift")
+        XCTAssertTrue(m.contains("MaintenanceService.parts(db)") && m.contains("Log what I did") && m.contains("IssueCard(row: row)"))
+        XCTAssertFalse(m.contains("checkmark"), "never a green tick")
+        let card = try text("UI/Scooter/MaintenanceCard.swift")
+        XCTAssertTrue(card.contains("NavigationLink { BatteryView() } label: { batteryTile }"), "the Battery tile opens the one Battery page")
+        XCTAssertTrue(card.contains("[.brakes, .tyres, .motor, .electrics, .bolts]"))
+        let scooter = try text("UI/Scooter/ScooterTabView.swift")
+        XCTAssertTrue(scooter.contains("MaintenanceCard(rows: partRows"))
+        XCTAssertFalse(scooter.contains("Label(\"Battery\", systemImage: Self.batterySymbol"), "the separate Battery row is removed")
+        XCTAssertTrue(try text("UI/Battery/BatteryView.swift").contains("BatteryFaultsSection()"), "battery findings on top of the Battery page")
+        XCTAssertTrue(try text("UI/Shared/FloatingTabBar.swift").contains("item.id == 4, FaultCenter.shared.tabDot"))
+        XCTAssertTrue(try text("UI/Home/HomeView.swift").contains("let line = FaultCenter.shared.homeLine"))
+    }
 }
