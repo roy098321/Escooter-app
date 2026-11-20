@@ -69,6 +69,7 @@ public enum FaultKind: String, CaseIterable, Codable, Sendable {
     public var repeatsNeeded: Int {
         switch self {
         case .f2PowerCut, .f3BrakeCut, .f16OdoReset: return 1   // F2 / F3: 1st time → summary; F16 is a plain fact
+        case .f7Sensor: return 2                                  // F7: on 2 rides
         default: return 3
         }
     }
@@ -135,12 +136,14 @@ public enum FaultGate {
 
     /// The bar a value must pass. nil while learning. `minGap` is a fault's own smallest step over the worst normal
     /// (e.g. F5 3 %, F6 10 °C, F12 0.5 V), so a tiny spread can't make a hair-trigger.
-    public static func bar(_ b: FaultBaseline, kind: FaultKind, minGap: Double = 0) -> Double? {
+    /// `atLeast` is a fixed line the bar never drops below (F6 10 °C over the model, F7 5 dips): set from the audit.
+    public static func bar(_ b: FaultBaseline, kind: FaultKind, minGap: Double = 0, atLeast: Double? = nil) -> Double? {
         guard b.learned else { return nil }
         let worst = kind.higherIsWorse ? (b.samples.max() ?? 0) : (b.samples.min() ?? 0)
         // F12 is an absolute voltage: 10 % of 53 V would never trigger, so its margin is 10 % on top of its own step (0.5 V)
         let gap = kind.absoluteScale ? minGap * (1 + margin) : max(abs(worst) * margin, minGap)
         var bar = kind.higherIsWorse ? worst + gap : worst - gap
+        if let line = atLeast { bar = kind.higherIsWorse ? max(bar, line) : min(bar, line) }
         if let floor = b.barFloor { bar = kind.higherIsWorse ? max(bar, floor) : min(bar, floor) }
         return bar
     }
@@ -151,14 +154,14 @@ public enum FaultGate {
 
     /// One ride's value through the gate. Returns the verdict and the updated baseline.
     public static func evaluate(_ base: FaultBaseline, kind: FaultKind, value: Double, ruledOut: Bool = false, minGap: Double = 0,
-                                day: Int) -> (FaultVerdict, FaultBaseline) {
+                                atLeast: Double? = nil, day: Int) -> (FaultVerdict, FaultBaseline) {
         var b = base
         if ruledOut { return (.ruledOut, b) }
         if !kind.needsLearning {
             return alertOrWatch(b, kind: kind, value: value, day: day)
         }
         if b.quiet { return (.quiet, b) }
-        guard let bar = bar(b, kind: kind, minGap: minGap) else {
+        guard let bar = Self.bar(b, kind: kind, minGap: minGap, atLeast: atLeast) else {
             b.samples.append(value)
             if b.samples.count > keep { b.samples.removeFirst(b.samples.count - keep) }
             return (.learning, b)
@@ -237,14 +240,25 @@ public struct FaultBook: Codable, Equatable, Sendable {
 
     public init() {}
 
-    public static func key(_ scooterId: String, _ kind: FaultKind) -> String { scooterId + "|" + kind.rawValue }
-
-    public func baseline(_ scooterId: String, _ kind: FaultKind) -> FaultBaseline {
-        baselines[Self.key(scooterId, kind)] ?? FaultBaseline()
+    /// `variant` splits one fault's normal: F1 per air-temperature band, F5 per route
+    public static func key(_ scooterId: String, _ kind: FaultKind, _ variant: String = "") -> String {
+        scooterId + "|" + kind.rawValue + (variant.isEmpty ? "" : "|" + variant)
     }
 
-    public mutating func set(_ b: FaultBaseline, _ scooterId: String, _ kind: FaultKind) {
-        baselines[Self.key(scooterId, kind)] = b
+    public func baseline(_ scooterId: String, _ kind: FaultKind, _ variant: String = "") -> FaultBaseline {
+        baselines[Self.key(scooterId, kind, variant)] ?? FaultBaseline()
+    }
+
+    public mutating func set(_ b: FaultBaseline, _ scooterId: String, _ kind: FaultKind, _ variant: String = "") {
+        baselines[Self.key(scooterId, kind, variant)] = b
+    }
+
+    mutating func remove(_ scooterId: String, _ match: (FaultKind) -> Bool) {
+        for k in baselines.keys {
+            let parts = k.split(separator: "|", omittingEmptySubsequences: false)
+            guard parts.count >= 2, parts[0] == Substring(scooterId), let kind = FaultKind(rawValue: String(parts[1])), match(kind) else { continue }
+            baselines[k] = nil
+        }
     }
 
     /// A31 / A29: a new firmware version on this scooter → every fault relearns. Returns true when it reset.
@@ -252,12 +266,12 @@ public struct FaultBook: Codable, Equatable, Sendable {
     public mutating func noteFirmware(_ version: String, scooterId: String) -> Bool {
         defer { firmware[scooterId] = version }
         guard let old = firmware[scooterId], old != version else { return false }
-        for kind in FaultKind.allCases { baselines[Self.key(scooterId, kind)] = nil }
+        remove(scooterId) { _ in true }
         return true
     }
 
     /// A30: "I replaced a part" resets the faults of that part
     public mutating func partReplaced(_ part: MaintPart, scooterId: String) {
-        for kind in FaultKind.allCases where kind.part == part { baselines[Self.key(scooterId, kind)] = nil }
+        remove(scooterId) { $0.part == part }
     }
 }

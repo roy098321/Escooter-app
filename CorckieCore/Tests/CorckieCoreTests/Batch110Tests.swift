@@ -162,4 +162,127 @@ final class Batch110Tests: XCTestCase {
         XCTAssertEqual(FaultGate.day(epochMs: 86_400_000 * 3 + 1), 3)
         XCTAssertEqual(FaultGate.day(epochMs: 86_400_000 * 4 - 1), 3)
     }
+    // MARK: Detectors (synthetic rides: a healthy one stays quiet, a faulty one is caught)
+
+    private func frame(_ t: Double, kmh: Double? = 20, v: Double? = 50, a: Double? = 5, temp: Double? = 40, brake: Bool = false,
+                       off: Bool = false, odo: Double? = 100, noReading: Bool = false) -> ScooterFrame {
+        var f = ScooterFrame(t: t)
+        f.speedKmh = kmh; f.voltage = v; f.currentA = a; f.temperatureC = temp; f.brake = brake; f.shuttingDown = off
+        f.odometerKm = odo; f.temperatureNoReading = noReading; f.ageA = 0.2; f.ageB = 0.2
+        return f
+    }
+
+    /// 20 minutes at 1 Hz, current swinging 2…22 A; the voltage drops `mOhm` milliohms per amp
+    private func sagRide(mOhm: Double) -> [ScooterFrame] {
+        (0..<1200).map { k in
+            let i = 12 + 10 * sin(Double(k) / 7)
+            return frame(Double(k), v: 52 - i * mOhm / 1000, a: i)
+        }
+    }
+
+    func test_F1_sagReadsTheStrainAndSkipsTheColdStart() {
+        XCTAssertEqual(FaultDetectors.f1SagMilliohm(sagRide(mOhm: 65))!, 65, accuracy: 0.5)
+        XCTAssertEqual(FaultDetectors.f1SagMilliohm(sagRide(mOhm: 120))!, 120, accuracy: 0.5)
+        XCTAssertNil(FaultDetectors.f1SagMilliohm(Array(sagRide(mOhm: 65).prefix(300))), "under 6 min: nothing")
+        XCTAssertEqual(FaultDetectors.f1Band(airC: 17.9), "air15")
+        XCTAssertEqual(FaultDetectors.f1Band(airC: -2), "air-5")
+        XCTAssertEqual(FaultDetectors.f1Band(airC: nil), "air?")
+    }
+
+    func test_F1_throughTheGate_healthyQuiet_faultyCaught() {
+        var b = FaultBaseline()
+        for k in 0..<10 { b = FaultGate.evaluate(b, kind: .f1Sag, value: 62 + Double(k % 4) * 4, day: k).1 }   // 62…74
+        var v: FaultVerdict = .normal
+        for d in 0..<5 { (v, b) = FaultGate.evaluate(b, kind: .f1Sag, value: FaultDetectors.f1SagMilliohm(sagRide(mOhm: 70))!, day: 20 + d); XCTAssertEqual(v, .normal) }
+        for d in 0..<3 { (v, b) = FaultGate.evaluate(b, kind: .f1Sag, value: FaultDetectors.f1SagMilliohm(sagRide(mOhm: 120))!, day: 30 + d) }
+        if case .alert = v {} else { XCTFail("a strained battery is caught on the 3rd ride") }
+    }
+
+    func test_F2_shutOffAtSpeedOnly() {
+        var ride = (0..<60).map { frame(Double($0), kmh: 30) }
+        XCTAssertEqual(FaultDetectors.f2PowerCutTimes(ride), [])
+        ride[20].shuttingDown = true
+        ride[40].shuttingDown = true; ride[41].shuttingDown = true
+        XCTAssertEqual(FaultDetectors.f2PowerCutTimes(ride), [20, 40], "one cut per shut-off, not per reading")
+        var parked = (0..<10).map { frame(Double($0), kmh: 0) }
+        parked[5].shuttingDown = true
+        XCTAssertEqual(FaultDetectors.f2PowerCutTimes(parked), [], "switching off at a stop is not a cut")
+    }
+
+    func test_F3_threeSecondsOfBrakeWithCurrent() {
+        var ride = (0..<40).map { frame(Double($0) * 0.5, a: 10) }
+        for k in 10..<12 { ride[k].brake = true }                // 0.5 s: the audit's healthy timing overlap
+        XCTAssertEqual(FaultDetectors.f3BrakeRuns(ride), [])
+        for k in 20..<28 { ride[k].brake = true }                // 3.5 s
+        XCTAssertEqual(FaultDetectors.f3BrakeRuns(ride), [13.5])
+        var cut = ride
+        for k in 20..<28 { cut[k].currentA = 0 }                  // motor cut properly
+        XCTAssertEqual(FaultDetectors.f3BrakeRuns(cut), [])
+    }
+
+    func test_F5_medianShift_singleBadRidesIgnored() {
+        var healthy = Array(repeating: 0.995, count: 20)
+        healthy[13] = 1.37; healthy[17] = 1.14                    // GPS trouble on single rides
+        XCTAssertLessThan(FaultDetectors.f5ShiftPct(routeRatios: healthy)!, 0.5)
+        let worn = Array(repeating: 0.995, count: 10) + Array(repeating: 1.04, count: 10)
+        XCTAssertGreaterThan(FaultDetectors.f5ShiftPct(routeRatios: worn)!, 3.3)
+        XCTAssertNil(FaultDetectors.f5ShiftPct(routeRatios: Array(repeating: 1, count: 19)))
+    }
+
+    func test_F6_modelLearnsTheLoad_overheatStandsOut() {
+        let pts = (0..<12).map { k -> FaultDetectors.HeatPoint in
+            let e = 8 + Double(k % 5), m = 15 + Double(k * 3 % 20)
+            return .init(riseC: 20 + 3 * e + 0.5 * m + (k % 2 == 0 ? 2 : -2), whPerMin: e, minutes: m)
+        }
+        let model = FaultDetectors.f6Model(pts)!
+        XCTAssertLessThan(abs(FaultDetectors.f6OverModelC(.init(riseC: 20 + 30 + 10, whPerMin: 10, minutes: 20), model: model)), 3)
+        XCTAssertGreaterThan(FaultDetectors.f6OverModelC(.init(riseC: 20 + 30 + 10 + 14, whPerMin: 10, minutes: 20), model: model), FaultDetectors.f6LineC)
+        XCTAssertNil(FaultDetectors.f6Model(Array(pts.prefix(9))), "learn 10 rides first")
+        let b = FaultBaseline(), learned = (0..<10).reduce(b) { acc, k in FaultGate.evaluate(acc, kind: .f6Heat, value: Double(k % 5) - 2, day: k).1 }
+        XCTAssertEqual(FaultGate.bar(learned, kind: .f6Heat, atLeast: FaultDetectors.f6LineC)!, 10, "the audit's fixed 10 °C line")
+    }
+
+    func test_F7_dipsAndImpossibleReadings() {
+        var ride = (0..<100).map { frame(Double($0), temp: 40) }
+        ride[10].temperatureC = 26; ride[30].temperatureC = 55
+        XCTAssertEqual(FaultDetectors.f7Score(ride), 2, "healthy max 2")
+        for k in [50, 60, 70] { ride[k].temperatureC = 20 }
+        XCTAssertEqual(FaultDetectors.f7Score(ride), 5)
+        var noRead = (0..<100).map { frame(Double($0)) }
+        noRead[50].temperatureC = nil; noRead[50].temperatureNoReading = true
+        XCTAssertEqual(FaultDetectors.f7Score(noRead), 5, "no reading mid-ride without a link drop")
+        XCTAssertEqual(FaultDetectors.f7Score(noRead, linkDropTimes: [45]), 0, "after a restart it's expected")
+        var wheel = (0..<10).map { frame(Double($0)) }
+        wheel[5].speedKmh = 0
+        XCTAssertEqual(FaultDetectors.f7Score(wheel, gpsKmhAt: { _ in 25 }), 5)
+        XCTAssertEqual(FaultDetectors.f7Score(wheel), 0, "no GPS speed: can't tell")
+    }
+
+    func test_F11_parkRules() {
+        XCTAssertEqual(FaultDetectors.f11DrainVPerDay(startV: 48.21, endV: 47.21, hours: 24, odoStartKm: 700, odoEndKm: 700, fullV: 54)!, 1, accuracy: 1e-9)
+        XCTAssertNil(FaultDetectors.f11DrainVPerDay(startV: 48, endV: 47, hours: 11, odoStartKm: nil, odoEndKm: nil, fullV: 54), "short park")
+        XCTAssertNil(FaultDetectors.f11DrainVPerDay(startV: 48, endV: 47, hours: 24, odoStartKm: 700, odoEndKm: 703, fullV: 54), "someone rode it")
+        XCTAssertNil(FaultDetectors.f11DrainVPerDay(startV: 48, endV: 52, hours: 24, odoStartKm: nil, odoEndKm: nil, fullV: 54), "charged")
+        XCTAssertNil(FaultDetectors.f11DrainVPerDay(startV: 54.22, endV: 53.91, hours: 9.7 + 3, odoStartKm: nil, odoEndKm: nil, fullV: 54.4), "fresh off the charger (audit)")
+    }
+
+    func test_F12_restingVoltageSkipsTheFake100() {
+        var ride = (0..<30).map { frame(Double($0), kmh: 0, v: 54.4, a: 0.2) }
+        for k in 0..<10 { ride[k].voltage = 55 }
+        ride[12].voltage = 53.9
+        XCTAssertEqual(FaultDetectors.f12RestingVoltage(ride), 54.4)
+        XCTAssertEqual(FaultDetectors.f12StepV, 0.5)
+    }
+
+    func test_F16_resetBackwardsOrZero_forwardIgnored() {
+        XCTAssertTrue(FaultDetectors.f16Reset(previousKm: 1114, nowKm: 0.3))
+        XCTAssertTrue(FaultDetectors.f16Reset(previousKm: 1114, nowKm: 900))
+        XCTAssertFalse(FaultDetectors.f16Reset(previousKm: 707, nowKm: 1065), "forward across a park: someone else rode")
+        XCTAssertFalse(FaultDetectors.f16Reset(previousKm: 1114, nowKm: 1114.2))
+        var ride = (0..<30).map { frame(Double($0), odo: 500) }
+        ride[5].odometerKm = 900
+        XCTAssertFalse(FaultDetectors.f16JumpInRide(ride), "one wrong reading")
+        for k in 15..<30 { ride[k].odometerKm = 900 }
+        XCTAssertTrue(FaultDetectors.f16JumpInRide(ride))
+    }
 }
