@@ -1,5 +1,25 @@
 [
   {
+    "version": "110.221126.01",
+    "headline": "A new look for the logo",
+    "items": [
+      {
+        "symbol": "circle.circle",
+        "title": "New logo on Home",
+        "line": "The top left of Home shows the round CorckieApp logo."
+      },
+      {
+        "symbol": "checkmark.circle",
+        "title": "Nothing else changed",
+        "line": "Everything from the last update stays as it was."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "Home's top-left logo is the new round C on black (owner 22 Nov)."
+    ]
+  },
+  {
     "version": "110.221126.00",
     "headline": "Your scooter's health",
     "items": [

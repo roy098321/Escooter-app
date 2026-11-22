@@ -2,6 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 110.221126.01 — hotfix 01 of batch 10 (owner 22 Nov)
+
+- B97 follow-up: Home's top-left logo is the owner's new round logo (the orange C on a black disc, cut to the circle); asset HeaderMark @2x/@3x.
+
 ## 110.221126.00 — batch 10: maintenance (fault recognition, Maintenance screen, history, mechanic report) + B97–B99
 
 - N10-1..N10-11: fault recognition behind one shared gate (learn 10 rides per scooter, worst normal + 10 %, repeats, ruled-out rides, Checked it's fine, 2-week rule, one per summary; firmware change relearns, a replaced part resets): F1 battery strain, F2 power cuts (the scooter's shut-off signal; the link-lost path follows the standing test on the new scooter), F3 brake not cutting the motor, F5 tyre, F6 heat vs a learned model, F7 impossible sensor readings, F11 parked drain, F12 voltage at full, F16 km counter reset. F4 and F8 dropped after the audit.
