@@ -180,7 +180,9 @@ final class ChargeTimer {
             Task { @MainActor in Haptics.success() }
         }
         let link = AppModel.shared.scooter
-        if sideEffects, session != nil, link.connected, let p = AppModel.shared.settledBatteryPct { realReading(pct: p); return }
+        // EXPERIMENTAL auto measure: switching on while it charges is a reading, not the end of the charge
+        if sideEffects, session != nil, link.connected, !ChargeAutoStore.active(AppModel.shared.database),
+           let p = AppModel.shared.settledBatteryPct { realReading(pct: p); return }
         if sideEffects, session == nil, unplugged != nil { settleUnplugged() }   // B72
         if let s = session { LiveActivityController.shared.sync(s, nowMs: nowMs) }
     }

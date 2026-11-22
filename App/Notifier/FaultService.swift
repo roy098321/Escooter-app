@@ -279,6 +279,13 @@ final class FaultSwitchOn {
     private func evaluate() {
         guard collecting else { return }
         collecting = false
+        // EXPERIMENTAL charging speed: while measuring, a switch-on is a charging reading only. The charger lifts the voltage,
+        // so these readings must never teach the F11 / F12 normals.
+        if ChargeAutoStore.active(AppModel.shared.database) {
+            ChargeAutoStore.switchedOn(frames, db: AppModel.shared.database)
+            frames = []
+            return
+        }
         guard let db = AppModel.shared.database, !db.isReadOnly, frames.count > 5 else { return }
         let id = ScooterRecord.latest(in: db)?.id ?? "scooter"
         let last = try? db.writer.read { d in

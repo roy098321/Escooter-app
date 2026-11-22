@@ -570,4 +570,28 @@ final class Batch110Tests: XCTestCase {
         XCTAssertEqual(strip.shown.first, .brakeFault, "red first")
         XCTAssertTrue(try text("Adapters/RecorderService.swift").contains("input.powerCutLight = LiveFaultWatch.shared.powerCutLight"))
     }
+    // MARK: hotfix 110.221126.01 · experimental charging speed from switch-on readings
+
+    func test_chargeAuto_threeSteadyReadingsAreEnough() {
+        let m: Int64 = 60_000
+        func r(_ min: Int64, _ pct: Double) -> ChargeAutoMeasure.Reading { .init(atMs: min * m, pct: pct, voltage: 50) }
+        XCTAssertEqual(ChargeAutoMeasure.result([r(0, 40), r(20, 46)]), .needMore(1))
+        XCTAssertEqual(ChargeAutoMeasure.result([r(0, 40), r(20, 46), r(40, 52)]), .done(pctPerHour: 18))
+        XCTAssertEqual(ChargeAutoMeasure.result([r(0, 40), r(20, 46), r(30, 49)]), .needMore(1), "under 40 minutes")
+        if case .notSteady = ChargeAutoMeasure.result([r(0, 40), r(20, 55), r(40, 52)]) {} else { XCTFail("a jump is not steady") }
+        var frames = (0..<20).map { i -> ScooterFrame in var f = ScooterFrame(t: Double(i)); f.speedKmh = 0; f.batteryPct = i < 10 ? 100 : 47; f.voltage = 51; return f }
+        frames[15].batteryPct = 48
+        XCTAssertEqual(ChargeAutoMeasure.reading(frames, atMs: 5)?.pct, 47, "the fake 100 % at switch-on is skipped")
+    }
+    /// Hotfix 110.221126.01: a part tile opens its own page (one screen, nothing pops up); the charging experiment keeps the timer
+    func test_hotfix01_partPageAndChargeAuto() throws {
+        let card = try text("UI/Scooter/MaintenanceCard.swift")
+        XCTAssertTrue(card.contains("NavigationLink { PartPageView(part: p) }"))
+        XCTAssertFalse(card.contains("MaintenanceView(focus:"), "no push-then-pop-up")
+        let m = try text("UI/Settings/MaintenanceView.swift")
+        XCTAssertFalse(m.contains(".sheet(item: $fault)") || m.contains("ReminderSheet(reminderId:"), "rows push a page, no card on top")
+        XCTAssertTrue(try text("Charge/ChargeTimer.swift").contains("!ChargeAutoStore.active(AppModel.shared.database)"))
+        let svc = try text("Notifier/FaultService.swift")
+        XCTAssertTrue(svc.contains("if ChargeAutoStore.active(AppModel.shared.database) {"), "charging readings never teach F11 / F12")
+    }
 }

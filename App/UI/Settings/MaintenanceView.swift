@@ -8,18 +8,9 @@ import SwiftUI
 /// Tap: a fault → its page; a reminder → its page (interval editable or off); Battery → the one Battery page (N10-21).
 /// One button: Log what I did.
 struct MaintenanceView: View {
-    /// N10-21: open straight on a part (from a Scooter tab tile)
-    var focus: MaintPart?
-
     @State private var rows: [PartRow] = []
     @State private var header = ""
-    @State private var fault: FaultRecord?
-    @State private var reminder: ReminderTarget?
     @State private var logging = false
-    @State private var battery = false
-    @State private var focused = false
-
-    struct ReminderTarget: Identifiable { let id: String }
 
     static let orange = Theme.accent
     static let red = Color(hex: "#C81E1E")
@@ -32,13 +23,13 @@ struct MaintenanceView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
                 ForEach(rows.filter(\.standsOut)) { row in
-                    Button { open(row) } label: { IssueCard(row: row) }
+                    NavigationLink { destination(row) } label: { IssueCard(row: row) }
                         .buttonStyle(.plain)
                 }
                 VStack(spacing: 0) {
                     let quiet = rows.filter { !$0.standsOut }
                     ForEach(Array(quiet.enumerated()), id: \.element.id) { i, row in
-                        Button { open(row) } label: { PartListRow(row: row) }
+                        NavigationLink { destination(row) } label: { PartListRow(row: row) }
                             .buttonStyle(.plain)
                         if i < quiet.count - 1 { Divider().padding(.leading, 72) }
                     }
@@ -65,28 +56,13 @@ struct MaintenanceView: View {
                 }
             }
         }
-        .navigationDestination(isPresented: $battery) { BatteryView() }
-        .sheet(item: $fault) { r in FaultDetailSheet(record: r, onDone: reload) }
-        .sheet(item: $reminder, onDismiss: reload) { t in ReminderSheet(reminderId: t.id) }
         .sheet(isPresented: $logging, onDismiss: reload) { LogWorkSheet() }
-        .onAppear {
-            reload()
-            if let f = focus, !focused, let row = rows.first(where: { $0.part == f }) {
-                focused = true
-                open(row)
-            }
-        }
+        .onAppear(perform: reload)
     }
 
-    private func open(_ row: PartRow) {
-        switch row.state {
-        case .issue(_, let id):
-            fault = FaultStore.records(AppModel.shared.database).first { $0.id == id }
-        case .due(let id):
-            reminder = ReminderTarget(id: id)
-        default:
-            if row.part == .battery { battery = true } else if let r = row.reminderId { reminder = ReminderTarget(id: r) }
-        }
+    /// Option A (hotfix 110.221126.01): a row opens its part's page; Battery opens the one Battery page. Nothing pops up on top.
+    @ViewBuilder private func destination(_ row: PartRow) -> some View {
+        if row.part == .battery, !row.standsOut { BatteryView() } else { PartPageView(part: row.part) }
     }
 
     private func reload() {

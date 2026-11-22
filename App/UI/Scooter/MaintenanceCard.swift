@@ -27,7 +27,7 @@ struct MaintenanceCard: View {
                 .buttonStyle(.plain)
             HStack(spacing: 8) {
                 ForEach(Self.small, id: \.self) { p in
-                    NavigationLink { MaintenanceView(focus: p) } label: { tile(p) }
+                    NavigationLink { PartPageView(part: p) } label: { tile(p) }   // option A: the part's own page, one screen
                         .buttonStyle(.plain)
                 }
             }

@@ -1,7 +1,7 @@
 [
   {
     "version": "110.221126.01",
-    "headline": "A new look for the logo",
+    "headline": "New logo, quicker parts, charging test",
     "items": [
       {
         "symbol": "circle.circle",
@@ -9,14 +9,21 @@
         "line": "The top left of Home shows the round CorckieApp logo."
       },
       {
-        "symbol": "checkmark.circle",
-        "title": "Nothing else changed",
-        "line": "Everything from the last update stays as it was."
+        "symbol": "hand.tap",
+        "title": "One tap to a part",
+        "line": "On the Scooter tab, tapping Brakes, Tyres, Motor and the others opens that part's own page."
+      },
+      {
+        "symbol": "bolt.fill",
+        "title": "Charging speed, no typing (test)",
+        "line": "Battery, Measure charging speed: switch the scooter on for 15 seconds every 20 minutes while it charges. 3 steady readings are enough."
       }
     ],
     "smallerFixes": 0,
     "full": [
-      "Home's top-left logo is the new round C on black (owner 22 Nov)."
+      "Home's top-left logo is the new round C on black.",
+      "A part tile or a Maintenance row opens that part's page directly: what was found or the next check, its reminder, Log what I did. Nothing pops up on top.",
+      "Experimental: charging speed from switch-on readings. While it runs, switching on does not end the charge timer, and these readings never count for the battery or charger checks."
     ]
   },
   {

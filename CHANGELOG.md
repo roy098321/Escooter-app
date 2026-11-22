@@ -5,6 +5,8 @@ One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). P
 ## 110.221126.01 — hotfix 01 of batch 10 (owner 22 Nov)
 
 - B97 follow-up: Home's top-left logo is the owner's new round logo (the orange C on a black disc, cut to the circle); asset HeaderMark @2x/@3x.
+- Option A (owner 22 Nov, mock tile-opens-part-A.png): a Scooter tab part tile and a Maintenance row open the part's own page (PartPageView); the push-then-pop-up is gone.
+- EXPERIMENTAL (owner 22 Nov): charging speed from switch-on readings (ChargeAutoMeasure / ChargeAutoStore): 3 readings over 40+ min within 2 % of a straight line; first 10 s skipped; the charge timer stays on; readings (time, %, V) logged and kept for Export everything; never fed to F11 / F12.
 
 ## 110.221126.00 — batch 10: maintenance (fault recognition, Maintenance screen, history, mechanic report) + B97–B99
 
