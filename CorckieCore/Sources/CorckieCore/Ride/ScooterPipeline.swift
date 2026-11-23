@@ -56,12 +56,12 @@ public struct ScooterPipeline {
                 plausibility.tick(at: e.t)
                 return
             }
-            var checked = plausibility.check(raw, isPacketA: kind == .a)
+            var checked = plausibility.check(raw, isPacketA: kind != .b)   // B102: a G500 packet carries the A fields
             lastDropped = checked.dropped
             // B56: everything after this point sees the flip-filtered %
             // B54: settled on the filtered value (B56: "3 equal readings" never fires on flipping data). Only a packet A brings
             // a new reading; a packet B frame repeats the last value handed on.
-            if kind == .a {
+            if kind != .b {
                 if let pct = checked.frame.batteryPct {
                     batteryOut = batterySettle.reading(pct: batteryFilter.reading(pct, at: e.t), at: e.t)
                 } else {

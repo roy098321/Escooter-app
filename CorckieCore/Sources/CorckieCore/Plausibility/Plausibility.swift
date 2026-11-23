@@ -103,7 +103,7 @@ public struct Plausibility {
                 if v < 0 { f.speedKmh = nil; dropped.append(.speed) } else { lastSpeed = (t, v) }
             }
             // Voltage outside the pack range (T05)
-            if let volts = f.voltage, volts < T.t05MinVoltage || volts > T.t05MaxVoltage {
+            if let volts = f.voltage, !f.layout.voltageRange.contains(volts) {   // B102: per pack (G2 = T05)
                 f.voltage = nil
                 dropped.append(.voltage)
             }

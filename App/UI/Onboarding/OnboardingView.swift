@@ -130,7 +130,8 @@ struct OnboardingView: View {
                         .font(.subheadline.weight(.semibold))
                         .multilineTextAlignment(.center)
                     // B102: a data layout the app can't read yet: it connects and keeps the raw data, no numbers shown
-                    Text(link.numbersUnsupported ? "Connected \u{00B7} numbers not supported yet" : "Check that your dashboard shows the same km.")
+                    Text(link.numbersUnsupported ? "Connected \u{00B7} numbers not supported yet"
+                         : link.frame?.odometerKm != nil ? "Check that your dashboard shows the same km." : "Connected")   // B102: the G500 sends no km
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

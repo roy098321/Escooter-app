@@ -2,6 +2,12 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.03 — hotfix 03 of batch 11: B102 step 2, the RND G500 decoder
+
+- B102: `PacketG500` (20 bytes starting 0x24 0x20): voltage 4–5 ÷ 100, current 6–7 ÷ 100, wheel speed 10–11 × 0.0516 km/h (GPS-checked; the dashboard's km/h in byte 12 reads ~8 % higher), temperature 14–15 ÷ 100 (🟡), status 18 (0x02 motor · 0x08 brake · 0x80 shutting down). No odometer, battery % or gear in the stream: they stay nil; ride distance comes from the wheel speed (RideEngine's integrated distance).
+- FrameAssembler.Kind `.full` (one packet with the A and B fields): RideTotals adds speed and energy from it; plausibility voltage range per layout (`ScooterLayout.voltageRange`: G2 = T05, G500 42–68 V).
+- Setup line: "Connected" when the scooter sends no km (instead of "check the same km"). Decoder.version 2.
+
 ## 111.291126.02 — hotfix 02 of batch 11: B102 setup kept searching while the scooter was connected
 
 - B102: OnboardingView's found check ran on a Timer publisher made in the view's init; Home redraws every second and re-made it, so the tick could miss and setup kept "searching" (no Connect) although the scooter was connected. It now runs in a `.task` loop tied to the screen and also reacts to the connection at once (`onChange(of: connected)`). Guard test in B102Tests.

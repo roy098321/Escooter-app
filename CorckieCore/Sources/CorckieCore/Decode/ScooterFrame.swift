@@ -23,6 +23,8 @@ public struct ScooterFrame: Equatable, Sendable {
     /// Seconds since the last packet A / B
     public var ageA: Double?
     public var ageB: Double?
+    /// B102: which scooter layout made the frame (the plausibility voltage range depends on the pack)
+    public var layout: ScooterLayout = .g2
 
     public init(t: Double) {
         self.t = t
@@ -35,17 +37,33 @@ public struct ScooterFrame: Equatable, Sendable {
     }
 }
 
+/// B102: the data layouts the app can read
+public enum ScooterLayout: String, Equatable, Sendable {
+    case g2, g500
+
+    /// Voltage readings outside this range are dropped (T05 for the G2's 48 V pack)
+    public var voltageRange: ClosedRange<Double> {
+        switch self {
+        case .g2: return T.t05MinVoltage...T.t05MaxVoltage
+        case .g500: return PacketG500.voltageRange
+        }
+    }
+}
+
 /// Keeps the latest A and B and builds a frame for every packet.
 public struct FrameAssembler {
     /// Packet B values older than this count as missing (CALC_SPEC §1).
     public static let maxAgeBS = 2.0
 
-    public enum Kind: Sendable { case a, b }
+    /// `.full`: one packet with both the A fields (speed, voltage, status) and the B fields (current, temperature): the G500
+    public enum Kind: Sendable { case a, b, full }
 
     public private(set) var lastA: PacketA?
     public private(set) var lastATime: Double?
     public private(set) var lastB: PacketB?
     public private(set) var lastBTime: Double?
+    public private(set) var lastG500: PacketG500?
+    public private(set) var lastG500Time: Double?
     public private(set) var packetCount = 0
     public private(set) var unknownCount = 0
     /// Which packet made the last frame
@@ -73,6 +91,11 @@ public struct FrameAssembler {
             lastB = b
             lastBTime = t
             lastKind = .b
+        case .g500(let g):
+            packetsASinceReset += 1
+            lastG500 = g
+            lastG500Time = t
+            lastKind = .full
         case .unknown:
             unknownCount += 1
             if !bytes.allSatisfy({ $0 == 0xFF }) { foreignSinceReset += 1 }
@@ -83,6 +106,22 @@ public struct FrameAssembler {
 
     public func frame(at t: Double) -> ScooterFrame {
         var f = ScooterFrame(t: t)
+        if let g = lastG500, let tg = lastG500Time {
+            // B102: odometer, battery %, gear, cap and headlight are not sent: they stay nil / off
+            f.layout = .g500
+            f.speedKmh = g.speedKmh
+            f.voltage = g.voltage
+            f.brake = g.brake
+            f.shuttingDown = g.shuttingDown
+            f.motorPowered = g.motorPowered
+            f.ageA = t - tg
+            f.ageB = t - tg
+            if t - tg <= Self.maxAgeBS {
+                f.temperatureC = g.temperatureC
+                f.currentA = g.currentA
+            }
+            return f
+        }
         if let a = lastA, let ta = lastATime {
             f.speedKmh = a.speedKmh
             f.voltage = a.voltage
@@ -114,6 +153,8 @@ public struct FrameAssembler {
         lastATime = nil
         lastB = nil
         lastBTime = nil
+        lastG500 = nil
+        lastG500Time = nil
         packetsASinceReset = 0
         foreignSinceReset = 0
     }

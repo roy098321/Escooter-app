@@ -40,8 +40,12 @@ public struct RideTotals: Sendable {
 
     /// Adds one checked frame. `kind` says which packet made it.
     public mutating func add(_ f: ScooterFrame, kind: FrameAssembler.Kind) {
-        switch kind {
-        case .a:
+        if kind != .b { addA(f) }
+        if kind != .a { addB(f) }   // B102: a G500 packet (.full) brings both
+    }
+
+    private mutating func addA(_ f: ScooterFrame) {
+        do {
             if let km = f.odometerKm {
                 if odometerStartKm == nil { odometerStartKm = km }
                 odometerEndKm = km
@@ -56,7 +60,11 @@ public struct RideTotals: Sendable {
                 if v > 0 { lowestMovingSpeedKmh = min(lowestMovingSpeedKmh ?? v, v) }
                 addSpeed(t: f.t, kmh: v)
             }
-        case .b:
+        }
+    }
+
+    private mutating func addB(_ f: ScooterFrame) {
+        do {
             if f.temperatureC == nil, (f.ageB ?? 99) == 0 { noReadingTemperaturePackets += 1 }
             if let c = f.temperatureC {
                 if temperatureStartC == nil { temperatureStartC = c }

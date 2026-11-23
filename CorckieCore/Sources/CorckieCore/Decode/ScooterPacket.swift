@@ -47,9 +47,41 @@ public struct PacketB: Equatable, Sendable {
     public var currentA: Double { Double(Decoder.le(bytes, 8, 2)) / 100 }
 }
 
+/// RND G500 status packet (20 bytes, starts 0x24 0x20) · PROTOCOL.md "RND G500" (B102, decoded from the owner's first ride
+/// against GPS and the dashboard). One packet carries what the G2 splits over A and B. It has no odometer, no battery %
+/// and no gear: those stay nil (never 0), and ride distance comes from the wheel speed.
+public struct PacketG500: Equatable, Sendable {
+    public let bytes: [UInt8]
+
+    /// Wheel speed per raw unit (bytes 10–11), km/h: GPS speed ÷ raw, median of 448 fixes over 8 km/h. The dashboard's own
+    /// km/h (byte 12) reads ~8 % higher, as speedometers do.
+    public static let wheelKmhPerUnit = 0.0516
+    /// Pack voltage range the readings may take (G500 rested at ~60.7 V full, sagged to ~55 V under load)
+    public static let voltageRange = 42.0...68.0
+
+    /// Battery voltage, V — bytes 4–5 LE ÷ 100 ✅ (sags with current)
+    public var voltage: Double { Double(Decoder.le(bytes, 4, 2)) / 100 }
+    /// Motor current, A — bytes 6–7 LE ÷ 100 🟡 (0.03 A standing, ~40 A at full pull; voltage sag follows it)
+    public var currentA: Double { Double(Decoder.le(bytes, 6, 2)) / 100 }
+    /// Wheel speed raw — bytes 10–11 LE
+    public var speedRaw: Int { Decoder.le(bytes, 10, 2) }
+    public var speedKmh: Double { Double(speedRaw) * Self.wheelKmhPerUnit }
+    /// The speed the dashboard shows, km/h — byte 12
+    public var dashboardKmh: Int { Int(bytes[12]) }
+    /// Temperature, °C — bytes 14–15 LE ÷ 100 🟡 (~25 °C at rest, rises over a ride and keeps rising just after hard pulls)
+    public var temperatureC: Double { Double(Decoder.le(bytes, 14, 2)) / 100 }
+    /// Status bits — byte 18, as the G2's byte 4: 0x02 motor powered · 0x08 brake · 0x80 shutting down 🟡
+    public var status: UInt8 { bytes[18] }
+    public var motorPowered: Bool { status & 0x02 != 0 }
+    public var brake: Bool { status & 0x08 != 0 }
+    public var shuttingDown: Bool { status & 0x80 != 0 }
+}
+
 public enum ScooterPacket: Equatable, Sendable {
     case a(PacketA)
     case b(PacketB)
+    /// B102: RND G500 (one packet with everything it sends)
+    case g500(PacketG500)
     /// Any other length or layout: counted, never decoded (e.g. the 128-byte FF line)
     case unknown(length: Int)
 }
@@ -57,11 +89,13 @@ public enum ScooterPacket: Equatable, Sendable {
 /// Decoder · CALC_SPEC §1. Read-only: it has no encoder (that lives in CorckieSim, for tests only).
 public enum Decoder {
     /// Raised whenever a decode rule changes, so old rides are re-computed from raw (DATA_MODEL V5).
-    public static let version = 1
+    /// 2 = B102: strict G2 layout check + the RND G500 packet.
+    public static let version = 2
 
     public static func decode(_ bytes: [UInt8]) -> ScooterPacket {
         if isG2PacketA(bytes) { return .a(PacketA(bytes: bytes)) }
         if bytes.count == 11 { return .b(PacketB(bytes: bytes)) }
+        if isG500(bytes) { return .g500(PacketG500(bytes: bytes)) }
         return .unknown(length: bytes.count)
     }
 
@@ -71,6 +105,12 @@ public enum Decoder {
     /// unknown: counted, kept raw, never shown or stored as numbers.
     public static func isG2PacketA(_ b: [UInt8]) -> Bool {
         b.count == 20 && b[19] == 0 && b[2] == 0 && (1...3).contains(b[5]) && b[18] <= 100
+    }
+
+    /// B102: the RND G500 layout: 20 bytes starting 0x24 0x20 (constant on every packet seen), ending in 0. Bytes 2–3 are the
+    /// scooter's own ID and are not checked (any G500 must match).
+    public static func isG500(_ b: [UInt8]) -> Bool {
+        b.count == 20 && b[0] == 0x24 && b[1] == 0x20 && b[19] == 0
     }
 
     /// Little-endian unsigned integer.

@@ -91,4 +91,62 @@ final class B102Tests: XCTestCase {
         XCTAssertTrue(onboarding.contains(".onChange(of: AppModel.shared.scooter.connected)"))
         XCTAssertTrue(onboarding.contains("AppModel.shared.scooter.confirmPairing()"))
     }
+
+    // MARK: B102 step 2 · RND G500 decoder (synthetic packets; bytes 2–3 are a made-up ID)
+
+    /// 59.04 V · 5.00 A · raw 1000 · dashboard 55 · 25.00 °C · motor powered
+    let g500 = Hex.bytes("24 20 12 34 10 17 F4 01 2C 00 E8 03 37 00 C4 09 01 00 02 00")!
+
+    func test_g500_everyField() {
+        guard case .g500(let p) = Decoder.decode(g500) else { return XCTFail("not a G500 packet") }
+        XCTAssertEqual(p.voltage, 59.04, accuracy: 1e-9)
+        XCTAssertEqual(p.currentA, 5.0, accuracy: 1e-9)
+        XCTAssertEqual(p.speedRaw, 1000)
+        XCTAssertEqual(p.speedKmh, 51.6, accuracy: 1e-9)
+        XCTAssertEqual(p.dashboardKmh, 55)
+        XCTAssertEqual(p.temperatureC, 25.0, accuracy: 1e-9)
+        XCTAssertTrue(p.motorPowered)
+        XCTAssertFalse(p.brake)
+        XCTAssertFalse(p.shuttingDown)
+        XCTAssertFalse(Decoder.isG2PacketA(g500), "never read with the G2 layout")
+    }
+
+    func test_g500_frame_hasNoKmPercentOrGear() throws {
+        var a = FrameAssembler()
+        let f = try XCTUnwrap(a.ingest(g500, at: 0))
+        XCTAssertEqual(a.lastKind, .full)
+        XCTAssertFalse(a.numbersUnsupported)
+        XCTAssertEqual(f.layout, .g500)
+        XCTAssertNil(f.odometerKm)
+        XCTAssertNil(f.batteryPct)
+        XCTAssertNil(f.gear)
+        XCTAssertNil(f.capKmh)
+        XCTAssertEqual(f.speedKmh ?? -1, 51.6, accuracy: 1e-9)
+        XCTAssertEqual(f.powerW ?? -1, 59.04 * 5, accuracy: 1e-6)
+    }
+
+    func test_g500_voltageKept_g2RangeStillApplies() {
+        var p = Plausibility()
+        var f = ScooterFrame(t: 0)
+        f.layout = .g500
+        f.voltage = 60.6
+        XCTAssertEqual(p.check(f, isPacketA: true).frame.voltage, 60.6)
+        var g = ScooterFrame(t: 1)
+        g.voltage = 60.6
+        XCTAssertNil(p.check(g, isPacketA: true).frame.voltage, "G2 pack: T05 still drops 60.6 V")
+    }
+
+    func test_g500_ride_speedEnergyAndNoOdometer() {
+        var pipe = ScooterPipeline()
+        pipe.handle(TimedScooterEvent(t: 0, event: .connected))
+        for i in 0..<60 {          // 18 s at ~3.3 packets/s
+            pipe.handle(TimedScooterEvent(t: Double(i) * 0.3, event: .packet(g500)))
+        }
+        XCTAssertEqual(pipe.totals.topSpeedKmh, 51.6, accuracy: 1e-6)
+        XCTAssertGreaterThan(pipe.totals.energyWhRaw, 1.0)              // 295 W for ~17.7 s ≈ 1.45 Wh
+        XCTAssertNil(pipe.totals.odometerStartKm)
+        XCTAssertNil(pipe.totals.batteryStartPct)
+        XCTAssertEqual(pipe.totals.temperaturePeakC ?? -1, 25.0, accuracy: 1e-9)
+        XCTAssertNil(pipe.frame?.batteryPct)
+    }
 }

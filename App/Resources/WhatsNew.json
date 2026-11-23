@@ -1,5 +1,30 @@
 [
   {
+    "version": "111.291126.03",
+    "headline": "Your G500's numbers",
+    "items": [
+      {
+        "symbol": "speedometer",
+        "title": "Speed and rides",
+        "line": "The G500's speed is read, so rides get their km, time and top speed."
+      },
+      {
+        "symbol": "bolt",
+        "title": "Power and energy",
+        "line": "Volts, amps and Wh per ride, like on the G100."
+      },
+      {
+        "symbol": "thermometer.medium",
+        "title": "What it doesn't send",
+        "line": "The G500 sends no total km or battery %: those stay empty, never guessed."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "RND G500 decoded from your first ride: speed (wheel turns, checked against GPS), voltage, current, temperature, brake and motor. Ride distance comes from the wheel speed."
+    ]
+  },
+  {
     "version": "111.291126.02",
     "headline": "Setup finds your scooter",
     "items": [
