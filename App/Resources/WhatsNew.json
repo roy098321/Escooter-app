@@ -1,5 +1,25 @@
 [
   {
+    "version": "111.291126.02",
+    "headline": "Setup finds your scooter",
+    "items": [
+      {
+        "symbol": "checkmark.circle",
+        "title": "Found right away",
+        "line": "Setup shows your scooter the moment it connects."
+      },
+      {
+        "symbol": "link",
+        "title": "Then tap Connect",
+        "line": "Connect saves it, also a G500."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "Setup could keep searching while the scooter was already connected; it now follows the connection itself."
+    ]
+  },
+  {
     "version": "111.291126.01",
     "headline": "Your G500 can be saved",
     "items": [

@@ -80,4 +80,15 @@ final class B102Tests: XCTestCase {
         i.numbersUnsupported = false
         XCTAssertEqual(HomeLogic.model(i).batteryText, "57%")
     }
+
+    /// B102 (.02): setup kept "searching" while the scooter was connected: its found check hung on a Timer publisher
+    /// re-made on every Home redraw. It must follow the connection itself.
+    func test_setup_followsTheConnection_notARemadeTimer() throws {
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("App")
+        let onboarding = try String(contentsOf: folder.appendingPathComponent("UI/Onboarding/OnboardingView.swift"), encoding: .utf8)
+        XCTAssertFalse(onboarding.contains("Timer.publish"))
+        XCTAssertTrue(onboarding.contains(".onChange(of: AppModel.shared.scooter.connected)"))
+        XCTAssertTrue(onboarding.contains("AppModel.shared.scooter.confirmPairing()"))
+    }
 }

@@ -19,7 +19,6 @@ struct OnboardingView: View {
     @State private var searchingSince: Date?
     @State private var now = Date()
     @State private var whichOpen = false
-    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(startAt: OnboardingFlow.Step = .connect, previewFound: Bool = false, welcome: Bool = false, onFinish: @escaping (OnboardingFlow) -> Void) {
         self.previewFound = previewFound
@@ -68,7 +67,16 @@ struct OnboardingView: View {
             PermissionsCheck.shared.refresh()
             refreshFound()
         }
-        .onReceive(tick) { t in now = t; refreshFound() }
+        // B102: a 1 s loop tied to this screen, not a Timer publisher made in init: Home redraws every second and
+        // re-made the publisher each time, so the tick could never fire and setup kept "searching" while connected
+        .task {
+            while !Task.isCancelled {
+                now = Date()
+                refreshFound()
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+        }
+        .onChange(of: AppModel.shared.scooter.connected) { _, _ in refreshFound() }   // B102: found the moment it connects
         .onDisappear { if !previewFound { AppModel.shared.scooter.setupShown(false) } }
     }
 

@@ -2,6 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.02 — hotfix 02 of batch 11: B102 setup kept searching while the scooter was connected
+
+- B102: OnboardingView's found check ran on a Timer publisher made in the view's init; Home redraws every second and re-made it, so the tick could miss and setup kept "searching" (no Connect) although the scooter was connected. It now runs in a `.task` loop tied to the screen and also reacts to the connection at once (`onChange(of: connected)`). Guard test in B102Tests.
+
 ## 111.291126.01 — hotfix 01 of batch 11: B102 (the G500 can't be saved in setup and its numbers are wrong)
 
 - B102 (a): any connection made while setup is open can be saved with Connect, also one iOS restored or reconnected (pairingPending was false then, so Connect did nothing).
