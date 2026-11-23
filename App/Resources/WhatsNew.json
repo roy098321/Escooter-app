@@ -12,6 +12,11 @@
         "symbol": "link",
         "title": "Then tap Connect",
         "line": "Connect saves it, also a G500."
+      },
+      {
+        "symbol": "eye.slash",
+        "title": "Numbers come next",
+        "line": "The G500 shows no battery or km until its data is decoded."
       }
     ],
     "smallerFixes": 0,
