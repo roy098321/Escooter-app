@@ -3,7 +3,7 @@ import SwiftUI
 
 /// N11-2 · O4 Garage (owner 23 Nov, auto-first). The active scooter is simply the one that is connected: no switcher.
 /// Each scooter keeps its own battery, charge log, calibration, faults and maintenance; places, routes, prices and settings are shared.
-/// Leaving: Sold / Lost (no nearby notification) / Remove; nothing is deleted, the service book still exports.
+/// Leaving: Sold / Lost (no alert of any kind, owner 23 Nov) / Remove; nothing is deleted, the service book still exports.
 struct GarageView: View {
     @State private var registry = GarageRegistry()
     @State private var rides: [String: Int] = [:]

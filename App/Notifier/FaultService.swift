@@ -118,6 +118,9 @@ enum FaultService {
             }
             let result = Self.run(ride: ride, context: context, frames: frames, samples: samples, scooterId: ride.scooterId ?? scooter?.id ?? "scooter",
                                   firmware: scooter?.firmware, db: db)
+            // N11-1: the tyre-pressure hint learns from the same ride (it lights a tile; it never pops up)
+            EnergyHintService.rideClosed(ride: ride, frames: frames, samples: samples, scooterId: ride.scooterId ?? scooter?.id ?? "scooter",
+                                         firmware: scooter?.firmware, db: db)
             DispatchQueue.main.async {
                 FaultCenter.shared.reload(db)
                 // one at a time: this ride's finding first, else a switch-on finding that waited for the summary

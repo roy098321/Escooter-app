@@ -108,6 +108,7 @@ final class AutoRunner {
         H0102Checks.run()                        // hotfix 103.081126.02: u200 diary, Ride not recorded, Export log cap (B81)
         B109Checks.run()                         // batch 9 (108.131226.03): u201 new-rider rules, km left, ride cost, share trim
         B110Checks.run()                         // batch 10 (maintenance): u202 fault gate, voice, parts list, history, report languages
+        B111Checks.run()                         // batch 11: u203 G500, Garage, tyre-pressure hint, one-time confetti
         B103Checks.run()                         // batch 103.081126.00: u194 fresh readings, u195 small places, u196 fuel digits, u197 ride screen waits, u198 V-U1, u199 V-U2
         ChargeEtaChecks.run()                    // P6-6 (F-31 / F-27): u120 charge timer maths, u121 targets + notification times, u122 charge log data
         P61UiChecks.run(real: model.database)   // chunk 2: u55 bounce, u56 live tiles + camera, u57 saved way back
@@ -177,5 +178,5 @@ enum AutomaticChecks {
                       "u137", "u138", "u139", "u140", "u141", "u142", "u143",
                       "u147", "u148", "u149", "u150", "u151", "u152", "u153", "u154", "u155", "u156", "u158", "u157", "u144",
                       "u168", "u166", "u169", "u170", "u172", "u173", "u175", "u176", "u177", "u179", "u180", "u181", "u182", "u183",
-                      "u186", "u187", "u188", "u189", "u191", "u192", "u193", "u194", "u195", "u196", "u197", "u198", "u199", "u200", "u201", "u202"]
+                      "u186", "u187", "u188", "u189", "u191", "u192", "u193", "u194", "u195", "u196", "u197", "u198", "u199", "u200", "u201", "u202", "u203"]
 }

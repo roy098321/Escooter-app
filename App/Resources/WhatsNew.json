@@ -1,5 +1,37 @@
 [
   {
+    "version": "111.291126.00",
+    "hero": "Bug #100 fixed 🎉 Thanks for every report.",
+    "confetti": true,
+    "headline": "Room for more than one scooter",
+    "items": [
+      {
+        "symbol": "square.stack.3d.up",
+        "title": "Garage",
+        "line": "Add a second scooter. The app follows the one you switch on."
+      },
+      {
+        "symbol": "gauge.medium",
+        "title": "Tyre pressure hint",
+        "line": "If battery use creeps up on your usual routes, the Tyres tile tells you."
+      },
+      {
+        "symbol": "chart.bar",
+        "title": "Stats per scooter",
+        "line": "All scooters together, or one at a time."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "Bug #100 fixed: thanks for every report (a one-time thank-you).",
+      "Garage: a new scooter is added by itself when it connects, named after its model; the one switched on is the one in use; each keeps its own battery, charge log, maintenance and service book; places, routes, prices and settings are shared.",
+      "Garage: Sold, Lost or Remove keeps its rides and its service book; Just borrowing gives no maintenance alerts.",
+      "Stats: all scooters by default, with a scooter menu once you have two.",
+      "Tyre pressure hint: compares battery use only with your rides on the same route in similar weather, speed and load; a slow rise points at the tyres, a sudden one at the brakes or wheel; every tap is optional.",
+      "The lock screen shows the scooter's name once you have two."
+    ]
+  },
+  {
     "version": "110.221126.02",
     "headline": "Your new scooter is found",
     "items": [

@@ -18,7 +18,7 @@ public enum TyreType: String, Codable, Sendable {
 public extension KnownScooters {
     /// N11-1: the tyre type from the model (RND G100 / G500: air tyres); unknown -> "pressure, or wear if solid"
     static func tyre(model: String?) -> TyreType {
-        switch model {
+        switch model ?? "" {
         case "RND G100", "RND G500": return .air
         default: return .unknown
         }
@@ -269,9 +269,9 @@ public enum EnergyHint {
             }
         case .tyre, .brakeWheel, .pumped:
             if backDown {
-                var before = s
-                before.ratios = Array(s.ratios.dropLast(2))
-                let level = currentLevel(before, t)
+                var prior = s
+                prior.ratios = Array(s.ratios.dropLast(2))
+                let level = currentLevel(prior, t)
                 s.backToNormalKm = packWh.flatMap { p in normalWhPerKm(s).map { kmGained(packWh: p, normalWhPerKm: $0, highRatio: level) } }
                 s.backAfterPump = s.step == .pumped
                 s.step = .quiet

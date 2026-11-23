@@ -179,7 +179,7 @@ public enum GarageSwap {
     /// The copies to make, in order: park the old scooter's live values, then load the new scooter's parked ones.
     public static func plan(from old: String?, to new: String) -> Step {
         guard old != new else { return Step(moves: []) }
-        var moves: [(String, String)] = []
+        var moves: [(from: String, to: String)] = []
         if let old { for k in keys { moves.append((k, parked(k, old))) } }
         for k in keys { moves.append((parked(k, new), k)) }
         return Step(moves: moves)

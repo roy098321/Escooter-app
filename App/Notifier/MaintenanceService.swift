@@ -116,7 +116,7 @@ extension MaintenanceService {
         var left: [MaintPart: Int] = [:]
         for p in MaintPart.allCases { left[p] = MaintParts.ridesLeft(book, scooterId: id, part: p) }
         return MaintParts.rows(open: FaultRecord.open(FaultStore.records(db), scooterId: id), reminders: reminders, ridesLeft: left,
-                               batteryLine: batteryLine(db))
+                               batteryLine: batteryLine(db), hints: EnergyHintService.hints(db))   // N11-1
     }
 
     static func logged(_ db: AppDatabase?) -> [LoggedWork] { FaultStore.load(db, logKey, as: [LoggedWork].self) ?? [] }
@@ -130,6 +130,7 @@ extension MaintenanceService {
         FaultStore.save(db, logKey, list)
         if let r = what.reminderId { markDone(id: r, db) }
         if what.relearns { FaultStore.partServiced(what.part, scooterId: id, db) }
+        if what == .replacedTyre || what == .replacedBattery { EnergyHintService.reset(db) }   // N11-1: a new normal
         Log.info(source: "maintenance", "Logged: \(what.title)")
     }
 

@@ -2,6 +2,16 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.00 — batch 11: feature worlds (Garage, tyre-pressure hint) + the 100th-bug thank-you
+
+- N11-2 / O4 Garage (auto-first): a scooter not seen before is added when it connects, named after its model; active = the connected one (not connected: the last one); only the active scooter's row is "not forgotten", so BatteryDoor and ScooterRecord.latest give each scooter its own battery math, faults, maintenance and service book; per-scooter settings (pack, charger, learned Ah, charging speed, name, colour, photo frame) and the photo are parked as key@id and swapped back; new rides are tagged with the active scooter; rides from before the Garage go to the scooter in use at the time (GarageLegacy). Registry in setting garage.registry (no schema change).
+- N11-2: Sold / Lost (no nearby notification) / Remove: nothing deleted, the service book still exports (MaintenanceHistoryView + HistoryPDF take a scooter id); Forget = Remove; Just borrowing = no maintenance alerts; Stats filter (all by default) from 2 scooters; lock screen name only with 2+; Bluetooth waits for any Garage scooter (pending connects) and the first one switched on becomes active; Add another scooter sheet. Still read-only (FFF2 notify + 180A read).
+- N11-1 / E4 tyre-pressure hint (EnergyHint): Wh per km on the same route vs similar rides (temperature, wind, rain, speed, stops, gear, distance = no detour, pull = no extra load); clean data only (gaps, wheel km over GPS, no route skipped; firmware change / battery or tyre replaced / lasting drop = new normal); no hint before 10 clean rides; creep over 5 rides → Tyres tile "Check tyre pressure" (tyre type from the model), jump over 2 rides → Brakes "Check the wheels turn freely", rise + motor hotter → Motor "Worth a shop check"; optional taps (Pumped it, Checked pressure is fine → logged, Fine too, Found it); no tap and still high after 3 rides → next step; "Back to normal: +N km of range" once.
+- N11-1 LoadEstimate (pull vs acceleration) replaces the "carrying more?" question. Tested on synthetic rides only: still to be checked against the owner's real export.
+- N11-4: What's new hero line "Bug #100 fixed 🎉 Thanks for every report." + a one-time confetti burst behind the card (once per version, ~2 s, no sound, a tap ends it, none with Reduce Motion). Removed again in batch 12 (N12-1).
+- N11-3 and N11-5 shipped first in hotfix 110.221126.02.
+- Lab checks u203 (automatic), ui208–ui211 (phone).
+
 ## 110.221126.02 — hotfix 02 of batch 10: N11-5 and N11-3 from batch 11, shipped first (owner can't connect the new scooter)
 
 - N11-5 / B101: scooters are found by a list of known advertised names (ScooterGatt.knownNames: G2 → RND G100, G500 → RND G500), not one name; the card is named after the model; unknown names are still ignored. Same read-only connection (FFF2 notify + 180A read).

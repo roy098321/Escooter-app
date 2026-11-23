@@ -76,14 +76,20 @@ public enum MaintParts {
         return counts.min() ?? 0
     }
 
+    /// N11-1: the id a tyre-pressure (energy) hint row carries instead of a fault record's
+    public static let energyHintId = "energy-hint"
+
+    /// `hints` (N11-1): the energy hint's line per lit part; an open fault on that part wins
     public static func rows(open: [FaultRecord], reminders: [PartReminder], ridesLeft: [MaintPart: Int],
-                            batteryLine: String?) -> [PartRow] {
+                            batteryLine: String?, hints: [MaintPart: String] = [:]) -> [PartRow] {
         var rows: [PartRow] = []
         for part in order {
             let reminder = reminders.first { $0.part == part }
             if let f = open.filter({ $0.kind.part == part && $0.status == .open }).max(by: { $0.kind.level < $1.kind.level }) {
                 rows.append(PartRow(part: part, state: .issue(red: f.kind.level == .red, faultId: f.id),
                                     line: FaultCopy.text(f.kind).row, reminderId: reminder?.id))
+            } else if let hint = hints[part] {
+                rows.append(PartRow(part: part, state: .issue(red: false, faultId: energyHintId), line: hint, reminderId: reminder?.id))
             } else if let r = reminder, r.status.isDue {
                 rows.append(PartRow(part: part, state: .due(reminderId: r.id), line: "Check due now", reminderId: r.id))
             } else if part == .battery, let b = batteryLine {

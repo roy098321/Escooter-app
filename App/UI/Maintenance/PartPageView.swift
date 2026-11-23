@@ -15,12 +15,20 @@ struct PartPageView: View {
     @State private var km = 300.0
     @State private var exporting: FaultRecord?
     @State private var logging = false
+    /// N11-1: the tyre-pressure (energy) hint on this part, and "Back to normal: +1.5 km of range" once
+    @State private var energy: (step: EnergyStep, text: EnergyCopy.Text)?
+    @State private var backLine: String?
 
     private var db: AppDatabase? { AppModel.shared.database }
 
     var body: some View {
         List {
-            if let f = fault {
+            if let back = backLine {
+                Section { Label(back, systemImage: "checkmark.circle").foregroundStyle(Theme.accentInk) }
+            }
+            if let e = energy, e.text.part == part {
+                energySection(e.step, e.text)
+            } else if let f = fault {
                 let t = FaultCopy.text(f.kind)
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
@@ -80,8 +88,45 @@ struct PartPageView: View {
         .onDisappear(perform: saveInterval)
     }
 
+    /// N11-1: what was found, what to do, and the optional taps for this step (no tap is needed: the app moves on by itself)
+    @ViewBuilder private func energySection(_ step: EnergyStep, _ t: EnergyCopy.Text) -> some View {
+        Section {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Needs a look").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accentInk)
+                Text(t.row).font(.headline)
+            }
+            Text(t.found).font(.subheadline)
+        }
+        Section("What to do") { Text(t.what) }
+        Section {
+            switch step {
+            case .tyre:
+                Button("Pumped it") { tap(.pumped) }
+                Button("Checked, pressure is fine") { tap(.pressureFine) }
+            case .brakeWheel:
+                Button("Fine too") { tap(.fineToo) }
+                Button("Found it") { tap(.foundIt) }
+            case .shop:
+                Button(FaultCopy.fixedIt) { tap(.fixed) }
+                Button(FaultCopy.checkedFine) { tap(.checkedFine) }
+            case .quiet, .pumped:
+                EmptyView()
+            }
+        } footer: {
+            Text("Optional. The app watches the next rides either way.")
+        }
+    }
+
+    private func tap(_ t: EnergyHint.Tap) {
+        guard let db else { return }
+        EnergyHintService.tap(t, db)
+        reload()
+    }
+
     private func reload() {
         guard let db else { return }
+        energy = EnergyHintService.current(db)
+        if part == .tyres, backLine == nil { backLine = EnergyHintService.takeBackToNormal(db) }
         let parts = MaintenanceService.parts(db)
         row = parts.first { $0.part == part }
         if case .issue(_, let id)? = row?.state {
