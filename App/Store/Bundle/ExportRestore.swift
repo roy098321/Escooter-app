@@ -21,6 +21,12 @@ enum GzipReader {
     }
 }
 
+/// B102 (.05): developer logs inside Export everything (Restore ignores them: nothing is brought back)
+struct ExportDevLogs: Codable {
+    var byteWatch: [ByteWatchEntry]
+    var bluetoothEvents: [String]
+}
+
 struct ExportFile: Codable {
     var app = "CorckieApp"
     var kind = "export"

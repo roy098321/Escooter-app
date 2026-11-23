@@ -28,11 +28,8 @@ final class ByteWatchStore {
     }
 }
 
-/// B102 (.05): developer logs inside Export everything (Restore ignores them: nothing is brought back)
-struct ExportDevLogs: Codable {
-    var byteWatch: [ByteWatchEntry]
-    var bluetoothEvents: [String]
-
+extension ExportDevLogs {
+    /// The logs as they are now (watch log + Bluetooth events)
     static func current() -> ExportDevLogs {
         ExportDevLogs(byteWatch: ByteWatchStore.shared.all, bluetoothEvents: AppModel.shared.scooter.events)
     }
