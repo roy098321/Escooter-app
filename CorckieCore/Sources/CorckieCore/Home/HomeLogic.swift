@@ -48,6 +48,8 @@ public struct HomeInput: Equatable, Sendable {
     public var locationAlways: Bool
     public var lastRunCrashed: Bool
     public var lastRide: RideListItem?
+    /// B102: connected to a scooter whose data layout the app can't read yet (no numbers shown)
+    public var numbersUnsupported = false
 
     public init(paired: Bool, connected: Bool, connectingSinceS: Double? = nil, nowS: Double, batteryPct: Int? = nil,
                 lastSeenMs: Int64? = nil, lastSeenPct: Int? = nil, utcOffsetMin: Int = 0, rideActive: Bool = false,
@@ -136,8 +138,8 @@ public enum HomeLogic {
             enabled = false
         case .ready:
             title = "Scooter connected"
-            detail = "Ready to ride"
-            battery = i.batteryPct.map { "\($0)%" }
+            detail = i.numbersUnsupported ? "Numbers not supported yet" : "Ready to ride"
+            battery = i.numbersUnsupported ? nil : i.batteryPct.map { "\($0)%" }
             primary = .startRide
             primaryTitle = "Start ride"
         case .riding:

@@ -1,5 +1,32 @@
 [
   {
+    "version": "111.291126.01",
+    "headline": "Your G500 can be saved",
+    "items": [
+      {
+        "symbol": "link",
+        "title": "Connect saves it",
+        "line": "In setup, Connect now saves your scooter every time."
+      },
+      {
+        "symbol": "eye.slash",
+        "title": "No wrong numbers",
+        "line": "The G500 shows \"numbers not supported yet\" until its data is decoded."
+      },
+      {
+        "symbol": "magnifyingglass",
+        "title": "Still looking",
+        "line": "After Set up later the app keeps looking for your scooter."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "Setup: Connect saves the scooter also when iOS reconnected it on its own.",
+      "A scooter you never saved is no longer reconnected in the background.",
+      "A scooter whose data the app can't read yet shows no battery or km; its raw data is still kept, so it can be decoded next."
+    ]
+  },
+  {
     "version": "111.291126.00",
     "hero": "Bug #100 fixed 🎉 Thanks for every report.",
     "confetti": true,

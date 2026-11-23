@@ -60,9 +60,17 @@ public enum Decoder {
     public static let version = 1
 
     public static func decode(_ bytes: [UInt8]) -> ScooterPacket {
-        if bytes.count == 20 && bytes[19] == 0 { return .a(PacketA(bytes: bytes)) }
+        if isG2PacketA(bytes) { return .a(PacketA(bytes: bytes)) }
         if bytes.count == 11 { return .b(PacketB(bytes: bytes)) }
         return .unknown(length: bytes.count)
+    }
+
+    /// B102: the G2 (RND G100) packet A layout, checked byte by byte (PROTOCOL.md). "20 bytes ending in 0" alone
+    /// also matches other scooters (the G500 read as 0 %, 0 km, 0.44 V), so the bytes that never change on a G2
+    /// are checked too: byte 2 = 0, gear (byte 5) 1–3, battery % (byte 18) at most 100. Any other layout is
+    /// unknown: counted, kept raw, never shown or stored as numbers.
+    public static func isG2PacketA(_ b: [UInt8]) -> Bool {
+        b.count == 20 && b[19] == 0 && b[2] == 0 && (1...3).contains(b[5]) && b[18] <= 100
     }
 
     /// Little-endian unsigned integer.

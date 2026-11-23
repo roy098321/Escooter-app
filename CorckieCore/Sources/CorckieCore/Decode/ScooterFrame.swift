@@ -50,6 +50,13 @@ public struct FrameAssembler {
     public private(set) var unknownCount = 0
     /// Which packet made the last frame
     public private(set) var lastKind: Kind?
+    /// B102: since the last reset: packets A read, and packets of a layout we can't read (all-FF filler not counted)
+    public private(set) var packetsASinceReset = 0
+    public private(set) var foreignSinceReset = 0
+    /// B102: connected, data arrives, but not in a layout we know: "Connected · numbers not supported yet"
+    public var numbersUnsupported: Bool { packetsASinceReset == 0 && foreignSinceReset >= Self.foreignToDecide }
+    /// Unknown packets (not all-FF) with no packet A, before the layout counts as not supported (a G2 sends A ~3× a second)
+    public static let foreignToDecide = 3
 
     public init() {}
 
@@ -58,6 +65,7 @@ public struct FrameAssembler {
         packetCount += 1
         switch Decoder.decode(bytes) {
         case .a(let a):
+            packetsASinceReset += 1
             lastA = a
             lastATime = t
             lastKind = .a
@@ -67,6 +75,7 @@ public struct FrameAssembler {
             lastKind = .b
         case .unknown:
             unknownCount += 1
+            if !bytes.allSatisfy({ $0 == 0xFF }) { foreignSinceReset += 1 }
             return nil
         }
         return frame(at: t)
@@ -105,5 +114,7 @@ public struct FrameAssembler {
         lastATime = nil
         lastB = nil
         lastBTime = nil
+        packetsASinceReset = 0
+        foreignSinceReset = 0
     }
 }

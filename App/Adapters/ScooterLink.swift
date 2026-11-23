@@ -64,8 +64,20 @@ final class ScooterLink: NSObject {
     @ObservationIgnored private var standby: [UUID: CBPeripheral] = [:]
     /// N11-2: "Add another scooter" is looking for a scooter that is not in the Garage yet
     private(set) var adding = false
+    /// B102: the setup screen (Connect your scooter) is open. Only then is a new, never-paired scooter connected;
+    /// otherwise the app keeps looking and remembers what it found, so setup finds it at once.
+    @ObservationIgnored private var setupOpen = false
+    /// B102: connected, data arrives, but not in a layout the app can read yet: "Connected · numbers not supported yet"
+    private(set) var numbersUnsupported = false
 
     var hasKnownScooter: Bool { savedID != nil }
+
+    /// B102: a scooter the rider paired (the saved one or one of the Garage). Before the first unlock after a restart the
+    /// saved IDs can't be read; then every scooter iOS hands back counts as known (as before).
+    private func isKnown(_ id: UUID) -> Bool {
+        guard UIApplication.shared.isProtectedDataAvailable else { return true }
+        return id == savedID || garageIDs.contains(id)
+    }
     var knownPeripheralID: String? { savedID?.uuidString }
     /// N11-2: the scooter shown in Add a scooter, before Connect
     var pendingPeripheralID: String? { pairingPending ? peripheral?.identifier.uuidString : nil }
@@ -176,9 +188,17 @@ final class ScooterLink: NSObject {
         if central?.state == .poweredOn { scan() }
     }
 
+    /// B102: the setup screen opened / closed. Opening it connects the closest scooter found meanwhile, or starts looking.
+    func setupShown(_ open: Bool) {
+        setupOpen = open
+        guard open, central?.state == .poweredOn, savedID == nil || adding, peripheral == nil else { return }
+        if candidates.isEmpty { scan() } else { connectClosest() }
+    }
+
     /// D2 1b: Connect was pressed in onboarding: the scooter being shown is now the paired one.
+    /// B102: also a connection iOS restored or made on its own while nothing is paired (`pairingPending` is false then).
     func confirmPairing() {
-        guard pairingPending, let p = peripheral else { return }
+        guard let p = peripheral, pairingPending || (savedID == nil && connected) else { return }
         savedID = p.identifier
         pairingPending = false
         if !garageIDs.contains(p.identifier) { garageIDs.append(p.identifier) }   // N11-2
@@ -188,7 +208,11 @@ final class ScooterLink: NSObject {
 
     /// D2 1b: onboarding left without Connect: the scooter that was only being looked at is let go and nothing is saved.
     func cancelPairing() {
-        guard pairingPending || adding else { return }
+        setupOpen = false
+        guard pairingPending || adding || (savedID == nil && peripheral != nil) else {
+            if savedID == nil, central?.state == .poweredOn { scan() }   // B102: keep looking after Set up later
+            return
+        }
         if adding { central?.stopScan() }
         pairingPending = false
         if let p = peripheral { central?.cancelPeripheralConnection(p) }
@@ -198,13 +222,25 @@ final class ScooterLink: NSObject {
         if adding {   // N11-2: Add another scooter cancelled: back to the known scooters
             adding = false
             reconnectKnown()
+        } else if savedID == nil, central?.state == .poweredOn {
+            scan()   // B102: Set up later: keep looking (it connects only when setup opens again)
         }
+    }
+
+    /// B102: a scooter that was never paired was lost / not reached: let it go and keep looking; never reconnect it on our own.
+    private func letGoUnpaired() {
+        peripheral = nil
+        pairingPending = false
+        foundModel = nil
+        numbersUnsupported = false
+        log("Scooter not paired: not reconnected, still looking")
+        if savedID == nil || adding { scan() } else { reconnectKnown() }
     }
 
     /// D2 1b: after a short listen, connect to the strongest signal (the closest scooter), without saving it.
     private func connectClosest() {
         pickScheduled = false
-        guard savedID == nil || adding, let best = candidates.values.max(by: { $0.rssi < $1.rssi }) else { return }
+        guard savedID == nil || adding, setupOpen || adding, let best = candidates.values.max(by: { $0.rssi < $1.rssi }) else { return }
         candidates = [:]
         central?.stopScan()
         peripheral = best.peripheral
@@ -250,6 +286,7 @@ final class ScooterLink: NSObject {
         }
         frame = nil              // B73 (batch 3): no reading from an earlier connection is shown as now
         assembler.reset()
+        numbersUnsupported = false
         state = "Connected · waiting for data"
         p.discoverServices([CBUUID(string: ScooterGatt.dataService), CBUUID(string: ScooterGatt.deviceInformation)])
     }
@@ -283,8 +320,21 @@ extension ScooterLink: CBCentralManagerDelegate {
             connectedAt = Date()
             PlugInStore.noteConnect(atMs: Int64(Date().timeIntervalSince1970 * 1000))
             log("Connected (restored by iOS)")
+            if !isKnown(known.identifier) {
+                // B102: restored with a scooter that was never paired: Connect in setup can save it; it is let go
+                // if setup doesn't open soon (never kept or reconnected on our own)
+                pairingPending = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+                    guard let self, self.pairingPending, !self.setupOpen, !self.adding,
+                          let p = self.peripheral, p.identifier == known.identifier else { return }
+                    self.pairingPending = false
+                    central.cancelPeripheralConnection(p)   // didDisconnect lets it go and keeps looking
+                }
+            }
             didBecomeConnected(known)
             connectHandlers.forEach { $0(background) }
+        } else if let restored = peripheral, !isKnown(restored.identifier) {
+            letGoUnpaired()   // B102: iOS kept a pending connect to a never-paired scooter: drop it
         } else if let restored = peripheral {
             // Restored by iOS (e.g. before the first unlock, when the saved ID can't be read yet)
             state = "Waiting for the scooter · switch it on"
@@ -312,6 +362,10 @@ extension ScooterLink: CBCentralManagerDelegate {
         candidates[found.identifier] = (found, RSSI.intValue == 127 ? -127 : RSSI.intValue)
         candidateName = name
         candidateMakerTagged = !maker.isEmpty
+        guard setupOpen || adding else {   // B102: remembered; connected when setup opens
+            state = "Found a scooter \u{00B7} open setup to connect it"
+            return
+        }
         if !pickScheduled {
             pickScheduled = true
             state = "Found a scooter \u{00B7} choosing the closest\u{2026}"
@@ -347,6 +401,10 @@ extension ScooterLink: CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didFailToConnect failed: CBPeripheral, error: Error?) {
         log("Connection failed\(error.map { ": \($0.localizedDescription)" } ?? "")")
+        if failed.identifier == peripheral?.identifier, !isKnown(failed.identifier), !(pairingPending && setupOpen) {
+            letGoUnpaired()   // B102
+            return
+        }
         central.connect(failed)
     }
 
@@ -373,7 +431,12 @@ extension ScooterLink: CBCentralManagerDelegate {
         disconnectHandlers.forEach { $0(reason) }
         guard !adding else { return }   // N11-2: Add another scooter is scanning; Cancel reconnects the known ones
         if let s = savedID, s != lost.identifier { peripheral = nil; reconnectKnown(); return }   // N11-2: it left the Garage
-        if savedID != nil || peripheral != nil { central.connect(lost) }   // pending connect, works in the background
+        if isKnown(lost.identifier) && (savedID != nil || peripheral != nil) {
+            central.connect(lost)   // pending connect, works in the background
+        } else if lost.identifier == peripheral?.identifier || savedID == nil {
+            letGoUnpaired()          // B102: never paired: not reconnected on our own
+            return
+        }
         waitForGarage()   // N11-2: and wait for the rider's other scooters too
     }
 }
@@ -429,6 +492,13 @@ extension ScooterLink: CBPeripheralDelegate {
             frame = f
         } else {
             unknownPackets += 1
+        }
+        if assembler.numbersUnsupported != numbersUnsupported {   // B102: a layout we can't read: say so, show no numbers
+            numbersUnsupported = assembler.numbersUnsupported
+            if numbersUnsupported {
+                state = "Connected \u{00B7} numbers not supported yet"
+                log("Data layout not supported yet (raw packets kept)")
+            }
         }
         packetHandlers.forEach { $0(bytes, now, background) }
     }

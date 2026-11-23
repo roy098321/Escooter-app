@@ -2,6 +2,13 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.01 — hotfix 01 of batch 11: B102 (the G500 can't be saved in setup and its numbers are wrong)
+
+- B102 (a): any connection made while setup is open can be saved with Connect, also one iOS restored or reconnected (pairingPending was false then, so Connect did nothing).
+- B102 (a): a scooter that was never paired is never reconnected on its own (didDisconnect reconnected whenever a peripheral was set: background connects to an unpaired scooter). It is let go and the app keeps looking; a new scooter is connected only while setup (or Add another scooter) is open.
+- B102 (a): after Set up later the app keeps looking and remembers the closest scooter, so opening setup again connects it at once.
+- B102 (b): packet A must be the G2 layout (Decoder.isG2PacketA: 20 bytes, byte 19 = 0, byte 2 = 0, gear 1–3, battery % ≤ 100; true for all 40 646 G2 packets on record). Any other layout is unknown: three such packets and no packet A on a connection → "Connected · numbers not supported yet" (Home, setup); no numbers on screen, in rides, calibration or charge logic; raw packets kept.
+
 ## 111.291126.00 — batch 11: feature worlds (Garage, tyre-pressure hint) + the 100th-bug thank-you
 
 - N11-2 / O4 Garage (auto-first): a scooter not seen before is added when it connects, named after its model; active = the connected one (not connected: the last one); only the active scooter's row is "not forgotten", so BatteryDoor and ScooterRecord.latest give each scooter its own battery math, faults, maintenance and service book; per-scooter settings (pack, charger, learned Ah, charging speed, name, colour, photo frame) and the photo are parked as key@id and swapped back; new rides are tagged with the active scooter; rides from before the Garage go to the scooter in use at the time (GarageLegacy). Registry in setting garage.registry (no schema change).

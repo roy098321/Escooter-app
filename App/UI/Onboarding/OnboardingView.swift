@@ -62,12 +62,14 @@ struct OnboardingView: View {
         .onAppear {
             guard !previewFound else { return }
             // D2 3a: the line on screen is read before the iPhone's Bluetooth pop-up covers it
+            AppModel.shared.scooter.setupShown(true)      // B102: only setup connects a new scooter (also after Set up later)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { AppModel.shared.scooter.start() }
             searchingSince = Date()
             PermissionsCheck.shared.refresh()
             refreshFound()
         }
         .onReceive(tick) { t in now = t; refreshFound() }
+        .onDisappear { if !previewFound { AppModel.shared.scooter.setupShown(false) } }
     }
 
     // MARK: Steps
@@ -119,7 +121,8 @@ struct OnboardingView: View {
                                                  batteryPct: link.frame?.batteryPct))
                         .font(.subheadline.weight(.semibold))
                         .multilineTextAlignment(.center)
-                    Text("Check that your dashboard shows the same km.")
+                    // B102: a data layout the app can't read yet: it connects and keeps the raw data, no numbers shown
+                    Text(link.numbersUnsupported ? "Connected \u{00B7} numbers not supported yet" : "Check that your dashboard shows the same km.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

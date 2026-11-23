@@ -85,7 +85,7 @@ struct HomeView: View {
         let scooter = AppModel.shared.scooter
         let seen = LastSeen.load()
         let simulated = ScreenSimulator.shared.active
-        return HomeInput(paired: scooter.hasKnownScooter || simulated, connected: scooter.connected || simulated,
+        var input = HomeInput(paired: scooter.hasKnownScooter || simulated, connected: scooter.connected || simulated,
                          connectingSinceS: connectingSince?.timeIntervalSince1970,
                          nowS: now.timeIntervalSince1970,
                          batteryPct: AppModel.shared.settledBatteryPct ?? (simulated ? RecorderService.shared.live?.batteryPct : nil),
@@ -95,6 +95,8 @@ struct HomeView: View {
                          locationAlways: PermissionsCheck.shared.locationStatus == .authorizedAlways,
                          lastRunCrashed: CrashCatcher.shared.lastRunCrashed && !crashDismissed,
                          lastRide: lastRide)
+        input.numbersUnsupported = scooter.numbersUnsupported && !simulated   // B102
+        return input
     }
 
     var body: some View {
