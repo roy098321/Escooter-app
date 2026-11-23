@@ -79,7 +79,7 @@ enum StartFresh {
                 }
                 // rider settings come back too, never the scooter's and never this tool's own bookkeeping
                 let skip = DataMap.scooterSettingKeys.map { "'\($0)'" }.joined(separator: ",")
-                try d.execute(sql: "INSERT OR IGNORE INTO main.setting SELECT * FROM bk.setting WHERE key NOT IN (\(skip)) AND key NOT LIKE 'fresh.%'")
+                try d.execute(sql: "INSERT OR IGNORE INTO main.setting SELECT * FROM bk.setting WHERE key NOT IN (\(skip)) AND key NOT LIKE 'fresh.%' AND key NOT LIKE '%@%' AND key != 'garage.registry'")
                 try d.execute(sql: "DROP TABLE bring_ids")
                 try d.execute(sql: "INSERT OR REPLACE INTO setting (key, json) VALUES (?, ?)", arguments: [broughtBackKey, String(nowMs)])
                 return .commit
@@ -103,6 +103,8 @@ enum StartFresh {
                 try d.execute(sql: "UPDATE ride SET scooterId = ? WHERE scooterId IS NULL", arguments: [oldId])
                 try d.execute(sql: "UPDATE scooter SET forgottenAt = COALESCE(forgottenAt, ?)", arguments: [nowMs])
                 for key in DataMap.scooterSettingKeys { try d.execute(sql: "DELETE FROM setting WHERE key = ?", arguments: [key]) }
+                // N11-2: the Garage list and every scooter's parked settings go too (Start fresh = a new start for scooters)
+                try d.execute(sql: "DELETE FROM setting WHERE key = 'garage.registry' OR key LIKE '%@%'")
             } else {
                 for table in riderCleared { try d.execute(sql: "DELETE FROM \"\(table)\"") }
                 try d.execute(sql: "DELETE FROM scooter")

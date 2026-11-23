@@ -28,6 +28,9 @@ struct StatsView: View {
     @Namespace private var zoomSpace
     /// N7-5: the ₪ hops once when the savings pass a new milestone (₪100, 250, 500, 1000, …)
     @State private var shekelHop = 0
+    /// N11-2: all scooters by default; a filter once there are 2+ in the Garage
+    @State private var scooterFilter: GarageStatsFilter = .all
+    @State private var garage = GarageRegistry()
     static let savingsMilestones: [Double] = [100, 250, 500, 1_000, 2_500, 5_000, 10_000]
 
     private var span: StatsSpan { StatsSpan(rawValue: spanRaw) ?? .week }
@@ -50,12 +53,25 @@ struct StatsView: View {
             .navigationBarTitleDisplayMode(.inline)   // G3: small title; G12: prices live in Settings only
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { modeSwitch }
+                if GarageStatsFilter.options(garage).count > 1 {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Menu {
+                            Picker("Scooter", selection: $scooterFilter) {
+                                ForEach(GarageStatsFilter.options(garage), id: \.self) { Text($0.label(garage)).tag($0) }
+                            }
+                        } label: {
+                            Label(scooterFilter.label(garage), systemImage: "scooter")
+                        }
+                        .accessibilityLabel("Scooter: \(scooterFilter.label(garage))")
+                    }
+                }
             }
             .onAppear(perform: load)
             .onChange(of: spanRaw) { _, _ in back = 0; selectedBar = nil; load(); Haptics.tick(); replayBars(model.map { Self.barData($0).values.count } ?? 0) }
             .onChange(of: metricRaw) { _, _ in selectedBar = nil }
             .onChange(of: modeRaw) { _, _ in back = 0; load() }
             .onChange(of: back) { _, _ in selectedBar = nil; load() }
+            .onChange(of: scooterFilter) { _, _ in selectedBar = nil; load() }
             .screen("Stats")
         }
     }
@@ -383,7 +399,10 @@ struct StatsView: View {
 
     private func load() {
         guard preview == nil, let db = AppModel.shared.displayDatabase else { return }
-        model = StatsLoader.load(db, span: span, mode: mode, back: back)
+        garage = GarageService.registry(db)
+        var id: String?
+        if case let .scooter(s) = scooterFilter { id = s }
+        model = StatsLoader.load(db, span: span, mode: mode, back: back, scooterId: id)
     }
 }
 

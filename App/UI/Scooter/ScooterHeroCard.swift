@@ -253,6 +253,23 @@ enum ScooterPhotoStore {
         return nil
     }
 
+    /// N11-2 Garage: the photo follows its scooter. The live folder is parked as "ScooterHero@<old id>" and the new scooter's
+    /// parked folder (if any) becomes the live one; a scooter with no photo yet shows none.
+    static func swap(from old: String?, to new: String) {
+        guard old != new else { return }
+        let fm = FileManager.default
+        let base = folder.deletingLastPathComponent()
+        if let old {
+            let parked = base.appendingPathComponent("ScooterHero@\(old)", isDirectory: true)
+            try? fm.removeItem(at: parked)
+            if fm.fileExists(atPath: folder.path) { try? fm.moveItem(at: folder, to: parked) }
+        } else {
+            try? fm.removeItem(at: folder)
+        }
+        let incoming = base.appendingPathComponent("ScooterHero@\(new)", isDirectory: true)
+        if fm.fileExists(atPath: incoming.path) { try? fm.moveItem(at: incoming, to: folder) }
+    }
+
     static func remove() {
         try? FileManager.default.removeItem(at: cutoutFile)
         try? FileManager.default.removeItem(at: fullFile)

@@ -136,24 +136,28 @@ final class PDFWriter {
 
 /// N10-14: the maintenance history as a PDF service book (for the rider and a buyer)
 enum HistoryPDF {
-    static func make(_ db: AppDatabase, language lang: ReportLanguage) -> URL? {
-        let id = MaintenanceService.scooterId(db)
+    /// N11-2: `scooterId` = a Sold / Lost scooter of the Garage (its service book still exports); nil = the active scooter
+    static func make(_ db: AppDatabase, language lang: ReportLanguage, scooterId other: String? = nil) -> URL? {
+        let active = MaintenanceService.scooterId(db)
+        let id = other ?? active
+        let isActive = id == active
         let logged = MaintenanceService.logged(db)
         let faults = FaultStore.records(db)
         let since = HistoryDates.trackedSince(db)
         let entries = MaintHistory.entries(logged: logged, faults: faults, scooterId: id, trackedSince: since)
         let c = MaintHistory.counts(entries)
-        let decay = BatteryDecayService.report(db)
-        let name = ScooterRecord.latest(in: db)?.name ?? "Scooter"
-        let odo = (try? MaintenanceQueries(db).odometerKm()) ?? nil
+        // the battery numbers and the odometer are the active scooter's (the battery door), so a retired one's book leaves them out
+        let decay: DecayReport? = isActive ? BatteryDecayService.report(db) : nil
+        let name = isActive ? (ScooterRecord.latest(in: db)?.name ?? "Scooter") : (GarageService.registry(db).scooter(id)?.displayName ?? "Scooter")
+        let odo = isActive ? ((try? MaintenanceQueries(db).odometerKm()) ?? nil) : nil
         let today = FaultGate.day(epochMs: Int64(Date().timeIntervalSince1970 * 1000))
         func d(_ day: Int) -> String { HistoryDates.date(day).formatted(.dateTime.day().month(.abbreviated).year()) }
         let t = { (k: ReportText.Key) in ReportText.t(k, lang) }
         return PDFWriter.make(name: lang == .hebrew ? "CorckieApp_Maintenance_History_HE.pdf" : "CorckieApp_Maintenance_History.pdf",
                               lang: lang, footer: "CorckieApp \u{00B7} " + t(.historyTitle)) { w in
             w.text(t(.historyTitle), size: 20, bold: true, gap: 4)
-            if let h = decay.healthPct {
-                let km = decay.nowKm.map { " \u{00B7} \(Int($0.rounded())) km " + t(.onFullCharge) } ?? ""
+            if let h = decay?.healthPct {
+                let km = decay?.nowKm.map { " \u{00B7} \(Int($0.rounded())) km " + t(.onFullCharge) } ?? ""
                 w.text(t(.batteryHealth) + " \(Int(h.rounded()))%" + km, size: 12, bold: true, gap: 10)
             }
             w.section(1, t(.scooter))

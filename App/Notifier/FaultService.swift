@@ -99,6 +99,7 @@ enum FaultService {
 
     static func rideClosed(rideId: String, database: AppDatabase?) {
         guard let db = database, !db.isReadOnly, let ride = try? RideQueries(db).ride(id: rideId), ride.isSimulated == false else { return }
+        if GarageService.activeIsBorrowed(db) { return }   // N11-2: a borrowed scooter gets no maintenance alerts
         let chunks = ((try? RideQueries(db).chunks(rideId: rideId)) ?? []).filter { $0.kind == "scooter" }.sorted { $0.seq < $1.seq }
         let samples = (try? RideQueries(db).samples(rideId: rideId)) ?? []
         let scooter = ScooterRecord.latest(in: db)
@@ -286,7 +287,7 @@ final class FaultSwitchOn {
             frames = []
             return
         }
-        guard let db = AppModel.shared.database, !db.isReadOnly, frames.count > 5 else { return }
+        guard let db = AppModel.shared.database, !db.isReadOnly, frames.count > 5, !GarageService.activeIsBorrowed(db) else { return }
         let id = ScooterRecord.latest(in: db)?.id ?? "scooter"
         let last = try? db.writer.read { d in
             try Row.fetchOne(d, sql: """

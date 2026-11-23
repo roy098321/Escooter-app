@@ -34,6 +34,8 @@ final class AppModel {
     @ObservationIgnored private let started = Date()
     @ObservationIgnored private var launched = false
     @ObservationIgnored private var fingerprintSaved = false
+    /// N11-2: the scooter whose fingerprint was saved (another Garage scooter connecting saves its own)
+    @ObservationIgnored private var fingerprintSavedFor: String?
 
     private init() {}
 
@@ -85,6 +87,12 @@ final class AppModel {
             } catch {
                 Log.error(source: "routes", "B61 route-end link: \(error.localizedDescription)")
             }
+        }
+        // N11-2 Garage: the photo follows its scooter; the list starts from the scooters already on the phone (once)
+        GarageService.onSwap = { ScooterPhotoStore.swap(from: $0, to: $1) }
+        if let db = database, !db.isReadOnly {
+            GarageService.bootstrap(db)
+            scooter.setGarage(GarageService.connectableIds(db))
         }
         if let db = database, !db.isReadOnly { RecorderService.shared.attach(db) }
         OutsideDataService.shared.refresh(database: database, reason: "app open")
@@ -205,18 +213,26 @@ final class AppModel {
         }
         let info = scooter.deviceInfo
         // B03: keep the fingerprint in the `scooter` table, so exports after a relaunch have it
-        if !fingerprintSaved, scooter.hasKnownScooter, let fw = info.firmware, let sw = info.software, let db = database {
+        if !fingerprintSaved || fingerprintSavedFor != scooter.knownPeripheralID, scooter.connected, scooter.hasKnownScooter, let fw = info.firmware, let sw = info.software, let db = database {
             do {
                 // A-13: the card name is the model name ("RND G100"), not the Bluetooth name "G2"
                 // N11-5: no model known yet -> keep the name already saved instead of assuming the G2's model
                 let saved = ScooterRecord.latest(in: db).flatMap { $0.id == scooter.knownPeripheralID ? $0.name : nil }
                 let model = scooter.foundModel ?? saved ?? KnownScooters.modelName(advertisedName: nil, makerTagged: false)
-                try ScooterRecord.save(id: scooter.knownPeripheralID ?? "scooter", name: NewRider.cardName(foundModel: model),
+                let id = scooter.knownPeripheralID ?? "scooter"
+                try ScooterRecord.save(id: id, name: NewRider.cardName(foundModel: model),
                                        chip: info.model, firmware: fw, software: sw, in: db)
                 fingerprintSaved = true
+                fingerprintSavedFor = scooter.knownPeripheralID
+                // N11-2 Garage: an unknown scooter is added (named after its model) and the connected one becomes the active one
+                if GarageService.connected(id: id, model: NewRider.cardName(foundModel: model), db) {
+                    Log.info(source: "garage", "New scooter added to the Garage: \(model)")
+                }
+                scooter.setGarage(GarageService.connectableIds(db))
             } catch {
                 Log.error(source: "store", "scooter fingerprint: \(error.localizedDescription)")
                 fingerprintSaved = true
+                fingerprintSavedFor = scooter.knownPeripheralID
             }
         }
         if results.status("b3") == .pending, info.firmware != nil, info.software != nil {

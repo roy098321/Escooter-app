@@ -58,6 +58,9 @@ struct ScooterTabView: View {
     private let link = AppModel.shared.scooter
     /// A-12: the empty tab is not a dead end, the same Connect as Home (onboarding)
     @State private var showOnboarding = false
+    /// N11-2 Garage
+    @State private var garage = GarageRegistry()
+    @State private var addingScooter = false
 
     private var connected: Bool { preview?.connected ?? link.connected }
     private var paired: Bool { preview != nil ? preview?.record != nil : (link.hasKnownScooter || record != nil) }
@@ -104,6 +107,7 @@ struct ScooterTabView: View {
                             Button { pickingPhoto = true } label: { Label("Choose photo", systemImage: "photo") }
                             if let p = photo { Button { framing = FramingItem(image: p.full, transparent: p.transparent, frame: p.frame, cutout: p.useCut, cut: p.cut) } label: { Label("Frame photo", systemImage: "crop") } }
                             if photo != nil { Button { removePhoto() } label: { Label("Remove photo", systemImage: "xmark.circle") } }
+                            Button { addingScooter = true } label: { Label("Add another scooter", systemImage: "plus.circle") }   // N11-2
                             Button(role: .destructive) { confirmForget = true } label: { Label("Forget scooter", systemImage: "trash") }
                         } label: {
                             Image(systemName: "ellipsis.circle")
@@ -113,6 +117,7 @@ struct ScooterTabView: View {
                 }
             }
             .onAppear(perform: reload)
+            .sheet(isPresented: $addingScooter, onDismiss: reload) { AddScooterSheet() }   // N11-2
             .photosPicker(isPresented: $pickingPhoto, selection: $pickedItem, matching: .images)
             .onChange(of: pickedItem) { _, item in if let item { Task { await usePicked(item) } } }
             .sheet(isPresented: $showCharge) {
@@ -179,7 +184,23 @@ struct ScooterTabView: View {
         .chargeGlow(charge, nowMs: preview?.nowMs ?? timer.nowMs, .rim, radius: DS.Radius.hero)   // N7-6: orange rim while charging
         // N10-21 (batch 10): the Maintenance card with the wide Battery tile; the separate Maintenance and Battery rows are gone
         MaintenanceCard(rows: partRows, batteryLine: batteryTileLine)
+        if preview == nil, garage.showsGarage { garageRow }   // N11-2: only from the second scooter on (P-7)
         parkedRow
+    }
+
+    /// N11-2: Garage › (2+ scooters)
+    private var garageRow: some View {
+        NavigationLink { GarageView() } label: {
+            HStack {
+                Label("Garage", systemImage: "square.stack.3d.up")
+                Spacer()
+                Text("\(garage.inUse.count) in use").foregroundStyle(.secondary)
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+            }
+            .padding(DS.Space.row)
+            .glassCard(radius: DS.Radius.card, padding: 0)
+        }
+        .buttonStyle(.plain)
     }
 
     /// N10-21: "about 21 km, health 94%" on the wide Battery tile
@@ -271,6 +292,7 @@ struct ScooterTabView: View {
         colour = ScooterColour.from(stored: SettingsValue.text(db, ScooterColour.settingKey))
         photo = ScooterPhotoStore.load()
         record = ScooterRecord.latest(in: db)
+        garage = GarageService.registry(db)
         customName = SettingsValue.text(db, Self.nameKey)
         odometerKm = (try? MaintenanceQueries(db).odometerKm()) ?? nil
         rows = MaintenanceService.rows(db)
@@ -311,10 +333,21 @@ struct ScooterTabView: View {
     /// app-only name; the scooter itself is never written to
     static let nameKey = "scooter.customName"
 
+    /// N11-2: Forget = Remove from the Garage; when another scooter is in use the app waits for that one instead
     private func forget() {
-        link.forget()
-        if let db = AppModel.shared.database { ScooterRecord.forgetPairing(in: db) }
-        record = nil
+        guard let db = AppModel.shared.database, let id = GarageService.activeId(db) ?? record?.id else {
+            link.forget()
+            if let db = AppModel.shared.database { ScooterRecord.forgetPairing(in: db) }
+            record = nil
+            return
+        }
+        GarageService.retire(id, as: .removed, db)
+        let r = GarageService.registry(db)
+        let next = r.inUse.isEmpty ? nil : r.activeId
+        link.retire(id, next: next == id ? nil : next)
+        if next == nil || next == id { if link.hasKnownScooter { link.forget() }; ScooterRecord.forgetPairing(in: db) }
+        reload()
+        if next == nil || next == id { record = nil }
     }
 }
 

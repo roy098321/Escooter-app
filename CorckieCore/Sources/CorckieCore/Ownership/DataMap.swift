@@ -76,7 +76,10 @@ public enum DataMap {
         "charge.measure.entries", "charge.measuredRate"
     ]
 
-    public static func isScooterSetting(_ key: String) -> Bool { scooterSettingKeys.contains(key) }
+    /// N11-2: a key parked for another scooter ("battery.packAh@<id>") and the Garage list are scooter data too
+    public static func isScooterSetting(_ key: String) -> Bool {
+        scooterSettingKeys.contains(key) || key == "garage.registry" || key.contains("@")
+    }
 
     public static func category(table: String) -> DataCategory? { tables[table] }
 

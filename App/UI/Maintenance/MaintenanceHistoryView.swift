@@ -8,6 +8,8 @@ import SwiftUI
 /// counts (logged · found · dealt with · open), Export as PDF (English / עברית), a timeline by year with Measured / Entered marks;
 /// fault rows show their outcome. Never places, routes or times of day.
 struct MaintenanceHistoryView: View {
+    /// N11-2: a Sold / Lost scooter's service book (read-only, still exports); nil = the active scooter
+    var scooterId: String? = nil
     @State private var header = ""
     @State private var entries: [HistoryEntry] = []
     @State private var decay: DecayReport?
@@ -115,16 +117,23 @@ struct MaintenanceHistoryView: View {
 
     private func load() {
         guard let db = AppModel.shared.database else { return }
-        let id = MaintenanceService.scooterId(db)
+        let active = MaintenanceService.scooterId(db)
+        let id = scooterId ?? active
         entries = MaintHistory.entries(logged: MaintenanceService.logged(db), faults: FaultStore.records(db), scooterId: id,
                                        trackedSince: HistoryDates.trackedSince(db))
-        decay = BatteryDecayService.report(db)
         let since = HistoryDates.trackedSince(db).map { " \u{00B7} tracked since " + HistoryDates.monthYear($0.day) } ?? ""
-        header = MaintenanceService.header(db) + since
+        if id == active {
+            decay = BatteryDecayService.report(db)
+            header = MaintenanceService.header(db) + since
+        } else {
+            let g = GarageService.registry(db).scooter(id)
+            decay = nil
+            header = [g?.displayName ?? "Scooter", g?.status.label].compactMap { $0 }.joined(separator: " \u{00B7} ") + since
+        }
     }
 
     private func export(_ lang: ReportLanguage) {
-        guard let db = AppModel.shared.database, let url = HistoryPDF.make(db, language: lang) else { return }
+        guard let db = AppModel.shared.database, let url = HistoryPDF.make(db, language: lang, scooterId: scooterId) else { return }
         shareURL = ShareItem(url: url)
     }
 }

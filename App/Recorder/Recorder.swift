@@ -230,6 +230,7 @@ actor Recorder {
                 var r = RideRecord(id: id, startAt: ms(startT))
                 r.isSimulated = simulated
                 r.createdBuild = build
+                if !simulated { r.scooterId = GarageService.tagId(db) }   // N11-2: the ride belongs to the active (connected) scooter
                 r.utcOffsetMin = utcOffsetMin ?? TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: startT + epochOffset)) / 60
                 try q.save(r)
                 // F-02: the Load chosen on Home goes onto this ride, then resets (a simulated ride does not use it up)

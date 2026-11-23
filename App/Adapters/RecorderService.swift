@@ -150,7 +150,7 @@ final class RecorderService {
             let pct = AppModel.shared.settledBatteryPct.map(Double.init)
             let km = pct.flatMap { BatteryOverview.load(db, currentPct: $0, connected: true).range?.rangeKm }.map { Int($0.rounded()) }
             let dest = RouteFollowSelection.shared.chosenKey.flatMap { self.resolveDestination($0)?.name }
-            ScooterActivityController.shared.connected(name: "Scooter", kmLeft: km, destination: dest)
+            ScooterActivityController.shared.connected(name: GarageService.lockScreenName(AppModel.shared.database), kmLeft: km, destination: dest)   // N11-2: the name only with 2+ scooters
         }
     }
     func scooterDisconnected(at date: Date) { let t = EngineClock.shared.fromWall(date); send(.scooter(TimedScooterEvent(t: t, event: .disconnected)), at: t) }
@@ -283,7 +283,7 @@ final class RecorderService {
         if !fromSimulator {
             ScooterActivityController.shared.live(rideOn: rideOn, gpsLost: rideOn && input.secondsWithoutGps > 15, arrived: screen.arrived,
                                                   destination: destination?.name, distanceM: input.rideDistanceM, elapsedS: input.rideElapsedS,
-                                                  name: "Scooter")
+                                                  name: GarageService.lockScreenName(AppModel.shared.database))
         }
     }
 

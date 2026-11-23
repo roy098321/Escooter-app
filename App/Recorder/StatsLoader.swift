@@ -48,11 +48,11 @@ enum StatsLoader {
     }
 
     static func load(_ db: AppDatabase, span: StatsSpan, mode: StatsMode, back: Int = 0, nowMs: Int64 = FactorUpdater.nowMs(),
-                     utcOffsetMin: Int = RouteCardLoader.currentOffsetMin()) -> StatsModel {
+                     utcOffsetMin: Int = RouteCardLoader.currentOffsetMin(), scooterId: String? = nil) -> StatsModel {
         let q = StatsQueries(db)
         let p = StatsCalc.period(span: span, mode: mode, nowMs: nowMs, utcOffsetMin: utcOffsetMin, back: back)
         let prev = StatsCalc.period(span: span, mode: mode, nowMs: nowMs, utcOffsetMin: utcOffsetMin, back: back + 1)
-        let rides = (try? q.rides(from: prev.startMs, to: p.endMs)) ?? []
+        let rides = (try? q.rides(from: prev.startMs, to: p.endMs, scooterId: scooterId)) ?? []   // N11-2: all scooters unless filtered
         let prices = prices(db)
         let tagged = span == .week && mode == .calendar && StatsCalc.holidayTagged(p, dayOffDates: (try? q.dayOffDates()) ?? [], utcOffsetMin: utcOffsetMin)
         let totals = StatsCalc.totals(rides, period: p, prices: prices, utcOffsetMin: utcOffsetMin)
