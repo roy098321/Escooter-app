@@ -208,7 +208,9 @@ final class AppModel {
         if !fingerprintSaved, scooter.hasKnownScooter, let fw = info.firmware, let sw = info.software, let db = database {
             do {
                 // A-13: the card name is the model name ("RND G100"), not the Bluetooth name "G2"
-                let model = scooter.foundModel ?? KnownScooters.modelName(advertisedName: ScooterGatt.advertisedName, makerTagged: false)
+                // N11-5: no model known yet -> keep the name already saved instead of assuming the G2's model
+                let saved = ScooterRecord.latest(in: db).flatMap { $0.id == scooter.knownPeripheralID ? $0.name : nil }
+                let model = scooter.foundModel ?? saved ?? KnownScooters.modelName(advertisedName: nil, makerTagged: false)
                 try ScooterRecord.save(id: scooter.knownPeripheralID ?? "scooter", name: NewRider.cardName(foundModel: model),
                                        chip: info.model, firmware: fw, software: sw, in: db)
                 fingerprintSaved = true

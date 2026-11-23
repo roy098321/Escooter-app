@@ -17,11 +17,18 @@
         "symbol": "lock.shield",
         "title": "Same safe connection",
         "line": "The app only reads from the scooter, never sends it anything."
+      },
+      {
+        "symbol": "circle.circle",
+        "title": "Cleaner logo",
+        "line": "The thin white ring around the Home logo is gone."
       }
     ],
     "smallerFixes": 0,
     "full": [
-      "The app looked only for the name G2; it now knows a list of names (G2 = RND G100, G500 = RND G500). Same read-only connection."
+      "The app looked only for the name G2; it now knows a list of names (G2 = RND G100, G500 = RND G500). Same read-only connection.",
+      "The scooter keeps its model name on later connections too.",
+      "Home logo: the light rim at the edge of the round logo is cut away."
     ]
   },
   {

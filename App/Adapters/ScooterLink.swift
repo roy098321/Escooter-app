@@ -155,6 +155,10 @@ final class ScooterLink: NSObject {
 
     private func didBecomeConnected(_ p: CBPeripheral) {
         connected = true
+        // N11-5: a reconnect without a fresh scan still knows the model from the peripheral's name (G500 is not named "RND G100")
+        if foundModel == nil, let name = p.name, ScooterGatt.knownNames[name] != nil {
+            foundModel = KnownScooters.modelName(advertisedName: name, makerTagged: false)
+        }
         frame = nil              // B73 (batch 3): no reading from an earlier connection is shown as now
         assembler.reset()
         state = "Connected · waiting for data"
