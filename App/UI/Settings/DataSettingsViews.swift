@@ -66,9 +66,10 @@ struct ExportEverythingView: View {
         let offset = TimeZone.current.secondsFromGMT() / 60
         let build = AppInfo.build
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(ExportAll.fileName(nowMs: now, utcOffsetMin: offset))
+        let devLogs = ExportDevLogs.current()      // B102 (.05): watch log + Bluetooth events go into the export
         do {
             let result = try await Task.detached(priority: .userInitiated) {
-                try ExportAll.write(db, to: url, build: build, nowMs: now)
+                try ExportAll.write(db, to: url, build: build, nowMs: now, devLogs: devLogs)
             }.value
             summary = "\(result.rides) rides, " + String(format: "%.1f MB", Double(result.bytes) / 1_000_000)
             share = ShareFile(url: url)

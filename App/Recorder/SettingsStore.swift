@@ -39,7 +39,16 @@ enum BatterySettings {
     static let chargerKey = "battery.chargerA"
     static let recalibrateKey = "battery.recalibrateFromMs"
 
-    static func packAh(_ db: AppDatabase?) -> Double { SettingsValue.number(db, packAhKey) ?? T.t42DefaultPackAh }
+    /// The rider's battery size for the active scooter, else its model's pack (B102 .05: G500 = 21 Ah), else T42
+    static func packAh(_ db: AppDatabase?) -> Double {
+        SettingsValue.number(db, packAhKey) ?? ScooterModels.pack(model: activeModel(db))?.packAh ?? T.t42DefaultPackAh
+    }
+
+    /// The Garage's active scooter model ("RND G500"); nil before any scooter
+    static func activeModel(_ db: AppDatabase?) -> String? {
+        let r = GarageService.registry(db)
+        return r.scooters.first { $0.id == r.activeId }?.model
+    }
     static func chargerA(_ db: AppDatabase?) -> Double { SettingsValue.number(db, chargerKey) ?? T.t46ChargerA }
     /// Rides that started before this are left out of the calibration (0 = all rides count)
     static func recalibrateFromMs(_ db: AppDatabase?) -> Int64 { Int64(SettingsValue.number(db, recalibrateKey) ?? 0) }

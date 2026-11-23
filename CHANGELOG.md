@@ -2,6 +2,13 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.05 — hotfix 05 of batch 11: G500 battery %, pack per model, quiet byte watch
+
+- B102: `ScooterModels` pack table (P-6: per model, not per rider): RND G100 48 V 13S 16 Ah, RND G500 60 V 16S 21 Ah. `BatterySettings.packAh` = the rider's value for the active scooter, else its model's pack, else T42; per scooter through the Garage swap. Turns on range, charge-timer start %, calibration and health for the G500.
+- B102: G500 battery % from the resting voltage (`LiIonCurve`, NMC open-circuit curve): the first reading of a connection, then after 10 s standing at ≤ T40 current; held while riding; nil until a rested reading. Same settle / flip filter as the G100 path after that.
+- B102: G500 temperature = highest of the last 10 s (it dips 3–11 °C above ~48 km/h, even coasting). Byte 18 documented: 0x08 brake, 0x02 motor driven (also electric braking; not throttle). Bytes 2–3 are RND's brand code, not an ID.
+- B102: quiet watch log (`ByteWatch`, owner OK): G500 bytes 8–9, 16, 17 and unknown byte-18 bits; first value per connection, then changes only, with the moment's readings and raw packets; newest 500, 60 days; no UI. Written into Export everything with the Bluetooth events (`devLogs`, optional; Restore ignores it).
+
 ## 111.291126.04 — hotfix 04 of batch 11: B102, a ride with an unreadable scooter falls back to phone GPS
 
 - B102: RideEngine.scooterGoneSince ignored a connection that never brought a usable reading (lastFrameT nil while connected), so phone mode never started: the ride saved 0 s, no path, and a GPS-integrated distance. `connectedSinceT` now counts such a connection as "scooter gone" from its start: after the ~5 s takeover wait the ride runs on phone GPS (samples, path, time). Tests in B102PhoneFallbackTests.

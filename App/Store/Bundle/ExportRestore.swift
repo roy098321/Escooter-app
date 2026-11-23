@@ -30,6 +30,8 @@ struct ExportFile: Codable {
     var createdAt: Int64
     var rides: [RideBundle]
     var tables: [BundleTable]
+    /// B102 (.05): developer logs (the G500 byte watch, Bluetooth events). Optional: older files have none; Restore ignores it.
+    var devLogs: ExportDevLogs?
 
     /// Parents first. Settings last; `merge.undo` is a note about a temporary file and is not exported.
     static let otherTables = ["scooter", "place", "route", "variant", "choice_point", "choice_option", "climb", "maintenance_item",
@@ -42,7 +44,7 @@ enum ExportAll {
         try String.fetchAll(d, sql: "SELECT id FROM ride WHERE kind != 'discarded' AND isSimulated = 0 ORDER BY startAt")
     }
 
-    static func make(_ db: AppDatabase, build: String, nowMs: Int64) throws -> ExportFile {
+    static func make(_ db: AppDatabase, build: String, nowMs: Int64, devLogs: ExportDevLogs? = nil) throws -> ExportFile {
         let schema = try db.appliedMigrations().count
         return try db.writer.read { d in
             let ids = try rideIds(d)
@@ -58,14 +60,14 @@ enum ExportAll {
                 }
                 tables.append(table)
             }
-            return ExportFile(schemaVersion: schema, build: build, createdAt: nowMs, rides: rides, tables: tables)
+            return ExportFile(schemaVersion: schema, build: build, createdAt: nowMs, rides: rides, tables: tables, devLogs: devLogs)
         }
     }
 
     /// Writes the export as one JSON file; returns the number of rides and the file size.
     @discardableResult
-    static func write(_ db: AppDatabase, to url: URL, build: String, nowMs: Int64) throws -> (rides: Int, bytes: Int) {
-        let file = try make(db, build: build, nowMs: nowMs)
+    static func write(_ db: AppDatabase, to url: URL, build: String, nowMs: Int64, devLogs: ExportDevLogs? = nil) throws -> (rides: Int, bytes: Int) {
+        let file = try make(db, build: build, nowMs: nowMs, devLogs: devLogs)
         let data = try JSONEncoder().encode(file)
         try data.write(to: url, options: .atomic)
         return (file.rides.count, data.count)

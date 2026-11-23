@@ -131,6 +131,7 @@ final class AppModel {
         scooter.connectHandlers.append { [weak self] inBackground in
             guard let self else { return }
             self.loadBatteryDetector()                   // B56b: this scooter's flip history, before its first reading
+            ByteWatchStore.shared.connected()            // B102 (.05): the watch log logs this connection's first values
             Task { @MainActor in for _ in 0..<30 where ChargeTimer.shared.charging { try? await Task.sleep(nanoseconds: 2_000_000_000); ChargeTimer.shared.tick() } }   // F-31: the real % ends the charge timer
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .connected))
             RecorderService.shared.scooterConnected(at: Date())
@@ -160,6 +161,7 @@ final class AppModel {
         scooter.packetHandlers.append { [weak self] bytes, time, background in
             guard let self else { return }
             PacketLog.shared.add(bytes, at: time, background: background)
+            ByteWatchStore.shared.packet(bytes, at: time)   // B102 (.05): quiet watch log (G500 only, on change)
             RecorderService.shared.packet(bytes, at: time)
             PhoneSensors.shared.notePacket(at: time)
             C8Recorder.shared.packet(bytes, at: time, background: background)

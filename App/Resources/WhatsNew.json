@@ -1,5 +1,31 @@
 [
   {
+    "version": "111.291126.05",
+    "headline": "G500 battery and range",
+    "items": [
+      {
+        "symbol": "battery.75percent",
+        "title": "Battery % for the G500",
+        "line": "Read from the battery's voltage when the scooter stands still."
+      },
+      {
+        "symbol": "map",
+        "title": "Range starts learning",
+        "line": "Its 21 Ah battery is known, so km left and battery health can learn."
+      },
+      {
+        "symbol": "thermometer.medium",
+        "title": "Steadier temperature",
+        "line": "No more short dips at high speed."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "G500: battery % estimated from the resting voltage (16-cell Li-ion curve), updated after 10 s standing still; battery size from its model (21 Ah), changeable in Settings.",
+      "G500: temperature shows the highest reading of the last 10 seconds."
+    ]
+  },
+  {
     "version": "111.291126.04",
     "headline": "Rides on phone GPS when needed",
     "items": [

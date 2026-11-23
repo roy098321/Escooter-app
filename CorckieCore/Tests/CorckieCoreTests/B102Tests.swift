@@ -180,3 +180,117 @@ final class B102PhoneFallbackTests: XCTestCase {
         XCTAssertNil(e.scooterGoneSince(at: 1))
     }
 }
+
+/// B102 (.05): G500 battery % from the resting voltage, smoothed temperature, the quiet byte watch. Synthetic packets only.
+final class B102G500BatteryAndWatchTests: XCTestCase {
+    /// A synthetic G500 packet (made-up ID 12 34)
+    func packet(volts: Double, amps: Double = 0.03, raw: Int = 0, tempC: Double = 25, status: UInt8 = 0,
+                b8: UInt8 = 0x2C, b16: UInt8 = 1, b17: UInt8 = 0) -> [UInt8] {
+        var b = [UInt8](repeating: 0, count: 20)
+        b[0] = 0x24; b[1] = 0x20; b[2] = 0x12; b[3] = 0x34
+        func put(_ i: Int, _ v: Int) { b[i] = UInt8(v & 0xFF); b[i + 1] = UInt8((v >> 8) & 0xFF) }
+        put(4, Int((volts * 100).rounded())); put(6, Int((amps * 100).rounded())); b[8] = b8
+        put(10, raw); b[12] = UInt8(min(255, Int(Double(raw) * 0.056))); put(14, Int((tempC * 100).rounded()))
+        b[16] = b16; b[17] = b17; b[18] = status
+        return b
+    }
+
+    func test_models_packFromTheTable() {
+        XCTAssertEqual(ScooterModels.pack(model: "RND G500")?.packAh, 21)
+        XCTAssertEqual(ScooterModels.pack(model: "RND G500")?.cells, 16)
+        XCTAssertEqual(ScooterModels.pack(model: "RND G500")?.fullV ?? 0, 67.2, accuracy: 1e-9)
+        XCTAssertEqual(ScooterModels.pack(model: "RND G100")?.packAh, T.t42DefaultPackAh, "the G100 keeps 16 Ah")
+        XCTAssertNil(ScooterModels.pack(model: "Scooter"))
+    }
+
+    func test_curve_endsAndMiddle() {
+        XCTAssertEqual(LiIonCurve.pct(packV: 67.2, cells: 16), 100)
+        XCTAssertEqual(LiIonCurve.pct(packV: 70, cells: 16), 100)
+        XCTAssertEqual(LiIonCurve.pct(packV: 52.8, cells: 16), 0)
+        XCTAssertEqual(LiIonCurve.pct(cellV: 3.82), 50)
+        XCTAssertEqual(LiIonCurve.pct(cellV: 4.05), 85)
+        var last = -1
+        for mv in stride(from: 3300, through: 4200, by: 10) {
+            let p = LiIonCurve.pct(cellV: Double(mv) / 1000)
+            XCTAssertGreaterThanOrEqual(p, last, "never falls as the voltage rises")
+            last = p
+        }
+    }
+
+    func test_battery_firstReadingAtOnce_thenOnlyAtRest() throws {
+        var a = FrameAssembler()
+        let first = try XCTUnwrap(a.ingest(packet(volts: 64.0), at: 0))
+        XCTAssertEqual(first.batteryPct, LiIonCurve.pct(cellV: 4.0))       // switched on: rested
+        // riding: the sagging voltage never changes the %
+        for i in 1...30 {
+            let f = try XCTUnwrap(a.ingest(packet(volts: 58.0, amps: 20, raw: 600), at: Double(i)))
+            XCTAssertEqual(f.batteryPct, 80, "held while riding")
+        }
+        // standing, no current: after 10 s the resting voltage counts
+        var f = try XCTUnwrap(a.ingest(packet(volts: 63.2), at: 31))
+        XCTAssertEqual(f.batteryPct, 80, "not yet rested")
+        f = try XCTUnwrap(a.ingest(packet(volts: 63.2), at: 41.5))
+        XCTAssertEqual(f.batteryPct, LiIonCurve.pct(cellV: 3.95))
+        a.reset()
+        XCTAssertNil(a.g500RestPct)
+    }
+
+    func test_battery_neverFromALoadedFirstPacket() throws {
+        var a = FrameAssembler()
+        let f = try XCTUnwrap(a.ingest(packet(volts: 55, amps: 30, raw: 900), at: 0))
+        XCTAssertNil(f.batteryPct, "no rested reading yet: empty, never a guess under load")
+    }
+
+    func test_temperature_highestOfTheLast10s() throws {
+        var a = FrameAssembler()
+        _ = a.ingest(packet(volts: 60, tempC: 50), at: 0)
+        var f = try XCTUnwrap(a.ingest(packet(volts: 60, amps: 10, raw: 1000, tempC: 42), at: 5))
+        XCTAssertEqual(f.temperatureC ?? 0, 50, accuracy: 1e-9, "the dip above ~48 km/h is smoothed away")
+        f = try XCTUnwrap(a.ingest(packet(volts: 60, amps: 10, raw: 1000, tempC: 42), at: 11))
+        XCTAssertEqual(f.temperatureC ?? 0, 42, accuracy: 1e-9)
+    }
+
+    func test_g500Ride_batteryThroughThePipeline() {
+        var pipe = ScooterPipeline()
+        pipe.handle(TimedScooterEvent(t: 0, event: .connected))
+        for i in 0..<20 { pipe.handle(TimedScooterEvent(t: Double(i) * 0.3, event: .packet(packet(volts: 62.0)))) }
+        XCTAssertEqual(pipe.frame?.layout, .g500)
+        XCTAssertNotNil(pipe.frame?.voltage)
+        XCTAssertEqual(pipe.assembler.g500RestPct, LiIonCurve.pct(packV: 62.0, cells: 16))
+    }
+
+    func test_watch_firstValuesThenOnlyChanges() {
+        var w = ByteWatch()
+        w.connected(id: "c1")
+        let first = w.observe(packet(volts: 60), atMs: 1_000)
+        XCTAssertEqual(first.map(\.field), ["b8-9", "b16", "b17", "b18-other"])
+        XCTAssertTrue(first.allSatisfy { $0.old == nil && $0.connection == "c1" })
+        XCTAssertEqual(first.first?.new, 44)
+        XCTAssertTrue(w.observe(packet(volts: 59.9, status: 0x0A), atMs: 1_300).isEmpty, "known status bits are not logged")
+        let change = w.observe(packet(volts: 59.8, amps: 3, raw: 200, b17: 5), atMs: 1_600)
+        XCTAssertEqual(change.count, 1)
+        XCTAssertEqual(change.first?.field, "b17")
+        XCTAssertEqual(change.first?.old, 0)
+        XCTAssertEqual(change.first?.new, 5)
+        XCTAssertEqual(change.first?.currentA ?? 0, 3, accuracy: 1e-9)
+        XCTAssertNotNil(change.first?.rawBefore)
+        let odd = w.observe(packet(volts: 59.8, status: 0x20, b17: 5), atMs: 1_900)
+        XCTAssertEqual(odd.map(\.field), ["b18-other"])
+        XCTAssertEqual(odd.first?.new, 0x20)
+        w.connected(id: "c2")
+        XCTAssertEqual(w.observe(packet(volts: 60), atMs: 2_000).count, 4, "first values again on a new connection")
+        XCTAssertTrue(w.observe([UInt8](repeating: 0xFF, count: 128), atMs: 2_100).isEmpty)
+    }
+
+    func test_watch_capped() {
+        let day: Int64 = 24 * 3_600_000
+        let e = ByteWatchEntry(atMs: 0, connection: "c", field: "b17", old: nil, new: 0, speedKmh: 0, currentA: 0,
+                               voltage: 60, temperatureC: 25, status: 0, rawBefore: nil, rawAfter: "")
+        var list = [ByteWatchEntry](repeating: e, count: 700)
+        for i in list.indices { list[i].atMs = Int64(i) * 3_600_000 }
+        let kept = ByteWatch.trimmed(list, nowMs: 699 * 3_600_000)
+        XCTAssertEqual(kept.count, 500)
+        XCTAssertEqual(kept.last?.atMs, 699 * 3_600_000)
+        XCTAssertTrue(ByteWatch.trimmed([e], nowMs: 61 * day).isEmpty, "older than 60 days")
+    }
+}

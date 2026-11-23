@@ -49,7 +49,8 @@ public struct PacketB: Equatable, Sendable {
 
 /// RND G500 status packet (20 bytes, starts 0x24 0x20) · PROTOCOL.md "RND G500" (B102, decoded from the owner's first ride
 /// against GPS and the dashboard). One packet carries what the G2 splits over A and B. It has no odometer, no battery %
-/// and no gear: those stay nil (never 0), and ride distance comes from the wheel speed.
+/// and no gear: odometer and gear stay nil (never 0), ride distance comes from the wheel speed, and battery % is estimated
+/// from the resting voltage (FrameAssembler, .05). Bytes 2–3 (88 17) are RND's brand code (the G2 sends it too), not an ID.
 public struct PacketG500: Equatable, Sendable {
     public let bytes: [UInt8]
 
@@ -70,7 +71,8 @@ public struct PacketG500: Equatable, Sendable {
     public var dashboardKmh: Int { Int(bytes[12]) }
     /// Temperature, °C — bytes 14–15 LE ÷ 100 🟡 (~25 °C at rest, rises over a ride and keeps rising just after hard pulls)
     public var temperatureC: Double { Double(Decoder.le(bytes, 14, 2)) / 100 }
-    /// Status bits — byte 18, as the G2's byte 4: 0x02 motor powered · 0x08 brake · 0x80 shutting down 🟡
+    /// Status bits — byte 18: 0x08 brake ✅ (every lever press) · 0x02 motor driven ✅ (also while braking at speed: 0x0A =
+    /// electric brake at 0 A; drops at 5.5–7.5 km/h; NOT throttle) · 0x80 shutting down 🟡
     public var status: UInt8 { bytes[18] }
     public var motorPowered: Bool { status & 0x02 != 0 }
     public var brake: Bool { status & 0x08 != 0 }
