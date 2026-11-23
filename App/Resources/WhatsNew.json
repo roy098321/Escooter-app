@@ -1,5 +1,30 @@
 [
   {
+    "version": "111.291126.04",
+    "headline": "Rides on phone GPS when needed",
+    "items": [
+      {
+        "symbol": "location",
+        "title": "GPS rides saved right",
+        "line": "If the app can't read a scooter, the ride still gets its time, map and km from GPS."
+      },
+      {
+        "symbol": "scooter",
+        "title": "G500 numbers",
+        "line": "Speed, power and rides from your G500, as in the last update."
+      },
+      {
+        "symbol": "lock.shield",
+        "title": "Same safe connection",
+        "line": "The app only reads from the scooter, never sends it anything."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "A ride with a scooter connected whose data the app can't read was saved with 0 s and no map; it now switches to phone GPS after a few seconds, like a dropped connection."
+    ]
+  },
+  {
     "version": "111.291126.03",
     "headline": "Your G500's numbers",
     "items": [

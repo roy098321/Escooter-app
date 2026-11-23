@@ -150,3 +150,33 @@ final class B102Tests: XCTestCase {
         XCTAssertNil(pipe.frame?.batteryPct)
     }
 }
+
+/// B102 (.04): connected to a scooter whose data the app can't read (no frames at all): a started ride must run on phone
+/// GPS (phone mode: time, path, distance), not sit at 0 s with no path waiting for readings that never come.
+final class B102PhoneFallbackTests: XCTestCase {
+    func test_connectedWithoutReadings_rideFallsBackToPhoneGps() {
+        var e = RideEngine()
+        e.handle(.connected, at: 0)
+        e.handle(.startPressed, at: 1)
+        var north = 0.0
+        for t in stride(from: 2.0, through: 60, by: 1) {
+            north += 20 / 3.6
+            e.handle(.fix(PhoneFix(t: t, lat: 10 + north / 111_320, lon: -30, hAccM: 5, speedMps: 20 / 3.6)), at: t)
+            e.handle(.tick, at: t)
+        }
+        XCTAssertTrue(e.rideActive)
+        XCTAssertNotNil(e.scooterGoneSince(at: 60), "no readings this connection: the scooter counts as gone")
+        XCTAssertTrue(e.phoneMode(at: 60), "the ride runs on phone GPS")
+        XCTAssertGreaterThan(e.ride?.wheelM ?? 0, 150, "GPS distance is counted")
+    }
+
+    func test_connectedWithReadings_staysOnTheScooter() {
+        var e = RideEngine()
+        e.handle(.connected, at: 0)
+        var f = ScooterFrame(t: 0.5)
+        f.speedKmh = 0
+        f.voltage = 50
+        e.handle(.frame(f), at: 0.5)
+        XCTAssertNil(e.scooterGoneSince(at: 1))
+    }
+}

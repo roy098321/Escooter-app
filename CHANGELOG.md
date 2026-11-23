@@ -2,6 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.04 — hotfix 04 of batch 11: B102, a ride with an unreadable scooter falls back to phone GPS
+
+- B102: RideEngine.scooterGoneSince ignored a connection that never brought a usable reading (lastFrameT nil while connected), so phone mode never started: the ride saved 0 s, no path, and a GPS-integrated distance. `connectedSinceT` now counts such a connection as "scooter gone" from its start: after the ~5 s takeover wait the ride runs on phone GPS (samples, path, time). Tests in B102PhoneFallbackTests.
+
 ## 111.291126.03 — hotfix 03 of batch 11: B102 step 2, the RND G500 decoder
 
 - B102: `PacketG500` (20 bytes starting 0x24 0x20): voltage 4–5 ÷ 100, current 6–7 ÷ 100, wheel speed 10–11 × 0.0516 km/h (GPS-checked; the dashboard's km/h in byte 12 reads ~8 % higher), temperature 14–15 ÷ 100 (🟡), status 18 (0x02 motor · 0x08 brake · 0x80 shutting down). No odometer, battery % or gear in the stream: they stay nil; ride distance comes from the wheel speed (RideEngine's integrated distance).

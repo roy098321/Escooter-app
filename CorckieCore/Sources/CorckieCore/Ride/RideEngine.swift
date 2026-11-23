@@ -329,6 +329,10 @@ public struct RideEngine: Codable, Equatable, Sendable {
     // Scooter link
     public private(set) var connected = false
     public private(set) var disconnectedAt: Double?
+    /// B102: when this connection began (optional so older saved states still decode). A connection that never brings a
+    /// reading the app can use (a data layout it can't read) counts as "scooter gone" from here, so the ride falls back to
+    /// phone GPS (time, path, distance) instead of waiting for readings that never come.
+    public private(set) var connectedSinceT: Double?
     public private(set) var lastFrameT: Double?
     /// B63: the newest frame of any kind, trusted or not: packets still arriving mean the scooter is on and connected
     public private(set) var lastAnyFrameT: Double?
@@ -477,6 +481,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
     }
 
     private mutating func reconnected(at t: Double) {
+        if !connected || connectedSinceT == nil { connectedSinceT = t }
         connected = true
         disconnectedAt = nil
         // B73 (batch 3, every metric): nothing the scooter said in an earlier connection is a reading of this one. Every value
@@ -1041,6 +1046,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
     public func scooterGoneSince(at t: Double) -> Double? {
         if let u = untrustedSince { return u }
         if linkLive(at: t) { return nil }
+        if connected, let c = connectedSinceT, (lastFrameT ?? -.infinity) < c { return c }   // B102: nothing usable this connection
         return connected ? (lastFrameT ?? disconnectedAt) : (disconnectedAt ?? lastFrameT)
     }
 
