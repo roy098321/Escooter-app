@@ -103,4 +103,15 @@ final class DecoderTests: XCTestCase {
         XCTAssertTrue(ScooterGatt.isScooter(name: nil, manufacturerData: [0xFF, 0xFF, 0x52, 0x4E, 0x44, 0xFF, 0x88, 0x17]))
         XCTAssertFalse(ScooterGatt.isScooter(name: "Other", manufacturerData: [0x52, 0x4E]))
     }
+
+    /// N11-5 / B101: the G500 is found and named after its model; unknown names are still ignored.
+    func test_g500IsFound_unknownNamesIgnored() {
+        XCTAssertTrue(ScooterGatt.isScooter(name: "G500", manufacturerData: []))
+        XCTAssertEqual(KnownScooters.modelName(advertisedName: "G500", makerTagged: false), "RND G500")
+        XCTAssertEqual(KnownScooters.modelName(advertisedName: "G2", makerTagged: false), "RND G100")
+        for other in ["G5000", "g500", "G50", "G1", "", "Mi Scooter", "G500 "] {
+            XCTAssertFalse(ScooterGatt.isScooter(name: other, manufacturerData: []), other)
+        }
+        XCTAssertFalse(ScooterGatt.isScooter(name: nil, manufacturerData: []))
+    }
 }

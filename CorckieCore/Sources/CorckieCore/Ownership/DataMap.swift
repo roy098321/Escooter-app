@@ -100,9 +100,9 @@ public enum DataMap {
 
 /// D2 7f: the Bluetooth tag -> a model name. Unknown -> a plain description. Pure knowledge, no connection needed.
 public enum KnownScooters {
-    /// "RND G100" for the advertised name "G2", else a generic name.
+    /// The model for a known advertised name ("G2" -> "RND G100", "G500" -> "RND G500", N11-5), else a generic name.
     public static func modelName(advertisedName: String?, makerTagged: Bool) -> String {
-        if advertisedName == ScooterGatt.advertisedName { return "RND G100" }
+        if let name = advertisedName, let model = ScooterGatt.knownNames[name] { return model }
         return makerTagged ? "Scooter (RND type)" : "Scooter"
     }
 

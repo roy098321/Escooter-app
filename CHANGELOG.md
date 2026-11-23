@@ -2,6 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 110.221126.02 — hotfix 02 of batch 10: N11-5 from batch 11, shipped first (owner can't connect the new scooter)
+
+- N11-5 / B101: scooters are found by a list of known advertised names (ScooterGatt.knownNames: G2 → RND G100, G500 → RND G500), not one name; the card is named after the model; unknown names are still ignored. Same read-only connection (FFF2 notify + 180A read).
+
 ## 110.221126.01 — hotfix 01 of batch 10 (owner 22 Nov)
 
 - B97 follow-up: Home's top-left logo is the owner's new round logo (the orange C on a black disc, cut to the circle); asset HeaderMark @2x/@3x.

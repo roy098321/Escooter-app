@@ -7,7 +7,14 @@ public enum ScooterGatt {
     public static let dataService = "FFF0"
     public static let statusStream = "FFF2"
     public static let deviceInformation = "180A"
+    /// The first scooter's advertised name (kept for older call sites; see `knownNames`).
     public static let advertisedName = "G2"
+    /// N11-5 / B101: every advertised name we know, -> its model name. Same Beken BK-BLE-1.0 chip,
+    /// same protocol, same read-only rules. Add a name here only after it was seen on a real scooter.
+    public static let knownNames: [String: String] = [
+        "G2": "RND G100",
+        "G500": "RND G500",
+    ]
     /// "RND" in the manufacturer data
     public static let manufacturerTag: [UInt8] = [0x52, 0x4E, 0x44]
 
@@ -44,9 +51,9 @@ public enum ScooterGatt {
         normalized(service) == deviceInformation && !isDenied(uuid)
     }
 
-    /// Is this advertisement our scooter? (name "G2" or "RND" in the manufacturer data)
+    /// Is this advertisement our scooter? (a known name such as "G2" / "G500", or "RND" in the manufacturer data)
     public static func isScooter(name: String?, manufacturerData: [UInt8]) -> Bool {
-        if name == advertisedName { return true }
+        if let name, knownNames[name] != nil { return true }
         guard manufacturerData.count >= manufacturerTag.count else { return false }
         for start in 0...(manufacturerData.count - manufacturerTag.count)
         where Array(manufacturerData[start..<start + manufacturerTag.count]) == manufacturerTag {

@@ -1,5 +1,30 @@
 [
   {
+    "version": "110.221126.02",
+    "headline": "Your new scooter is found",
+    "items": [
+      {
+        "symbol": "scooter",
+        "title": "RND G500 works",
+        "line": "The app now finds the G500 as well as the G100."
+      },
+      {
+        "symbol": "tag",
+        "title": "Named after its model",
+        "line": "A G500 shows up as RND G500 when you connect it."
+      },
+      {
+        "symbol": "lock.shield",
+        "title": "Same safe connection",
+        "line": "The app only reads from the scooter, never sends it anything."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "The app looked only for the name G2; it now knows a list of names (G2 = RND G100, G500 = RND G500). Same read-only connection."
+    ]
+  },
+  {
     "version": "110.221126.01",
     "headline": "New logo, quicker parts, charging test",
     "items": [

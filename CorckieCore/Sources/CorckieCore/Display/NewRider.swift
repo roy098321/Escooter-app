@@ -50,7 +50,7 @@ public enum NewRider {
                                       "Hold the phone within a few metres of it.",
                                       "Close other scooter apps: one app at a time can connect."]
     /// "Which scooters work?": the scooters the app reads today (KnownScooters); others are not found yet
-    public static let supportedLine = "CorckieApp reads RND scooters (G100 / G2) today. Other brands are not supported yet."
+    public static let supportedLine = "CorckieApp reads RND scooters (G100, G500) today. Other brands are not supported yet."
 
     /// A-13: the scooter card's default name is the model name the scooter reports, not a fixed "G2"
     public static func cardName(foundModel: String?) -> String {
