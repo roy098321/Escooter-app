@@ -1,5 +1,30 @@
 [
   {
+    "version": "111.291126.09",
+    "headline": "Rides open every time",
+    "items": [
+      {
+        "symbol": "list.bullet.rectangle",
+        "title": "Rides open again",
+        "line": "After you leave a ride, the next one you tap opens."
+      },
+      {
+        "symbol": "point.topleft.down.to.point.bottomright.curvepath",
+        "title": "Routes too",
+        "line": "The same fix for the Routes list."
+      },
+      {
+        "symbol": "stop.circle",
+        "title": "Still in this build",
+        "line": "Rides end on their own when the scooter is off and you walk away."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "Tapping a ride or a route always opens it, even right after leaving another."
+    ]
+  },
+  {
     "version": "111.291126.08",
     "headline": "Rides end when you do",
     "items": [

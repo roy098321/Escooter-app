@@ -2,6 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.09 — hotfix 09 of batch 11: rides would not open again
+
+- Owner 24 Nov: after leaving a ride, tapping rides did nothing. The list's selection (`navigationDestination(item:)` with the zoom transition and a hidden bar) could stay set after the page closed, so the next tap changed nothing. Rides and Routes list taps now go through `open`, which clears a leftover selection first and opens on the next run-loop turn.
+
 ## 111.291126.08 — hotfix 08 of batch 11: a ride that never ended
 
 - Owner 24 Nov: a ride kept "recording" 30+ min after the scooter was switched off. Once the scooter is gone (no 0x80 caught), any phone movement ≥ 2 km/h (walking, indoor GPS jumps) kept it open. New rule (`RideEngine.goneNoRidingS`): gone 3 min with no riding-pace movement (`ridingNow`, > 8 km/h) ends the ride. Riding on GPS after a lost link keeps going as before.

@@ -255,12 +255,20 @@ struct RidesListView: View {
         .listRowBackground(Theme.row)
     }
 
+    /// Hotfix .09 (owner 24 Nov: after leaving a ride, rides would not open again): the selection could stay set after the page
+    /// closed (zoom transition, hidden bar), so the next tap changed nothing. A tap clears it first, then opens on the next turn.
+    private func open(_ id: String) {
+        guard selected != nil else { selected = RideRoute(id: id); return }
+        selected = nil
+        DispatchQueue.main.async { selected = RideRoute(id: id) }
+    }
+
     private func row(_ ride: RideListItem, showDay: Bool = false) -> some View {
         let offset = ride.utcOffsetMin ?? TimeZone.current.secondsFromGMT() / 60
         let date = Date(timeIntervalSince1970: Double(ride.startAt) / 1000)
         let withDay = showDay || sort != .date
         let timeLabel = Self.timeText(date, offsetMin: offset, withDay: withDay)
-        return Button { selected = RideRoute(id: ride.id) } label: {
+        return Button { open(ride.id) } label: {
             HStack(alignment: .center, spacing: 10) {
                 placeStrip(ride)
                 VStack(alignment: .leading, spacing: 3) {

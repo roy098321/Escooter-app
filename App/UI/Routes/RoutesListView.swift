@@ -108,8 +108,16 @@ struct RoutesListView: View {
             .accessibilityLabel("Save \(r.title)")
     }
 
+    /// Hotfix .09 (owner 24 Nov: after leaving a ride, rides would not open again): the selection could stay set after the page
+    /// closed (zoom transition, hidden bar), so the next tap changed nothing. A tap clears it first, then opens on the next turn.
+    private func open(_ id: String) {
+        guard selected != nil else { selected = RouteRef(id: id); return }
+        selected = nil
+        DispatchQueue.main.async { selected = RouteRef(id: id) }
+    }
+
     private func row(_ r: RouteListRow) -> some View {
-        Button { selected = RouteRef(id: r.routeId) } label: {
+        Button { open(r.routeId) } label: {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 6) {
                     titleLine(r)
