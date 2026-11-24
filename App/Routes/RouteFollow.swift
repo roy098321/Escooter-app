@@ -123,7 +123,10 @@ extension RouteFollowLoader {
 
     /// V-U1 without a route: the rider's recent rides (40 newest real rides of 1.5 km or more)
     static func recentUsageLines(database: AppDatabase) -> UsageLines {
-        let rides = ((try? RideQueries(database).rides(limit: 60)) ?? []).filter { $0.kind == "ride" && !$0.isSimulated }
+        // B104: battery use of the active scooter only (BatteryDoor: untagged or not forgotten)
+        let door = Set((try? database.writer.read { d in try String.fetchAll(d, sql: "SELECT id FROM scooter WHERE forgottenAt IS NULL") }) ?? [])
+        let rides = ((try? RideQueries(database).rides(limit: 60)) ?? [])
+            .filter { $0.kind == "ride" && !$0.isSimulated && ($0.scooterId == nil || door.contains($0.scooterId ?? "")) }
         return UsageLines.from(perKm: rides.prefix(40).compactMap { r in
             guard let u = r.usedPct, u > 0, let d = r.distanceM, d >= 1_500 else { return nil }
             return u / (d / 1000)

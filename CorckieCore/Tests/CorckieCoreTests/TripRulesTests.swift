@@ -22,6 +22,22 @@ final class TripRulesTests: XCTestCase {
         XCTAssertNil(second.open)
     }
 
+    /// B103 (owner 24 Nov): Start pressed, a 51 s piece that never moved (discarded), then the real 14 km ride to Uni. The piece
+    /// opened a trip and the merge kept its "discarded" kind: the whole ride vanished. A discarded piece is never a leg.
+    func test_B103_discardedPiece_neverOpensOrJoinsATrip() {
+        var piece = leg("piece", start: nil, endAt: nil)
+        piece.discarded = true
+        let first = TripRules.afterRide(piece, open: nil)
+        XCTAssertNil(first.merge)
+        XCTAssertNil(first.open, "a discarded piece opens no trip")
+        let ride = TripRules.afterRide(leg("ride", end: "uni"), open: first.open)
+        XCTAssertNil(ride.merge, "the real ride stands alone")
+        // a trip already open stays as it was when a discarded piece closes in between
+        let open = TripRules.afterRide(leg("a"), open: nil).open
+        XCTAssertEqual(TripRules.afterRide(piece, open: open).open, open)
+        XCTAssertEqual(TripRules.afterRide(leg("b", end: "uni"), open: open).merge, ["a", "b"])
+    }
+
     func test_F39_threeLegs_andEndingAtAnotherSavedPlace() {
         var d = TripRules.afterRide(leg("a"), open: nil)
         d = TripRules.afterRide(leg("b"), open: d.open)

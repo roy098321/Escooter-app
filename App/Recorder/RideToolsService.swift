@@ -258,7 +258,9 @@ enum RideToolsService {
         let m = RideRecompute.metrics(samples: samples, stops: stops, walks: walkSpans(rows), bridges: bridges,
                                       ignoredReadings: r.ignoredReadings, trimStartS: trim?.start, trimEndS: trim?.end)
         Recorder.fill(&r, m, topSpeedKmh: m.topSpeedKmh)
-        if reclass, r.kind != "discarded" {
+        // B103: a merge sizes the ride by its merged distance, also when its first leg was a discarded piece
+        // (it kept "discarded" and a 14 km ride vanished from the list)
+        if reclass {
             let size = RideSizeClass.of(distanceM: m.distanceM)
             if size != .discarded { r.kind = size.rawValue }
         }

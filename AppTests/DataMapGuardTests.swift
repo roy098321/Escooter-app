@@ -43,6 +43,28 @@ final class DataMapGuardTests: XCTestCase {
         }
     }
 
+    /// B104 (owner 24 Nov): the new scooter's first ride said "using more than usual" and Home said "uses 36%" from the old
+    /// scooter's rides. Route and place rides keep their times for every scooter, but battery use only for the active one.
+    func test_B104_routeRides_batteryUseOnlyFromTheActiveScooter() throws {
+        let db = try makeDB()
+        try db.writer.write { d in
+            try d.execute(sql: "INSERT INTO scooter (id, name, firstSeenAt, forgottenAt) VALUES ('old', 'G2', 1, 5)")
+            try d.execute(sql: "INSERT INTO scooter (id, name, firstSeenAt) VALUES ('new', 'G500', 6)")
+            try d.execute(sql: "INSERT INTO place (id, name, lat, lon) VALUES ('p1', 'Synthetic', 1.0, 2.0)")
+            for (id, scooter, at) in [("r-old", "'old'", 1000), ("r-new", "'new'", 2000), ("r-untagged", "NULL", 3000)] {
+                try d.execute(sql: """
+                    INSERT INTO ride (id, scooterId, startAt, endAt, kind, usedPct, totalS, distanceM, endPlaceId)
+                    VALUES ('\(id)', \(scooter), \(at), \(at + 600_000), 'ride', 30.0, 1500, 14000, 'p1')
+                    """)
+            }
+        }
+        let rows = try RouteQueries(db).placeRides(placeId: "p1")
+        XCTAssertEqual(rows.count, 3, "times still count every scooter's rides")
+        XCTAssertNil(rows.first { $0.id == "r-old" }?.usedPct, "the old scooter's battery use is not borrowed")
+        XCTAssertEqual(rows.first { $0.id == "r-new" }?.usedPct, 30)
+        XCTAssertEqual(rows.first { $0.id == "r-untagged" }?.usedPct, 30, "older untagged rides still count (BatteryDoor)")
+    }
+
     private func seed(_ db: AppDatabase) throws {
         try db.writer.write { d in
             try d.execute(sql: "INSERT INTO scooter (id, name, firstSeenAt) VALUES ('old', 'G2', 1)")

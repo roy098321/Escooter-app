@@ -101,9 +101,12 @@ public enum TripRules {
         public var endLat: Double?
         public var endLon: Double?
         public var dayKey: String
+        /// B103: the ride was too short to keep (kind `discarded`): it never opens, joins or closes a trip
+        public var discarded: Bool
 
         public init(rideId: String, destinationPlaceId: String?, destinationName: String?, endPlaceId: String?,
-                    startLat: Double?, startLon: Double?, endLat: Double?, endLon: Double?, dayKey: String) {
+                    startLat: Double?, startLon: Double?, endLat: Double?, endLon: Double?, dayKey: String, discarded: Bool = false) {
+            self.discarded = discarded
             self.rideId = rideId
             self.destinationPlaceId = destinationPlaceId
             self.destinationName = destinationName
@@ -126,6 +129,8 @@ public enum TripRules {
     /// After a ride closes: merge the open trip's legs when this one arrived at a saved place, keep the trip open when it did not,
     /// open one when a ride with a destination ended short of it.
     public static func afterRide(_ leg: Leg, open: OpenTrip?) -> Decision {
+        // B103: a discarded piece (Start pressed, then restarted) is not a leg: merging it made the whole trip "discarded"
+        if leg.discarded { return Decision(merge: nil, open: open) }
         var trip = open
         if let t = trip, t.dayKey != leg.dayKey { trip = nil }                         // flaw 2C: end of day
         if let t = trip, let a = t.endLat, let b = t.endLon, let c = leg.startLat, let d = leg.startLon,

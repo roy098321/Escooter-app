@@ -82,6 +82,15 @@ enum RideAudio {
     static let voiceRate: Float = 0.5
     static let backgroundMode = "audio"
 
+    /// B105: changing the options on an active session does not reliably end the ducking (the music stayed low until the next
+    /// line). iOS ends it when the session is deactivated with notifyOthersOnDeactivation; then the ride session reopens unducked.
+    static func unduck() {
+        let s = AVAudioSession.sharedInstance()
+        try? s.setActive(false, options: .notifyOthersOnDeactivation)
+        try? s.setCategory(category, mode: .spokenAudio, options: rideOptions)
+        try? s.setActive(true)
+    }
+
     static var backgroundModes: [String] { Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] ?? [] }
     static var missingFiles: [String] { SoundKind.allCases.filter { $0.url == nil }.map { $0.rawValue } }
 }
@@ -205,9 +214,13 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
 
     private func warningDone() {
         warningsInFlight = max(0, warningsInFlight - 1)
-        guard warningsInFlight == 0, rideSessionOpen else { return }
-        // un-duck the music; the session stays open for the ride
-        try? AVAudioSession.sharedInstance().setCategory(RideAudio.category, mode: .spokenAudio, options: RideAudio.rideOptions)
+        guard warningsInFlight == 0 else { return }
+        guard rideSessionOpen else {
+            // B105: a line spoken outside a ride (or just after it closed) gives the music back too
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            return
+        }
+        RideAudio.unduck()
     }
 
     // MARK: Delegates

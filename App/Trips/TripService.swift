@@ -71,10 +71,12 @@ final class TripService {
         let day = RideQueries.dayKey(startAt: r.endAt ?? r.startAt, utcOffsetMin: r.utcOffsetMin ?? TimeZone.current.secondsFromGMT() / 60)
         let leg = TripRules.Leg(rideId: id, destinationPlaceId: destination, destinationName: destName, endPlaceId: endPlace,
                                 startLat: fixes.first?.lat, startLon: fixes.first?.lon, endLat: fixes.last?.lat, endLon: fixes.last?.lon,
-                                dayKey: day)
+                                dayKey: day, discarded: r.kind == "discarded")
         let decision = TripRules.afterRide(leg, open: open)
         var shown = id
-        if let legs = decision.merge, legs.count >= 2 {
+        // B103: a trip opened before .06 may still hold a discarded piece: leave it out of the merge
+        let mergeLegs = decision.merge?.filter { (try? q.ride(id: $0))?.kind != "discarded" }
+        if let legs = mergeLegs, legs.count >= 2 {
             var kept = legs[0]
             for next in legs.dropFirst() {
                 do {

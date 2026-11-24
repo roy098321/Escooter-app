@@ -1,3 +1,4 @@
+import CorckieCore
 import Foundation
 import GRDB
 
@@ -83,11 +84,15 @@ struct RouteQueries {
         }
     }
 
+    /// B104: times and places count every scooter's rides, battery use only the active scooter's (BatteryDoor); another scooter's
+    /// rides come back with no usedPct, so Home's "uses N%", the arrival %, "more than usual" and the usage lines never borrow them
+    static let doorUsedPct = "CASE WHEN \(BatteryDoor.rides("ride")) THEN usedPct END AS usedPct"
+
     /// Rides on a route, newest first (discarded pieces never).
     func routeRides(routeId: String) throws -> [RouteRideRow] {
         try writer.read { db in
             try RouteRideRow.fetchAll(db, sql: """
-                SELECT id, startAt, utcOffsetMin, kind, variantId, totalS, distanceM, avgMovingMps, usedPct, elevGainM, elevLossM,
+                SELECT id, startAt, utcOffsetMin, kind, variantId, totalS, distanceM, avgMovingMps, \(Self.doorUsedPct), elevGainM, elevLossM,
                        excludedFromUsual, windLevel, wet
                 FROM ride WHERE routeId = ? AND kind != 'discarded' ORDER BY startAt DESC
                 """, arguments: [routeId])
@@ -98,7 +103,7 @@ struct RouteQueries {
     func placeRides(placeId: String) throws -> [RouteRideRow] {
         try writer.read { db in
             try RouteRideRow.fetchAll(db, sql: """
-                SELECT id, startAt, utcOffsetMin, kind, variantId, totalS, distanceM, avgMovingMps, usedPct, elevGainM, elevLossM,
+                SELECT id, startAt, utcOffsetMin, kind, variantId, totalS, distanceM, avgMovingMps, \(Self.doorUsedPct), elevGainM, elevLossM,
                        excludedFromUsual, windLevel, wet
                 FROM ride WHERE endPlaceId = ? AND isSimulated = 0 AND kind != 'discarded' AND endAt IS NOT NULL ORDER BY startAt DESC
                 """, arguments: [placeId])

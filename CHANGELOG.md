@@ -2,6 +2,13 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.06 — hotfix 06 of batch 11: fixes from the first G500 commute
+
+- B103: a discarded piece (Start pressed, then a restart) is never a trip leg (`TripRules.Leg.discarded`); a trip opened before .06 drops such legs before merging; a merge reclasses from the merged distance even when its first leg was discarded. The 14 km ride had been hidden as "discarded".
+- B104: route and place rides keep their times for every scooter, but their battery use (usedPct) only through `BatteryDoor` (the active scooter, or untagged older rides): Home's "uses N%", the arrival %, "more than usual" and the usage lines no longer borrow another scooter's rides; recent usage lines likewise.
+- B105: after a spoken line the music is un-ducked by deactivating the session (notifyOthersOnDeactivation) and reopening it without duckOthers (changing the options on an active session left it low); a line spoken outside a ride also gives the music back.
+- G500 battery %: between rested readings it counts down by the Ah used (packet current, at most 2 s per step); standing, a rested reading 1 point off the shown % is ignored.
+
 ## 111.291126.05 — hotfix 05 of batch 11: G500 battery %, pack per model, quiet byte watch
 
 - B102: `ScooterModels` pack table (P-6: per model, not per rider): RND G100 48 V 13S 16 Ah, RND G500 60 V 16S 21 Ah. `BatterySettings.packAh` = the rider's value for the active scooter, else its model's pack, else T42; per scooter through the Garage swap. Turns on range, charge-timer start %, calibration and health for the G500.

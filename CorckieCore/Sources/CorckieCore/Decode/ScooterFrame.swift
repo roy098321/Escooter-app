@@ -67,6 +67,13 @@ public struct FrameAssembler {
     /// B102 (.05): G500 battery % from the resting voltage (it sends no %): the last rested reading of this connection
     public private(set) var g500RestPct: Int?
     private var g500RestSince: Double?
+    /// .06: the last rested % as a number, and the charge drawn since (Ah, from the packets' current). While riding the % is
+    /// the rested one minus what was used, so it no longer sits still between stops (it read 89 for 12 min, then 63)
+    private var g500RestBase: Double?
+    private var g500AhSinceRest = 0.0
+    private var g500PrevT: Double?
+    /// Longest step counted between two packets (a gap is not guessed)
+    public static let g500MaxStepS = 2.0
     /// B102 (.05): G500 temperature readings of the last `g500TempWindowS` (it dips 3–11 °C above ~48 km/h, even coasting)
     private var g500Temps: [(t: Double, c: Double)] = []
     /// Standing still at no current this long before the voltage counts as resting (the first reading of a connection
@@ -130,7 +137,7 @@ public struct FrameAssembler {
                 f.temperatureC = g500Temps.map(\.c).max() ?? g.temperatureC   // B102 (.05): highest of the last 10 s
                 f.currentA = g.currentA
             }
-            f.batteryPct = g500RestPct      // B102 (.05): resting-voltage estimate, nil until the first rested reading
+            f.batteryPct = g500RestPct      // B102 (.05): resting-voltage estimate, nil until the first rested reading; .06: minus the Ah used since
             return f
         }
         if let a = lastA, let ta = lastATime {
@@ -162,6 +169,13 @@ public struct FrameAssembler {
     private mutating func noteG500(_ g: PacketG500, at t: Double) {
         g500Temps.append((t, g.temperatureC))
         g500Temps.removeAll { t - $0.t > Self.g500TempWindowS }
+        let pack = ScooterModels.pack(model: ScooterModels.model(for: .g500))
+        // .06: count the charge used since the last rested reading
+        if let p = g500PrevT, t > p, g.currentA > 0 { g500AhSinceRest += g.currentA * min(t - p, Self.g500MaxStepS) / 3600 }
+        g500PrevT = t
+        if let base = g500RestBase, let ah = pack?.packAh, ah > 0 {
+            g500RestPct = Int(min(100, max(0, base - g500AhSinceRest / ah * 100)).rounded())
+        }
         let resting = g.currentA <= T.t40RestedCurrentA && g.speedRaw == 0
         if !resting {
             g500RestSince = nil
@@ -169,10 +183,14 @@ public struct FrameAssembler {
         }
         if g500RestSince == nil { g500RestSince = t }
         let settled = t - (g500RestSince ?? t) >= Self.g500RestS
-        guard settled || g500RestPct == nil,
-              let pack = ScooterModels.pack(model: ScooterModels.model(for: .g500)),
+        guard settled || g500RestPct == nil, let pack,
               PacketG500.voltageRange.contains(g.voltage) else { return }
-        g500RestPct = LiIonCurve.pct(packV: g.voltage, cells: pack.cells)
+        let rested = LiIonCurve.pct(packV: g.voltage, cells: pack.cells)
+        // .06 hysteresis: standing, a reading 1 point off the shown % keeps the shown one (it flickered ±1)
+        let kept = g500RestPct.map { abs(rested - $0) <= 1 ? $0 : rested } ?? rested
+        g500RestPct = kept
+        g500RestBase = Double(kept)
+        g500AhSinceRest = 0
     }
 
     /// Forget the last packets (on disconnect).
@@ -185,6 +203,9 @@ public struct FrameAssembler {
         lastG500Time = nil
         g500RestPct = nil
         g500RestSince = nil
+        g500RestBase = nil
+        g500AhSinceRest = 0
+        g500PrevT = nil
         g500Temps = []
         packetsASinceReset = 0
         foreignSinceReset = 0

@@ -221,18 +221,53 @@ final class B102G500BatteryAndWatchTests: XCTestCase {
         var a = FrameAssembler()
         let first = try XCTUnwrap(a.ingest(packet(volts: 64.0), at: 0))
         XCTAssertEqual(first.batteryPct, LiIonCurve.pct(cellV: 4.0))       // switched on: rested
-        // riding: the sagging voltage never changes the %
+        // riding: the sagging voltage never changes the %; .06: the charge used counts it down (20 A for 30 s = 0.17 Ah of 21 = 0.8 %)
         for i in 1...30 {
             let f = try XCTUnwrap(a.ingest(packet(volts: 58.0, amps: 20, raw: 600), at: Double(i)))
-            XCTAssertEqual(f.batteryPct, 80, "held while riding")
+            XCTAssertGreaterThanOrEqual(f.batteryPct ?? 0, 79, "the sag is not read as a drop")
         }
         // standing, no current: after 10 s the resting voltage counts
         var f = try XCTUnwrap(a.ingest(packet(volts: 63.2), at: 31))
-        XCTAssertEqual(f.batteryPct, 80, "not yet rested")
+        XCTAssertEqual(f.batteryPct, 79, "not yet rested: the counted level")
         f = try XCTUnwrap(a.ingest(packet(volts: 63.2), at: 41.5))
         XCTAssertEqual(f.batteryPct, LiIonCurve.pct(cellV: 3.95))
         a.reset()
         XCTAssertNil(a.g500RestPct)
+    }
+
+    /// .06: the 24 Nov commute read 89 for 12 min with no 10 s stop, then 63. Riding without stops now counts the Ah used.
+    func test_battery_countsDownWhileRiding_noStops() throws {
+        var a = FrameAssembler()
+        _ = a.ingest(packet(volts: 66.3), at: 0)                            // switched on: rested, 4.14 V a cell
+        let start = try XCTUnwrap(a.g500RestPct)
+        // 12 min at 30 A, 3 packets a second, never standing: 6 Ah = 28.6 % of 21 Ah
+        var t = 0.0
+        for _ in 0..<(12 * 60 * 3) {
+            t += 1.0 / 3
+            _ = a.ingest(packet(volts: 59.0, amps: 30, raw: 900), at: t)
+        }
+        let now = try XCTUnwrap(a.g500RestPct)
+        XCTAssertEqual(Double(start - now), 6.0 / 21 * 100, accuracy: 1.0, "the counted level falls with the charge used")
+    }
+
+    /// .06: a gap in the packets is not guessed (at most 2 s counted per step)
+    func test_battery_gapIsNotCounted() throws {
+        var a = FrameAssembler()
+        _ = a.ingest(packet(volts: 64.0), at: 0)
+        _ = a.ingest(packet(volts: 58.0, amps: 30, raw: 900), at: 1)
+        let f = try XCTUnwrap(a.ingest(packet(volts: 58.0, amps: 30, raw: 900), at: 600))   // 10 min without packets
+        XCTAssertGreaterThanOrEqual(f.batteryPct ?? 0, 79)
+    }
+
+    /// .06 hysteresis: standing, a rested reading 1 point off the shown % keeps the shown one
+    func test_battery_standingDoesNotFlicker() throws {
+        var a = FrameAssembler()
+        _ = a.ingest(packet(volts: 64.0), at: 0)
+        let shown = try XCTUnwrap(a.g500RestPct)
+        let oneOff = 16 * 3.993                                           // a cell voltage 1 point lower on the curve
+        XCTAssertEqual(abs(LiIonCurve.pct(packV: oneOff, cells: 16) - shown), 1)
+        for i in 1...40 { _ = a.ingest(packet(volts: oneOff), at: Double(i) * 0.5) }
+        XCTAssertEqual(a.g500RestPct, shown, "a 1-point wobble at rest is not shown")
     }
 
     func test_battery_neverFromALoadedFirstPacket() throws {
