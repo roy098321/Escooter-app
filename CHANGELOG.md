@@ -2,6 +2,12 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.08 — hotfix 08 of batch 11: a ride that never ended
+
+- Owner 24 Nov: a ride kept "recording" 30+ min after the scooter was switched off. Once the scooter is gone (no 0x80 caught), any phone movement ≥ 2 km/h (walking, indoor GPS jumps) kept it open. New rule (`RideEngine.goneNoRidingS`): gone 3 min with no riding-pace movement (`ridingNow`, > 8 km/h) ends the ride. Riding on GPS after a lost link keeps going as before.
+- That end is dated at the later of the moment the scooter went and the last riding-pace moment, not when the app noticed.
+- Lock-screen ride card: re-sent every minute with a 3-min stale date; a stale card says "Not updating · Open the app to check the ride" instead of counting up forever.
+
 ## 111.291126.07 — hotfix 07 of batch 11: G2 leftovers from the audit (docs/AUDIT_G2_LEFTOVERS.md, part A)
 
 - A1: the odometer (Scooter tab, maintenance, tyre prompt, service report) is read only from the active scooter's rides (`BatteryDoor` rule); a scooter that sends no odometer (G500) shows none instead of the G100's km.

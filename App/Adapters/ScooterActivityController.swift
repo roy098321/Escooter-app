@@ -15,6 +15,10 @@ final class ScooterActivityController {
     /// Keep going was pressed: no Arrived card again in this ride
     private var keptGoing = false
     static let readyS: TimeInterval = 120
+    /// Hotfix .08: the riding card is re-sent at least this often, each time stale `staleAfterS` later (the widget then stops counting)
+    static let refreshS: TimeInterval = 60
+    static let staleAfterS: TimeInterval = 180
+    private var lastPushAt: Date?
 
     /// The app's handlers for the shared intents (set once at launch)
     @MainActor func installIntents() {
@@ -64,7 +68,7 @@ final class ScooterActivityController {
             return
         }
         let next = ScooterActivityAttributes.ContentState(phase: .riding, recordingSince: recordingSince, gpsLost: gpsLost)
-        if next != state { push(next, name: name) }
+        if next != state || Date().timeIntervalSince(lastPushAt ?? .distantPast) >= Self.refreshS { push(next, name: name) }
     }
 
     func end() {
@@ -87,7 +91,8 @@ final class ScooterActivityController {
     private func push(_ s: ScooterActivityAttributes.ContentState, name: String?) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         state = s
-        let content = ActivityContent(state: s, staleDate: nil)
+        lastPushAt = Date()
+        let content = ActivityContent(state: s, staleDate: s.phase == .riding ? Date().addingTimeInterval(Self.staleAfterS) : nil)
         if activity == nil { activity = Activity<ScooterActivityAttributes>.activities.first }
         if let a = activity {
             Task { await a.update(content) }

@@ -374,6 +374,8 @@ public struct RideEngine: Codable, Equatable, Sendable {
     var lastIntegrateT: Double?
     /// B62: since when the riding movement has lasted without a break
     var ridingRunSince: Double?
+    /// Hotfix .08: the newest moment of riding-pace movement (`ridingNow`) during the ride
+    var lastRidingT: Double?
 
     // M1-04 trackers
     var stopCandidateSince: Double?
@@ -396,6 +398,11 @@ public struct RideEngine: Codable, Equatable, Sendable {
     /// M1-05: the phone takes over only after the scooter has been gone this long (P4 build 27: 1-s link drops
     /// reconnect at once and must not switch to phone mode)
     public static let takeoverWaitS = 5.0
+    /// Hotfix .08 (owner 24 Nov, a ride kept "recording" 30+ min after the scooter was switched off): once the scooter is gone,
+    /// walking or GPS jumps indoors kept the ride open (any movement ≥ 2 km/h counts). Now, gone this long with no riding-pace
+    /// movement ends the ride, at the later of the moment it went and the last riding-pace moment. A lost link while still riding
+    /// keeps going on GPS as before.
+    public static let goneNoRidingS = 180.0
     /// G1: GPS speed is the median of this window
     public static let gpsMedianWindowS = 3.0
     /// Decision 5 fallback: 3.0 %/km (ride 2: 41% / 13.7 km)
@@ -609,6 +616,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
     private mutating func begin(at t: Double, manual: Bool, _ out: inout [RideEngineEvent]) {
         var r = EngineRide(seq: nextSeq, startT: t, manual: manual)
         nextSeq += 1
+        lastRidingT = nil
         r.odoStartKm = odometerKm
         r.odoLastKm = odometerKm
         r.lastBatteryPct = batteryPct
@@ -772,6 +780,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         guard ride != nil else { return }
         trackTrim(at: t)
         trackMovement(at: t)
+        if ridingNow(at: t) { lastRidingT = t }
         trackRiding(at: t, &out)
         if phase == .starting { evaluateStarting(at: t, &out) }
         guard ride != nil else { return }
@@ -888,6 +897,13 @@ public struct RideEngine: Codable, Equatable, Sendable {
             reason = .disconnected                               // A: gone 30 s and GPS still
         } else if let g = goneSince, t - g >= T.t18EndNoGpsS, t - lastMove >= T.t17EndDisconnectedS {
             reason = .disconnected                               // A without a good fix: gone 2 min, no movement seen
+        } else if let g = goneSince, t - max(g, lastRidingT ?? g) >= Self.goneNoRidingS {
+            reason = .disconnected                               // hotfix .08: gone 3 min, only walking or GPS noise since
+            let endAt = max(g, lastRidingT ?? g)
+            if var cut = ride, (cut.lastMoveT ?? cut.startT) > endAt {
+                cut.lastMoveT = max(cut.startT, endAt)
+                ride = cut
+            }
         } else if t - lastMove >= T.t20EndStandstillS {
             reason = .standstill                                 // C
         }
@@ -970,6 +986,7 @@ public struct RideEngine: Codable, Equatable, Sendable {
         currentAboveSince = nil
         gpsFastSince = nil
         ridingRunSince = nil
+        lastRidingT = nil
         stopCandidateSince = nil
         stopCandidateFix = nil
         pushSince = nil

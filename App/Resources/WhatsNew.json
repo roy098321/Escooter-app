@@ -1,5 +1,28 @@
 [
   {
+    "version": "111.291126.08",
+    "headline": "Rides end when you do",
+    "items": [
+      {
+        "symbol": "stop.circle",
+        "title": "No endless rides",
+        "line": "Switch the scooter off and walk away: the ride ends on its own."
+      },
+      {
+        "symbol": "clock.arrow.circlepath",
+        "title": "The right end time",
+        "line": "The ride ends when the scooter went off, not minutes later."
+      },
+      {
+        "symbol": "lock.iphone",
+        "title": "An honest lock screen",
+        "line": "If the ride card stops updating, it says so instead of counting on."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": []
+  },
+  {
     "version": "111.291126.07",
     "headline": "Your G500, measured as a G500",
     "items": [
