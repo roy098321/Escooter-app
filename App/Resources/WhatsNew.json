@@ -20,7 +20,9 @@
       }
     ],
     "smallerFixes": 0,
-    "full": []
+    "full": [
+      "If Bluetooth drops while you ride, the ride still carries on with the phone's GPS."
+    ]
   },
   {
     "version": "111.291126.07",
