@@ -1,5 +1,30 @@
 [
   {
+    "version": "111.291126.10",
+    "headline": "End ride means ended",
+    "items": [
+      {
+        "symbol": "flag.checkered",
+        "title": "End ride closes the card",
+        "line": "Tap End ride on the lock screen and the card goes away."
+      },
+      {
+        "symbol": "lock.iphone",
+        "title": "No leftover cards",
+        "line": "A ride card left over after the ride is over now closes by itself."
+      },
+      {
+        "symbol": "list.bullet.rectangle",
+        "title": "Still in this build",
+        "line": "Rides open every time, and end on their own when you walk away."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "The lock-screen ride card closes even if iOS restarted the app in the background."
+    ]
+  },
+  {
     "version": "111.291126.09",
     "headline": "Rides open every time",
     "items": [

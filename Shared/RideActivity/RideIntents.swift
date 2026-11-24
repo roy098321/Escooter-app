@@ -1,3 +1,4 @@
+import ActivityKit
 import AppIntents
 import Foundation
 
@@ -58,6 +59,9 @@ struct EndRideIntent: LiveActivityIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         RideIntentBridge.end?()
+        // Hotfix .10 (owner 24 Nov: End ride left the card up): the card closes here, whatever the app remembers. After iOS relaunched
+        // the app in the background it had forgotten the card (or the ride had already ended), so nothing closed it.
+        for a in Activity<ScooterActivityAttributes>.activities { await a.end(nil, dismissalPolicy: .immediate) }
         return .result()
     }
 }

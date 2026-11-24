@@ -2,6 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.10 — hotfix 10 of batch 11: End ride left the lock-screen card up
+
+- Owner 24 Nov: End ride on the Arrived card did not close it. The card was closed only when the app remembered showing it; after iOS relaunched the app in the background (or once the ride had already ended) nothing closed it. `EndRideIntent` now ends the card itself after asking the app to end the ride, and with no ride running the app closes a riding / arrived card left from an earlier run.
+
 ## 111.291126.09 — hotfix 09 of batch 11: rides would not open again
 
 - Owner 24 Nov: after leaving a ride, tapping rides did nothing. The list's selection (`navigationDestination(item:)` with the zoom transition and a hidden bar) could stay set after the page closed, so the next tap changed nothing. Rides and Routes list taps now go through `open`, which clears a leftover selection first and opens on the next run-loop turn.

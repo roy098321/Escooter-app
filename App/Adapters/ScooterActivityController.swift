@@ -54,7 +54,9 @@ final class ScooterActivityController {
     /// Every live update (about once a second): Riding / Arrived; nothing when no ride runs
     func live(rideOn: Bool, gpsLost: Bool, arrived: Bool, destination: String?, distanceM: Double?, elapsedS: Double?, name: String) {
         guard rideOn else {
-            if state?.phase == .riding || state?.phase == .arrived { end() }
+            // Hotfix .10: also a riding / arrived card left from before a relaunch (this run never showed it, so `state` is nil)
+            let leftOver = Activity<ScooterActivityAttributes>.activities.contains { $0.content.state.phase != .ready }
+            if state?.phase == .riding || state?.phase == .arrived || (state == nil && leftOver) { end() }
             return
         }
         if recordingSince == nil { recordingSince = Date().addingTimeInterval(-(elapsedS ?? 0)) }
