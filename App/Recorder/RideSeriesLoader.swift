@@ -45,7 +45,7 @@ enum RideSeriesLoader {
         series.hillValues = RideLayers.smoothedStretches(RideLayers.hillStretches(points))
         let used = CalibrationUpdater.shownUsed(db, rideId: rideId, usedPct: ride.usedPct)
         series.energy = EnergyTrack.build(points, totalUsedPct: used)
-        let elevation = RideLayers.elevation(points, energy: series.energy)
+        let elevation = RideLayers.elevation(points, energy: series.energy, whPerPct: CalibrationUpdater.current(db).whPerPct)   // hotfix .07
         series.profile = elevation.profile
         series.climbs = elevation.climbs
         series.chart = RideLayers.chartSeries(points)

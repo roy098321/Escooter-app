@@ -230,6 +230,8 @@ struct SettingsView: View {
 /// SE3: battery size, charger and Recalibrate, one tap down from Scooter & battery
 struct BatterySettingsView: View {
     @State private var packAh = T.t42DefaultPackAh
+    /// hotfix .07: the active scooter model's sizes (G100: 16 / 15 / 13; G500: 21)
+    @State private var packChoices = SettingsCatalog.packChoices
     @State private var chargerA = T.t46ChargerA
     @State private var confirmRecalibrate = false
     @State private var recalibrated = false
@@ -240,11 +242,17 @@ struct BatterySettingsView: View {
     var body: some View {
         List {
             Section {
-                SegmentedRow(title: "Battery size", options: SettingsCatalog.packChoices.map { ($0, SettingsCatalog.ah($0)) }, selection: $packAh)
-                    .onChange(of: packAh) { _, v in
-                        guard loaded, let db else { return }
-                        BatterySettings.setPackAh(db, v)
-                    }
+                if packChoices.count > 1 {
+                    SegmentedRow(title: "Battery size", options: packChoices.map { ($0, SettingsCatalog.ah($0)) }, selection: $packAh)
+                        .onChange(of: packAh) { _, v in
+                            guard loaded, let db else { return }
+                            BatterySettings.setPackAh(db, v)
+                            AppModel.shared.applyPackSize()     // hotfix .07: the live G500 % follows the new size
+                        }
+                } else {
+                    // hotfix .07: one size from the maker's spec (the G500: 21 Ah); nothing to pick
+                    LabeledContent("Battery size", value: SettingsCatalog.ah(packAh))
+                }
                 Picker("Charger", selection: $chargerA) {
                     ForEach(SettingsCatalog.chargerChoices, id: \.self) { Text(String(format: "%.1f A", $0)).tag($0) }
                 }
@@ -271,6 +279,7 @@ struct BatterySettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loaded = false
+            packChoices = BatterySettings.packChoices(db)
             packAh = BatterySettings.packAh(db)
             chargerA = BatterySettings.chargerA(db)
             DispatchQueue.main.async { loaded = true }

@@ -27,6 +27,31 @@ public enum ScooterModels {
 
     public static func pack(model: String?) -> PackSpec? { model.flatMap { packs[$0] } }
 
+    /// Hotfix .07: the battery sizes Settings offers for a model. The G100's deck label has no capacity, so 16 / 15 / 13 stay
+    /// selectable; a model with a maker spec offers that size (the G500: 21 Ah). Unknown model: the old G100 list.
+    public static let packChoicesByModel: [String: [Double]] = [
+        "RND G100": [16, 15, 13],
+        "RND G500": [21],
+    ]
+
+    public static func packChoices(model: String?) -> [Double] {
+        if let m = model, let c = packChoicesByModel[m] { return c }
+        if let p = pack(model: model) { return [p.packAh] }
+        return packChoicesByModel["RND G100"] ?? [T.t42DefaultPackAh]
+    }
+
+    /// Hotfix .07: the pack voltage the battery maths uses (Wh = Ah × V): the model's nominal V, else the learned voltage class
+    /// (`VoltageClass`, from a rested full reading), else T42 (48 V)
+    public static func packV(model: String?, learnedClassV: Double? = nil) -> Double {
+        pack(model: model)?.nominalV ?? learnedClassV ?? T.t42PackVoltage
+    }
+
+    /// Hotfix .07: the Device Information a model was first seen with, to spot a firmware change. Only models seen on a real
+    /// scooter; any other model has none (no false "firmware changed" warning)
+    public static func firmwareBaseline(model: String?) -> DeviceInfo? {
+        model == "RND G100" ? DeviceInfo.p2Baseline : nil
+    }
+
     /// The model whose packets have this layout (for scooters that send no %)
     public static func model(for layout: ScooterLayout) -> String {
         switch layout {

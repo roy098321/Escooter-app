@@ -82,6 +82,7 @@ actor Recorder {
     func setStateURL(_ url: URL?) { stateURL = url }
     /// B56b: the scooter's stored battery flip history
     func setBatteryDetector(_ d: BatteryFlipDetector) { core.setBatteryDetector(d) }
+    func setPackAh(_ ah: Double?) { core.setPackAh(ah) }   // hotfix .07
     var engine: RideEngine { core.engine }
 
     // MARK: Input

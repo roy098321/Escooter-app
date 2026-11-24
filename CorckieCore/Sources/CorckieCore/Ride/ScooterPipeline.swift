@@ -74,6 +74,11 @@ public struct ScooterPipeline {
         }
     }
 
+    /// Hotfix .07: the rider's battery size for the connected scooter (nil = the model's pack); the G500 % counts down by it
+    public mutating func setPackAh(_ ah: Double?) {
+        assembler.packAhOverride = ah
+    }
+
     /// B56b: the scooter's stored flip history (the app keeps it per scooter); the hysteresis keeps its state.
     public mutating func setBatteryDetector(_ d: BatteryFlipDetector) {
         batteryFilter.detector = d

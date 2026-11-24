@@ -172,6 +172,11 @@ public struct RideRecorderCore {
         feed.setBatteryDetector(d)
     }
 
+    /// Hotfix .07: the rider's battery size for the connected scooter
+    public mutating func setPackAh(_ ah: Double?) {
+        feed.setPackAh(ah)
+    }
+
     // MARK: Inputs
 
     public mutating func scooter(_ e: TimedScooterEvent) -> [RecorderAction] {

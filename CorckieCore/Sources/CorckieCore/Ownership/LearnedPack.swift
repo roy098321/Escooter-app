@@ -16,12 +16,13 @@ public enum LearnedPack {
         return raw.rounded()
     }
 
-    public static func line(_ cal: BatteryCalibration) -> String {
+    /// Hotfix .07: `choices` = the scooter model's sizes (`ScooterModels.packChoices`)
+    public static func line(_ cal: BatteryCalibration, choices: [Double] = SettingsCatalog.packChoices) -> String {
         let assumed = Int(cal.packAh.rounded())
         guard cal.status == .calibrated, let measured = cal.measuredWhPerPct, measured > 0 else {
             return "Assumed \(assumed) Ah"
         }
-        let learned = Int(snapped(ah(whPerPct: measured)))
+        let learned = Int(snapped(ah(whPerPct: measured, packV: cal.packV), choices: choices))
         return "\(learned) Ah \u{00B7} learned from \(cal.ridesUsed) rides"
     }
 }

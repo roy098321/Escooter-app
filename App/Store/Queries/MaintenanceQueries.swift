@@ -40,10 +40,16 @@ struct MaintenanceQueries {
         try database.writer.write { db in try row.save(db) }
     }
 
-    /// The scooter's odometer after the latest ride that has one (km), nil before any ride.
+    /// The ACTIVE scooter's odometer after its latest ride that has one (km), nil before any ride.
+    /// Hotfix .07: only the active scooter's rides (the same rule as `BatteryDoor`, written out: no CorckieCore here). A scooter
+    /// that sends no odometer (the G500) has none: it never borrows the G100's km.
     func odometerKm() throws -> Double? {
         try database.writer.read { db in
-            try Double.fetchOne(db, sql: "SELECT odoEndKm FROM ride WHERE odoEndKm IS NOT NULL ORDER BY startAt DESC LIMIT 1")
+            try Double.fetchOne(db, sql: """
+                SELECT odoEndKm FROM ride WHERE odoEndKm IS NOT NULL
+                AND (scooterId IS NULL OR scooterId IN (SELECT id FROM scooter WHERE forgottenAt IS NULL))
+                ORDER BY startAt DESC LIMIT 1
+                """)
         }
     }
 

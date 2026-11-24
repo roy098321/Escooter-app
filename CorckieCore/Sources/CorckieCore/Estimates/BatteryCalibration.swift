@@ -71,6 +71,8 @@ public struct BatteryCalibration: Equatable, Sendable {
     }
 
     public var packAh: Double
+    /// Hotfix .07: the pack's nominal voltage (the scooter's model, else its learned class, else T42 48 V); the G500 is 60 V
+    public var packV: Double = T.t42PackVoltage
     /// V × I Wh per 1% of the battery (what the app uses)
     public var whPerPct: Double
     /// Median of the qualifying rides alone (nil before the first one)
@@ -80,8 +82,10 @@ public struct BatteryCalibration: Equatable, Sendable {
     /// M8 confirmation: 3 rides in a row more than 5 points away from their rested drop → "Check battery calibration"
     public var checkSuggested: Bool
 
-    public init(packAh: Double, whPerPct: Double, measuredWhPerPct: Double?, ridesUsed: Int, status: Status, checkSuggested: Bool = false) {
+    public init(packAh: Double, whPerPct: Double, measuredWhPerPct: Double?, ridesUsed: Int, status: Status, checkSuggested: Bool = false,
+                packV: Double = T.t42PackVoltage) {
         self.packAh = packAh
+        self.packV = packV
         self.whPerPct = whPerPct
         self.measuredWhPerPct = measuredWhPerPct
         self.ridesUsed = ridesUsed
@@ -90,14 +94,15 @@ public struct BatteryCalibration: Equatable, Sendable {
     }
 
     /// The starting point: 16 Ah × 48 V ÷ 100 × 1.06 ≈ 8.1 Wh per 1% (T41 prior, T42)
-    public static func prior(packAh: Double = T.t42DefaultPackAh) -> BatteryCalibration {
-        BatteryCalibration(packAh: packAh, whPerPct: priorWhPerPct(packAh: packAh), measuredWhPerPct: nil, ridesUsed: 0, status: .prior)
+    public static func prior(packAh: Double = T.t42DefaultPackAh, packV: Double = T.t42PackVoltage) -> BatteryCalibration {
+        BatteryCalibration(packAh: packAh, whPerPct: priorWhPerPct(packAh: packAh, packV: packV), measuredWhPerPct: nil, ridesUsed: 0,
+                           status: .prior, packV: packV)
     }
 
-    public static func priorWhPerPct(packAh: Double) -> Double { packAh * T.t42PackVoltage / 100 * T.t41PriorRawFactor }
+    public static func priorWhPerPct(packAh: Double, packV: Double = T.t42PackVoltage) -> Double { packAh * packV / 100 * T.t41PriorRawFactor }
 
-    /// T42: label pack energy, Wh
-    public var packWh: Double { packAh * T.t42PackVoltage }
+    /// T42: label pack energy, Wh (Ah × the pack's own voltage)
+    public var packWh: Double { packAh * packV }
     /// M8 factor k (stored in `calibration.factor`): V × I Wh per 1% ÷ (pack Wh ÷ 100)
     public var factor: Double { whPerPct / (packWh / 100) }
     /// V × I Wh from 100% to 0%
@@ -130,7 +135,7 @@ public struct BatteryCalibration: Equatable, Sendable {
 
 public enum BatteryCalibrator {
     /// One ride on its own (everything except the outlier test, which needs the others).
-    public static func evaluate(_ r: CalibrationRide, packAh: Double = T.t42DefaultPackAh) -> CalibrationVerdict {
+    public static func evaluate(_ r: CalibrationRide, packAh: Double = T.t42DefaultPackAh, packV: Double = T.t42PackVoltage) -> CalibrationVerdict {
         if r.isSimulated { return .rejected(.simulated) }
         if r.kind != "ride" { return .rejected(.notARide) }
         guard let e = r.energyWhRaw, e > 0 else { return .rejected(.noEnergy) }
@@ -149,7 +154,7 @@ public enum BatteryCalibrator {
         let drop = start - endPct
         if drop < T.t41CalibrationDropPct { return .rejected(.smallDrop) }
         let value = e / drop
-        let prior = BatteryCalibration.priorWhPerPct(packAh: packAh)
+        let prior = BatteryCalibration.priorWhPerPct(packAh: packAh, packV: packV)
         if value < prior * T.t41PlausibleLow || value > prior * T.t41PlausibleHigh { return .rejected(.implausible) }
         return .used(whPerPct: value, dropPct: drop, endFromNextStart: fromNext)
     }
@@ -169,13 +174,13 @@ public enum BatteryCalibrator {
     }
 
     /// The calibration from all stored rides (any order). Verdicts are keyed by ride id.
-    public static func calibrate(_ rides: [CalibrationRide], packAh: Double = T.t42DefaultPackAh)
+    public static func calibrate(_ rides: [CalibrationRide], packAh: Double = T.t42DefaultPackAh, packV: Double = T.t42PackVoltage)
         -> (calibration: BatteryCalibration, verdicts: [String: CalibrationVerdict]) {
         let newestFirst = rides.sorted { $0.startAt > $1.startAt }
         var verdicts: [String: CalibrationVerdict] = [:]
         var candidates: [(id: String, value: Double)] = []
         for r in newestFirst {
-            let v = evaluate(r, packAh: packAh)
+            let v = evaluate(r, packAh: packAh, packV: packV)
             verdicts[r.id] = v
             if case let .used(value, _, _) = v { candidates.append((r.id, value)) }
         }
@@ -197,20 +202,20 @@ public enum BatteryCalibrator {
         }
 
         let window = Array(kept.prefix(T.t41CalibrationWindow))
-        let prior = BatteryCalibration.priorWhPerPct(packAh: packAh)
+        let prior = BatteryCalibration.priorWhPerPct(packAh: packAh, packV: packV)
         guard let measured = median(window.map(\.value)) else {
-            return (BatteryCalibration.prior(packAh: packAh), verdicts)
+            return (BatteryCalibration.prior(packAh: packAh, packV: packV), verdicts)
         }
         let n = window.count
         let need = T.t41CalibrationRides
         let value = n >= need ? measured : (prior * Double(need - n) + measured * Double(n)) / Double(need)
         var cal = BatteryCalibration(packAh: packAh, whPerPct: value, measuredWhPerPct: measured, ridesUsed: n,
-                                     status: n >= need ? .calibrated : .learning)
+                                     status: n >= need ? .calibrated : .learning, packV: packV)
 
         // M8 confirmation: the newest 3 rides that passed the single-ride rules all disagree by > 5 points
         if cal.isCalibrated {
             let recent = newestFirst.filter { r in
-                switch evaluate(r, packAh: packAh) {
+                switch evaluate(r, packAh: packAh, packV: packV) {
                 case .used: return true
                 case .rejected(let why): return why == .implausible
                 }

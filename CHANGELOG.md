@@ -2,6 +2,15 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.07 — hotfix 07 of batch 11: G2 leftovers from the audit (docs/AUDIT_G2_LEFTOVERS.md, part A)
+
+- A1: the odometer (Scooter tab, maintenance, tyre prompt, service report) is read only from the active scooter's rides (`BatteryDoor` rule); a scooter that sends no odometer (G500) shows none instead of the G100's km.
+- A2: battery Wh maths uses the active pack's own voltage (`ScooterModels.packV`: model, else learned voltage class, else T42 48 V): prior Wh per %, calibration factor, pack Wh and the learned battery size. The G500 is 60 V.
+- A3: Battery size offers the active model's sizes (`ScooterModels.packChoices`: G100 16 / 15 / 13, G500 21, shown as a plain row); a stored size that is not one of them is ignored.
+- A4: the climb sag check uses the scooter's own Wh per battery point (was the G100's 7.68).
+- A5: the G500 % countdown uses the rider's battery size when the connected scooter is the Garage's active one (`FrameAssembler.packAhOverride`, both pipelines).
+- A6: the firmware-change check compares only with the same model's baseline (`ScooterModels.firmwareBaseline`); a G500 no longer logs "Scooter firmware changed" on every connect. Check b2 uses the pack's own voltage range.
+
 ## 111.291126.06 — hotfix 06 of batch 11: fixes from the first G500 commute
 
 - B103: a discarded piece (Start pressed, then a restart) is never a trip leg (`TripRules.Leg.discarded`); a trip opened before .06 drops such legs before merging; a merge reclasses from the merged distance even when its first leg was discarded. The 14 km ride had been hidden as "discarded".

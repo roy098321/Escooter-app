@@ -72,6 +72,8 @@ public struct FrameAssembler {
     private var g500RestBase: Double?
     private var g500AhSinceRest = 0.0
     private var g500PrevT: Double?
+    /// Hotfix .07: the rider's battery size for this scooter (Settings), when set; else the model table's pack. Kept across reset()
+    public var packAhOverride: Double?
     /// Longest step counted between two packets (a gap is not guessed)
     public static let g500MaxStepS = 2.0
     /// B102 (.05): G500 temperature readings of the last `g500TempWindowS` (it dips 3–11 °C above ~48 km/h, even coasting)
@@ -173,7 +175,7 @@ public struct FrameAssembler {
         // .06: count the charge used since the last rested reading
         if let p = g500PrevT, t > p, g.currentA > 0 { g500AhSinceRest += g.currentA * min(t - p, Self.g500MaxStepS) / 3600 }
         g500PrevT = t
-        if let base = g500RestBase, let ah = pack?.packAh, ah > 0 {
+        if let base = g500RestBase, let ah = packAhOverride ?? pack?.packAh, ah > 0 {
             g500RestPct = Int(min(100, max(0, base - g500AhSinceRest / ah * 100)).rounded())
         }
         let resting = g.currentA <= T.t40RestedCurrentA && g.speedRaw == 0

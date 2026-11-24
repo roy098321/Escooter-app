@@ -1,5 +1,31 @@
 [
   {
+    "version": "111.291126.07",
+    "headline": "Your G500, measured as a G500",
+    "items": [
+      {
+        "symbol": "gauge.with.dots.needle.67percent",
+        "title": "Its own km",
+        "line": "The Scooter tab and maintenance no longer show your old scooter's odometer."
+      },
+      {
+        "symbol": "battery.75percent",
+        "title": "Its own battery",
+        "line": "Energy and battery size now use the G500's 60 V, 21 Ah pack."
+      },
+      {
+        "symbol": "mountain.2",
+        "title": "Honest climbs",
+        "line": "Battery used on a climb is checked against the G500's own battery."
+      }
+    ],
+    "smallerFixes": 2,
+    "full": [
+      "Battery size in Settings shows the sizes that fit your scooter.",
+      "No more false \"firmware changed\" note for the G500."
+    ]
+  },
+  {
     "version": "111.291126.06",
     "headline": "Fixes from your first G500 ride",
     "items": [

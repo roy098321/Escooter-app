@@ -54,6 +54,11 @@ public struct RideFeed {
         pipeline.setBatteryDetector(d)
     }
 
+    /// Hotfix .07
+    public mutating func setPackAh(_ ah: Double?) {
+        pipeline.setPackAh(ah)
+    }
+
     @discardableResult
     public mutating func fix(_ f: PhoneFix) -> [RideEngineEvent] {
         engine.handle(.fix(f), at: f.t)

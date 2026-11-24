@@ -12,16 +12,22 @@ enum CalibrationUpdater {
     /// The calibration in use (hand-off for M3-02 charge log / health, M3-03 range / charge time, M3-04 battery page).
     /// No row yet → the 16 Ah prior.
     static func current(_ database: AppDatabase?) -> BatteryCalibration {
-        guard let database, let row = try? CalibrationQueries(database).current() else { return .prior() }
-        return calibration(from: row)
+        guard let database else { return .prior() }
+        // hotfix .07: the active scooter's own pack (size and voltage), never the G100's 16 Ah × 48 V
+        let packV = BatterySettings.packV(database)
+        guard let row = try? CalibrationQueries(database).current() else {
+            return .prior(packAh: BatterySettings.packAh(database), packV: packV)
+        }
+        return calibration(from: row, packV: packV)
     }
 
-    static func calibration(from row: CalibrationRecord) -> BatteryCalibration {
+    static func calibration(from row: CalibrationRecord, packV: Double = T.t42PackVoltage) -> BatteryCalibration {
         let packAh = row.packAh ?? T.t42DefaultPackAh
-        guard let k = row.factor, k > 0, row.ridesUsed > 0 else { return .prior(packAh: packAh) }
-        let whPerPct = k * packAh * T.t42PackVoltage / 100
+        guard let k = row.factor, k > 0, row.ridesUsed > 0 else { return .prior(packAh: packAh, packV: packV) }
+        let whPerPct = k * packAh * packV / 100
         let status: BatteryCalibration.Status = row.status == "active" ? .calibrated : .learning
-        return BatteryCalibration(packAh: packAh, whPerPct: whPerPct, measuredWhPerPct: nil, ridesUsed: row.ridesUsed, status: status)
+        return BatteryCalibration(packAh: packAh, whPerPct: whPerPct, measuredWhPerPct: nil, ridesUsed: row.ridesUsed, status: status,
+                                  packV: packV)
     }
 
     static func ride(from r: CalibrationInputRow) -> CalibrationRide {
@@ -64,13 +70,14 @@ enum CalibrationUpdater {
         let q = CalibrationQueries(database)
         // M5-06: the battery size from Settings (16 Ah unless changed) and "Recalibrate battery" (only rides since then teach the calibration)
         let packAh = packAhOverride ?? BatterySettings.packAh(database)
+        let packV = BatterySettings.packV(database)     // hotfix .07: 60 V on the G500
         let teachFrom = BatterySettings.recalibrateFromMs(database)
         let rows = try q.inputs()
         // M30: charges found between rides (rested % jumps); the sag rule uses the next start only when no charge is in between
         let charges = ChargeDetector.detect(rows.map(chargeRide(from:)))
         try ChargeQueries(database).replaceAll(charges.filter { !$0.isSimulated }.map(chargeRecord(from:)))
         let rides = BatteryCalibrator.linkNextStarts(rows.map(ride(from:)), chargedAfter: Set(charges.map { $0.afterRideId }))
-        let (cal, verdicts) = BatteryCalibrator.calibrate(rides.filter { $0.startAt >= teachFrom }, packAh: packAh)
+        let (cal, verdicts) = BatteryCalibrator.calibrate(rides.filter { $0.startAt >= teachFrom }, packAh: packAh, packV: packV)
 
         var record = try q.current() ?? CalibrationRecord(id: CalibrationQueries.mainId, startedAt: nowMs)
         record.status = cal.isCalibrated ? "active" : "learning"

@@ -39,9 +39,26 @@ enum BatterySettings {
     static let chargerKey = "battery.chargerA"
     static let recalibrateKey = "battery.recalibrateFromMs"
 
-    /// The rider's battery size for the active scooter, else its model's pack (B102 .05: G500 = 21 Ah), else T42
+    /// The rider's battery size for the active scooter, else its model's pack (B102 .05: G500 = 21 Ah), else T42.
+    /// Hotfix .07: a stored size that is not one of the model's sizes (a G100 value on a G500) is ignored.
     static func packAh(_ db: AppDatabase?) -> Double {
-        SettingsValue.number(db, packAhKey) ?? ScooterModels.pack(model: activeModel(db))?.packAh ?? T.t42DefaultPackAh
+        riderPackAh(db) ?? ScooterModels.pack(model: activeModel(db))?.packAh ?? T.t42DefaultPackAh
+    }
+
+    /// Hotfix .07: the size the rider picked for the active scooter, when it is one of the model's sizes
+    static func riderPackAh(_ db: AppDatabase?) -> Double? {
+        guard let v = SettingsValue.number(db, packAhKey) else { return nil }
+        let model = activeModel(db)
+        if ScooterModels.pack(model: model) != nil, !ScooterModels.packChoices(model: model).contains(v) { return nil }
+        return v
+    }
+
+    /// Hotfix .07: the sizes Settings offers for the active scooter's model (G100: 16 / 15 / 13; G500: 21)
+    static func packChoices(_ db: AppDatabase?) -> [Double] { ScooterModels.packChoices(model: activeModel(db)) }
+
+    /// Hotfix .07: the active scooter's pack voltage for Wh maths (model, else learned class, else 48 V)
+    static func packV(_ db: AppDatabase?) -> Double {
+        ScooterModels.packV(model: activeModel(db), learnedClassV: SettingsValue.number(db, "scooter.voltageClass"))
     }
 
     /// The Garage's active scooter model ("RND G500"); nil before any scooter

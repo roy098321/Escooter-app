@@ -131,6 +131,7 @@ final class AppModel {
         scooter.connectHandlers.append { [weak self] inBackground in
             guard let self else { return }
             self.loadBatteryDetector()                   // B56b: this scooter's flip history, before its first reading
+            self.applyPackSize()                         // hotfix .07: this scooter's battery size for the G500 % countdown
             ByteWatchStore.shared.connected()            // B102 (.05): the watch log logs this connection's first values
             Task { @MainActor in for _ in 0..<30 where ChargeTimer.shared.charging { try? await Task.sleep(nanoseconds: 2_000_000_000); ChargeTimer.shared.tick() } }   // F-31: the real % ends the charge timer
             self.live.handle(TimedScooterEvent(t: self.seconds(), event: .connected))
@@ -192,6 +193,17 @@ final class AppModel {
         Log.info(source: "battery", "Battery flip filter: \(d.line)")
     }
 
+    /// Hotfix .07: the rider's battery size goes to both pipelines, but only when the Garage's active scooter is the connected
+    /// one (right after a switch the setting may still be the other scooter's); otherwise the model table's pack is used.
+    func applyPackSize() {
+        let active = GarageService.registry(database).activeId
+        let connected = scooter.knownPeripheralID
+        let ah: Double? = (active != nil && active == connected) ? BatterySettings.riderPackAh(database) : nil
+        live.setPackAh(ah)
+        let recorder = RecorderService.shared.recorder
+        Task { await recorder.setPackAh(ah) }
+    }
+
     private func saveBatteryDetector() {
         let d = live.batteryFilter.detector
         UserDefaults.standard.set(d.json, forKey: batteryDetectorKey)
@@ -203,7 +215,7 @@ final class AppModel {
         let results = CheckResults.shared
         if live.packets >= 30, results.status("b2") == .pending, let f = live.frame,
            let v = f.voltage, let pct = f.batteryPct, let speed = f.speedKmh {
-            let voltsOK = v >= T.t05MinVoltage && v <= T.t05MaxVoltage
+            let voltsOK = f.layout.voltageRange.contains(v)     // hotfix .07: the pack's own range (T05 is the G100's)
             let pctOK = pct >= 0 && pct <= 100
             let ignored = live.plausibility.ignoredReadings
             let ok = voltsOK && pctOK && speed >= 0 && ignored == 0
@@ -231,6 +243,7 @@ final class AppModel {
                     Log.info(source: "garage", "New scooter added to the Garage: \(model)")
                 }
                 scooter.setGarage(GarageService.connectableIds(db))
+                applyPackSize()                          // hotfix .07: the Garage may have just switched to this scooter
             } catch {
                 Log.error(source: "store", "scooter fingerprint: \(error.localizedDescription)")
                 fingerprintSaved = true
@@ -238,7 +251,8 @@ final class AppModel {
             }
         }
         if results.status("b3") == .pending, info.firmware != nil, info.software != nil {
-            if let change = info.change(from: .p2Baseline) {
+            // hotfix .07: compared only with the baseline of the same model (the G500 was warned against the G100's firmware)
+            if let base = ScooterModels.firmwareBaseline(model: scooter.foundModel), let change = info.change(from: base) {
                 results.set("b3", .info, change)
                 Log.warning(source: "scooter", change)
             } else {

@@ -160,7 +160,7 @@ struct BatteryView: View {
             Spacer(minLength: 4)
             InfoButton("Calibration", info: InfoContent(lead: "Learned from your own rides: the energy the scooter reports divided by how much the battery % dropped.",
                                                        basedOn: [InfoBasedOn("Now", BatteryText.calibrationValue(cal)), InfoBasedOn("Calibrated after", "5 good rides"),
-                                                                InfoBasedOn("Battery size", LearnedPack.line(cal))]))
+                                                                InfoBasedOn("Battery size", LearnedPack.line(cal, choices: BatterySettings.packChoices(AppModel.shared.database)))]))
         }
         .padding(.leading, DS.Space.cardPad)
         .padding(.trailing, 4)

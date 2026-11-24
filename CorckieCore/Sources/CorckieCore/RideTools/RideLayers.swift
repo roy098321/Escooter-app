@@ -186,7 +186,8 @@ public enum RideLayers {
     /// Distance along the ride against smoothed altitude, and the climbs (rise of 5 m or more, ended by a drop of 3 m).
     /// F-34: with an energy track, a climb's battery cost comes from the track (power shape scaled to the ride's drop), not from
     /// the climb's own whole-percent readings (B38's voltage-sag guard is then not needed).
-    public static func elevation(_ points: [SeriesPoint], energy: EnergyTrack? = nil) -> (profile: [ElevPoint], climbs: [ClimbSpan]) {
+    /// Hotfix .07: `whPerPct` = the scooter's own Wh per battery point (the G100's 7.68 by default; the G500 is ~12.6)
+    public static func elevation(_ points: [SeriesPoint], energy: EnergyTrack? = nil, whPerPct: Double = whPerBatteryPct) -> (profile: [ElevPoint], climbs: [ClimbSpan]) {
         let alt = smoothed(points.map(\.altM), radius: 3)
         var profile: [ElevPoint] = []
         var times: [Double] = []
@@ -219,7 +220,7 @@ public enum RideLayers {
             if let s = startIndex {
                 if a > profile[highIndex].altM { highIndex = i }
                 if profile[highIndex].altM - a >= drop || i == profile.count - 1 {
-                    if let c = climb(profile, times, points, from: s, to: highIndex, rise: rise, energy: energy) { climbs.append(c) }
+                    if let c = climb(profile, times, points, from: s, to: highIndex, rise: rise, energy: energy, whPerPct: whPerPct) { climbs.append(c) }
                     startIndex = nil
                     lowIndex = i
                 }
@@ -235,7 +236,7 @@ public enum RideLayers {
     }
 
     private static func climb(_ profile: [ElevPoint], _ times: [Double], _ points: [SeriesPoint], from: Int, to: Int, rise: Double,
-                              energy: EnergyTrack?) -> ClimbSpan? {
+                              energy: EnergyTrack?, whPerPct: Double) -> ClimbSpan? {
         let gain = profile[to].altM - profile[from].altM
         guard to > from, gain >= rise else { return nil }
         let d = profile[to].distM - profile[from].distM
@@ -245,7 +246,7 @@ public enum RideLayers {
             let fromTrack = energy.usedPct(from: times[from], to: times[to]).map { Int($0.rounded()) }
             used = (fromTrack ?? 0) >= batteryResolutionPct ? fromTrack : nil
         } else {
-            used = climbBatteryUsed(points, from: times[from], to: times[to], distM: d, gainM: gain)
+            used = climbBatteryUsed(points, from: times[from], to: times[to], distM: d, gainM: gain, whPerPct: whPerPct)
         }
         return ClimbSpan(startDistM: profile[from].distM, endDistM: profile[to].distM, gainM: gain, gradePct: grade, usedPct: used)
     }
@@ -256,14 +257,15 @@ public enum RideLayers {
     public static let climbMaxWhPerKm = 40.0
     public static let climbLiftKg = 150.0
     public static let climbLiftEfficiency = 0.6
-    /// Wh per battery point (768 Wh pack / 100)
+    /// Wh per battery point of the G100 (768 Wh pack / 100): the default when the scooter's own value is not passed
     public static let whPerBatteryPct = 7.68
 
     /// B38: battery points used on one climb, from the climb's OWN readings only (`from`...`to` seconds): the median of its first
     /// three readings minus the median of its last three (one sagging reading does not count). nil (hidden) when the climb has
     /// fewer than two readings, when the drop is below the reading resolution, or when it is more than the climb could really use
     /// (`climbMaxWhPerKm` over its distance plus lifting `climbLiftKg` up `gainM`, +10 % margin): that is voltage sag, not energy.
-    public static func climbBatteryUsed(_ points: [SeriesPoint], from t0: Double, to t1: Double, distM: Double, gainM: Double) -> Int? {
+    public static func climbBatteryUsed(_ points: [SeriesPoint], from t0: Double, to t1: Double, distM: Double, gainM: Double,
+                                        whPerPct: Double = whPerBatteryPct) -> Int? {
         guard t1 > t0 else { return nil }
         let readings = points.filter { $0.t >= t0 && $0.t <= t1 }.compactMap(\.batteryPct)
         guard readings.count >= 2 else { return nil }
@@ -275,7 +277,7 @@ public enum RideLayers {
         let used = median(readings.prefix(k)) - median(readings.suffix(k))
         guard used >= batteryResolutionPct else { return nil }
         let liftWh = climbLiftKg * 9.81 * max(0, gainM) / 3_600 / climbLiftEfficiency
-        let ceiling = (max(0, distM) / 1_000 * climbMaxWhPerKm + liftWh) / whPerBatteryPct * 1.1
+        let ceiling = (max(0, distM) / 1_000 * climbMaxWhPerKm + liftWh) / max(1, whPerPct) * 1.1
         guard Double(used) <= max(Double(batteryResolutionPct), ceiling) else { return nil }
         return used
     }
