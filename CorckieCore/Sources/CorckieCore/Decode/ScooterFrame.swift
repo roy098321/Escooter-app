@@ -81,6 +81,14 @@ public struct FrameAssembler {
     /// Standing still at no current this long before the voltage counts as resting (the first reading of a connection
     /// counts at once: the scooter was just switched on)
     public static let g500RestS = 10.0
+    /// B113 (hotfix .11): after riding, the G500's voltage keeps recovering for minutes (24 Nov: 56.7 V one minute after a 476 Wh
+    /// ride read 8 % while the energy said ~40 %). A rested reading within this long of the last load is not trusted while the
+    /// count of Ah used since the last good reading is there to go on.
+    public static let g500RecoverS = 300.0
+    /// Current above this is "load" for the recovery wait
+    public static let g500LoadA = 3.0
+    /// The last moment under load; kept across a disconnect (a quick off / on after a ride is still a tired pack)
+    public private(set) var g500LastLoadT: Double?
     public static let g500TempWindowS = 10.0
     public private(set) var packetCount = 0
     public private(set) var unknownCount = 0
@@ -175,6 +183,7 @@ public struct FrameAssembler {
         // .06: count the charge used since the last rested reading
         if let p = g500PrevT, t > p, g.currentA > 0 { g500AhSinceRest += g.currentA * min(t - p, Self.g500MaxStepS) / 3600 }
         g500PrevT = t
+        if g.currentA > Self.g500LoadA { g500LastLoadT = t }
         if let base = g500RestBase, let ah = packAhOverride ?? pack?.packAh, ah > 0 {
             g500RestPct = Int(min(100, max(0, base - g500AhSinceRest / ah * 100)).rounded())
         }
@@ -184,7 +193,10 @@ public struct FrameAssembler {
             return
         }
         if g500RestSince == nil { g500RestSince = t }
-        let settled = t - (g500RestSince ?? t) >= Self.g500RestS
+        let recovered = t - (g500LastLoadT ?? -.infinity) >= Self.g500RecoverS
+        // B113: right after riding, keep counting down by the Ah used instead of reading the tired voltage; the first reading of a
+        // connection is still taken (nothing else to go on) and the first recovered one replaces it
+        let settled = t - (g500RestSince ?? t) >= Self.g500RestS && (recovered || g500RestBase == nil)
         guard settled || g500RestPct == nil, let pack,
               PacketG500.voltageRange.contains(g.voltage) else { return }
         let rested = LiIonCurve.pct(packV: g.voltage, cells: pack.cells)

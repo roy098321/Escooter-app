@@ -1,5 +1,31 @@
 [
   {
+    "version": "111.291126.11",
+    "headline": "Steadier after every ride",
+    "items": [
+      {
+        "symbol": "checkmark.shield",
+        "title": "No more crash at the end of a ride",
+        "line": "Rides close cleanly, with their summary and notes."
+      },
+      {
+        "symbol": "music.note",
+        "title": "Your music comes back",
+        "line": "After every spoken line or warning tone, the music returns to full volume."
+      },
+      {
+        "symbol": "battery.50percent",
+        "title": "Honest battery after a ride",
+        "line": "Right after a hard ride, the G500's battery is no longer shown as nearly empty."
+      }
+    ],
+    "smallerFixes": 2,
+    "full": [
+      "Crash details are kept for the ride report.",
+      "Ride sounds keep working with the phone in your pocket."
+    ]
+  },
+  {
     "version": "111.291126.10",
     "headline": "End ride means ended",
     "items": [

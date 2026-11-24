@@ -84,9 +84,20 @@ enum RideAudio {
 
     /// B105: changing the options on an active session does not reliably end the ducking (the music stayed low until the next
     /// line). iOS ends it when the session is deactivated with notifyOthersOnDeactivation; then the ride session reopens unducked.
-    static func unduck() {
+    /// B109 (hotfix .11): returns false when iOS refused the deactivation (one of our sounds still playing): the duck is still on
+    @discardableResult
+    static func unduck() -> Bool {
         let s = AVAudioSession.sharedInstance()
-        try? s.setActive(false, options: .notifyOthersOnDeactivation)
+        var released = true
+        do { try s.setActive(false, options: .notifyOthersOnDeactivation) } catch { released = false }
+        try? s.setCategory(category, mode: .spokenAudio, options: rideOptions)
+        try? s.setActive(true)
+        return released
+    }
+
+    /// B110 (hotfix .11): the ride's own session setting, back after a nice sound switched it to ambient while the app was on screen
+    static func restoreRide() {
+        let s = AVAudioSession.sharedInstance()
         try? s.setCategory(category, mode: .spokenAudio, options: rideOptions)
         try? s.setActive(true)
     }
@@ -100,6 +111,15 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
 
     private var players: [AVAudioPlayer] = []
     private var speakAfter: [ObjectIdentifier: String] = [:]
+    /// Which sound each player plays (B107 / B110)
+    private var kinds: [ObjectIdentifier: SoundKind] = [:]
+    /// B107: a warning tone with no line after it ends its own warning when it finishes
+    private var endsWarning: Set<ObjectIdentifier> = []
+    /// B109: the duck could not end while a sound played; try again when the last one finishes
+    private var pendingRelease = false
+    /// B108: a few seconds after the last warning, nothing playing = no warning in flight, whatever the count says
+    private var safetyNet: DispatchWorkItem?
+    static let safetyNetS: TimeInterval = 20
     private let synth = AVSpeechSynthesizer()
     private(set) var rideSessionOpen = false
     private var warningsInFlight = 0
@@ -109,6 +129,12 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
     private override init() {
         super.init()
         synth.delegate = self
+        // B108: a phone call, Siri or another app's voice can stop our line without a "finished"; after it, start clean
+        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] n in
+            guard let self, let raw = n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
+            self.resetWarnings(reason: "interruption ended")
+        }
     }
 
     // MARK: Session (only while a ride runs)
@@ -146,11 +172,18 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
     @discardableResult
     func play(_ kind: SoundKind) -> Bool {
         if let t = kind.toggle, !t.isOn { return false }
-        return start(kind)
+        guard kind.toggle == nil else { return start(kind) }
+        // B107 (hotfix .11): a warning sound on its own (the level-2 tone) lowers the music like any warning, so it must end the
+        // duck too when it finishes
+        warningsInFlight += 1
+        armSafetyNet()
+        if start(kind, endsWarning: true) { return true }
+        warningDone()
+        return false
     }
 
     @discardableResult
-    private func start(_ kind: SoundKind, speaking text: String? = nil) -> Bool {
+    private func start(_ kind: SoundKind, speaking text: String? = nil, endsWarning ends: Bool = false) -> Bool {
         guard let url = kind.url else { return false }
         prepareSession(for: kind)
         guard let p = try? AVAudioPlayer(contentsOf: url) else { return false }
@@ -158,6 +191,8 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
         p.delegate = self
         p.prepareToPlay()
         players.append(p)
+        kinds[ObjectIdentifier(p)] = kind
+        if ends { endsWarning.insert(ObjectIdentifier(p)) }
         if let text { speakAfter[ObjectIdentifier(p)] = text }
         p.play()
         lastPlayed = (kind, Date())
@@ -183,6 +218,7 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
     func warn(_ u: LiveUtterance) {
         let kind: SoundKind = u.ping == .destination ? .destinationPing : (u.ping == .motor ? .motorPing : .batteryPing)
         warningsInFlight += 1
+        armSafetyNet()
         Haptics.taps(u.taps)
         if !start(kind, speaking: u.text) { speak(u.text) }
     }
@@ -190,12 +226,14 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
     /// N8-4: a cue sound, then the spoken line (the turn-back steps: the soft tone, or ping-ping); no haptic
     func cue(_ kind: SoundKind, then text: String) {
         warningsInFlight += 1
+        armSafetyNet()
         if !start(kind, speaking: text) { speak(text) }
     }
 
     /// F-35: a plain spoken line ("Riding to Uni, 8 km.") on the same channel as the battery lines: no ping and no haptic
     func say(_ text: String) {
         warningsInFlight += 1
+        armSafetyNet()
         let s = AVAudioSession.sharedInstance()
         try? s.setCategory(RideAudio.category, mode: .spokenAudio, options: RideAudio.warningOptions)
         try? s.setActive(true)
@@ -215,21 +253,80 @@ final class SoundPlayer: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
     private func warningDone() {
         warningsInFlight = max(0, warningsInFlight - 1)
         guard warningsInFlight == 0 else { return }
-        guard rideSessionOpen else {
-            // B105: a line spoken outside a ride (or just after it closed) gives the music back too
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        releaseDuck()
+    }
+
+    /// Gives the music back: outside a ride the session is let go (B105), during a ride it reopens un-ducked. B109: iOS refuses
+    /// while one of our sounds still plays, so it is tried again when the last one finishes.
+    private func releaseDuck() {
+        if players.contains(where: { $0.isPlaying }) {
+            pendingRelease = true
             return
         }
-        RideAudio.unduck()
+        pendingRelease = false
+        let released: Bool
+        if rideSessionOpen {
+            released = RideAudio.unduck()
+        } else {
+            do {
+                try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+                released = true
+            } catch { released = false }
+        }
+        if !released {
+            pendingRelease = true
+            Diary.shared.note("voice", "Music not given back yet (the audio session was busy); trying again")
+        }
+    }
+
+    /// B108: a lost "finished" (a ping that never ended, a line cut by a call) must not keep the music low for the rest of the ride
+    private func armSafetyNet() {
+        safetyNet?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.warningsInFlight > 0 || self.pendingRelease else { return }
+            guard !self.synth.isSpeaking, !self.players.contains(where: { $0.isPlaying }) else {
+                self.armSafetyNet()                // still talking: look again later
+                return
+            }
+            self.resetWarnings(reason: "nothing playing \(Int(Self.safetyNetS)) s after the last line")
+        }
+        safetyNet = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.safetyNetS, execute: work)
+    }
+
+    private func resetWarnings(reason: String) {
+        guard warningsInFlight > 0 || pendingRelease else { return }
+        Diary.shared.note("voice", "Warnings reset (\(reason)): \(warningsInFlight) open")
+        warningsInFlight = 0
+        speakAfter.removeAll()
+        endsWarning.removeAll()
+        releaseDuck()
     }
 
     // MARK: Delegates
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        DispatchQueue.main.async {
-            let id = ObjectIdentifier(player)
-            self.players.removeAll { $0 === player }
-            if let text = self.speakAfter.removeValue(forKey: id) { self.speak(text) }
+        DispatchQueue.main.async { self.finished(player) }
+    }
+
+    /// B108: a sound that can't be decoded never "finishes"; treat it as finished so its line is still said and the duck ends
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        DispatchQueue.main.async { self.finished(player) }
+    }
+
+    private func finished(_ player: AVAudioPlayer) {
+        let id = ObjectIdentifier(player)
+        guard players.contains(where: { $0 === player }) else { return }
+        players.removeAll { $0 === player }
+        let kind = kinds.removeValue(forKey: id)
+        if let text = speakAfter.removeValue(forKey: id) {
+            speak(text)
+        } else if endsWarning.remove(id) != nil {
+            warningDone()
+        } else if pendingRelease, warningsInFlight == 0 {
+            releaseDuck()                                   // B109: the sound that blocked it is done
+        } else if let kind, kind.toggle != nil, rideSessionOpen, warningsInFlight == 0, !players.contains(where: { $0.isPlaying }) {
+            RideAudio.restoreRide()                         // B110: back to the ride's own setting after a nice sound
         }
     }
 

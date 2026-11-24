@@ -289,6 +289,13 @@ public enum EnergyHint {
         return Outcome(skipped: nil, ratio: x, stepBefore: before, stepAfter: s.step)
     }
 
+    /// B111 (hotfix .11): the ride's `wet` / `wetOverride` columns are TEXT ("dry", "rain", …). The rider's override wins; anything
+    /// but "dry" is wet; nothing known = dry.
+    public static func isWet(override: String?, weather: String?) -> Bool {
+        guard let w = override ?? weather else { return false }
+        return w != "dry"
+    }
+
     /// The motor ran hotter than this scooter's usual on the high rides (last 2 rises above the earlier ones' 90th percentile + 10 %)
     static func motorHotter(_ s: EnergyScooter) -> Bool {
         guard s.lastRiseC.count >= 8 else { return false }

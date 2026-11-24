@@ -15,14 +15,15 @@ enum EnergyHintService {
         guard !db.isReadOnly, !GarageService.activeIsBorrowed(db), ride.kind == "ride",
               let meters = ride.distanceM, let wh = ride.energyWhRaw else { return }
         let extra = try? db.writer.read { d in
-            try Row.fetchOne(d, sql: "SELECT routeId, airTempC, headwindKmh, wet FROM ride WHERE id = ?", arguments: [ride.id])
+            try Row.fetchOne(d, sql: "SELECT routeId, airTempC, headwindKmh, wet, wetOverride FROM ride WHERE id = ?", arguments: [ride.id])
         }
         let km = meters / 1000
         let gears = frames.compactMap(\.gear)
         let mainGear = Dictionary(grouping: gears, by: { $0 }).max { $0.value.count < $1.value.count }?.key
-        let wet: Int? = extra?["wet"]
+        // B111 (hotfix .11): `wet` is TEXT ("dry" / "rain" …); reading it as Int trapped in GRDB and crashed every ride close
+        let wet = EnergyHint.isWet(override: extra?["wetOverride"] as String?, weather: extra?["wet"] as String?)
         let input = EnergyRide(rideId: ride.id, day: FaultGate.day(epochMs: ride.startAt), routeId: extra?["routeId"], distanceKm: km,
-                               energyWh: wh, airTempC: extra?["airTempC"], headwindKmh: extra?["headwindKmh"], wet: (wet ?? 0) != 0,
+                               energyWh: wh, airTempC: extra?["airTempC"], headwindKmh: extra?["headwindKmh"], wet: wet,
                                avgKmh: ride.avgMovingMps.map { $0 * 3.6 }, stopsPerKm: ride.stops.map { km > 0 ? Double($0) / km : 0 },
                                mainGear: mainGear, gapS: max(ride.gapScooterS ?? 0, ride.gapGpsS ?? 0),
                                wheelOverGps: FaultService.wheelGpsRatio(samples), pull: LoadEstimate.pull(points(frames)),

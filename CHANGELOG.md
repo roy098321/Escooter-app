@@ -2,6 +2,16 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.11 — hotfix 11 of batch 11: the close crash, the music, the G500 % after a ride
+
+- B111: the app crashed at almost every ride close since batch 11 (4× on 24 Nov): `EnergyHintService` read the TEXT column `ride.wet` as Int and GRDB trapped. It is read as text now (`EnergyHint.isWet`: the rider's override first, anything but "dry" is wet). This crash is what left the lock-screen card counting (.08 / .10 symptoms).
+- B112: iOS's crash details (MetricKit JSON: call stack, exception) are kept, newest 10, and go into Report a problem and Export log (`crash-*.json`).
+- B107: the level-2 warning tone lowered the music and nothing raised it; it now counts as a warning and gives the music back when it ends.
+- B108: a lost "finished" (decode error, a call or Siri cutting a line) kept the music low for the rest of the ride; a safety net 20 s after the last line, the audio interruption notice and the decode-error callback now reset it.
+- B109: giving the music back failed silently while one of our sounds still played; it is retried when the last sound ends, and logged.
+- B110: a nice sound with the app on screen left the ride's audio on "ambient"; the ride's own setting comes back after it.
+- B113: G500 % after a hard ride: the voltage is trusted only 5 min after the last load (it read 8 % one minute after a ride that used ~38 %); until then the % counts down by the Ah used. The last load is remembered across a quick off / on.
+
 ## 111.291126.10 — hotfix 10 of batch 11: End ride left the lock-screen card up
 
 - Owner 24 Nov: End ride on the Arrived card did not close it. The card was closed only when the app remembered showing it; after iOS relaunched the app in the background (or once the ride had already ended) nothing closed it. `EndRideIntent` now ends the card itself after asking the app to end the ride, and with no ride running the app closes a riding / arrived card left from an earlier run.

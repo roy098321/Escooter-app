@@ -82,7 +82,36 @@ final class CrashCatcher: NSObject, MXMetricManagerSubscriber {
         }
     }
 
+    /// B112 (hotfix .11): iOS's crash details (call stack, exception, signal) as JSON files, newest `keptCrashFiles`; they go into
+    /// Report a problem and Export log (report/crash-*.json). Before .11 only the count was kept.
+    static let keptCrashFiles = 10
+    static var crashFolder: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("crash-reports")
+    }
+
+    static func crashFiles() -> [URL] {
+        let fm = FileManager.default
+        let files = (try? fm.contentsOfDirectory(at: crashFolder, includingPropertiesForKeys: nil)) ?? []
+        return files.filter { $0.pathExtension == "json" }.sorted { $0.lastPathComponent > $1.lastPathComponent }
+    }
+
+    private func keep(_ payload: MXDiagnosticPayload) {
+        guard let crashes = payload.crashDiagnostics, !crashes.isEmpty else { return }
+        let fm = FileManager.default
+        try? fm.createDirectory(at: Self.crashFolder, withIntermediateDirectories: true)
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyyMMdd-HHmmss"
+        let stamp = f.string(from: payload.timeStampEnd)
+        for (i, c) in crashes.enumerated() {
+            let url = Self.crashFolder.appendingPathComponent("crash-\(stamp)-\(i).json")
+            if !fm.fileExists(atPath: url.path) { try? c.jsonRepresentation().write(to: url) }
+        }
+        for old in Self.crashFiles().dropFirst(Self.keptCrashFiles) { try? fm.removeItem(at: old) }
+    }
+
     private func record(_ payload: MXDiagnosticPayload) {
+        keep(payload)
         let crashes = payload.crashDiagnostics?.count ?? 0
         let line = "\(payload.timeStampEnd.formatted()) · \(crashes) crash report(s)"
         Diary.shared.note("app", "iOS report: \(line)")   // B81

@@ -226,11 +226,15 @@ final class B102G500BatteryAndWatchTests: XCTestCase {
             let f = try XCTUnwrap(a.ingest(packet(volts: 58.0, amps: 20, raw: 600), at: Double(i)))
             XCTAssertGreaterThanOrEqual(f.batteryPct ?? 0, 79, "the sag is not read as a drop")
         }
-        // standing, no current: after 10 s the resting voltage counts
+        // standing, no current: B113 (.11) the voltage is only trusted 5 min after the last load; until then the counted level
         var f = try XCTUnwrap(a.ingest(packet(volts: 63.2), at: 31))
         XCTAssertEqual(f.batteryPct, 79, "not yet rested: the counted level")
         f = try XCTUnwrap(a.ingest(packet(volts: 63.2), at: 41.5))
-        XCTAssertEqual(f.batteryPct, LiIonCurve.pct(cellV: 3.95))
+        XCTAssertEqual(f.batteryPct, 79, "10 s after riding is still a tired pack: the counted level")
+        for i in 0..<35 { f = try XCTUnwrap(a.ingest(packet(volts: 63.2), at: 42 + Double(i) * 8)) }
+        XCTAssertEqual(f.batteryPct, 79, "4.5 min after riding: still the counted level")
+        f = try XCTUnwrap(a.ingest(packet(volts: 63.2), at: 30 + FrameAssembler.g500RecoverS + 1))
+        XCTAssertEqual(f.batteryPct, LiIonCurve.pct(cellV: 3.95), "5 min after the load: the resting voltage counts")
         a.reset()
         XCTAssertNil(a.g500RestPct)
     }

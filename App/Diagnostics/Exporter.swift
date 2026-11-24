@@ -50,6 +50,10 @@ enum Exporter {
         try deviceText().write(to: folder.appendingPathComponent("device.txt"), atomically: true, encoding: .utf8)
         try OutsideProbes.shared.report().write(to: folder.appendingPathComponent("outside-data.txt"), atomically: true, encoding: .utf8)
         try PhoneSensors.shared.report().write(to: folder.appendingPathComponent("sensors.txt"), atomically: true, encoding: .utf8)
+        // B112 (hotfix .11): iOS's crash details, newest 10
+        for file in CrashCatcher.crashFiles() {
+            try? FileManager.default.copyItem(at: file, to: folder.appendingPathComponent(file.lastPathComponent))
+        }
     }
 
     private static func deviceText() -> String {
