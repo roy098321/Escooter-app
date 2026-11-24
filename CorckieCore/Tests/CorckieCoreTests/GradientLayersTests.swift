@@ -97,4 +97,15 @@ final class GradientReplayTests: XCTestCase {
         let blind = ReplayHTML.build(d, colourBlind: true) { _ in nil }
         XCTAssertTrue(blind.contains("var RAMP = ['#00204d', '#31446b', '#666970', '#958f78', '#cbba69', '#ffea46'];"))
     }
+
+    /// Owner 24 Nov: a 69 km/h ride had a 0-50 km/h legend. The scale grows to the ride's top speed (next 10), never below 50.
+    func test_speedScale_followsTheRidesTopSpeed() {
+        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 69), 70)
+        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 70), 70)
+        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 44), 50, "slower rides keep the usual 0-50")
+        XCTAssertEqual(LayerRamps.speedTop(maxKmh: nil), 50)
+        XCTAssertEqual(LayerRamps.speedLegend(topKmh: 70).high, "70 km/h")
+        XCTAssertEqual(LayerRamps.speedLegend(topKmh: 70).mid, "35")
+        XCTAssertEqual(LayerRamps.speed(colourBlind: false, topKmh: 70).hi, 70)
+    }
 }

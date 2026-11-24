@@ -272,7 +272,12 @@ public enum LayerViews {
             return hi - lo >= minSpan ? (lo, hi) : (mid - minSpan / 2, mid + minSpan / 2)
         }
         switch (view.layer, view.deep) {
-        case (.speed, false), (.hills, true), (.wind, false):
+        case (.speed, false):
+            // owner 24 Nov: the legend said 50 km/h on a 69 km/h ride
+            let top = LayerRamps.speedTop(maxKmh: stretches.map(\.value).max())
+            let words = LayerRamps.speedLegend(topKmh: top)
+            return LayerScale(title: view.title, ramp: LayerRamps.speed(colourBlind: colourBlind, topKmh: top), low: words.low, high: words.high)
+        case (.hills, true), (.wind, false):
             let ramp = LayerRamps.ramp(view.layer, colourBlind: colourBlind)
             let words = LayerRamps.legend(view.layer)
             return LayerScale(title: view.title, ramp: ramp, low: words.low, high: words.high)

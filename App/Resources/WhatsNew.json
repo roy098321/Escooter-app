@@ -19,8 +19,9 @@
         "line": "After a spoken line, your music returns to full volume."
       }
     ],
-    "smallerFixes": 1,
+    "smallerFixes": 2,
     "full": [
+      "The speed colours on the ride map now go up to your ride's top speed, not just 50 km/h.",
       "G500: battery % now counts down while you ride, from the power used, instead of waiting for a stop.",
       "Battery % no longer flickers by 1 while the scooter stands."
     ]

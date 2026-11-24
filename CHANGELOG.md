@@ -7,6 +7,7 @@ One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). P
 - B103: a discarded piece (Start pressed, then a restart) is never a trip leg (`TripRules.Leg.discarded`); a trip opened before .06 drops such legs before merging; a merge reclasses from the merged distance even when its first leg was discarded. The 14 km ride had been hidden as "discarded".
 - B104: route and place rides keep their times for every scooter, but their battery use (usedPct) only through `BatteryDoor` (the active scooter, or untagged older rides): Home's "uses N%", the arrival %, "more than usual" and the usage lines no longer borrow another scooter's rides; recent usage lines likewise.
 - B105: after a spoken line the music is un-ducked by deactivating the session (notifyOthersOnDeactivation) and reopening it without duckOthers (changing the options on an active session left it low); a line spoken outside a ride also gives the music back.
+- Speed map scale and legend: 0-50 km/h, or up to the ride's top speed rounded up to 10 (a 69 km/h ride showed 50); replay too.
 - G500 battery %: between rested readings it counts down by the Ah used (packet current, at most 2 s per step); standing, a rested reading 1 point off the shown % is ignored.
 
 ## 111.291126.05 — hotfix 05 of batch 11: G500 battery %, pack per model, quiet byte watch

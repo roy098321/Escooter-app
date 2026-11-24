@@ -36,10 +36,24 @@ public struct GradientRamp: Equatable, Sendable {
 
 public enum LayerRamps {
     /// Speed: one ramp 0-50 km/h, green -> yellow -> orange -> red. Colour-blind: cividis (dark blue -> yellow).
-    public static func speed(colourBlind: Bool) -> GradientRamp {
+    /// Owner 24 Nov: a faster ride (the G500 reached 69 km/h) stretches the top to its own top speed, rounded up to 10 km/h.
+    public static func speed(colourBlind: Bool, topKmh: Double = speedTopKmh) -> GradientRamp {
         colourBlind
-            ? GradientRamp(lo: 0, hi: 50, hex: ["#00204D", "#31446B", "#666970", "#958F78", "#CBBA69", "#FFEA46"])
-            : GradientRamp(lo: 0, hi: 50, hex: ["#22B24C", "#F2D21B", "#F28C1B", "#E53935"])
+            ? GradientRamp(lo: 0, hi: topKmh, hex: ["#00204D", "#31446B", "#666970", "#958F78", "#CBBA69", "#FFEA46"])
+            : GradientRamp(lo: 0, hi: topKmh, hex: ["#22B24C", "#F2D21B", "#F28C1B", "#E53935"])
+    }
+
+    public static let speedTopKmh = 50.0
+
+    /// The top of the speed scale for a ride: 50 km/h, or the ride's top speed rounded up to the next 10
+    public static func speedTop(maxKmh: Double?) -> Double {
+        guard let m = maxKmh, m.isFinite, m > speedTopKmh else { return speedTopKmh }
+        return (m / 10).rounded(.up) * 10
+    }
+
+    /// The speed legend's words for that scale
+    public static func speedLegend(topKmh: Double) -> (low: String, mid: String, high: String) {
+        ("0", "\(Int((topKmh / 2).rounded()))", "\(Int(topKmh.rounded())) km/h")
     }
 
     /// Hills: slope -8 ... +8 %, blue downhill -> grey flat -> orange uphill (blue / orange is safe for colour-blind riders)

@@ -230,7 +230,7 @@ public struct ReplayTrack: Equatable, Sendable {
     public func ramp(_ layer: ReplayLayer, colourBlind: Bool) -> GradientRamp {
         switch layer {
         case .speed:
-            return LayerRamps.speed(colourBlind: colourBlind)
+            return LayerRamps.speed(colourBlind: colourBlind, topKmh: LayerRamps.speedTop(maxKmh: samples.compactMap(\.speedKmh).max()))
         case .battery:
             return GradientRamp(lo: 0, hi: 100, hex: colourBlind ? ["#00204D", "#666970", "#FFEA46"] : ["#E53935", "#F2D21B", "#22B24C"])
         case .power:
