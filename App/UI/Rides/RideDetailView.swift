@@ -648,7 +648,8 @@ struct RideDetailView: View {
         let data = s.layerData
         if !LayerViews.available(data).contains(layerView.layer) { layerView = .default }
         drawn = LayerViews.stretches(layerView, data)
-        drawnScale = LayerViews.scale(layerView, stretches: drawn, energy: s.energy, colourBlind: DisplaySettings.colourBlind)
+        drawnScale = LayerViews.scale(layerView, stretches: drawn, energy: s.energy, colourBlind: DisplaySettings.colourBlind,
+                                      topKmh: s.points.compactMap(\.speedKmh).max())
         // N4-12 (B91): the Battery legend reads the ride's one start and end (the same as the summary and the arrival line)
         if layerView == LayerView(.battery), var scale = drawnScale, let ends = model?.batteryEnds,
            let text = BatteryLegend.text(ends) {

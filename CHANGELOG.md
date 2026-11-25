@@ -2,6 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.12 — hotfix 12 of batch 11: the speed scale fits the ride
+
+- Owner 25 Nov: a 71 km/h ride had a 0–80 km/h Speed scale (the top was rounded up to the next 10), which squeezed the colours. The scale now runs 0 to the ride's own top speed (whole km/h, rounded up; 10 km/h at least; 50 without speed readings), for every ride, and the legend uses the recorded top speed so it matches the summary's Top speed. The replay uses the same scale.
+
 ## 111.291126.11 — hotfix 11 of batch 11: the close crash, the music, the G500 % after a ride
 
 - B111: the app crashed at almost every ride close since batch 11 (4× on 24 Nov): `EnergyHintService` read the TEXT column `ride.wet` as Int and GRDB trapped. It is read as text now (`EnergyHint.isWet`: the rider's override first, anything but "dry" is wet). This crash is what left the lock-screen card counting (.08 / .10 symptoms).

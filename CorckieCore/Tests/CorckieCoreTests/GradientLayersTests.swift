@@ -98,14 +98,20 @@ final class GradientReplayTests: XCTestCase {
         XCTAssertTrue(blind.contains("var RAMP = ['#00204d', '#31446b', '#666970', '#958f78', '#cbba69', '#ffea46'];"))
     }
 
-    /// Owner 24 Nov: a 69 km/h ride had a 0-50 km/h legend. The scale grows to the ride's top speed (next 10), never below 50.
-    func test_speedScale_followsTheRidesTopSpeed() {
-        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 69), 70)
-        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 70), 70)
-        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 44), 50, "slower rides keep the usual 0-50")
+    /// Owner 25 Nov: a 71 km/h ride had a 0-80 km/h scale. The scale runs 0 to the ride's own top speed.
+    func test_speedScale_isZeroToTheRidesTopSpeed() {
+        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 71), 71)
+        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 70.2), 71, "whole km/h, rounded up so the fastest stretch is on the scale")
+        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 44), 44, "slower rides use their own top too")
+        XCTAssertEqual(LayerRamps.speedTop(maxKmh: 3), 10, "a walk-paced ride keeps a readable scale")
         XCTAssertEqual(LayerRamps.speedTop(maxKmh: nil), 50)
-        XCTAssertEqual(LayerRamps.speedLegend(topKmh: 70).high, "70 km/h")
-        XCTAssertEqual(LayerRamps.speedLegend(topKmh: 70).mid, "35")
-        XCTAssertEqual(LayerRamps.speed(colourBlind: false, topKmh: 70).hi, 70)
+        XCTAssertEqual(LayerRamps.speedLegend(topKmh: 71).high, "71 km/h")
+        XCTAssertEqual(LayerRamps.speed(colourBlind: false, topKmh: 71).hi, 71)
+    }
+
+    func test_speedLegend_usesTheRecordedTopSpeed() {
+        let s = [ValueStretch(a: GeoPoint(lat: 10, lon: -30), b: GeoPoint(lat: 10.001, lon: -30), t: 1, value: 66)]
+        let scale = LayerViews.scale(LayerView(.speed), stretches: s, energy: .empty, colourBlind: false, topKmh: 71)
+        XCTAssertEqual(scale.high, "71 km/h", "the legend matches the ride's Top speed, not the averaged stretches")
     }
 }

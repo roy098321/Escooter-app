@@ -264,7 +264,9 @@ public enum LayerViews {
 
     // MARK: Scale
 
-    public static func scale(_ view: LayerView, stretches: [ValueStretch], energy: EnergyTrack, colourBlind: Bool) -> LayerScale {
+    /// `topKmh`: the ride's recorded top speed (the stretches are averages and sit a little lower)
+    public static func scale(_ view: LayerView, stretches: [ValueStretch], energy: EnergyTrack, colourBlind: Bool,
+                             topKmh: Double? = nil) -> LayerScale {
         let lo = stretches.map(\.value).min() ?? 0
         let hi = stretches.map(\.value).max() ?? 0
         func span(_ minSpan: Double) -> (Double, Double) {
@@ -273,8 +275,8 @@ public enum LayerViews {
         }
         switch (view.layer, view.deep) {
         case (.speed, false):
-            // owner 24 Nov: the legend said 50 km/h on a 69 km/h ride
-            let top = LayerRamps.speedTop(maxKmh: stretches.map(\.value).max())
+            // owner 24-25 Nov: the scale runs 0 to the ride's own top speed
+            let top = LayerRamps.speedTop(maxKmh: topKmh ?? stretches.map(\.value).max())
             let words = LayerRamps.speedLegend(topKmh: top)
             return LayerScale(title: view.title, ramp: LayerRamps.speed(colourBlind: colourBlind, topKmh: top), low: words.low, high: words.high)
         case (.hills, true), (.wind, false):

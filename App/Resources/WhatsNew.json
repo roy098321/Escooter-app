@@ -1,5 +1,30 @@
 [
   {
+    "version": "111.291126.12",
+    "headline": "A speed map that fits the ride",
+    "items": [
+      {
+        "symbol": "speedometer",
+        "title": "Speed colours fit your ride",
+        "line": "The Speed map now runs from 0 to the ride's own top speed, so every colour is used."
+      },
+      {
+        "symbol": "map",
+        "title": "The legend matches Top speed",
+        "line": "The top of the scale is the same number as the ride's Top speed."
+      },
+      {
+        "symbol": "tortoise",
+        "title": "Slow rides read better too",
+        "line": "A calm ride gets its own scale instead of a fixed 0 to 50 km/h."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "The ride replay's speed colours use the same scale."
+    ]
+  },
+  {
     "version": "111.291126.11",
     "headline": "Steadier after every ride",
     "items": [
