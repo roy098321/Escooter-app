@@ -178,6 +178,8 @@ public struct RideRecorderCore {
     var rawStartT: Double?
     /// Hotfix .13: the 1-s GPS track since the last flush
     var track: [PhoneFix] = []
+    /// The last kept fix's time (survives the flush, so the spacing holds across chunks)
+    var lastTrackT = -Double.infinity
     var lastFlushT = 0.0
     var lastSnapshotT = -Double.infinity
     var lastLiveT = -Double.infinity
@@ -249,8 +251,9 @@ public struct RideRecorderCore {
         take(feed.fix(f), at: f.t, &out)
         // hotfix .13: every good fix, once a second, while a ride records (scooter or phone mode)
         if seq != nil, f.hAccM >= 0, f.hAccM <= T.t28GoodFixM,
-           f.t - (track.last?.t ?? -Double.infinity) >= RecorderTrack.intervalS - 0.05 {
+           f.t - lastTrackT >= RecorderTrack.intervalS - 0.05 {
             track.append(f)
+            lastTrackT = f.t
         }
         if seq != nil, feed.engine.phoneMode(at: f.t), var s = sampler {
             // phone mode: GPS-only samples keep the path going (no scooter fields, no energy)
@@ -316,6 +319,7 @@ public struct RideRecorderCore {
                 raw = []
                 rawStartT = nil
                 track = []
+                lastTrackT = -Double.infinity
                 lastFlushT = at
                 lastSampleT = nil
                 out.append(.rideStarted(seq: s, startT: at, manual: manual))
@@ -365,6 +369,7 @@ public struct RideRecorderCore {
         raw = []
         rawStartT = nil
         track = []
+        lastTrackT = -Double.infinity
         topSpeedKmh = 0
         lastSampleT = nil
     }
