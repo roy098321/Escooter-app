@@ -36,6 +36,8 @@ enum RideSeriesLoader {
             points.append(SeriesPoint(t: Double(s.t) / 1000, lat: s.lat, lon: s.lon, hAccM: s.hAccM, speedKmh: kmh,
                                       batteryPct: s.batteryPct, altM: s.altBaroM, powerW: s.powerW, tempC: s.tempC))
         }
+        // hotfix .13: rides from .13 on carry the phone's GPS once a second; it goes between the 5-s samples so the map follows the road
+        points = TrackMerge.merge(points, track: track(q, ride: ride))
         var series = RideSeries()
         series.points = points
         series.rideStartMs = ride.startAt
@@ -57,6 +59,26 @@ enum RideSeriesLoader {
             series.windValues = RideLayers.windStretches(points, rideStartMs: ride.startAt, rows: weather).map { RideLayers.smoothedStretches($0) }
         }
         return series
+    }
+
+    /// Hotfix .13: the ride's 1-s GPS track (times in seconds from the ride start, like the samples); empty before .13
+    static func track(_ q: RideQueries, ride: RideRecord) -> [(t: Double, lat: Double, lon: Double, hAccM: Double)] {
+        let chunks = ((try? q.chunks(rideId: ride.id)) ?? []).filter { $0.kind == "track" }
+        let start = Double(ride.startAt) / 1000
+        var out: [(t: Double, lat: Double, lon: Double, hAccM: Double)] = []
+        for c in chunks {
+            let data: Data
+            if c.codec == "zlib-v1" {
+                guard let d = try? (c.blob as NSData).decompressed(using: .zlib) as Data else { continue }
+                data = d
+            } else {
+                data = c.blob
+            }
+            for f in RecorderTrack.unpack(data, startT: Double(c.startAt) / 1000) {
+                out.append((t: f.t - start, lat: f.lat, lon: f.lon, hAccM: f.hAccM))
+            }
+        }
+        return out.sorted { $0.t < $1.t }
     }
 
     /// M37 "To full" on the newest real ride only, hidden once a charge was found after it: "~5 h · from 18:40"

@@ -251,6 +251,14 @@ actor Recorder {
                 let packed = try? (blob as NSData).compressed(using: .zlib) as Data
                 try q.insert(chunk: RawChunkRecord(rideId: id, seq: n, startAt: ms(startT), endAt: ms(endT), kind: "scooter",
                                                    codec: packed != nil ? "zlib-v1" : "raw-v1", blob: packed ?? blob))
+            case let .trackChunk(seq, startT, endT, blob):
+                // hotfix .13: the 1-s GPS track (kept like the ride, not by the raw-data retention)
+                guard let id = rideIds[seq] else { return }
+                let n = chunkSeq[seq, default: 0]
+                chunkSeq[seq] = n + 1
+                let packed = try? (blob as NSData).compressed(using: .zlib) as Data
+                try q.insert(chunk: RawChunkRecord(rideId: id, seq: n, startAt: ms(startT), endAt: ms(endT), kind: "track",
+                                                   codec: packed != nil ? "zlib-v1" : "raw-v1", blob: packed ?? blob))
             case let .gapOpened(seq, startT, reason):
                 guard let id = rideIds[seq] else { return }
                 let gap = try q.openGap(rideId: id, kind: "scooter", startT: rel(seq, startT))
@@ -536,6 +544,7 @@ extension RecorderAction {
         case .rideCancelled: return "cancel"
         case .samples: return "samples"
         case .rawChunk: return "raw chunk"
+        case .trackChunk: return "gps track"
         case .gapOpened: return "gap open"
         case .gapClosed: return "gap close"
         case .progress: return "ride row"

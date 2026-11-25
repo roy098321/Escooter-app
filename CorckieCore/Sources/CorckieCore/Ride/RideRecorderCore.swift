@@ -59,6 +59,9 @@ public enum RecorderAction: Equatable, Sendable {
     case samples(seq: Int, [RecorderSample])
     /// Raw scooter packets of the last ~30 s (`RecorderRaw.pack`; the app compresses with zlib)
     case rawChunk(seq: Int, startT: Double, endT: Double, blob: Data)
+    /// Hotfix .13 (owner 25 Nov): the phone's GPS once a second since the last flush (`RecorderTrack.pack`), so the ride map follows
+    /// the road; the 5-s samples alone cut corners at speed (~100 m apart at 70 km/h)
+    case trackChunk(seq: Int, startT: Double, endT: Double, blob: Data)
     /// Phone mode started (gap row, kind scooter, from `startT`)
     case gapOpened(seq: Int, startT: Double, reason: PhoneModeReason)
     case gapClosed(seq: Int, endT: Double)
@@ -91,6 +94,40 @@ public struct RecorderSnapshot: Codable, Equatable, Sendable {
 
 /// Raw packet chunk format v1 (before zlib): per packet a little-endian UInt32 of ms since the chunk start,
 /// one length byte, then the bytes.
+/// Hotfix .13: the 1-s GPS track, 24 bytes a fix: ms from the chunk start (UInt32), lat, lon (Float64), accuracy m (Float32)
+public enum RecorderTrack {
+    /// One fix a second at most
+    public static let intervalS = 1.0
+    public static let bytesPerFix = 24
+
+    public static func pack(_ fixes: [PhoneFix], startT: Double) -> Data {
+        var d = Data()
+        d.reserveCapacity(fixes.count * bytesPerFix)
+        for f in fixes {
+            let ms = UInt32(clamping: Int(((f.t - startT) * 1000).rounded()))
+            withUnsafeBytes(of: ms.littleEndian) { d.append(contentsOf: $0) }
+            withUnsafeBytes(of: f.lat.bitPattern.littleEndian) { d.append(contentsOf: $0) }
+            withUnsafeBytes(of: f.lon.bitPattern.littleEndian) { d.append(contentsOf: $0) }
+            withUnsafeBytes(of: Float(f.hAccM).bitPattern.littleEndian) { d.append(contentsOf: $0) }
+        }
+        return d
+    }
+
+    public static func unpack(_ d: Data, startT: Double) -> [(t: Double, lat: Double, lon: Double, hAccM: Double)] {
+        let b = [UInt8](d)
+        func u64(_ i: Int) -> UInt64 { (0..<8).reduce(UInt64(0)) { $0 | UInt64(b[i + $1]) << (8 * UInt64($1)) } }
+        func u32(_ i: Int) -> UInt32 { (0..<4).reduce(UInt32(0)) { $0 | UInt32(b[i + $1]) << (8 * UInt32($1)) } }
+        var out: [(t: Double, lat: Double, lon: Double, hAccM: Double)] = []
+        var i = 0
+        while i + bytesPerFix <= b.count {
+            out.append((t: startT + Double(u32(i)) / 1000, lat: Double(bitPattern: u64(i + 4)), lon: Double(bitPattern: u64(i + 12)),
+                        hAccM: Double(Float(bitPattern: u32(i + 20)))))
+            i += bytesPerFix
+        }
+        return out
+    }
+}
+
 public enum RecorderRaw {
     public static func pack(_ packets: [(t: Double, bytes: [UInt8])], startT: Double) -> Data {
         var d = Data()
@@ -139,6 +176,8 @@ public struct RideRecorderCore {
     var pending: [RecorderSample] = []
     var raw: [(t: Double, bytes: [UInt8])] = []
     var rawStartT: Double?
+    /// Hotfix .13: the 1-s GPS track since the last flush
+    var track: [PhoneFix] = []
     var lastFlushT = 0.0
     var lastSnapshotT = -Double.infinity
     var lastLiveT = -Double.infinity
@@ -208,6 +247,11 @@ public struct RideRecorderCore {
     public mutating func fix(_ f: PhoneFix) -> [RecorderAction] {
         var out: [RecorderAction] = []
         take(feed.fix(f), at: f.t, &out)
+        // hotfix .13: every good fix, once a second, while a ride records (scooter or phone mode)
+        if seq != nil, f.hAccM >= 0, f.hAccM <= T.t28GoodFixM,
+           f.t - (track.last?.t ?? -Double.infinity) >= RecorderTrack.intervalS - 0.05 {
+            track.append(f)
+        }
         if seq != nil, feed.engine.phoneMode(at: f.t), var s = sampler {
             // phone mode: GPS-only samples keep the path going (no scooter fields, no energy)
             if let sample = s.offer(fix: f, startT: startT) {
@@ -271,6 +315,7 @@ public struct RideRecorderCore {
                 pending = []
                 raw = []
                 rawStartT = nil
+                track = []
                 lastFlushT = at
                 lastSampleT = nil
                 out.append(.rideStarted(seq: s, startT: at, manual: manual))
@@ -319,6 +364,7 @@ public struct RideRecorderCore {
         pending = []
         raw = []
         rawStartT = nil
+        track = []
         topSpeedKmh = 0
         lastSampleT = nil
     }
@@ -334,6 +380,10 @@ public struct RideRecorderCore {
             out.append(.rawChunk(seq: s, startT: r0, endT: end, blob: RecorderRaw.pack(raw, startT: r0)))
             raw = []
             rawStartT = nil
+        }
+        if let first = track.first, let last = track.last {
+            out.append(.trackChunk(seq: s, startT: first.t, endT: last.t, blob: RecorderTrack.pack(track, startT: first.t)))
+            track = []
         }
         if let r = feed.engine.ride, r.seq == s {
             out.append(.progress(RecorderProgress(seq: s, odoStartKm: r.odoTrimKm ?? r.odoStartKm, odoLastKm: r.odoLastKm,

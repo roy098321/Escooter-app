@@ -47,7 +47,10 @@ enum LogExporter {
                     let id: String = r["id"]
                     let at: Int64 = r["startAt"] ?? 0
                     for (table, kind) in [("raw_chunk", ExportCap.DetailFile.Kind.raw), ("ride_sample", .samples)] {
-                        var rows = try BundleTable.read(d, table: table, where: "rideId = ?", arguments: [id])
+                        // hotfix .13: the 1-s GPS track is where the rider went; only the Full level exports it
+                        let keepTrack = table != "raw_chunk" || level == .full
+                        var rows = try BundleTable.read(d, table: table, where: keepTrack ? "rideId = ?" : "rideId = ? AND kind != 'track'",
+                                                        arguments: [id])
                         if table == "ride_sample" { rows = PrivacyTrim.trimSamples(rows, level: level, placeZones: placeZones) }
                         guard !rows.rows.isEmpty else { continue }
                         let file = "rides/\(at)-\(id)-\(kind == .raw ? "raw" : "samples").json"

@@ -1,5 +1,30 @@
 [
   {
+    "version": "111.291126.13",
+    "headline": "Rides that follow the road",
+    "items": [
+      {
+        "symbol": "point.topleft.down.to.point.bottomright.curvepath",
+        "title": "Your path follows the road",
+        "line": "New rides keep your position every second, so curves and ramps are drawn where you rode."
+      },
+      {
+        "symbol": "scope",
+        "title": "Sharper ride numbers",
+        "line": "Climbs, speed colours and At top speed use the finer path too."
+      },
+      {
+        "symbol": "clock.arrow.circlepath",
+        "title": "Earlier rides stay as they were",
+        "line": "Rides recorded before this update keep their saved path."
+      }
+    ],
+    "smallerFixes": 0,
+    "full": [
+      "The finer path is only shared in a full export."
+    ]
+  },
+  {
     "version": "111.291126.12",
     "headline": "Rides you can read at a glance",
     "items": [

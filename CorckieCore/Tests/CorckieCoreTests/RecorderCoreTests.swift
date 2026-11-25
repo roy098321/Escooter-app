@@ -28,6 +28,7 @@ final class RecorderCoreTests: XCTestCase {
                 samples[seq] = nil
             case let .samples(seq, list): samples[seq, default: []] += list
             case let .rawChunk(seq, s, e, blob): chunks[seq, default: []].append((startT: s, endT: e, blob: blob))
+            case .trackChunk: break
             case let .gapOpened(seq, s, _): gapsOpened[seq, default: []].append(s)
             case let .gapClosed(seq, e): gapsClosed[seq, default: []].append(e)
             case let .progress(p): progress[p.seq] = p

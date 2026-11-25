@@ -2,6 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.13 — hotfix 13 of batch 11: the ride map follows the road
+
+- Owner 25 Nov (option A): the ride map cut corners at speed because only the 5-s samples held a position (~100 m apart at 70 km/h). The recorder now keeps the phone's GPS once a second during a ride (good fixes only, ≤ 20 m), written with the 30-s flushes as `raw_chunk` kind `track` (`RecorderTrack`, 24 bytes a fix, zlib), kept like the ride (not by the raw-data retention), moved with a merge, and only in a Full export. The ride detail puts those fixes between the samples (`TrackMerge`: position from the fix, readings interpolated, nothing made up across a gap over 30 s), so every layer, the climbs and At top speed follow the road. Rides from before .13 are unchanged. Replay and Compare still use the 5-s samples.
+
 ## 111.291126.12 — hotfix 12 of batch 11: speed scale, climbs on the map, At top speed, tiles that turn over
 
 - Owner 25 Nov: a 71 km/h ride had a 0–80 km/h Speed scale (the top was rounded up to the next 10), which squeezed the colours. The scale now runs 0 to the ride's own top speed (whole km/h, rounded up; 10 km/h at least; 50 without speed readings), for every ride, and the legend uses the recorded top speed so it matches the summary's Top speed. The replay uses the same scale.

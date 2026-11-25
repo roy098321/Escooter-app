@@ -110,7 +110,7 @@ public enum RawRetention: String, CaseIterable, Sendable {
     }
 
     /// Kinds that are kept whatever their age
-    public static let keptKinds: Set<String> = ["energy"]
+    public static let keptKinds: Set<String> = ["energy", "track"]   // hotfix .13: the 1-s GPS track is the ride map, kept like the ride
 
     public func deletes(kind: String, endAtMs: Int64, nowMs: Int64) -> Bool {
         guard let cutoff = cutoffMs(nowMs: nowMs) else { return false }
