@@ -7,6 +7,9 @@ struct RideSeriesPanels: View {
     let series: RideSeries
     /// F-28: tap the speed / battery charts to open them full screen
     var onExpand: (() -> Void)?
+    /// Hotfix .12 (owner 25 Nov): the climb shown on the map (0-based) and the row tap that takes the map there
+    var selectedClimb: Int?
+    var onClimb: ((Int) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -22,6 +25,11 @@ struct RideSeriesPanels: View {
             Text("Elevation").font(.headline)
             if series.profile.count >= 2 {
                 Chart {
+                    if let k = selectedClimb, series.climbs.indices.contains(k) {
+                        RectangleMark(xStart: .value("From", series.climbs[k].startDistM / 1000),
+                                      xEnd: .value("To", series.climbs[k].endDistM / 1000))
+                            .foregroundStyle(Theme.accent.opacity(0.18))
+                    }
                     ForEach(Array(series.profile.enumerated()), id: \.offset) { _, p in
                         AreaMark(x: .value("Distance", p.distM / 1000), y: .value("Altitude", p.altM))
                             .foregroundStyle(Theme.accent.opacity(0.25))
@@ -38,11 +46,22 @@ struct RideSeriesPanels: View {
                     Text("No climbs of 5 m or more.").font(.footnote).foregroundStyle(.secondary)
                 } else {
                     ForEach(Array(series.climbs.enumerated()), id: \.offset) { i, c in
-                        HStack {
-                            Text("Climb \(i + 1)").font(.subheadline)
-                            Spacer()
-                            Text(c.text).font(.subheadline).foregroundStyle(.secondary).monospacedDigit()
+                        let on = selectedClimb == i
+                        Button { onClimb?(i) } label: {
+                            HStack {
+                                Text("Climb \(i + 1)").font(.subheadline.weight(on ? .semibold : .regular))
+                                    .foregroundStyle(on ? Theme.accent : .primary)
+                                Spacer()
+                                Text(c.text).font(.subheadline).foregroundStyle(.secondary).monospacedDigit()
+                                if onClimb != nil {
+                                    Image(systemName: "mappin.and.ellipse").font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        .disabled(onClimb == nil)
+                        .accessibilityHint(onClimb != nil ? "Shows this climb on the map" : "")
                         if i < series.climbs.count - 1 { Divider() }
                     }
                 }

@@ -2,9 +2,10 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
-## 111.291126.12 — hotfix 12 of batch 11: the speed scale fits the ride
+## 111.291126.12 — hotfix 12 of batch 11: the speed scale fits the ride, climbs on the map
 
 - Owner 25 Nov: a 71 km/h ride had a 0–80 km/h Speed scale (the top was rounded up to the next 10), which squeezed the colours. The scale now runs 0 to the ride's own top speed (whole km/h, rounded up; 10 km/h at least; 50 without speed readings), for every ride, and the legend uses the recorded top speed so it matches the summary's Top speed. The replay uses the same scale.
+- Owner 25 Nov: tapping "Climb 1" under Elevation takes the map to that climb: the card drops to one line, the map frames the climb (drawn bold, foot to top), the elevation chart shades it, and a card over the map steps ‹ › through the climbs or goes back to Whole ride. `ClimbFocus` finds the climb's stretch with the same distance ruler as the profile (`RideLayers.profileDistances`). The map now follows a camera state instead of a fixed first framing.
 
 ## 111.291126.11 — hotfix 11 of batch 11: the close crash, the music, the G500 % after a ride
 

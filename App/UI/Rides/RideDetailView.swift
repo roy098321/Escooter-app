@@ -67,6 +67,11 @@ struct RideDetailView: View {
     @State private var showHint = false
     /// Note 11: the card's height (full / default / one line / hidden with a lip)
     @State private var cardDetent: CardDetent = .standard
+    /// Hotfix .12 (owner 25 Nov): a climb row takes the map to that climb; nil = the whole ride
+    @State private var climbFocus: ClimbFocus?
+    @State private var detentBeforeClimb: CardDetent?
+    /// nil = the map's own first framing (the whole ride); set when a climb is shown or the rider moves the map
+    @State private var camera: MapCameraPosition?
     /// A4: right after a ride the path draws itself (about 1 s) and the six tiles fade in one by one after it (60 ms apart).
     /// B53: 0 = drawing (a canvas over the map, `revealStart`), 1 = done (the real map line)
     @State private var pathReveal = 1.0
@@ -241,7 +246,11 @@ struct RideDetailView: View {
         } topBar: {
             topBar(m)
         } side: {
-            if !m.noGps, let s = previewSeries ?? series {
+            if !m.noGps, let f = climbFocus, let s = previewSeries ?? series {
+                ClimbFocusCard(focus: f, count: s.climbs.count,
+                               step: { showClimb(ClimbFocus.step(f.number - 1, by: $0, count: s.climbs.count)) },
+                               close: { showWholeRide(m.path) })
+            } else if !m.noGps, let s = previewSeries ?? series {
                 VStack(alignment: .trailing, spacing: 6) {
                     LayerRow(layers: LayerViews.available(s.layerData), view: $layerView)
                     if showHint {
@@ -493,7 +502,9 @@ struct RideDetailView: View {
         DisclosureGroup("More", isExpanded: $moreOpen) {
             VStack(alignment: .leading, spacing: 12) {
                 rowsCard(detailRows(m))
-                if let s = previewSeries ?? series { RideSeriesPanels(series: s, onExpand: { showCharts = true }) }
+                if let s = previewSeries ?? series { RideSeriesPanels(series: s, onExpand: { showCharts = true },
+                                                                         selectedClimb: climbFocus.map { $0.number - 1 },
+                                                                         onClimb: (preview?.noGps ?? model?.noGps) == false ? { showClimb($0) } : nil) }
                 fieldKitRows
                 ForEach(DeveloperGateView.isUnlocked ? m.infoLines : m.riderInfoLines, id: \.self) { Text($0).font(.footnote).foregroundStyle(.secondary) }
             }
@@ -589,8 +600,19 @@ struct RideDetailView: View {
         let gradient = pathReveal >= 1 ? fullGradient : []   // B53: while drawing, the canvas shows the route
         let ramp = drawnScale?.ramp ?? LayerRamps.speed(colourBlind: DisplaySettings.colourBlind)
         return MapReader { proxy in
-        Map(initialPosition: Self.fitted(path), interactionModes: [.pan, .zoom]) {
+        Map(position: Binding(get: { camera ?? Self.fitted(path) }, set: { camera = $0 }), interactionModes: [.pan, .zoom]) {
             GradientPath.lines(gradient, ramp: ramp)
+            // Hotfix .12: the chosen climb, drawn over the layer, from its foot (white) to its top (orange)
+            if let f = climbFocus, let a = f.coords.first, let b = f.coords.last {
+                MapPolyline(coordinates: f.coords.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 9, lineCap: .round, lineJoin: .round))
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: a.lat, longitude: a.lon), anchor: .center) {
+                    Circle().fill(Color.white).overlay(Circle().stroke(Color.black.opacity(0.6), lineWidth: 2)).frame(width: 14, height: 14)
+                }
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: b.lat, longitude: b.lon), anchor: .center) {
+                    Circle().fill(Theme.accent).overlay(Circle().stroke(Color.black.opacity(0.6), lineWidth: 2)).frame(width: 14, height: 14)
+                }
+            }
             // N7-4: the start / destination pins appear once the line has drawn itself
             PlacePinMarks(pins: preview != nil ? RideDetailPreview.pins : (pathReveal >= 1 ? pins : []))
             ForEach(Array((layerView.showsStops && pathReveal >= 1 ? stopDots : []).enumerated()), id: \.offset) { _, stop in
@@ -671,6 +693,28 @@ struct RideDetailView: View {
         let shown = UserDefaults.standard.integer(forKey: key)
         showHint = LayerViews.showsHint(timesShown: shown)
         if showHint { UserDefaults.standard.set(shown + 1, forKey: key) }
+    }
+
+    /// Hotfix .12: show one climb: the card drops to its one line, the map frames the climb
+    private func showClimb(_ index: Int) {
+        guard let s = previewSeries ?? series, let f = ClimbFocus.make(s.points, climbs: s.climbs, index: index) else { return }
+        if climbFocus == nil { detentBeforeClimb = cardDetent }
+        climbFocus = f
+        cardDetent = .line
+        if let r = MapFit.region(f.coords, padding: 0.3, minSpanDeg: 0.004, topCover: 0.24, sideCover: 0.05, bottomCover: 0.15) {
+            withAnimation(.easeInOut(duration: 0.6)) {
+                camera = .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: r.centerLat, longitude: r.centerLon),
+                                                    span: MKCoordinateSpan(latitudeDelta: r.latSpan, longitudeDelta: r.lonSpan)))
+            }
+        }
+    }
+
+    /// Hotfix .12: back to the whole ride and the card's earlier height
+    private func showWholeRide(_ path: RidePathModel) {
+        climbFocus = nil
+        cardDetent = detentBeforeClimb ?? .standard
+        detentBeforeClimb = nil
+        withAnimation(.easeInOut(duration: 0.6)) { camera = Self.fitted(path) }
     }
 
     /// B39: framed on the path itself (a stray GPS fix far away is ignored), padded, with room for the floating top bar
@@ -1002,5 +1046,38 @@ extension RideDetailView {
         guard let link = try? q.link(rideId: rideId), let s = link.startPlaceId, let e = link.endPlaceId,
               let a = (try? q.place(id: s))?.name, let b = (try? q.place(id: e))?.name, !a.isEmpty, !b.isEmpty else { return nil }
         return (a, b)
+    }
+}
+
+/// Hotfix .12 (owner 25 Nov): the chosen climb over the map, with ‹ › to the other climbs and Whole ride to go back
+private struct ClimbFocusCard: View {
+    let focus: ClimbFocus
+    let count: Int
+    let step: (Int) -> Void
+    let close: () -> Void
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            HStack(spacing: 8) {
+                if count > 1 { GlassIconButton(symbol: "chevron.left", label: "Previous climb") { step(-1) } }
+                VStack(spacing: 2) {
+                    Text(focus.title).font(.headline)
+                    Text(focus.line).font(.caption).foregroundStyle(.secondary).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .combine)
+                if count > 1 { GlassIconButton(symbol: "chevron.right", label: "Next climb") { step(1) } }
+            }
+            .padding(8)
+            .glassCard(radius: 22, padding: 0)
+            Button(action: close) {
+                Label("Whole ride", systemImage: "arrow.up.left.and.arrow.down.right").font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+            }
+            .buttonStyle(.plain)
+            .glassCard(radius: 14, padding: 0, thin: true)
+            .accessibilityHint("Shows the whole ride on the map")
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }
