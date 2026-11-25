@@ -121,7 +121,7 @@ var hasMap = !!D.map && D.x.length === N;
 var RATES = [0.25, 0.5, 1, 2, 5, 10, 20, 50];
 var RATE_LABELS = ['¼×', '½×', '1×', '2×', '5×', '10×', '20×', '50×'];
 var HEX = ['#7fd37f', '#22b24c', '#f2d21b', '#f28c1b', '#e53935'];
-var RAMP = ['#22b24c', '#f2d21b', '#f28c1b', '#e53935'];
+var RAMP = ['#22b24c', '#f2d21b', '#f28c1b', '#e53935', '#c2187f'];
 var st = { pos: 0, playing: false, rate: 1, follow: true, zoom: 1, change: false, tab: 'spd', last: 0, lastI: -1, dragging: false };
 
 function lerp(a, b, f) { if (a === null || a === undefined) { return b; } if (b === null || b === undefined) { return a; } return a + (b - a) * f; }
