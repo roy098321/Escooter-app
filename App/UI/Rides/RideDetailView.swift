@@ -67,6 +67,8 @@ struct RideDetailView: View {
     @State private var showHint = false
     /// Note 11: the card's height (full / default / one line / hidden with a lip)
     @State private var cardDetent: CardDetent = .standard
+    /// Hotfix .12: the tile showing its back (one at a time)
+    @State private var flippedTile: String?
     /// Hotfix .12 (owner 25 Nov): a climb row takes the map to that climb; nil = the whole ride
     @State private var climbFocus: ClimbFocus?
     @State private var detentBeforeClimb: CardDetent?
@@ -379,16 +381,25 @@ struct RideDetailView: View {
     /// D1: six key tiles; A-16 (batch 9): eight, + Cost and km left (2 columns, 4 rows)
     static let keyTileCount = 8
 
+    /// Hotfix .12 (owner 25 Nov): every tile turns over in place to say how it is worked out; "At top speed" replaces Cost
     private func keyTiles(_ m: RideSummaryModel) -> some View {
-        StatTileGrid(columns: 2) {
-            StatTile(value: Self.countUp(stat(m, "Time"), shown: tilesShown >= 1), label: "Time").opacity(tilesShown >= 1 ? 1 : 0).rideMorph("time")
-            StatTile(value: Self.countUp(stat(m, "Distance"), shown: tilesShown >= 2), label: "Distance").opacity(tilesShown >= 2 ? 1 : 0)
-            StatTile(value: Self.countUp(stat(m, "Avg. speed"), shown: tilesShown >= 3), label: "Avg speed").opacity(tilesShown >= 3 ? 1 : 0).rideMorph("speed")
-            StatTile(value: Self.countUp(stat(m, "Battery"), shown: tilesShown >= 4), label: "Battery").opacity(tilesShown >= 4 ? 1 : 0).rideMorph("battery")
-            StatTile(value: Self.countUp(stat(m, "Top speed"), shown: tilesShown >= 5), label: "Top speed").opacity(tilesShown >= 5 ? 1 : 0)
-            StatTile(value: Self.countUp(climbText(m), shown: tilesShown >= 6), label: "Climb").opacity(tilesShown >= 6 ? 1 : 0)
-            StatTile(value: Self.countUp(m.costText ?? "\u{2013}", shown: tilesShown >= 7), label: "Cost").opacity(tilesShown >= 7 ? 1 : 0)
-            StatTile(value: m.kmLeftText ?? "\u{2013}", label: "km left").opacity(tilesShown >= 8 ? 1 : 0)
+        let share = (previewSeries ?? series).flatMap { TopSpeedShare.make($0.points) }
+        let moving = stat(m, "Moving time")
+        func tile(_ value: String, _ label: String, _ n: Int) -> some View {
+            FlipStatTile(value: Self.countUp(value, shown: tilesShown >= n), label: label,
+                         back: TileBack.forTile(label, movingText: moving == "\u{2013}" ? nil : moving, share: share), flipped: $flippedTile)
+                .opacity(tilesShown >= n ? 1 : 0)
+        }
+        return StatTileGrid(columns: 2) {
+            tile(stat(m, "Time"), "Time", 1).rideMorph("time")
+            tile(stat(m, "Distance"), "Distance", 2)
+            tile(stat(m, "Avg. speed"), "Avg speed", 3).rideMorph("speed")
+            tile(stat(m, "Battery"), "Battery", 4).rideMorph("battery")
+            tile(stat(m, "Top speed"), "Top speed", 5)
+            tile(climbText(m), "Climb", 6)
+            tile(share?.text ?? "\u{2013}", "At top speed", 7)
+            FlipStatTile(value: m.kmLeftText ?? "\u{2013}", label: "km left", back: TileBack.forTile("km left"), flipped: $flippedTile)
+                .opacity(tilesShown >= 8 ? 1 : 0)
         }
     }
 
@@ -1079,5 +1090,76 @@ private struct ClimbFocusCard: View {
             .accessibilityHint("Shows the whole ride on the map")
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+}
+
+/// Hotfix .12 (owner 25 Nov): a ride tile that looks pressable (raised, info mark, presses down) and turns over IN PLACE, keeping its
+/// size and position, to show how it is worked out. One tile at a time; tap again to turn it back.
+struct FlipStatTile: View {
+    let value: String
+    let label: String
+    let back: TileBack?
+    @Binding var flipped: String?
+
+    private var isFlipped: Bool { flipped == label }
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { flipped = isFlipped ? nil : label }
+        } label: {
+            StatTile(value: value, label: label)
+                .overlay(alignment: .topTrailing) {
+                    if back != nil {
+                        Image(systemName: "info.circle").font(.caption2).foregroundStyle(.tertiary).padding(10)
+                    }
+                }
+                .opacity(isFlipped ? 0 : 1)
+                .overlay {
+                    if let back {
+                        backFace(back)
+                            .opacity(isFlipped ? 1 : 0)
+                            .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                    }
+                }
+                .rotation3DEffect(.degrees(isFlipped ? 180 : 0), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
+        }
+        .buttonStyle(TilePressStyle())
+        .disabled(back == nil)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken)
+        .accessibilityHint(back == nil ? "" : (isFlipped ? "Turns the tile back" : "Shows how it is worked out"))
+    }
+
+    private var spoken: String {
+        guard isFlipped, let b = back else { return "\(label), \(value)" }
+        return "\(label): \(b.lead) \(b.key), \(b.small)"
+    }
+
+    private func backFace(_ b: TileBack) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack {
+                Text(label).font(.caption.weight(.semibold)).foregroundStyle(Theme.accent).lineLimit(1)
+                Spacer(minLength: 4)
+                Image(systemName: "arrow.uturn.backward").font(.caption2).foregroundStyle(.secondary)
+            }
+            Text(b.lead).font(.caption).lineLimit(1).minimumScaleFactor(0.7)
+            Text(b.key).font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            if !b.small.isEmpty {
+                Text(b.small).font(.caption2).foregroundStyle(.secondary).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(RoundedRectangle(cornerRadius: DS.Radius.tile, style: .continuous).fill(Theme.accent.opacity(0.14)))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.tile, style: .continuous).stroke(Theme.accent.opacity(0.8), lineWidth: 1.5))
+    }
+}
+
+/// Hotfix .12: tiles press down a little, so they read as buttons
+private struct TilePressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

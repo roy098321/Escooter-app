@@ -1,26 +1,27 @@
 [
   {
     "version": "111.291126.12",
-    "headline": "Find your climbs, read your speed",
+    "headline": "Rides you can read at a glance",
     "items": [
+      {
+        "symbol": "hand.tap",
+        "title": "Tap a tile to learn more",
+        "line": "Every ride tile turns over to say how its number is worked out."
+      },
+      {
+        "symbol": "gauge.with.dots.needle.100percent",
+        "title": "Time at top speed",
+        "line": "A new tile shows how much of the ride you spent near your top speed. It replaces Cost."
+      },
       {
         "symbol": "mountain.2",
         "title": "Tap a climb to see it",
-        "line": "Under Elevation, tap a climb and the map zooms to it. Step through them, or tap Whole ride."
-      },
-      {
-        "symbol": "speedometer",
-        "title": "Speed colours fit your ride",
-        "line": "The Speed map runs from 0 to the ride's own top speed, so every colour is used."
-      },
-      {
-        "symbol": "map",
-        "title": "The legend matches Top speed",
-        "line": "The top of the scale is the same number as the ride's Top speed."
+        "line": "Under Elevation, tap a climb and the map zooms to it."
       }
     ],
-    "smallerFixes": 1,
+    "smallerFixes": 2,
     "full": [
+      "The Speed map runs from 0 to the ride's own top speed, with magenta for the fastest part.",
       "The ride replay's speed colours use the same scale."
     ]
   },

@@ -36,11 +36,12 @@ public struct GradientRamp: Equatable, Sendable {
 
 public enum LayerRamps {
     /// Speed: one ramp 0-50 km/h, green -> yellow -> orange -> red. Colour-blind: cividis (dark blue -> yellow).
-    /// The top follows each ride's own top speed (see speedTop).
+    /// The top follows each ride's own top speed (see speedTop). Owner 25 Nov (option 1): magenta added at the top, so on a fast ride
+    /// 50 km/h (red) and 70 km/h (magenta) are told apart; still five colours at most.
     public static func speed(colourBlind: Bool, topKmh: Double = speedTopKmh) -> GradientRamp {
         colourBlind
             ? GradientRamp(lo: 0, hi: topKmh, hex: ["#00204D", "#31446B", "#666970", "#958F78", "#CBBA69", "#FFEA46"])
-            : GradientRamp(lo: 0, hi: topKmh, hex: ["#22B24C", "#F2D21B", "#F28C1B", "#E53935"])
+            : GradientRamp(lo: 0, hi: topKmh, hex: ["#22B24C", "#F2D21B", "#F28C1B", "#E53935", "#C2187F"])
     }
 
     public static let speedTopKmh = 50.0

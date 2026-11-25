@@ -177,7 +177,8 @@ final class Batch109Tests: XCTestCase {
         XCTAssertEqual(KmLeft.summaryText(nil), "learning")
         let detail = try text("UI/Rides/RideDetailView.swift")
         XCTAssertTrue(detail.contains("static let keyTileCount = 8") && detail.contains("StatTileGrid(columns: 2)"))
-        XCTAssertTrue(detail.contains("label: \"Cost\"") && detail.contains("label: \"km left\""))
+        // hotfix .12 (owner 25 Nov): "At top speed" replaced the Cost tile
+        XCTAssertTrue(detail.contains("\"At top speed\", 7") && detail.contains("label: \"km left\""))
         XCTAssertTrue(detail.contains("StatsCalc.rideCostIls(costRide, prices: StatsLoader.prices(db))"))
     }
 

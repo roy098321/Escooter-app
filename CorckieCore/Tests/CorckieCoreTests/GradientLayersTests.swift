@@ -92,7 +92,7 @@ final class GradientReplayTests: XCTestCase {
         let d = try XCTUnwrap(ReplayBuilder.make(title: "Ride", dateLabel: "6 Oct", startAtMs: 1_790_000_000_000, utcOffsetMin: 180, rows: rows,
                                                  stops: [], info: ReplayRideInfo(distanceM: 1_000, startPct: 80, endPct: 79)))
         let plain = ReplayHTML.build(d) { _ in nil }
-        XCTAssertTrue(plain.contains("var RAMP = ['#22b24c', '#f2d21b', '#f28c1b', '#e53935'];"))
+        XCTAssertTrue(plain.contains("var RAMP = ['#22b24c', '#f2d21b', '#f28c1b', '#e53935', '#c2187f'];"))
         XCTAssertTrue(plain.contains("function rampColour"))
         let blind = ReplayHTML.build(d, colourBlind: true) { _ in nil }
         XCTAssertTrue(blind.contains("var RAMP = ['#00204d', '#31446b', '#666970', '#958f78', '#cbba69', '#ffea46'];"))
@@ -107,6 +107,7 @@ final class GradientReplayTests: XCTestCase {
         XCTAssertEqual(LayerRamps.speedTop(maxKmh: nil), 50)
         XCTAssertEqual(LayerRamps.speedLegend(topKmh: 71).high, "71 km/h")
         XCTAssertEqual(LayerRamps.speed(colourBlind: false, topKmh: 71).hi, 71)
+        XCTAssertEqual(LayerRamps.speed(colourBlind: false, topKmh: 71).hex.count, 5, "option 1: magenta on top, five colours")
     }
 
     func test_speedLegend_usesTheRecordedTopSpeed() {

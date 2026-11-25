@@ -2,10 +2,13 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
-## 111.291126.12 — hotfix 12 of batch 11: the speed scale fits the ride, climbs on the map
+## 111.291126.12 — hotfix 12 of batch 11: speed scale, climbs on the map, At top speed, tiles that turn over
 
 - Owner 25 Nov: a 71 km/h ride had a 0–80 km/h Speed scale (the top was rounded up to the next 10), which squeezed the colours. The scale now runs 0 to the ride's own top speed (whole km/h, rounded up; 10 km/h at least; 50 without speed readings), for every ride, and the legend uses the recorded top speed so it matches the summary's Top speed. The replay uses the same scale.
 - Owner 25 Nov: tapping "Climb 1" under Elevation takes the map to that climb: the card drops to one line, the map frames the climb (drawn bold, foot to top), the elevation chart shades it, and a card over the map steps ‹ › through the climbs or goes back to Whole ride. `ClimbFocus` finds the climb's stretch with the same distance ruler as the profile (`RideLayers.profileDistances`). The map now follows a camera state instead of a fixed first framing.
+- Owner 25 Nov (option 1 of the five-colour mocks): the Speed ramp gets magenta at the top (green, yellow, orange, red, magenta), so 50 and 70 km/h are told apart on a fast ride. Colour-blind ramp unchanged.
+- Owner 25 Nov: the Cost tile is replaced by **At top speed**: the share of moving time within 10 % of the ride's top speed (70 km/h top = 63–70 km/h; `TopSpeedShare`, standing still and gaps over 30 s left out).
+- Owner 25 Nov: every ride tile looks pressable (info mark, presses down) and turns over in place (same size and position) to a 3-line back saying how it is worked out (`TileBack`, `FlipStatTile`); one tile at a time.
 
 ## 111.291126.11 — hotfix 11 of batch 11: the close crash, the music, the G500 % after a ride
 
