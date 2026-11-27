@@ -144,4 +144,41 @@ final class Hotfix14Tests: XCTestCase {
         XCTAssertTrue(svc.contains("static func syncScooter(_ db: AppDatabase)"))
         XCTAssertTrue(svc.contains("static func rows(_ db: AppDatabase) -> [Row] {\n        syncScooter(db)"))
     }
+
+    // MARK: N12-7 route card
+
+    private func line(_ id: String, _ minutes: Double?, lat: Double) -> RouteMapLine {
+        RouteMapLine(points: (0..<20).map { GeoPoint(lat: lat + Double($0) * 0.001, lon: -30) }, dashed: id != "a", variantId: id,
+                     name: "Way \(id)", medianS: minutes.map { $0 * 60 })
+    }
+
+    func test_N12_7_fastestWayIsTheMainLine_othersShowMinutesBehind() {
+        let plan = RouteMapPlan.make([line("a", 35, lat: 10), line("b", 31, lat: 10.1), line("c", 40, lat: 10.2)], combination: nil)
+        let main = plan.ways.filter(\.isMain)
+        XCTAssertEqual(main.map(\.variantId), ["b"], "the fastest way, not the usual one")
+        XCTAssertEqual(main.first?.chip, "Fastest \u{00B7} 31 min")
+        XCTAssertEqual(plan.ways.first { $0.variantId == "a" }?.chip, "+4 min")
+        XCTAssertEqual(plan.ways.first { $0.variantId == "c" }?.chip, "+9 min")
+        XCTAssertEqual(plan.ways.last?.isMain, true, "drawn last, on top")
+        XCTAssertEqual(plan.arrows.count, 3, "direction arrows along the main line")
+        XCTAssertEqual(plan.arrows.first?.bearingDeg ?? -1, 0, accuracy: 1e-6, "heading north")
+    }
+
+    func test_N12_7_combinationLeads_tappedWayLightsUp() {
+        let lines = [line("a", 35, lat: 10), line("b", 31, lat: 10.1)]
+        let combo = (0..<10).map { GeoPoint(lat: 11 + Double($0) * 0.001, lon: -30) }
+        let withCombo = RouteMapPlan.make(lines, combination: combo)
+        XCTAssertEqual(withCombo.ways.filter(\.isMain).count, 1)
+        XCTAssertNil(withCombo.ways.last?.variantId, "the fastest combination is the main line")
+        let tapped = RouteMapPlan.make(lines, combination: combo, selected: "a")
+        XCTAssertEqual(tapped.ways.filter(\.isMain).map(\.variantId), ["a"])
+        XCTAssertEqual(tapped.ways.last?.chip, "Way a \u{00B7} 35 min")
+    }
+
+    func test_N12_7_noDottedLines() throws {
+        let card = try source("App/UI/Routes/RouteCardView.swift")
+        XCTAssertFalse(card.contains("dash: l.dashed"), "no dotted ways")
+        XCTAssertTrue(card.contains("RideCardScreen(detent: $cardDetent)"), "the card pulls down to the map")
+        XCTAssertTrue(card.contains("Show the fastest again"))
+    }
 }

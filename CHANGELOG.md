@@ -10,6 +10,10 @@ One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). P
 - H14-4: Saved per km is the last 30 days (`SavingsRule.window`, `SavedPerKmValue`), the lifetime number under 20 km in the window, labelled.
 - H14-5 (B114): one savings rule (`SavingsRule`, the Stats periods' M35b rule) for the periods, the lifetime and the 30 days; the money counts every real ride of every scooter (it is the rider's), the pre-app estimate added. A period can no longer show more than the lifetime.
 - N12-1: the one-time "Bug #100" confetti and hero line are removed.
+- N12-4: maintenance for a scooter without an odometer counts km from its own rides (`MaintenanceQueries.rideKm`); each scooter keeps its own item set (`MaintenanceService.syncScooter`: the old set put aside per scooter, a set from an earlier scooter's odometer put aside as "legacy").
+- N12-6: Stats in three tabs, Rides · Money · Energy (`StatsTab`, `PeriodRideStats`, `PeriodEnergy`, `RideEnergyPoint`, `SavedByMonth`, `PaidOff`); per-ride averages, longest, top speed; fuel avoided − electricity, running total, optional scooter price → paid off; Wh/km, km per 1 %, full charges, kWh, Wh/km of the last 10 rides, range from full. No time-of-day numbers.
+- N12-7: route card: pulls down like the ride screen (`RideCardScreen`); the fastest way (the combination when there is one) is the main line with a dark edge, a "Fastest · 31 min" chip and direction arrows; other ways thin grey with "+N min"; tap a way (chip or row) to light it up, "Show the fastest again" (`RouteMapPlan`). No dotted lines.
+- Not in this build: N12-2 / N12-3 (G500 fault limits, G500 % check) and N12-5 (G500 heat limits) need the owner's G500 export first.
 
 ## 111.291126.13 — hotfix 13 of batch 11: the ride map follows the road
 

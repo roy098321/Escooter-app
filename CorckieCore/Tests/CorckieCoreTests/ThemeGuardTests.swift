@@ -96,8 +96,8 @@ final class ThemeGuardTests: XCTestCase {
         }
         for file in ["UI/Rides/RideDetailView.swift", "UI/Routes/RouteCardView.swift", "UI/Routes/PlaceMapView.swift"] {
             let source = try text(file)
-            // Note 11 (D-PR-07): the ride review is the one screen with a draggable card (RideCardScreen); the others keep MapScreen
-            let isRideReview = file == "UI/Rides/RideDetailView.swift"
+            // Note 11 (D-PR-07): the ride review has a draggable card (RideCardScreen); hotfix .14 (N12-7, owner 27 Nov): the route card too
+            let isRideReview = file == "UI/Rides/RideDetailView.swift" || file == "UI/Routes/RouteCardView.swift"
             XCTAssertTrue(isRideReview ? source.contains("RideCardScreen(detent:") : source.contains("MapScreen {"), "\(file) has its map screen")
             for gone in ["MapSheet", "SheetDetent", "DockedSheet"] { XCTAssertFalse(source.contains(gone), "\(file) must not contain \(gone)") }
         }

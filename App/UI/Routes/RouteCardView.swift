@@ -22,6 +22,10 @@ struct RouteCardView: View {
     @State private var arriveInfo: (rides: [RouteRideStats], destination: String)?
     @State private var previewFollow = false
     @State private var pins: [PlacePin] = []
+    /// Hotfix .14 (N12-7, owner 27 Nov): the card pulls down like the ride screen's (one line, or the map only)
+    @State private var cardDetent: CardDetent = .standard
+    /// N12-7: a way the rider tapped (map or list): it lights up instead of the fastest; nil = the fastest
+    @State private var selectedWay: String?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -66,12 +70,28 @@ struct RouteCardView: View {
         return m.saved ? rides : "Suggested \u{00B7} " + rides
     }
 
+    private func mapPlan(_ m: RouteCardModel) -> RouteMapPlan {
+        let combo = m.fastest.flatMap { $0.filling ? nil : $0.path }
+        return RouteMapPlan.make(m.map, combination: combo, selected: selectedWay)
+    }
+
+    /// N12-7: the one line when the card is pulled down ("Fastest 31 min · usual 35 min · 14.4 km")
+    static func oneLine(_ m: RouteCardModel, _ plan: RouteMapPlan) -> String {
+        var parts: [String] = []
+        if let chip = plan.ways.last(where: { $0.isMain })?.chip { parts.append(chip) }
+        for s in m.stats where !s.filling && (s.label == "Time" || s.label == "Distance") {
+            parts.append((s.typical ?? s.value).replacingOccurrences(of: "~", with: ""))
+        }
+        return parts.isEmpty ? m.title : parts.joined(separator: " \u{00B7} ")
+    }
+
     private func content(_ m: RouteCardModel) -> some View {
-        MapScreen {
+        let plan = mapPlan(m)
+        return RideCardScreen(detent: $cardDetent) {
             if m.map.isEmpty {
                 MapBackdrop(map: true)
             } else {
-                mapView(m.map, highlight: followingCombination ? m.fastest?.path : nil)
+                mapView(m.map, plan: plan)
             }
         } topBar: {
             GlassTopBar(title: m.title, subtitle: Self.subtitle(m)) {
@@ -87,15 +107,22 @@ struct RouteCardView: View {
             }
         } side: {
             EmptyView()
+        } line: {
+            Text(Self.oneLine(m, plan))
+                .font(.headline).fontDesign(.rounded).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
         } content: {
             VStack(alignment: .leading, spacing: 16) {
                 if !m.saved { suggestionCard }
+                if let id = selectedWay, let v = m.variants.first(where: { $0.id == id }) {
+                    selectedWayCard(v, plan: plan)
+                } else if let f = m.fastest {
+                    fastestCard(f)   // N12-7: the fastest combination first
+                }
                 todayCard(m.today)
                 statTiles(m)
                 if m.saved { arriveBy(m) }
                 if let t = m.thereAndBack { thereAndBackCard(t) }
-                if !m.variants.isEmpty { variantsCard(m.variants) }
-                if let f = m.fastest { fastestCard(f) }
+                if !m.variants.isEmpty { variantsCard(m.variants, plan: plan) }
                 if let e = m.elevation { elevationCard(e) }
                 ridesCard(m)
             }
@@ -136,22 +163,78 @@ struct RouteCardView: View {
         .glassCard(padding: 0)
     }
 
-    private func mapView(_ lines: [RouteMapLine], highlight: [GeoPoint]? = nil) -> some View {
+    /// N12-7 (owner 27 Nov): no dotted lines. The fastest way (or the tapped one) is the main line, thick with a dark edge and its
+    /// chip ("Fastest · 31 min"), arrows show the direction; the other ways are thin and grey with "+4 min". Tap a chip to choose it.
+    private func mapView(_ lines: [RouteMapLine], plan: RouteMapPlan) -> some View {
         Map(initialPosition: Self.position(lines, sheet: true), interactionModes: [.pan, .zoom]) {
-            ForEach(Array(lines.enumerated()), id: \.offset) { _, l in
-                MapPolyline(coordinates: l.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
-                    .stroke(l.dashed ? Theme.canyon : Theme.accent,
-                            style: StrokeStyle(lineWidth: l.dashed ? 4 : 5, lineCap: .round, lineJoin: .round, dash: l.dashed ? [2, 8] : []))
+            ForEach(Array(plan.ways.enumerated()), id: \.offset) { _, w in
+                let coords = w.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) }
+                if w.isMain {
+                    MapPolyline(coordinates: coords)
+                        .stroke(Color.black.opacity(0.55), style: StrokeStyle(lineWidth: 9, lineCap: .round, lineJoin: .round))
+                    MapPolyline(coordinates: coords)
+                        .stroke(followingCombination && w.variantId == nil ? Theme.ok : Theme.accent,
+                                style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                } else {
+                    MapPolyline(coordinates: coords)
+                        .stroke(Color.gray.opacity(0.75), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                }
+            }
+            ForEach(Array(plan.arrows.enumerated()), id: \.offset) { _, a in
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: a.at.lat, longitude: a.at.lon), anchor: .center) {
+                    Image(systemName: "arrowtriangle.up.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .rotationEffect(.degrees(a.bearingDeg))
+                        .accessibilityHidden(true)
+                }
             }
             PlacePinMarks(pins: preview != nil ? RoutesPreview.pins : pins)
-            // M6-01: the fastest combination being followed, on top of the variants
-            if let h = highlight, h.count >= 2 {
-                MapPolyline(coordinates: h.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
-                    .stroke(Color.green, style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+            ForEach(Array(plan.ways.enumerated()), id: \.offset) { _, w in
+                if let chip = w.chip, let at = w.chipAt {
+                    Annotation("", coordinate: CLLocationCoordinate2D(latitude: at.lat, longitude: at.lon), anchor: .center) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.25)) { selectedWay = w.isMain ? nil : w.variantId }
+                        } label: {
+                            Text(chip)
+                                .font(.caption.weight(.semibold)).monospacedDigit()
+                                .padding(.horizontal, 9).padding(.vertical, 4)
+                                .background(w.isMain ? Theme.accent : Color.black.opacity(0.8), in: Capsule())
+                                .foregroundStyle(w.isMain ? Theme.onAccent : Color.white)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(w.isMain ? chip : "\(w.name), \(chip). Show this way")
+                    }
+                }
             }
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .accessibilityLabel("Map of the route")
+    }
+
+    /// N12-7: the tapped way's own card, and the way back to the fastest
+    private func selectedWayCard(_ v: RouteVariantRow, plan: RouteMapPlan) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(v.name).font(.caption.weight(.bold)).foregroundStyle(Theme.accentInk).textCase(.uppercase)
+            Text(v.timeText).scaledFont(24, weight: .semibold, mono: true)
+            HStack(spacing: 8) {
+                if let chip = plan.ways.first(where: { $0.variantId == v.id })?.chip, chip.hasPrefix("+") {
+                    Text("\(chip) than the fastest").font(.subheadline)
+                }
+                Text("\(v.rides) \(v.rides == 1 ? "ride" : "rides")").font(.subheadline).foregroundStyle(.secondary)
+                if let b = v.batteryText { Text(b).font(.subheadline).foregroundStyle(.secondary).monospacedDigit() }
+            }
+            Button { withAnimation(.easeInOut(duration: 0.25)) { selectedWay = nil } } label: {
+                Label("Show the fastest again", systemImage: "arrow.uturn.backward")
+            }
+            .font(.subheadline.weight(.semibold))
+            .tint(Theme.accentInk)
+            .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
+        .accessibilityElement(children: .contain)
     }
 
     /// K3: today's time as one big number, the leaving time and the battery as two chips
@@ -199,9 +282,9 @@ struct RouteCardView: View {
     }
 
     /// K4: Variants is folded
-    private func variantsCard(_ rows: [RouteVariantRow]) -> some View {
+    private func variantsCard(_ rows: [RouteVariantRow], plan: RouteMapPlan) -> some View {
         DisclosureGroup {
-            variantRows(rows).padding(.top, 8)
+            variantRows(rows, plan: plan).padding(.top, 8)
         } label: {
             Text("Ways \u{00B7} \(rows.count)").font(.headline)
         }
@@ -211,14 +294,23 @@ struct RouteCardView: View {
         .glassCard(padding: 0)
     }
 
-    private func variantRows(_ rows: [RouteVariantRow]) -> some View {
+    private func variantRows(_ rows: [RouteVariantRow], plan: RouteMapPlan) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.offset) { i, v in
                 if i > 0 { Divider() }
+                let way = plan.ways.first { $0.variantId == v.id }
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedWay = selectedWay == v.id || (selectedWay == nil && way?.isMain == true) ? nil : v.id
+                    }
+                } label: {
                 HStack {
+                    Capsule().fill(way?.isMain == true ? Theme.accent : Color.gray.opacity(0.75)).frame(width: 18, height: 4)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(v.name)
-                        Text(v.isReference ? "Usual way" : "Other way").font(.caption).foregroundStyle(.secondary)
+                        Text(way?.chip.flatMap { $0.hasPrefix("+") ? $0 : nil } ?? (v.isReference ? "Usual way" : "Other way"))
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
@@ -227,6 +319,10 @@ struct RouteCardView: View {
                     }
                 }
                 .padding(.vertical, 8)
+                .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Shows this way on the map")
             }
         }
     }

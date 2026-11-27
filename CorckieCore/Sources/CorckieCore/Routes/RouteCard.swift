@@ -105,8 +105,13 @@ public struct RouteRideRow: Equatable, Sendable {
 
 public struct RouteMapLine: Equatable, Sendable {
     public var points: [GeoPoint]
-    /// The reference variant is solid, the others dashed (decision 19)
+    /// The reference variant (decision 19). Hotfix .14 (N12-7, owner 27 Nov): no dotted lines any more; the map draws the fastest
+    /// way as the main line and the others thin and grey (`RouteMapPlan`). Kept for the order and the older tests.
     public var dashed: Bool
+    /// Hotfix .14 (N12-7): which way this is, its name and its usual time (median of the recent rides on it, s)
+    public var variantId: String? = nil
+    public var name: String = ""
+    public var medianS: Double? = nil
 }
 
 public struct RouteCardModel: Equatable, Sendable {
@@ -143,7 +148,8 @@ public enum RouteCardBuilder {
         // map: the reference variant solid, the others dashed
         var lines: [RouteMapLine] = []
         for v in input.variants.sorted(by: { $0.isReference && !$1.isReference }) where v.path.count >= 2 {
-            lines.append(RouteMapLine(points: v.path, dashed: !v.isReference))
+            let times = selected.filter { $0.variantId == v.id }.compactMap(\.totalS)
+            lines.append(RouteMapLine(points: v.path, dashed: !v.isReference, variantId: v.id, name: v.name, medianS: Geo.median(times)))
         }
 
         // six stats as ranges

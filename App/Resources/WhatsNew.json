@@ -1,8 +1,18 @@
 [
   {
     "version": "111.291126.14",
-    "headline": "Smoother maps, honest savings",
+    "headline": "Stats in tabs, clearer routes",
     "items": [
+      {
+        "symbol": "chart.bar.xaxis",
+        "title": "Stats: Rides, Money, Energy",
+        "line": "Three tabs: your rides per period, the money you saved, and how much energy you use."
+      },
+      {
+        "symbol": "point.topleft.down.to.point.bottomright.curvepath",
+        "title": "The fastest way stands out",
+        "line": "On a route, the fastest way is the main line. Tap another way to see it. Pull the card down for the map."
+      },
       {
         "symbol": "scribble.variable",
         "title": "Smooth ride lines",
@@ -11,17 +21,14 @@
       {
         "symbol": "shekelsign.circle",
         "title": "Saved per km, today",
-        "line": "Saved per km now covers the last 30 days, so it follows today's fuel price."
-      },
-      {
-        "symbol": "bag",
-        "title": "Simpler cargo",
-        "line": "Unloaded, 5 kg or Custom."
+        "line": "Covers the last 30 days, so it follows today's fuel price."
       }
     ],
-    "smallerFixes": 2,
+    "smallerFixes": 4,
     "full": [
       "Money saved is counted the same way everywhere, for every scooter you rode: a week can no longer show more than the lifetime.",
+      "Maintenance counts km from your rides when the scooter has no odometer, and each scooter keeps its own list.",
+      "Cargo: Unloaded, 5 kg or Custom.",
       "The one-time thank-you confetti is gone."
     ]
   },
