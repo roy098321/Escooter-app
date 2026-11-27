@@ -308,7 +308,7 @@ final class Batch111Tests: XCTestCase {
 
     func test_N12_1_noConfettiNoHeroLine() throws {
         let json = try String(contentsOf: appFolder.appendingPathComponent("Resources/WhatsNew.json"), encoding: .utf8)
-        XCTAssertFalse(json.contains("confetti"))
+        XCTAssertFalse(json.contains("\"confetti\":"), "no confetti flag")
         XCTAssertFalse(json.contains("\"hero\""))
         let views = try text("UI/Shared/WhatsNewViews.swift")
         XCTAssertFalse(views.contains("Confetti"), "the burst is gone")

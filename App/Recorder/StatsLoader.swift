@@ -31,6 +31,25 @@ struct StatsModel {
     var utcOffsetMin = 0
     /// F-21: the Insights section (at most 3 cards, Medium / High certainty only)
     var insights = InsightBoard(cards: [], learning: [])
+    /// Hotfix .14 (N12-6): the Rides tab's "Per ride", the Energy tab, the Money tab's running total and paid-off bar
+    var rideStats: PeriodRideStats?
+    var energy: PeriodEnergy?
+    var energyPoints: [RideEnergyPoint] = []
+    var savedByMonth: [SavedByMonth] = []
+    var scooterPriceIls: Double?
+}
+
+/// Hotfix .14 (N12-6): what the scooter cost (optional, per scooter); the Money tab's "Scooter paid off" shows once it is set
+enum ScooterPrice {
+    static func key(_ scooterId: String) -> String { "scooter.priceIls.\(scooterId)" }
+    static func get(_ db: AppDatabase?) -> Double? {
+        guard let db, let id = GarageService.tagId(db) else { return nil }
+        return SettingsValue.number(db, key(id))
+    }
+    static func set(_ db: AppDatabase?, _ ils: Double?) {
+        guard let db, let id = GarageService.tagId(db) else { return }
+        if let ils, ils > 0 { SettingsValue.set(db, key(id), String(Int(ils.rounded()))) } else { SettingsValue.clear(db, key(id)) }
+    }
 }
 
 enum StatsLoader {
@@ -77,6 +96,14 @@ enum StatsLoader {
             model.weekBars = WeekBars.make(statsRides: rows, prices: prices, nowMs: nowMs, utcOffsetMin: utcOffsetMin)   // P6-5: km, rides, time and u{20AA} saved per week
         }
         model.overall = OverallLoader.load(db, nowMs: nowMs, utcOffsetMin: utcOffsetMin)
+        // hotfix .14 (N12-6): the three tabs
+        model.rideStats = PeriodRideStats.make(StatsCalc.rides(rides, in: p))
+        model.energy = PeriodEnergy.make(totals, packWh: prices.packWh)
+        let everyRide = (try? q.rides(from: 0, to: nowMs + OutsideTime.dayMs, scooterId: scooterId)) ?? []
+        model.energyPoints = RideEnergyPoint.last(everyRide, packWh: prices.packWh)
+        model.savedByMonth = SavedByMonth.make((try? q.rides(from: 0, to: nowMs + OutsideTime.dayMs)) ?? [], prices: prices,
+                                               startIls: model.overall?.preAppNetIls ?? 0)
+        model.scooterPriceIls = ScooterPrice.get(db)
         InsightBoardLoader.retireOldOnce(db)
         model.insights = InsightBoardLoader.board(db, nowMs: nowMs)
         model.utcOffsetMin = utcOffsetMin

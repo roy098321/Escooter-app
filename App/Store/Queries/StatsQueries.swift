@@ -22,7 +22,7 @@ struct StatsQueries {
     func rides(from: Int64, to: Int64, scooterId: String? = nil) throws -> [StatsRide] {
         try database.writer.read { db in
             try Row.fetchAll(db, sql: """
-                SELECT startAt, utcOffsetMin, kind, distanceM, totalS, usedPct FROM ride
+                SELECT startAt, utcOffsetMin, kind, distanceM, totalS, usedPct, topSpeedMps FROM ride
                 WHERE endAt IS NOT NULL AND kind IN ('ride', 'shortHop') AND isSimulated = 0 AND startAt >= ? AND startAt < ?
                 AND (? IS NULL OR scooterId = ?) ORDER BY startAt
                 """, arguments: [from, to, scooterId, scooterId]).map { r -> StatsRide in
@@ -30,7 +30,9 @@ struct StatsQueries {
                 let distance: Double? = r["distanceM"]
                 let total: Double? = r["totalS"]
                 let used: Double? = r["usedPct"]
-                return StatsRide(startAt: r["startAt"], utcOffsetMin: offset ?? 0, kind: r["kind"], distanceM: distance ?? 0, totalS: total ?? 0, usedPct: used)
+                let top: Double? = r["topSpeedMps"]
+                return StatsRide(startAt: r["startAt"], utcOffsetMin: offset ?? 0, kind: r["kind"], distanceM: distance ?? 0, totalS: total ?? 0, usedPct: used,
+                                 topSpeedMps: top)
             }
         }
     }

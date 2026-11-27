@@ -45,4 +45,18 @@ final class Hotfix07StoreTests: XCTestCase {
         }
         XCTAssertEqual(try MaintenanceQueries(db).odometerKm(), 321.0)
     }
+
+    /// Hotfix .14 (N12-4): a scooter with no odometer counts its km from its own finished rides
+    func test_N12_4_noOdometer_countsItsOwnRideKm() throws {
+        let db = try makeDB()
+        try db.writer.write { d in
+            try d.execute(sql: "INSERT INTO scooter (id, name, firstSeenAt, forgottenAt) VALUES ('old', 'Synthetic A', 1, 5)")
+            try d.execute(sql: "INSERT INTO scooter (id, name, firstSeenAt) VALUES ('new', 'Synthetic B', 6)")
+            try d.execute(sql: "INSERT INTO ride (id, scooterId, startAt, endAt, kind, distanceM) VALUES ('r-old', 'old', 1000, 1500, 'ride', 50000)")
+            try d.execute(sql: "INSERT INTO ride (id, scooterId, startAt, endAt, kind, distanceM) VALUES ('r1', 'new', 2000, 2500, 'ride', 14400)")
+            try d.execute(sql: "INSERT INTO ride (id, scooterId, startAt, endAt, kind, distanceM) VALUES ('r2', 'new', 3000, 3500, 'shortHop', 600)")
+            try d.execute(sql: "INSERT INTO ride (id, scooterId, startAt, endAt, kind, distanceM, isSimulated) VALUES ('r3', 'new', 4000, 4500, 'ride', 9000, 1)")
+        }
+        XCTAssertEqual(try XCTUnwrap(try MaintenanceQueries(db).odometerKm()), 15.0, accuracy: 1e-9, "its own real rides only")
+    }
 }

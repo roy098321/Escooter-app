@@ -24,8 +24,47 @@ enum MaintenanceService {
 
     private static func nowMs() -> Int64 { Int64(Date().timeIntervalSince1970 * 1000) }
 
+    // MARK: N12-4 (hotfix .14): each scooter keeps its own items
+
+    static let ownerKey = "maintenance.scooterId"
+    static func archiveKey(_ scooterId: String) -> String { "maintenance.items.\(scooterId)" }
+
+    /// The items in the table belong to one scooter. When another one is in use, the old set is put aside (kept for that scooter)
+    /// and the new scooter's own set comes back, or a fresh default set counting from now. First run: items whose "last done" km is
+    /// beyond this scooter's km can't be its own (they came from an earlier scooter's odometer) and are put aside as "legacy".
+    static func syncScooter(_ db: AppDatabase) {
+        guard !db.isReadOnly, let active = GarageService.tagId(db) else { return }
+        let owner = SettingsValue.text(db, ownerKey)
+        guard owner != active else { return }
+        let q = MaintenanceQueries(db)
+        let current = (try? q.all()) ?? []
+        let odo = (try? q.odometerKm()) ?? nil
+        let enc = JSONEncoder()
+        func stash(_ id: String) {
+            if !current.isEmpty, let data = try? enc.encode(current), let json = String(data: data, encoding: .utf8) {
+                SettingsValue.set(db, archiveKey(id), json)
+            }
+        }
+        if let owner {
+            stash(owner)
+        } else {
+            let foreign = current.contains { ($0.lastDoneOdoKm ?? 0) > (odo ?? 0) + 1 }
+            if !foreign {
+                SettingsValue.set(db, ownerKey, active)    // they fit this scooter: adopt them
+                return
+            }
+            stash("legacy")
+        }
+        let saved = SettingsValue.text(db, archiveKey(active)).flatMap { $0.data(using: .utf8) }
+            .flatMap { try? JSONDecoder().decode([MaintenanceRecord].self, from: $0) }
+        let fresh = Maintenance.defaults(odoKm: odo, nowMs: nowMs()).map(record)
+        try? q.replaceAll(saved ?? fresh)
+        SettingsValue.set(db, ownerKey, active)
+    }
+
     /// The rows for the screen (creates the defaults the first time).
     static func rows(_ db: AppDatabase) -> [Row] {
+        syncScooter(db)
         let q = MaintenanceQueries(db)
         let odo = (try? q.odometerKm()) ?? nil
         try? q.insertMissing(Maintenance.defaults(odoKm: odo, nowMs: nowMs()).map(record))
@@ -37,6 +76,7 @@ enum MaintenanceService {
 
     /// Mark done: counting starts again from the odometer now.
     static func markDone(id: String, _ db: AppDatabase) {
+        syncScooter(db)
         let q = MaintenanceQueries(db)
         let odo = (try? q.odometerKm()) ?? nil
         guard let r = ((try? q.all()) ?? []).first(where: { $0.id == id }) else { return }

@@ -13,14 +13,17 @@ public struct StatsRide: Equatable, Sendable {
     public var distanceM: Double
     public var totalS: Double
     public var usedPct: Double?
+    /// Hotfix .14 (N12-6): the ride's top speed, for the Rides tab (nil when not stored)
+    public var topSpeedMps: Double?
 
-    public init(startAt: Int64, utcOffsetMin: Int, kind: String, distanceM: Double, totalS: Double, usedPct: Double?) {
+    public init(startAt: Int64, utcOffsetMin: Int, kind: String, distanceM: Double, totalS: Double, usedPct: Double?, topSpeedMps: Double? = nil) {
         self.startAt = startAt
         self.utcOffsetMin = utcOffsetMin
         self.kind = kind
         self.distanceM = distanceM
         self.totalS = totalS
         self.usedPct = usedPct
+        self.topSpeedMps = topSpeedMps
     }
 }
 

@@ -19,6 +19,10 @@ struct StatsView: View {
     /// P6-5: what the Past weeks chart measures, remembered (Core `PastWeeksMetric`)
     @AppStorage(PastWeeksMetric.settingKey) private var metricRaw = PastWeeksMetric.km.rawValue
     @State private var back = 0
+    /// Hotfix .14 (N12-6): Rides · Money · Energy, remembered; the period stays when switching tabs
+    @AppStorage("stats.tab") private var tabRaw = StatsTab.rides.rawValue
+    @State private var askPrice = false
+    @State private var priceText = ""
     @State private var model: StatsModel?
     /// Note 8: the tapped bar (its readout shows above the chart)
     @State private var selectedBar: Int?
@@ -76,23 +80,215 @@ struct StatsView: View {
         }
     }
 
+    private var tab: StatsTab { StatsTab(rawValue: tabRaw) ?? .rides }
+
+    /// Hotfix .14 (N12-6, mock reports/mocks/stats_tabs.png): three tabs, one shared period switch under them
     private func content(_ m: StatsModel) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            GlassSegmented(options: StatsTab.allCases.map { ($0.rawValue, $0.title) },
+                           selection: preview == nil ? $tabRaw : .constant(StatsTab.rides.rawValue), slidingPill: true)
+                .accessibilityLabel("Stats section")
+                .padding(.bottom, DS.Space.row)
             spanControl(m)
             periodHeader(m)
-            if m.totals.isEmpty {
-                emptyCard
-            } else {
-                periodTiles(m)
-                bars(m)
-                moneySection(m)
+            switch tab {
+            case .rides: ridesTab(m)
+            case .money: moneyTab(m)
+            case .energy: energyTab(m)
             }
-            if let overall = m.overall { OverallSection(stats: overall) }
-            if preview == nil { factorsLink }
-            pastWeeksLink(m)
-            InsightsSection(board: m.insights)   // F-21
         }
         .padding(16)
+    }
+
+    // MARK: Rides tab
+
+    @ViewBuilder private func ridesTab(_ m: StatsModel) -> some View {
+        if m.totals.isEmpty {
+            emptyCard
+        } else {
+            periodTiles(m)
+            if let r = m.rideStats {
+                StatTileGrid(columns: 2) {
+                    StatTile(value: r.avgKmh.map { String(format: "%.0f km/h", $0) } ?? "\u{2013}", label: "Avg speed")
+                    StatTile(value: r.topKmh.map { String(format: "%.0f km/h", $0) } ?? "\u{2013}", label: "Top speed")
+                }
+                .padding(.top, DS.Space.row)
+                SectionHeader("Per ride") {
+                    InfoButton("Per ride", info: InfoContent(lead: "Averages of this period's rides. Short hops are left out; time includes stops."))
+                }
+                StatTileGrid(columns: 2) {
+                    StatTile(value: StatsCalc.km(r.avgKm), label: "Avg length")
+                    StatTile(value: StatsCalc.duration(r.avgSeconds), label: "Avg time")
+                    StatTile(value: StatsCalc.km(r.longestKm), label: "Longest ride")
+                }
+            }
+            bars(m)
+        }
+        if preview == nil { factorsLink }
+        pastWeeksLink(m)
+        InsightsSection(board: m.insights)   // F-21
+    }
+
+    // MARK: Money tab
+
+    @ViewBuilder private func moneyTab(_ m: StatsModel) -> some View {
+        if m.totals.isEmpty {
+            emptyCard
+        } else {
+            moneySection(m)
+            if m.totals.fuelSavedIls != nil {
+                let net = max(0, Self.shownSaved(m))
+                Text("Fuel avoided \(StatsCalc.money(net + m.totals.electricityIls)) \u{00B7} electricity \(StatsCalc.money(m.totals.electricityIls))")
+                    .font(.footnote).foregroundStyle(.secondary).monospacedDigit()
+                    .padding(.top, 6)
+            }
+        }
+        if let overall = m.overall { OverallSection(stats: overall) }
+        if m.savedByMonth.count >= 2 { runningTotal(m.savedByMonth) }
+        paidOffCard(m)
+        priceRows(m)
+    }
+
+    private func runningTotal(_ months: [SavedByMonth]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Saved, running total").font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("since \(months.first?.month ?? "")").font(.caption).foregroundStyle(.secondary)
+            }
+            Chart(Array(months.enumerated()), id: \.offset) { i, mo in
+                LineMark(x: .value("Month", i), y: .value("Saved", mo.cumulativeIls))
+                    .foregroundStyle(Theme.accent)
+                    .interpolationMethod(.monotone)
+                PointMark(x: .value("Month", i), y: .value("Saved", mo.cumulativeIls))
+                    .foregroundStyle(Theme.accent)
+                    .symbolSize(i == months.count - 1 ? 60 : 0)
+            }
+            .chartXAxis(.hidden)
+            .frame(height: 130)
+            .accessibilityLabel("Saved, running total: \(StatsCalc.money(months.last?.cumulativeIls ?? 0))")
+        }
+        .padding(DS.Space.cardPad)
+        .glassCard(padding: 0)
+        .padding(.top, DS.Space.block)
+    }
+
+    @ViewBuilder private func paidOffCard(_ m: StatsModel) -> some View {
+        let saved = m.overall?.shownSavedIls ?? 0
+        if let p = PaidOff.make(savedIls: saved, priceIls: m.scooterPriceIls) {
+            Button { priceText = String(Int(p.priceIls)); askPrice = true } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Scooter paid off").font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Text(p.pctText).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accentInk).monospacedDigit()
+                    }
+                    ProgressView(value: p.fraction).tint(Theme.accent)
+                    Text(p.line).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                }
+                .padding(DS.Space.cardPad)
+                .glassCard(padding: 0)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, DS.Space.block)
+            .accessibilityHint("Change the scooter's price")
+            .alert("Scooter price", isPresented: $askPrice) { priceAlert } message: { Text("What the scooter cost, in \u{20AA}. Empty to remove.") }
+        } else if preview == nil, m.overall?.hasFuelPrice == true {
+            Button { priceText = ""; askPrice = true } label: {
+                HStack {
+                    Label("Add the scooter's price to see when it pays off", systemImage: "plus.circle").font(.footnote)
+                    Spacer()
+                }
+                .padding(DS.Space.cardPad)
+                .glassCard(padding: 0)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, DS.Space.block)
+            .alert("Scooter price", isPresented: $askPrice) { priceAlert } message: { Text("What the scooter cost, in \u{20AA}. Empty to remove.") }
+        }
+    }
+
+    @ViewBuilder private var priceAlert: some View {
+        TextField("\u{20AA}", text: $priceText).keyboardType(.numberPad)
+        Button("Cancel", role: .cancel) {}
+        Button("OK") {
+            ScooterPrice.set(AppModel.shared.database, Double(priceText.trimmingCharacters(in: .whitespaces)))
+            load()
+        }
+    }
+
+    private func priceRows(_ m: StatsModel) -> some View {
+        VStack(spacing: 0) {
+            priceRow("Car", String(format: "%.1f L / 100 km", m.fuelLPer100km))
+            Divider()
+            priceRow("Electricity", String(format: "%.2f \u{20AA} / kWh", m.electricityIlsPerKwh))
+        }
+        .padding(.horizontal, DS.Space.cardPad)
+        .glassCard(padding: 0)
+        .padding(.top, DS.Space.row)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func priceRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label).font(.subheadline)
+            Spacer()
+            Text(value).font(.subheadline.weight(.semibold)).monospacedDigit()
+        }
+        .padding(.vertical, 12)
+    }
+
+    // MARK: Energy tab
+
+    @ViewBuilder private func energyTab(_ m: StatsModel) -> some View {
+        if let e = m.energy {
+            StatTileGrid(columns: 2) {
+                StatTile(value: String(format: "%.0f Wh/km", e.whPerKm), label: "Energy use")
+                StatTile(value: String(format: "%.1f km", e.kmPerPct), label: "per 1% battery")
+                StatTile(value: StatsCalc.charges(e.fullCharges), label: "Full charges used")
+                StatTile(value: String(format: "%.1f kWh", e.kWh), label: "Electricity")
+            }
+        } else {
+            emptyCard
+        }
+        if m.energyPoints.count >= 2 {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Wh per km, per ride").font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text("last \(m.energyPoints.count) rides").font(.caption).foregroundStyle(.secondary)
+                }
+                Chart(Array(m.energyPoints.enumerated()), id: \.offset) { i, p in
+                    LineMark(x: .value("Ride", i), y: .value("Wh/km", p.whPerKm))
+                        .foregroundStyle(Theme.accent)
+                    PointMark(x: .value("Ride", i), y: .value("Wh/km", p.whPerKm))
+                        .foregroundStyle(Theme.accent)
+                        .symbolSize(i == m.energyPoints.count - 1 ? 60 : 20)
+                }
+                .chartXAxis(.hidden)
+                .chartYScale(domain: .automatic(includesZero: false))
+                .frame(height: 130)
+                .accessibilityLabel("Wh per km of the last rides")
+            }
+            .padding(DS.Space.cardPad)
+            .glassCard(padding: 0)
+            .padding(.top, DS.Space.block)
+        }
+        if let e = m.energy {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Range from full").font(.subheadline.weight(.semibold))
+                    Text("at this period's use").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("\u{2248} \(Int(e.rangeKm.rounded())) km").font(.headline).foregroundStyle(Theme.accentInk).monospacedDigit()
+            }
+            .padding(DS.Space.cardPad)
+            .glassCard(padding: 0)
+            .padding(.top, DS.Space.row)
+            .accessibilityElement(children: .combine)
+        }
+        if preview == nil { factorsLink }
     }
 
     /// F-16: the compact Calendar / Rolling switch in the top bar, right of the "Stats" title

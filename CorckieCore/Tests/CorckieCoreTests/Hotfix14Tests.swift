@@ -84,4 +84,64 @@ final class Hotfix14Tests: XCTestCase {
         XCTAssertTrue(home.contains("(Self.loadNone, \"Unloaded\"), (Self.loadFive, \"5 kg\"), (Self.loadCustom, loadCustomLabel)"))
         XCTAssertFalse(home.contains("loadTen"), "10 kg is gone; a stored 10 kg shows as Custom 10")
     }
+
+    // MARK: N12-6 Stats in three tabs
+
+    func test_N12_6_perRide_realRidesOnly() throws {
+        let rides = [ride(0, km: 10, used: 5), ride(1, km: 20, used: 9), ride(2, km: 1, kind: "shortHop")]
+        var top = rides
+        top[1].topSpeedMps = 73 / 3.6
+        let r = try XCTUnwrap(PeriodRideStats.make(top))
+        XCTAssertEqual(r.avgKm, 15, accuracy: 1e-9)
+        XCTAssertEqual(r.longestKm, 20, accuracy: 1e-9)
+        XCTAssertEqual(r.topKmh ?? 0, 73, accuracy: 1e-6)
+        XCTAssertEqual(r.avgKmh ?? 0, 30, accuracy: 1e-6, "km ÷ time (120 s a km = 30 km/h)")
+        XCTAssertNil(PeriodRideStats.make([ride(0, km: 1, kind: "shortHop")]))
+    }
+
+    func test_N12_6_energyInRealWorldTerms() throws {
+        var t = StatsTotals()
+        t.km = 100; t.charges = 0.5
+        let e = try XCTUnwrap(PeriodEnergy.make(t, packWh: 1260))
+        XCTAssertEqual(e.whPerKm, 6.3, accuracy: 1e-9)
+        XCTAssertEqual(e.kmPerPct, 2, accuracy: 1e-9)
+        XCTAssertEqual(e.rangeKm, 200, accuracy: 1e-9)
+        XCTAssertEqual(e.kWh, 0.63, accuracy: 1e-9)
+        XCTAssertNil(PeriodEnergy.make(StatsTotals(), packWh: 1260))
+        let pts = RideEnergyPoint.last((0..<14).map { ride($0, km: 10, used: 2) } + [ride(20, km: 1.5)], packWh: 1260)
+        XCTAssertEqual(pts.count, 10, "the last 10 rides over 2 km")
+        XCTAssertEqual(pts.last?.whPerKm ?? 0, 2.52, accuracy: 1e-9)
+    }
+
+    func test_N12_6_runningTotalAndPaidOff() throws {
+        let p = prices()
+        let rides = (0..<40).map { ride($0, km: 10, used: 0) }
+        let months = SavedByMonth.make(rides, prices: p, startIls: 5)
+        XCTAssertGreaterThanOrEqual(months.count, 2)
+        XCTAssertEqual(months.last?.cumulativeIls ?? 0, 5 + SavingsRule.total(rides, prices: p).savedIls, accuracy: 1e-6)
+        XCTAssertNil(PaidOff.make(savedIls: 100, priceIls: nil), "only once a price is set")
+        let paid = try XCTUnwrap(PaidOff.make(savedIls: 2_140, priceIls: 6_300))
+        XCTAssertEqual(paid.pctText, "33%")
+        XCTAssertEqual(PaidOff.make(savedIls: 9_000, priceIls: 6_300)?.fraction, 1)
+    }
+
+    func test_N12_6_statsHasThreeTabs_noTimeOfDay() throws {
+        let stats = try source("App/UI/Stats/StatsView.swift")
+        XCTAssertTrue(stats.contains("GlassSegmented(options: StatsTab.allCases.map"))
+        for f in ["ridesTab(m)", "moneyTab(m)", "energyTab(m)"] { XCTAssertTrue(stats.contains(f), f) }
+        XCTAssertEqual(StatsTab.allCases.map(\.title), ["Rides", "Money", "Energy"])
+        for banned in ["hour of", "time of day", "mornings", "evenings"] {
+            XCTAssertFalse(stats.lowercased().contains(banned), "no when-you-ride numbers: \(banned)")
+        }
+    }
+
+    // MARK: N12-4 maintenance per scooter
+
+    func test_N12_4_maintenancePerScooter() throws {
+        let q = try source("App/Store/Queries/MaintenanceQueries.swift")
+        XCTAssertTrue(q.contains("return try Self.rideKm(db)"), "no odometer: km from its own rides")
+        let svc = try source("App/Notifier/MaintenanceService.swift")
+        XCTAssertTrue(svc.contains("static func syncScooter(_ db: AppDatabase)"))
+        XCTAssertTrue(svc.contains("static func rows(_ db: AppDatabase) -> [Row] {\n        syncScooter(db)"))
+    }
 }
