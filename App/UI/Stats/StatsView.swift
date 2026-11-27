@@ -520,7 +520,8 @@ struct SavedPerKmTile: View {
                 Spacer(minLength: 0)
                 InfoButton("Saved per km", info: InfoFormula.perKm(stats))
             }
-            Text("every km by scooter instead of car").font(.caption).foregroundStyle(.secondary)
+            // hotfix .14 (owner 27 Nov): the last 30 days, so it follows today's prices
+            Text("every km by scooter instead of car \u{00B7} \(stats.perKmValue?.label ?? "lifetime")").font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
         .glassCard(radius: DS.Radius.tile, tint: Theme.accent, padding: 12)

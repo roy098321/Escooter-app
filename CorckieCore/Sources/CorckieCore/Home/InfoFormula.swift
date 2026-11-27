@@ -130,12 +130,25 @@ public enum InfoFormula {
 
     /// the shown lifetime per-km value (the tile uses the same number as the sheet)
     public static func shownPerKm(_ s: OverallStats) -> Double? {
+        if let v = s.perKmValue { return s.hasFuelPrice ? v.perKm : nil }   // hotfix .14: last 30 days (or lifetime)
         guard OverallCalc.savedPerKm(s) != nil else { return nil }
         return shownPerKm(saved: max(0, shownSaved(gross: s.fuelSavedIls, electricity: s.electricityIls)), km: s.totalKm, kmDecimals: kmDecimals(s.totalKm))
     }
 
     /// Saved per km (Stats): lifetime saved divided by lifetime km
     public static func perKm(_ s: OverallStats) -> InfoContent {
+        if let v = s.perKmValue {
+            // hotfix .14 (owner 27 Nov): the last 30 days, so it follows today's prices; lifetime when the window is too small
+            let d = kmDecimals(v.km)
+            return InfoContent(
+                lead: v.isWindow ? "What every kilometre by scooter instead of car saved you in the last \(SavingsRule.windowDays) days."
+                                 : "What every kilometre by scooter instead of car saves you. Fewer than \(Int(SavingsRule.windowMinKm)) km in the last \(SavingsRule.windowDays) days, so this is the lifetime number.",
+                formula: [InfoFormulaRow(v.isWindow ? "Saved, last \(SavingsRule.windowDays) days" : "Saved, lifetime", v.savedIls, unit: "\u{20AA}", role: .start),
+                          InfoFormulaRow("Distance", round(v.km, d), decimals: d, unit: "km", role: .divide),
+                          InfoFormulaRow("Saved per km", v.perKm, unit: "\u{20AA}", role: .result)],
+                basedOn: [InfoBasedOn("Car", String(format: "%.0f L / 100 km", s.carLPer100km), link: .costSettings),
+                          InfoBasedOn("Fuel price", "each ride's day", link: .priceHistory)])
+        }
         let saved = max(0, shownSaved(gross: s.fuelSavedIls, electricity: s.electricityIls))
         let d = kmDecimals(s.totalKm)
         let km = round(s.totalKm, d)

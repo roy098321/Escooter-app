@@ -97,12 +97,16 @@ public struct ValueStretch: Equatable, Sendable {
     public var b: GeoPoint
     public var t: Double
     public var value: Double
+    /// Hotfix .14 (owner 26 Nov): the good fixes between `a` and `b` (the 1-s track from .13), so the line is drawn through every
+    /// point and curves stay round; empty before .13
+    public var via: [GeoPoint]
 
-    public init(a: GeoPoint, b: GeoPoint, t: Double, value: Double) {
+    public init(a: GeoPoint, b: GeoPoint, t: Double, value: Double, via: [GeoPoint] = []) {
         self.a = a
         self.b = b
         self.t = t
         self.value = value
+        self.via = via
     }
 }
 
@@ -143,7 +147,7 @@ extension RideLayers {
             if let v = points[i].speedKmh { sum += v; count += 1 }
             if Geo.distanceM(pa, p) < minStretchM { continue }
             if count > 0 {
-                out.append(ValueStretch(a: pa, b: p, t: (points[a].t + points[i].t) / 2, value: sum / Double(count)))
+                out.append(ValueStretch(a: pa, b: p, t: (points[a].t + points[i].t) / 2, value: sum / Double(count), via: via(points, a, i)))
             }
             anchor = i
             sum = points[i].speedKmh ?? 0
@@ -163,10 +167,16 @@ extension RideLayers {
             if points[i].t - points[a].t > 30 { anchor = i; continue }
             let d = Geo.distanceM(pa, p)
             if d < minStretchM { continue }
-            out.append(ValueStretch(a: pa, b: p, t: (points[a].t + points[i].t) / 2, value: (altB - altA) / d * 100))
+            out.append(ValueStretch(a: pa, b: p, t: (points[a].t + points[i].t) / 2, value: (altB - altA) / d * 100, via: via(points, a, i)))
             anchor = i
         }
         return out
+    }
+
+    /// Hotfix .14: the good fixes strictly between readings `a` and `b` (what the line is drawn through)
+    public static func via(_ points: [SeriesPoint], _ a: Int, _ b: Int) -> [GeoPoint] {
+        guard b > a + 1 else { return [] }
+        return points[(a + 1)..<b].compactMap { $0.hasFix ? $0.point : nil }
     }
 
     /// Headwind component in km/h along the path (positive = against you); nil without weather for the ride
@@ -186,7 +196,7 @@ extension RideLayers {
             let mid = rideStartMs + Int64(((points[a].t + points[i].t) / 2 * 1000).rounded())
             if let w = RideWeatherCalc.at(rows, atMs: mid), let from = w.windFromDeg {
                 let hw = w.windKmh * cos((from - course) * Double.pi / 180)
-                out.append(ValueStretch(a: pa, b: p, t: (points[a].t + points[i].t) / 2, value: hw))
+                out.append(ValueStretch(a: pa, b: p, t: (points[a].t + points[i].t) / 2, value: hw, via: via(points, a, i)))
             }
             anchor = i
         }

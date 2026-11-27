@@ -322,7 +322,7 @@ enum B102Checks {
         expect(zip(pieces, pieces.dropFirst()).allSatisfy { $0.coords.last == $1.coords.first }, "the pieces meet, no gaps")
         let colours = Set(pieces.map { "\(Int($0.r * 100))-\(Int($0.g * 100))" })
         expect(colours.count > 1, "the colour changes along the line (\(colours.count) shades)")
-        expect(RoutePieces.width == 6 && GradientPath.pieceStyle().lineCap == .butt, "6 pt, butt caps (lab B)")
+        expect(RoutePieces.width == 6 && GradientPath.pieceStyle().lineCap == .round, "6 pt, round caps (hotfix .14)")
         expect.report("u168")
     }
 }

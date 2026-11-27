@@ -2,6 +2,15 @@
 
 One section per release name (VB.DDMMYY.HH: version, batch, due date, hotfix). Plain words, one line per change.
 
+## 111.291126.14 — hotfix 14: smooth lines, savings, cargo, and Batch 12 (owner 27 Nov: "make it a hotfix and do it now")
+
+- H14-1: ride lines have round ends (`GradientPath.pieceStyle`), so a colour change on a bend leaves no notch.
+- H14-2: stretches carry the 1-s fixes between their ends (`ValueStretch.via`), `RoutePieces` draws through every one: curves stay round. Rides before .13 unchanged.
+- H14-3: cargo is Unloaded / 5 kg / Custom (10 kg out; a stored 10 kg shows as Custom 10).
+- H14-4: Saved per km is the last 30 days (`SavingsRule.window`, `SavedPerKmValue`), the lifetime number under 20 km in the window, labelled.
+- H14-5 (B114): one savings rule (`SavingsRule`, the Stats periods' M35b rule) for the periods, the lifetime and the 30 days; the money counts every real ride of every scooter (it is the rider's), the pre-app estimate added. A period can no longer show more than the lifetime.
+- N12-1: the one-time "Bug #100" confetti and hero line are removed.
+
 ## 111.291126.13 — hotfix 13 of batch 11: the ride map follows the road
 
 - Owner 25 Nov (option A): the ride map cut corners at speed because only the 5-s samples held a position (~100 m apart at 70 km/h). The recorder now keeps the phone's GPS once a second during a ride (good fixes only, ≤ 20 m), written with the 30-s flushes as `raw_chunk` kind `track` (`RecorderTrack`, 24 bytes a fix, zlib), kept like the ride (not by the raw-data retention), moved with a merge, and only in a Full export. The ride detail puts those fixes between the samples (`TrackMerge`: position from the fix, readings interpolated, nothing made up across a gap over 30 s), so every layer, the climbs and At top speed follow the road. Rides from before .13 are unchanged. Replay and Compare still use the 5-s samples.

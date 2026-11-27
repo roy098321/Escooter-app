@@ -311,18 +311,19 @@ struct HomeView: View {
 
     // MARK: Load for the next ride (F-02)
 
-    /// Owner: Unloaded (0), 5 kg, 10 kg or Custom (a whole number, 0 to 50 kg). The segment ids:
-    private static let loadNone = "none", loadFive = "5", loadTen = "10", loadCustom = "custom"
+    /// Owner: Unloaded (0), 5 kg or Custom (a whole number, 0 to 50 kg). Hotfix .14 (owner 26 Nov): 10 kg dropped, he rides with 5 kg
+    /// or nothing; a stored 10 kg shows as Custom 10. The segment ids:
+    private static let loadNone = "none", loadFive = "5", loadCustom = "custom"
     private static let maxCustomKg = 50
 
     private var loadCustomLabel: String { customKg > 0 && loadSel == Self.loadCustom ? "Custom \(customKg)" : "Custom" }
 
-    /// H4: one compact row, a load icon and Unloaded / 5 kg / 10 kg / Custom; the pill slides like the tab bar's (A5)
+    /// H4: one compact row, a load icon and Unloaded / 5 kg / Custom; the pill slides like the tab bar's (A5)
     private var loadRow: some View {
         HStack(spacing: 10) {
             Image(systemName: "bag.fill").foregroundStyle(Theme.canyon).accessibilityHidden(true)
                 .bounceOnce(loadSel)     // N7-5: the bag hops when the load changes
-            GlassSegmented(options: [(Self.loadNone, "Unloaded"), (Self.loadFive, "5 kg"), (Self.loadTen, "10 kg"), (Self.loadCustom, loadCustomLabel)],
+            GlassSegmented(options: [(Self.loadNone, "Unloaded"), (Self.loadFive, "5 kg"), (Self.loadCustom, loadCustomLabel)],
                            selection: Binding(get: { loadSel }, set: { _ in }), slidingPill: true, onSelect: { id in
                                if id == Self.loadCustom {
                                    kgText = customKg > 0 ? String(customKg) : ""
@@ -355,11 +356,11 @@ struct HomeView: View {
     private func loadSelectorFromStore() {
         guard preview == nil else { return }
         let c = PendingLoad.get(AppModel.shared.database)
-        // an older choice (Light / Heavy / Exact) shows as the number it was: 5 and 10 are their own segments, anything else is Custom
+        // an older choice (Light / Heavy / Exact) shows as the number it was: 5 is its own segment, anything else is Custom
         let kg = Int(c.attachment(lightKg: RiderSettings.kg(AppModel.shared.database, .light) ?? 5,
                                   heavyKg: RiderSettings.kg(AppModel.shared.database, .heavy) ?? 15)?.kg.rounded() ?? 0)
         customKg = kg
-        loadSel = kg == 0 ? Self.loadNone : (kg == 5 ? Self.loadFive : (kg == 10 ? Self.loadTen : Self.loadCustom))
+        loadSel = kg == 0 ? Self.loadNone : (kg == 5 ? Self.loadFive : Self.loadCustom)
         DispatchQueue.main.async { loadReady = true }
     }
 
@@ -368,7 +369,6 @@ struct HomeView: View {
         let kg: Int
         switch loadSel {
         case Self.loadFive: kg = 5
-        case Self.loadTen: kg = 10
         case Self.loadCustom: kg = customKg
         default: kg = 0
         }

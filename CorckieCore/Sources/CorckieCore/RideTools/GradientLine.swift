@@ -107,11 +107,12 @@ public enum RoutePieces {
         var lastEnd: GeoPoint?
         for s in stretches where s.a != s.b {
             let step = Int((ramp.position(s.value) * Double(colourSteps)).rounded())
+            // hotfix .14: through every 1-s fix of the stretch (`via`), so curves stay round
             if step == lastStep, let end = lastEnd, end == s.a, !out.isEmpty {
-                out[out.count - 1].coords.append(s.b)
+                out[out.count - 1].coords.append(contentsOf: s.via + [s.b])
             } else {
                 let c = ramp.rgb(at: ramp.lo + (ramp.hi - ramp.lo) * Double(step) / Double(colourSteps))
-                out.append(RoutePiece(coords: [s.a, s.b], r: c.r, g: c.g, b: c.b))
+                out.append(RoutePiece(coords: [s.a] + s.via + [s.b], r: c.r, g: c.g, b: c.b))
             }
             lastStep = step
             lastEnd = s.b

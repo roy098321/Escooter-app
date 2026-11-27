@@ -22,10 +22,6 @@ public struct WhatsNewEntry: Codable, Equatable, Sendable {
     public var smallerFixes: Int
     /// Every change, one plain line each (Settings → What's new)
     public var full: [String]
-    /// N11-4: an optional hero line above the title ("Bug #100 fixed 🎉 Thanks for every report."). Batch 12 (N12-1) removes it.
-    public var hero: String? = nil
-    /// N11-4: a one-time confetti burst behind the card on this version (once, ~2 s, no sound; none with Reduce Motion)
-    public var confetti: Bool? = nil
 
     /// "251026": the middle of "101.251026.00"
     public var code: String { ReleaseName.code(version) }
@@ -44,17 +40,6 @@ public enum WhatsNew {
         guard !riding, lastSeen != current else { return false }
         return entries.contains { $0.version == current }
     }
-
-    /// N11-4: confetti only for an entry that asks for it, once per version, never with Reduce Motion (the hero line still shows)
-    public static func showConfetti(_ entry: WhatsNewEntry, reduceMotion: Bool, alreadyShown: Bool) -> Bool {
-        entry.confetti == true && !reduceMotion && !alreadyShown
-    }
-
-    /// N11-4: the burst lasts about two seconds
-    public static let confettiSeconds: Double = 2
-
-    /// N11-4: the per-version flag ("corckie.whatsNew.confetti.111.291126.00")
-    public static func confettiKey(_ version: String) -> String { "corckie.whatsNew.confetti.\(version)" }
 
     public static func entry(for version: String, in entries: [WhatsNewEntry]) -> WhatsNewEntry? {
         entries.first { $0.version == version }

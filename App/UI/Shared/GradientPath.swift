@@ -36,7 +36,7 @@ enum GradientPath {
 
     /// R1: the one stroke style of every ride map line
     static func pieceStyle(_ width: CGFloat = CGFloat(RoutePieces.width)) -> StrokeStyle {
-        StrokeStyle(lineWidth: width, lineCap: .butt, lineJoin: .round)
+        StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round)   // hotfix .14: round ends, no notch where the colour changes on a bend
     }
 
     /// Route line lab only (option A). Ride maps use `lines` (pieces).

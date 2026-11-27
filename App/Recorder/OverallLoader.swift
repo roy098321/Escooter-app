@@ -43,13 +43,24 @@ enum OverallLoader {
     }
 
     static func load(_ db: AppDatabase, nowMs: Int64 = FactorUpdater.nowMs(), utcOffsetMin: Int = RouteCardLoader.currentOffsetMin()) -> OverallStats {
-        OverallCalc.compute(input(db, nowMs: nowMs, utcOffsetMin: utcOffsetMin))
+        var s = OverallCalc.compute(input(db, nowMs: nowMs, utcOffsetMin: utcOffsetMin))
+        // hotfix .14 (B114): the money is the rider's, by the same rule as the Stats periods, so no period shows more than the lifetime
+        let prices = StatsLoader.prices(db)
+        let all = (try? StatsQueries(db).rides(from: 0, to: nowMs + 86_400_000)) ?? []
+        let lifetime = SavingsRule.total(all, prices: prices)
+        s.riderSavedIls = lifetime.savedIls + s.preAppNetIls
+        s.perKmValue = SavedPerKmValue.make(window: SavingsRule.total(SavingsRule.window(all, nowMs: nowMs), prices: prices),
+                                            lifetimeSavedIls: lifetime.savedIls + s.preAppNetIls, lifetimeKm: lifetime.km + s.kmBefore)
+        return s
     }
 
     /// ST5: the four headline tiles of the Overall section (km on the odometer, money saved, litres of fuel not burnt, CO2 not emitted)
     static func tiles(_ s: OverallStats) -> [(label: String, value: String)] {
         var out: [(label: String, value: String)] = [("Total distance", OverallCalc.km(s.totalKm))]
-        if s.hasFuelPrice { out.append(("Saved", StatsCalc.money(max(0, InfoFormula.shownSaved(gross: s.fuelSavedIls, electricity: s.electricityIls))))) }
+        if s.hasFuelPrice {
+            let saved = s.riderSavedIls.map { InfoFormula.round($0) } ?? InfoFormula.shownSaved(gross: s.fuelSavedIls, electricity: s.electricityIls)
+            out.append(("Saved", StatsCalc.money(max(0, saved))))   // hotfix .14 (B114)
+        }
         out.append(("Fuel not burnt", OverallCalc.litres(s.carLitres)))
         out.append(("CO\u{2082} avoided", String(format: "%.0f kg", max(0, s.co2AvoidedKg))))
         return out

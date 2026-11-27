@@ -178,7 +178,7 @@ public enum LayerViews {
             if let v = values[i] { sum += v; count += 1 }
             if Geo.distanceM(pa, p) < RideLayers.minStretchM { continue }
             if count > 0 {
-                out.append(ValueStretch(a: pa, b: p, t: (points[a].t + points[i].t) / 2, value: sum / Double(count)))
+                out.append(ValueStretch(a: pa, b: p, t: (points[a].t + points[i].t) / 2, value: sum / Double(count), via: RideLayers.via(points, a, i)))
             }
             reset(i)
         }
@@ -226,7 +226,7 @@ public enum LayerViews {
             guard !speed.isEmpty else { continue }
             let v = speed[k].value
             guard v >= 5 else { continue }
-            out.append(ValueStretch(a: s.a, b: s.b, t: s.t, value: drain * windShare(speedKmh: v, headwindKmh: s.value)))
+            out.append(ValueStretch(a: s.a, b: s.b, t: s.t, value: drain * windShare(speedKmh: v, headwindKmh: s.value), via: s.via))
         }
         return out
     }

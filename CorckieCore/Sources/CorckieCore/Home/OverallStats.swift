@@ -119,6 +119,16 @@ public struct OverallStats: Equatable, Sendable {
     public var usesUnverifiedPrice = false
     /// the car's L per 100 km the fuel numbers used
     public var carLPer100km = StatsPrices.defaultFuelLPer100km
+    /// Hotfix .14 (B114): the estimated km before the app, net (fuel minus electricity), added to the rider's saved money
+    public var preAppNetIls = 0.0
+    /// Hotfix .14 (B114): the rider's money saved, every real ride of every scooter by `SavingsRule` + the pre-app estimate
+    /// (nil = not loaded: the older scooter-only net is shown)
+    public var riderSavedIls: Double?
+    /// Hotfix .14 (owner 27 Nov): saved per km over the last 30 days (or lifetime when the window is too small)
+    public var perKmValue: SavedPerKmValue?
+
+    /// What the Saved tile shows
+    public var shownSavedIls: Double { riderSavedIls ?? netSavedIls }
 
     public init() {}
 }
@@ -190,6 +200,7 @@ public enum OverallCalc {
             }
             let rate = input.electricity.value(on: day) ?? defaultElectricityIlsPerKwh
             line.electricityIls += wh / 1000 * rate
+            if pre { out.preAppNetIls += (input.fuel.value(on: day).map { km * carL * $0 } ?? 0) - wh / 1000 * rate }
             out.lifetimeKwh += wh / 1000
             byMonth[m] = line
         }

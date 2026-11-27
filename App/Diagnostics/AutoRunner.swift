@@ -108,7 +108,7 @@ final class AutoRunner {
         H0102Checks.run()                        // hotfix 103.081126.02: u200 diary, Ride not recorded, Export log cap (B81)
         B109Checks.run()                         // batch 9 (108.131226.03): u201 new-rider rules, km left, ride cost, share trim
         B110Checks.run()                         // batch 10 (maintenance): u202 fault gate, voice, parts list, history, report languages
-        B111Checks.run()                         // batch 11: u203 G500, Garage, tyre-pressure hint, one-time confetti
+        B111Checks.run()                         // batch 11: u203 G500, Garage, tyre-pressure hint
         B103Checks.run()                         // batch 103.081126.00: u194 fresh readings, u195 small places, u196 fuel digits, u197 ride screen waits, u198 V-U1, u199 V-U2
         ChargeEtaChecks.run()                    // P6-6 (F-31 / F-27): u120 charge timer maths, u121 targets + notification times, u122 charge log data
         P61UiChecks.run(real: model.database)   // chunk 2: u55 bounce, u56 live tiles + camera, u57 saved way back

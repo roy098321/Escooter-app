@@ -25,7 +25,7 @@ final class Hotfix01GuardTests: XCTestCase {
     func test_rideMapsDrawPiecesNotAGradient() throws {
         let path = try source("UI/Shared/GradientPath.swift")
         XCTAssertTrue(path.contains("RoutePieces.pieces(stretches, ramp: ramp)"), "ride map lines are pieces")
-        XCTAssertTrue(path.contains("lineCap: .butt"), "butt caps like the lab's B")
+        XCTAssertTrue(path.contains("lineCap: .round, lineJoin: .round)   // hotfix .14"), "round caps since hotfix .14 (no notch at a colour change on a bend)")
         XCTAssertFalse(path.contains(".stroke(gradient("), "no gradient stroke on the ride maps")
         let replay = try source("UI/Rides/ReplayView.swift")
         XCTAssertTrue(replay.contains("RoutePieces.pieces("), "Replay draws pieces")

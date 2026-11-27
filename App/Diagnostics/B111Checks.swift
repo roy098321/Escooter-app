@@ -3,8 +3,7 @@ import Foundation
 
 /// Batch 11 check u203, on made-up data only: the G500 is found and named, the Garage rules (auto-add, active = connected,
 /// Sold / Lost / Remove keep everything, legacy rides by time, the name on the lock screen only with 2+, Stats filter), the tyre-pressure
-/// hint (quiet on normal rides and while learning, creep -> tyre, jump -> brake / wheel, cold ruled out) and the one-time confetti
-/// rule. The real data is never touched.
+/// hint (quiet on normal rides and while learning, creep -> tyre, jump -> brake / wheel, cold ruled out). The real data is never touched.
 @MainActor
 enum B111Checks {
     typealias Expect = B101LateChecks.Expect
@@ -51,12 +50,6 @@ enum B111Checks {
         _ = EnergyHint.ride(&jump, scooterId: "LAB", ride(41, 27), packWh: 500)
         _ = EnergyHint.ride(&jump, scooterId: "LAB", ride(42, 27), packWh: 500)
         expect(jump.scooters["LAB"]?.step == .brakeWheel, "a sudden jump: lift the wheel and spin it")
-        // N11-4
-        let json = #"[{"version":"111.291126.00","headline":"","items":[],"smallerFixes":0,"full":[],"hero":"x","confetti":true}]"#
-        guard let entry = (try? WhatsNew.decode(Data(json.utf8)))?.first else { expect(false, "test card decodes"); expect.report("u203"); return }
-        expect(WhatsNew.showConfetti(entry, reduceMotion: false, alreadyShown: false)
-               && !WhatsNew.showConfetti(entry, reduceMotion: true, alreadyShown: false)
-               && !WhatsNew.showConfetti(entry, reduceMotion: false, alreadyShown: true), "confetti once, none with Reduce Motion")
         expect.report("u203")
     }
 }

@@ -81,3 +81,26 @@ final class TrackMergeTests: XCTestCase {
         XCTAssertGreaterThan(all.count, 30)
     }
 }
+
+/// Hotfix .14 (owner 26 Nov): the ride line goes through every 1-s fix, not one point per 25 m.
+final class Hotfix14LineTests: XCTestCase {
+    func test_piecesGoThroughEveryFix() {
+        // 60 s at 36 km/h along a quarter circle, one fix a second
+        let pts: [SeriesPoint] = (0...60).map { i in
+            let a = Double(i) / 60 * Double.pi / 2
+            return SeriesPoint(t: Double(i), lat: 10 + 0.003 * sin(a), lon: -30 + 0.003 * (1 - cos(a)), hAccM: 5, speedKmh: 36)
+        }
+        let stretches = RideLayers.speedStretches(pts)
+        XCTAssertLessThan(stretches.count, 40, "still one value per ~25 m")
+        let pieces = RoutePieces.pieces(stretches, ramp: LayerRamps.speed(colourBlind: false))
+        let drawn = pieces.reduce(0) { $0 + $1.coords.count }
+        XCTAssertGreaterThanOrEqual(drawn, 55, "but the line is drawn through (almost) every fix")
+        XCTAssertEqual(pieces.count, 1, "one colour: one piece")
+    }
+
+    func test_oldRideWithoutTrack_unchanged() {
+        let a = GeoPoint(lat: 10, lon: -30), b = GeoPoint(lat: 10.001, lon: -30)
+        let p = RoutePieces.pieces([ValueStretch(a: a, b: b, t: 0, value: 20)], ramp: LayerRamps.speed(colourBlind: false))
+        XCTAssertEqual(p.first?.coords, [a, b])
+    }
+}

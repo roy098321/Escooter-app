@@ -304,21 +304,13 @@ final class Batch111Tests: XCTestCase {
         XCTAssertFalse(link.contains("writeValue"), "read-only")
     }
 
-    // MARK: N11-4 · thank-you hero line + one-time confetti
+    // MARK: N11-4 removed again by N12-1 (owner 23 Nov), built in hotfix .14
 
-    func test_N11_4_heroLineAndConfettiOnceNoReduceMotion() throws {
-        let entries = try WhatsNew.decode(try Data(contentsOf: appFolder.appendingPathComponent("Resources/WhatsNew.json")))
-        // B102: hotfix 111.291126.01 sits above it; the thank-you belongs to 111.291126.00 only
-        guard let top = entries.first(where: { $0.version == "111.291126.00" }) else { return XCTFail("no 111.291126.00 entry") }
-        XCTAssertEqual(top.hero, "Bug #100 fixed \u{1F389} Thanks for every report.")
-        XCTAssertEqual(top.confetti, true)
-        XCTAssertTrue(entries.filter { $0.version != top.version }.allSatisfy { $0.confetti != true }, "only this version")
-        XCTAssertTrue(WhatsNew.showConfetti(top, reduceMotion: false, alreadyShown: false))
-        XCTAssertFalse(WhatsNew.showConfetti(top, reduceMotion: true, alreadyShown: false), "Reduce Motion: the line only")
-        XCTAssertFalse(WhatsNew.showConfetti(top, reduceMotion: false, alreadyShown: true), "once")
-        XCTAssertEqual(WhatsNew.confettiSeconds, 2)
+    func test_N12_1_noConfettiNoHeroLine() throws {
+        let json = try String(contentsOf: appFolder.appendingPathComponent("Resources/WhatsNew.json"), encoding: .utf8)
+        XCTAssertFalse(json.contains("confetti"))
+        XCTAssertFalse(json.contains("\"hero\""))
         let views = try text("UI/Shared/WhatsNewViews.swift")
-        XCTAssertFalse(views.contains("SoundPlayer"), "no sound")
-        XCTAssertTrue(views.contains("simultaneousGesture(TapGesture()"), "tap anywhere ends it")
+        XCTAssertFalse(views.contains("Confetti"), "the burst is gone")
     }
 }

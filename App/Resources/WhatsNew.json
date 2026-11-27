@@ -1,5 +1,31 @@
 [
   {
+    "version": "111.291126.14",
+    "headline": "Smoother maps, honest savings",
+    "items": [
+      {
+        "symbol": "scribble.variable",
+        "title": "Smooth ride lines",
+        "line": "Curves are drawn through every point, with no notches where the colour changes."
+      },
+      {
+        "symbol": "shekelsign.circle",
+        "title": "Saved per km, today",
+        "line": "Saved per km now covers the last 30 days, so it follows today's fuel price."
+      },
+      {
+        "symbol": "bag",
+        "title": "Simpler cargo",
+        "line": "Unloaded, 5 kg or Custom."
+      }
+    ],
+    "smallerFixes": 2,
+    "full": [
+      "Money saved is counted the same way everywhere, for every scooter you rode: a week can no longer show more than the lifetime.",
+      "The one-time thank-you confetti is gone."
+    ]
+  },
+  {
     "version": "111.291126.13",
     "headline": "Rides that follow the road",
     "items": [
@@ -334,8 +360,6 @@
   },
   {
     "version": "111.291126.00",
-    "hero": "Bug #100 fixed 🎉 Thanks for every report.",
-    "confetti": true,
     "headline": "Room for more than one scooter",
     "items": [
       {
@@ -356,7 +380,6 @@
     ],
     "smallerFixes": 0,
     "full": [
-      "Bug #100 fixed: thanks for every report (a one-time thank-you).",
       "Garage: a new scooter is added by itself when it connects, named after its model; the one switched on is the one in use; each keeps its own battery, charge log, maintenance and service book; places, routes, prices and settings are shared.",
       "Garage: Sold, Lost or Remove keeps its rides and its service book; Just borrowing gives no maintenance alerts.",
       "Stats: all scooters by default, with a scooter menu once you have two.",
